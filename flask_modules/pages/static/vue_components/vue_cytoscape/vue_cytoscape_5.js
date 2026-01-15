@@ -75,7 +75,7 @@ Vue.component('vue-cytoscape-5',
 
 
                     <!-- If nothing is selected on the plot, show the list of labels... -->
-                    <p v-if="!node_info" class="legend-block">
+                    <p v-if="!legend_html" class="legend-block">
                         <b>Node labels</b><br><br>
                         <template v-for="color_map in Object.entries(color_mapping)">
                             <div class="label" v-bind:style="{'background-color': color_map[1]}">{{color_map[0]}}</div>
@@ -89,15 +89,23 @@ Vue.component('vue-cytoscape-5',
 
                     <!-- ...else, if a node or edge is selected on the plot -->
                     <p v-else class="legend-block">
-                        <template v-for="label_name in node_labels">
+                        SELECTED:
+                        <template v-for="label_name in selected_node_labels">
                             <div class="label" v-bind:style="{'background-color': color_mapping[label_name]}">{{label_name}}</div>
                         </template>
                         <br><br>
 
-                        <template v-for="item in node_info">
+                        <template v-for="item in legend_html">
                             <span v-html="item"></span>
                             <br>
                         </template>
+
+                        <br><br>
+                        <template v-if="selected_element_type == 'node'">
+                            <button  @click="hide_node_by_id(selected_element.id)">Hide (node only)</button>
+                            <button  @click="hide_node_and_orphans(selected_element.id)">Hide (incl. orphaned neighbors)</button>
+                        </template>
+                        <br>
                     </p>
 
 
@@ -167,13 +175,18 @@ Vue.component('vue-cytoscape-5',
                             EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
                          */
 
-                // Data of the currently-selected node;
-                // both variables are arrays of strings:
-                node_labels: null,      // Array of labels of the currently-selected node
-                node_info: null,
-
                 label_names: [],        // Array of unique label names throughout the graph
                 edge_names: [],         // Array of unique edge names  throughout the graph
+
+
+                // Data about the currently-selected node or edge
+                selected_node_labels: null,     // Array of labels of the currently-selected node
+                legend_html: null,              // Array of HTML string to display lines of formatted data on the legend,
+                                                //      for the currently-selected node or edge
+                selected_element: null,         // Object containing the data of the selected node or edge
+                selected_element_type: null,    // Either "node" or "edge"
+                //selected_collection: null,      // A cytoscape.Collection (1 node or edge wrapped in a Collection)
+
 
                 default_color_palette:  {   0: "#ff7577",  // Pale red "#F16668",
                                             1: "cyan",
@@ -216,8 +229,11 @@ Vue.component('vue-cytoscape-5',
                                                             //                     to the DIV element containing the graph)
                 // Save the newly-created Cytoscape object, as metadata for this Vue component
                 // Note: the Cytoscape object cannot be simply saved as component data,
-                //       because doing somehow leads to an infinite loop!
-                this.$options.cy_object = cy_object;
+                //       because doing so leads to an infinite loop!
+                //       According to ChatGPT, "Vue 2 tries to make the Cytoscape object “reactive”,
+                //       recursively walks it, and gets trapped in Cytoscape’s internal circular graph."
+                this.$options.cy_object = cy_object;    // TODO: try this._liveSelectedNode = cy_object
+                                                        //       underscore = not reactive
             }
         },
 
@@ -319,6 +335,7 @@ Vue.component('vue-cytoscape-5',
 
                 :param element_id:  The name to match the ID of the Cytoscape DIV element containing the graph.
                                         EXAMPLE: "cy_1"
+                :return:            The newly-created Cytoscape object
              */
             {
                 console.log(`Running create_graph() to replace the page element with ID '${element_id}'`);
@@ -338,13 +355,13 @@ Vue.component('vue-cytoscape-5',
                                 'height': 75,
                                 //'shape': 'ellipse',   // Adjust width/height as desired
                                 //'label': 'data(name)',
-                                'label': this.node_caption_f,
+                                'label': this.node_caption_funct,
                                 //'background-color': '#8DCC93',
-                                'background-color': this.node_color_f,
+                                'background-color': this.node_color_funct,
 
                                 'border-width': 2,
                                 //'border-color': '#5db665',
-                                'border-color': this.node_border_color_f,
+                                'border-color': this.node_border_color_funct,
 
                                 'font-size': '11px',
                                 'color': '#101010',        // Color of the text
@@ -405,7 +422,7 @@ Vue.component('vue-cytoscape-5',
                 /*
                     Detect all click of interest, and register their handlers
                  */
-                cy_object.on('click', this.clear_legend);                   // A click on the empty space of the graph (the Cytoscape core)
+                cy_object.on('click', this.handle_background_click);                   // A click on the empty space of the graph (the Cytoscape core)
                 cy_object.on('click', 'node', this.show_node_info);         // A click on a node on the graph
                 cy_object.on('click', 'edge', this.show_edge_info);         // A click on an edge
                 cy_object.on('dblclick', 'node', this.handle_double_click);// A double-click on a node on the graph
@@ -427,7 +444,7 @@ Vue.component('vue-cytoscape-5',
 
 
 
-           node_caption_f(ele)
+           node_caption_funct(ele)
             /*  Function to generate the caption to show on the graph, for a given node.
                 The caption is based on the node's labels; in the absence of a user-specified mapping,
                 an attempt is made to locate typical important field names, such as "name" or "title";
@@ -454,7 +471,7 @@ Vue.component('vue-cytoscape-5',
             },
 
 
-            node_color_f(ele)
+            node_color_funct(ele)
             /*  Function to generate the color to use for the inside of the given node.
                 The color is based on the node's labels; in the absence of a user-specified mapping,
                 white is used.
@@ -470,7 +487,7 @@ Vue.component('vue-cytoscape-5',
             },
 
 
-            node_border_color_f(ele)
+            node_border_color_funct(ele)
             /*  Function to generate the color to use for the border of the node
                 passed as argument (as a graph element).
                 The relationship between the interior and edge color is:
@@ -479,7 +496,7 @@ Vue.component('vue-cytoscape-5',
             {
                 //console.log(this.color_mapping);
                 //console.log(ele.data("_node_labels"));
-                const interior_color = this.node_color_f(ele);
+                const interior_color = this.node_color_funct(ele);
                 //console.log(interior_color);
                 const c = d3.hsl(interior_color);
                 //console.log(c);
@@ -502,33 +519,125 @@ Vue.component('vue-cytoscape-5',
             {
                 const cy_object = this.create_graph('cy_' + this.component_id);     // This will let Cytoscape.js re-render the plot
                 this.$options.cy_object = cy_object;        // Save the new object.   TODO: could this be done inside create_graph() ?
-                this.node_info = null;                      // Unset any node selection (in the legend)
+                this.clear_legend();
             },
 
 
             handle_double_click(ev)
             {
                 console.log("In handle_double_click()");
+                const node = ev.target;                 // A cytoscape.Collection (1 node wrapped in a Collection)
 
-                const node = ev.target;
-
-                const cyto_node_data_obj = node.data(); // An object with the key 'id',
+                const cyto_node_data_obj = node.data();// A JavaScript object containing the node’s data fields:
+                                                        // the key 'id',
                                                         // plus typically '_node_labels', and all the node properties
+                console.log({ ...cyto_node_data_obj }); // Log a snapshot of the object
 
-                console.log(cyto_node_data_obj);
                 const node_id = cyto_node_data_obj.id;
 
-                this.hide_node(node_id);
+                console.log(node.neighborhood());
+                console.log(node.connectedEdges());
+
+                this.hide_node(node);
+
+                //this.hide_node(node_id);
             },
 
 
-            hide_node(node_id)
+
+            hide_node(node_collection)
+            // Hide a single node (1 node wrapped in a Collection)
+            {
+                const node_id = node_collection.data().id;
+                console.log(`In hide_node().  Hiding node with id: ${node_id}`);
+
+
+                // Remove the node from the Cytoscape graph (which automatically takes care of hiding its links)
+                node_collection.remove();
+
+                // Remove the node from our data structure
+                const node_index = this.locate_node_by_id(node_id);
+                console.log(`    hide_node(): node located in index position ${node_index}`);
+
+                if (node_index == -1)  {
+                    alert(`hide_node(): unable to locate any node with id ${node_id}`);
+                    return;
+                }
+
+                const adjacent_edges = this.locate_adjacent_edges(node_id);
+                console.log(`    hide_node(): the node is attached to the following ${adjacent_edges.length} edges:`);
+                console.log(adjacent_edges);
+
+                for (let edge_index of adjacent_edges) {
+                    console.log(`    handle_double_click(): hiding EDGE with index position ${edge_index}`);
+                    this.edges.splice(edge_index, 1);   // Delete 1 array element in position edge_index
+                }
+
+                console.log(`    handle_double_click(): hiding NODE with index position ${node_index}`);
+                this.nodes.splice(node_index, 1);       // Delete 1 array element in position node_index
+            },
+
+
+
+            hide_node_by_id(node_id)
             /*
-                :param node_id:
+                :param node_id: A string (always a string!) with the Cytoscape ID of a node
+             */
+            {
+                console.log(`In hide_node_by_id().  Searching for node with id: ${node_id}`);
+
+                const node = this.$options.cy_object.getElementById(node_id);
+
+                const id_check = node.data().id;    // Just for double-check.  TODO: perhaps zap later
+                if (node_id != id_check)  {
+                    alert("ID mismatch in hide_node_by_id!  No action taken");
+                    return;
+                }
+
+                this.hide_node(node);
+            },
+
+
+            hide_node_and_orphans(node_id)
+            /*
+                :param node_id: A string (always a string!) with the Cytoscape ID of a node
+             */
+            {
+                console.log(`In hide_node_and_orphans().  Searching for node with id: ${node_id}`);
+
+                const node = this.$options.cy_object.getElementById(node_id);
+
+                // Get neighboring nodes
+                const neighbor_nodes = node.neighborhood().nodes();     // Filter for nodes only
+                console.log("Neighbor nodes:");
+                console.log({ ...neighbor_nodes }); // Log a snapshot
+
+                // Identify which neighbors would become orphans
+                const orphan_nodes = neighbor_nodes.filter(
+                                                            n => n.connectedEdges().length === 1
+                                                          );
+                console.log("Orphan nodes:");
+                console.log({ ...orphan_nodes }); // Log a snapshot
+
+                // Remove node + orphans in one operation
+                node.union(orphan_nodes).remove();
+            },
+
+
+
+
+
+            hide_node_OLD(node_id)
+            /*
+                TODO: eliminate
+                :param node_id: A string (always a string!) with the Cytoscape ID of a node
              */
             {
                 console.log(`In hide_node().  Searching for node with id: ${node_id}`);
-                console.log(typeof node_id);
+
+                const node = this.$options.cy_object.getElementById(node_id);   // TODO: experimental!
+
+                console.log(`     Alternate way to obtain id: ${node.data().id}`);
 
                 const node_index = this.locate_node_by_id(node_id);
                 console.log(`    hide_node(): node located in index position ${node_index}`);
@@ -559,20 +668,33 @@ Vue.component('vue-cytoscape-5',
 
 
             show_node_info(ev)
-            // Invoked when user clicks on a node
+            /*  Invoked when the user clicks on a node
+
+                :param ev:  Event data object, which contains the key `target`
+             */
             {
-                const node = ev.target;
+                console.log(`In show_node_info()`);
+                const node = ev.target;                 // A cytoscape.Collection (1 node wrapped in a Collection)
 
-                const cyto_node_data_obj = node.data(); // An object with the key 'id',
+                const cyto_node_data_obj = node.data(); // A JavaScript object containing the node’s data fields:
+                                                        // the key 'id',
                                                         // plus typically '_node_labels', and all the node properties
+                console.log({ ...cyto_node_data_obj }); // Log a snapshot of the object
 
+                // Save the info about the selected element (in this case a node)
+                this.selected_element = { ...cyto_node_data_obj };      // Store a snapshot (NOT cyto_node_data_obj)
+                this.selected_element_type = "node";
+                //this.selected_collection = node;
                 this.populate_legend_from_node(cyto_node_data_obj);
             },
 
 
-
             populate_legend_from_node(node_data_obj)
-            // Invoked when a node is to be highlighted
+            /*  Populate the legend with data from the given node
+
+                :param node_data_obj:   Object containing the node’s data fields;
+                                            in particular, 'id' and (usually) '_node_labels'
+             */
             {
                 // Each of the above object's key/value pairs will go into an array element,
                 // as an HTML string
@@ -593,40 +715,74 @@ Vue.component('vue-cytoscape-5',
                 //console.log(info_arr);
 
                 // Update the legend
-                this.node_info = info_arr;
-                this.node_labels = node_data_obj._node_labels;
+                this.legend_html = info_arr;
+                this.selected_node_labels = node_data_obj._node_labels;
             },
 
 
             show_edge_info(ev)
-            // Invoked when clicking on an edge
-            {
-                const edge = ev.target;
+            /*  Invoked when the user clicks on an edge
 
-                const cyto_data_obj = edge.data();      // An object with various keys, such as 'id', 'name', 'source', 'target'
+                :param ev:  Event data object, which contains the key `target`
+             */
+            {
+                //console.log(`In show_edge_info()`);
+                const edge = ev.target;                 // A cytoscape.Collection (1 edge wrapped in a Collection)
+
+                const cyto_edge_data_obj = edge.data(); // A JavaScript object containing the edge’s data fields;
+                                                        // in particular, the keys 'source', 'target', 'name' (and typically 'id')
+                //console.log({ ...cyto_edge_data_obj }); // Log a snapshot of the object
+
+                // Save the info about the selected element (in this case an edge)
+                this.selected_element = { ...cyto_edge_data_obj };      // Store a snapshot
+                this.selected_element_type = "edge";
+                //this.selected_collection = edge;
+
+                this.populate_legend_from_edge(cyto_edge_data_obj);
+            },
+
+
+            populate_legend_from_edge(edge_data_obj)
+            /*  Populate the legend with data from the given edge
+
+                :param edge_data_obj:   Object containing the edge’s data fields;
+                                            in particular, 'source', 'target', 'name' and (usually) 'id'
+             */
+            {
                 let info_arr = [];                      // Each of the object key/value pairs will go into an array element, as an HTML string
-                for (k in cyto_data_obj) {
+                for (k in edge_data_obj) {
                     //console.log( k, cyto_data_obj[k] );
-                    info_arr.push(`<b>${k}</b>: ${cyto_data_obj[k]}`);  // Data to update the UI graph legend
+                    info_arr.push(`<b>${k}</b>: ${edge_data_obj[k]}`);  // Data to update the UI graph legend
                 }
                 //console.log(info_arr);
 
                 // Update the legend
-                this.node_info = info_arr;
-                this.node_labels = null;
+                this.legend_html = info_arr;
+                this.selected_node_labels = null;
             },
 
 
-            clear_legend(ev)
+            handle_background_click(ev)
             /*  Invoked when clicking anywhere - including the image background.
                 Clear the plot legend (note: if clicking on a node or edge, the legend
                 will get set again by the next handler)
             */
             {
-                // The following change will clear the plot legend
-                this.node_info = null;
-                this.node_labels = null;
+                this.clear_legend();
             },
+
+
+            clear_legend()
+            // Unset the details of the node or edge selection (in the legend)
+            {
+                // The following changes will clear the plot legend
+                this.legend_html = null;
+                this.selected_node_labels = null;
+                this.selected_element = null;
+                this.selected_element_type = null;
+                //this.selected_collection = null;
+            },
+
 
 
             auto_assign_color_to_label(label)
@@ -787,7 +943,7 @@ Vue.component('vue-cytoscape-5',
 
                 // Reset the arrays of edge and label names
                 this.edge_names = [];
-                this.node_labels = [];
+                this.selected_node_labels = [];
 
                 // Parse the array of edges
                 for (el of this.edges)  {     // el is an object that represents an edge
@@ -819,8 +975,8 @@ Vue.component('vue-cytoscape-5',
                                 if (! (l in this.color_mapping))
                                     this.auto_assign_color_to_label(l);
                                     
-                                if (! this.node_labels.includes(l))
-                                    this.node_labels.push(l);      // Keep a running list of all label names encountered
+                                if (! this.selected_node_labels.includes(l))
+                                    this.selected_node_labels.push(l);      // Keep a running list of all label names encountered
                             }
                         }
                     }
@@ -906,8 +1062,8 @@ Vue.component('vue-cytoscape-5',
                 //console.log(`The following selector will be used: '${selector}'`);
                 this.$options.cy_object.$(selector).select();   // Tell Cytoscape to select this node
                                                                 // EXAMPLE:  cy_object.$('#116404').select()
-                //this.node_info = ['A test'];
-                //this.node_labels = node._node_labels;
+                //this.legend_html = ['A test'];
+                //this.selected_node_labels = node._node_labels;
                 this.populate_legend_from_node(located_node);
             },
 
