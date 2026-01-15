@@ -22,7 +22,7 @@ Vue.component('vue-cytoscape-5',
 
                         Note: 'id' values can be strings or integers (which eventually get converted to strings)
                         
-                1) "structure" 
+                1) "nodes"
                 
                 2) "edges"
 
@@ -146,7 +146,7 @@ Vue.component('vue-cytoscape-5',
                     </p>
 
                     <br><br><br><br>
-                    <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">vue-cytoscape-5 , rev. 1</span>
+                    <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">vue-cytoscape-5 , rev. 2</span>
                 </div>      <!-- End of side box -->
 
             </div>		<!-- End of outer container -->
@@ -256,10 +256,10 @@ Vue.component('vue-cytoscape-5',
 
         // ---------------------  MOUNTED  ----------------------
         mounted()
-        /* Note: the "mounted" Vue hook is invoked later in the process of launching this component;
-         waiting this late is needed.
-         Caution must be taken not to re-trigger it from the code in this function,
-         or an infinite loop will result!
+        /*  Note: the "mounted" Vue hook is invoked later in the process of launching this component;
+            waiting this late is needed.
+            Caution must be taken not to re-trigger it from the code in this function,
+            or an infinite loop will result!
          */
         {
             console.log(`The 'vue-cytoscape-5' component is now mounted`);
@@ -324,7 +324,7 @@ Vue.component('vue-cytoscape-5',
         methods: {
 
             create_graph(element_id)
-            /*  Let Cytoscape.js re-render the requested plot.
+            /*  Let Cytoscape.js render (or re-render) the requested plot.
 
                 This function needs to be invoked whenever any of the following holds:
 
@@ -509,6 +509,88 @@ Vue.component('vue-cytoscape-5',
 
 
 
+            /*
+                EVENT HANDLERS
+             */
+
+
+            handle_background_click(ev)
+            /*  Invoked when clicking anywhere - including the image background.
+                Clear the plot legend (note: if clicking on a node or edge, the legend
+                will get set again by the next handler)
+            */
+            {
+                this.clear_legend();
+            },
+
+
+
+            show_node_info(ev)
+            /*  Invoked when the user clicks on a node
+
+                :param ev:  Event data object, which contains the key `target`
+             */
+            {
+                console.log(`In show_node_info()`);
+                const node = ev.target;                 // A cytoscape.Collection (1 node wrapped in a Collection)
+
+                const cyto_node_data_obj = node.data(); // A JavaScript object containing the node’s data fields:
+                                                        // the key 'id',
+                                                        // plus typically '_node_labels', and all the node properties
+                console.log({ ...cyto_node_data_obj }); // Log a snapshot of the object
+
+                // Save the info about the selected element (in this case a node)
+                this.selected_element = { ...cyto_node_data_obj };      // Store a snapshot (NOT cyto_node_data_obj)
+                this.selected_element_type = "node";
+                //this.selected_collection = node;
+                this.populate_legend_from_node(cyto_node_data_obj);
+            },
+
+
+
+            show_edge_info(ev)
+            /*  Invoked when the user clicks on an edge
+
+                :param ev:  Event data object, which contains the key `target`
+             */
+            {
+                //console.log(`In show_edge_info()`);
+                const edge = ev.target;                 // A cytoscape.Collection (1 edge wrapped in a Collection)
+
+                const cyto_edge_data_obj = edge.data(); // A JavaScript object containing the edge’s data fields;
+                                                        // in particular, the keys 'source', 'target', 'name' (and typically 'id')
+                //console.log({ ...cyto_edge_data_obj }); // Log a snapshot of the object
+
+                // Save the info about the selected element (in this case an edge)
+                this.selected_element = { ...cyto_edge_data_obj };      // Store a snapshot
+                this.selected_element_type = "edge";
+                //this.selected_collection = edge;
+
+                this.populate_legend_from_edge(cyto_edge_data_obj);
+            },
+
+
+
+            handle_double_click(ev)
+            /*  Invoked when the user DOUBLE-clicks on a node
+
+                :param ev:  Event data object, which contains the key `target`
+             */
+            {
+                console.log("In handle_double_click()");
+                const node = ev.target;                 // A cytoscape.Collection (1 node wrapped in a Collection)
+
+                const cyto_node_data_obj = node.data();// A JavaScript object containing the node’s data fields:
+                                                        // the key 'id',
+                                                        // plus typically '_node_labels', and all the node properties
+                console.log({ ...cyto_node_data_obj }); // Log a snapshot of the object
+
+                const node_id = cyto_node_data_obj.id;
+
+                alert("Double-click actions not yet implemented");
+            },
+
+
 
             /*
                 SUPPORT FUNCTIONS
@@ -522,22 +604,6 @@ Vue.component('vue-cytoscape-5',
                 const cy_object = this.create_graph('cy_' + this.component_id);     // This will let Cytoscape.js re-render the plot
                 this.$options.cy_object = cy_object;        // Save the new object.   TODO: could this be done inside create_graph() ?
                 this.clear_legend();
-            },
-
-
-            handle_double_click(ev)
-            {
-                console.log("In handle_double_click()");
-                const node = ev.target;                 // A cytoscape.Collection (1 node wrapped in a Collection)
-
-                const cyto_node_data_obj = node.data();// A JavaScript object containing the node’s data fields:
-                                                        // the key 'id',
-                                                        // plus typically '_node_labels', and all the node properties
-                console.log({ ...cyto_node_data_obj }); // Log a snapshot of the object
-
-                const node_id = cyto_node_data_obj.id;
-
-                this.hide_node(node);
             },
 
 
@@ -625,27 +691,6 @@ Vue.component('vue-cytoscape-5',
             },
 
 
-            show_node_info(ev)
-            /*  Invoked when the user clicks on a node
-
-                :param ev:  Event data object, which contains the key `target`
-             */
-            {
-                console.log(`In show_node_info()`);
-                const node = ev.target;                 // A cytoscape.Collection (1 node wrapped in a Collection)
-
-                const cyto_node_data_obj = node.data(); // A JavaScript object containing the node’s data fields:
-                                                        // the key 'id',
-                                                        // plus typically '_node_labels', and all the node properties
-                console.log({ ...cyto_node_data_obj }); // Log a snapshot of the object
-
-                // Save the info about the selected element (in this case a node)
-                this.selected_element = { ...cyto_node_data_obj };      // Store a snapshot (NOT cyto_node_data_obj)
-                this.selected_element_type = "node";
-                //this.selected_collection = node;
-                this.populate_legend_from_node(cyto_node_data_obj);
-            },
-
 
             populate_legend_from_node(node_data_obj)
             /*  Populate the legend with data from the given node
@@ -678,27 +723,6 @@ Vue.component('vue-cytoscape-5',
             },
 
 
-            show_edge_info(ev)
-            /*  Invoked when the user clicks on an edge
-
-                :param ev:  Event data object, which contains the key `target`
-             */
-            {
-                //console.log(`In show_edge_info()`);
-                const edge = ev.target;                 // A cytoscape.Collection (1 edge wrapped in a Collection)
-
-                const cyto_edge_data_obj = edge.data(); // A JavaScript object containing the edge’s data fields;
-                                                        // in particular, the keys 'source', 'target', 'name' (and typically 'id')
-                //console.log({ ...cyto_edge_data_obj }); // Log a snapshot of the object
-
-                // Save the info about the selected element (in this case an edge)
-                this.selected_element = { ...cyto_edge_data_obj };      // Store a snapshot
-                this.selected_element_type = "edge";
-                //this.selected_collection = edge;
-
-                this.populate_legend_from_edge(cyto_edge_data_obj);
-            },
-
 
             populate_legend_from_edge(edge_data_obj)
             /*  Populate the legend with data from the given edge
@@ -719,15 +743,6 @@ Vue.component('vue-cytoscape-5',
                 this.selected_node_labels = null;
             },
 
-
-            handle_background_click(ev)
-            /*  Invoked when clicking anywhere - including the image background.
-                Clear the plot legend (note: if clicking on a node or edge, the legend
-                will get set again by the next handler)
-            */
-            {
-                this.clear_legend();
-            },
 
 
             clear_legend()

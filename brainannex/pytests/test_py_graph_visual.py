@@ -9,14 +9,14 @@ import neo4j.time
 
 def test_get_graph_data():
     graph = PyGraphVisual()
-    graph.node_structure = ["my_node_list"]
-    graph.edge_structure = ["my_edge_list"]
+    graph.nodes = ["my_node_list"]
+    graph.edges = ["my_edge_list"]
     graph.color_mapping = {"a": "red"}
     graph.caption_mapping = {"z": 99}
 
     assert graph.get_graph_data() == {
-                    "node_structure": ["my_node_list"],
-                    "edge_structure": ["my_edge_list"],
+                    "nodes": ["my_node_list"],
+                    "edges": ["my_edge_list"],
                     "color_mapping": {"a": "red"},
                     "caption_mapping": {"z": 99}
                 }
@@ -30,15 +30,15 @@ def test_add_node():
 
     result = graph.get_graph_data()
 
-    assert result == {'node_structure': [{'name': 'Julian', 'id': 123, '_node_labels': ['Person']}],
-                      'edge_structure' : [],
+    assert result == {'nodes': [{'name': 'Julian', 'id': 123, '_node_labels': ['Person']}],
+                      'edges' : [],
                       'color_mapping': {}, 'caption_mapping': {}}
     assert graph._all_node_ids == [123]
 
 
     graph.add_node(node_id=456, labels="Person", properties={"name": "Val"})
 
-    result = graph.get_graph_data().get("node_structure")
+    result = graph.get_graph_data().get("nodes")
 
     expected = [{'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
                 {'id': 456, 'name': 'Val', '_node_labels': ['Person']}]
@@ -50,7 +50,7 @@ def test_add_node():
     # Duplicate node_id
     graph.add_node(node_id=456, labels="Person", properties={"name": "it doesn't matter"})
 
-    result = graph.get_graph_data().get("node_structure")
+    result = graph.get_graph_data().get("nodes")
 
     assert compare_recordsets(result , expected)    # No change from before
     assert graph._all_node_ids == [123, 456]
@@ -75,10 +75,10 @@ def test_add_edge():
     result = graph.get_graph_data()
     assert result["color_mapping"] == {}
     assert result["caption_mapping"] == {}
-    assert result["node_structure"] == [ {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
+    assert result["nodes"] == [ {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
                                          {'id': 456, 'name': 'Val', '_node_labels': ['Person']}
                                        ]
-    assert result["edge_structure"] == [ {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456} ]
+    assert result["edges"] == [ {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456} ]
 
     graph.add_node(node_id="car-1", labels=["Car", "Vehicle"], properties={"color": "white"})
     graph.add_edge(from_node=123, to_node="car-1", name="OWNS", properties={"paid": 100})
@@ -86,11 +86,11 @@ def test_add_edge():
     result = graph.get_graph_data()
     assert result["color_mapping"] == {}
     assert result["caption_mapping"] == {}
-    assert result["node_structure"] == [    {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
+    assert result["nodes"] == [    {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
                                             {'id': 456, 'name': 'Val', '_node_labels': ['Person']},
                                             {'id': 'car-1', 'color': 'white', '_node_labels': ["Car", "Vehicle"]}
                                         ]
-    assert result["edge_structure"] == [
+    assert result["edges"] == [
                                             {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456},
                                             {'id': 'edge-2', 'name': 'OWNS', 'source': 123, 'target': 'car-1', 'paid':100}
                                         ]
@@ -171,12 +171,12 @@ def test_prepare_graph_1():
     assert internal_data['color_mapping'] == {}
     assert internal_data['caption_mapping'] == {}
 
-    expected_node_structure = [{'id': 123, 'internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
+    expected_nodes = [{'id': 123, 'internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
                                 {'id': 456, 'internal_id': 456, 'name': 'Val', '_node_labels': ['Person']}]
-    expected_edge_structure = []
+    expected_edges = []
 
-    assert compare_recordsets(internal_data["node_structure"] , expected_node_structure)
-    assert compare_recordsets(internal_data["edge_structure"] , expected_edge_structure)
+    assert compare_recordsets(internal_data["nodes"] , expected_nodes)
+    assert compare_recordsets(internal_data["edges"] , expected_edges)
     assert graph._all_node_ids == [123, 456]
 
 
@@ -185,17 +185,17 @@ def test_prepare_graph_1():
     result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
     assert result == [123, 456, 789]
 
-    internal_node_structure = graph.get_graph_data().get("node_structure")
-    expected_node_structure = [{'id': 123, 'internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
+    internal_nodes = graph.get_graph_data().get("nodes")
+    expected_nodes = [{'id': 123, 'internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
                                {'id': 456, 'internal_id': 456, 'name': 'Val',    '_node_labels': ['Person']},
                                {'id': 789, 'internal_id': 789, 'name': 'Rese',   '_node_labels': ['Person'], 'id_original': 'some value'}]
 
-    assert compare_recordsets(internal_node_structure , expected_node_structure)
+    assert compare_recordsets(internal_nodes , expected_nodes)
 
-    internal_edge_structure = graph.get_graph_data().get("edge_structure")
-    expected_edge_structure = []
+    internal_edges = graph.get_graph_data().get("edges")
+    expected_edges = []
 
-    assert compare_recordsets(internal_edge_structure , expected_edge_structure)
+    assert compare_recordsets(internal_edges , expected_edges)
 
     dataset += [{'internal_id': 666, 'id': 'X', 'id_original': 'Y' }]
     with pytest.raises(Exception):
@@ -225,12 +225,12 @@ def test_prepare_graph_2():
     assert compare_unordered_lists(result, [p_1, p_2, c_1])
     assert compare_unordered_lists(graph._all_node_ids, [p_1, p_2, c_1])
 
-    expected_node_structure = [{'id': p_1, 'internal_id': p_1, 'name': 'Julian', '_node_labels': ['Person']},
+    expected_nodes = [{'id': p_1, 'internal_id': p_1, 'name': 'Julian', '_node_labels': ['Person']},
                                {'id': p_2, 'internal_id': p_2, 'name': 'Val',    '_node_labels': ['Person']},
                                {'id': c_1, 'internal_id': c_1, 'color': 'white', '_node_labels': ['Car']}]
 
     internal_data = graph.get_graph_data()
-    assert compare_recordsets(internal_data["node_structure"] , expected_node_structure)
+    assert compare_recordsets(internal_data["nodes"] , expected_nodes)
 
 
     # Repeat, but now also automatically fetch all edges
@@ -240,63 +240,63 @@ def test_prepare_graph_2():
     assert compare_unordered_lists(graph._all_node_ids, [p_1, p_2, c_1])
 
     assert compare_unordered_lists(result, [p_1, p_2, c_1])
-    internal_node_structure = graph.get_graph_data().get("node_structure")
-    internal_edge_structure = graph.get_graph_data().get("edge_structure")
+    internal_nodes = graph.get_graph_data().get("nodes")
+    internal_edges = graph.get_graph_data().get("edges")
 
-    assert compare_recordsets(internal_node_structure , expected_node_structure)
+    assert compare_recordsets(internal_nodes , expected_nodes)
 
-    expected_edge_structure_1 = [
+    expected_edges_1 = [
                                   {'name': 'OWNS', 'source': p_1, 'target': c_1, 'id': 'edge-1', 'paid':100},
                                   {'name': 'KNOWS', 'source': p_1, 'target': p_2, 'id': 'edge-2'}
                                 ]
 
     # Make allowance for the fact that the edges could be returned in any order (and thus have reversed id's)
-    expected_edge_structure_2 = [
+    expected_edges_2 = [
                                   {'name': 'OWNS', 'source': p_1, 'target': c_1, 'id': 'edge-2', 'paid':100},
                                   {'name': 'KNOWS', 'source': p_1, 'target': p_2, 'id': 'edge-1'}
                                ]
 
-    assert compare_recordsets(internal_edge_structure , expected_edge_structure_1) \
-                or compare_recordsets(internal_edge_structure , expected_edge_structure_2)
+    assert compare_recordsets(internal_edges , expected_edges_1) \
+                or compare_recordsets(internal_edges , expected_edges_2)
 
 
     # Now exclude some edges by name
     graph.prepare_graph(result_dataset=dataset, add_edges=True, avoid_links="NON_EXISTENT_LINK")
-    internal_node_structure = graph.get_graph_data().get("node_structure")
-    internal_edge_structure = graph.get_graph_data().get("edge_structure")
+    internal_nodes = graph.get_graph_data().get("nodes")
+    internal_edges = graph.get_graph_data().get("edges")
 
     # Same as before
-    assert compare_recordsets(internal_node_structure , expected_node_structure)
-    assert compare_recordsets(internal_edge_structure , expected_edge_structure_1) \
-                or compare_recordsets(internal_edge_structure , expected_edge_structure_2)
+    assert compare_recordsets(internal_nodes , expected_nodes)
+    assert compare_recordsets(internal_edges , expected_edges_1) \
+                or compare_recordsets(internal_edges , expected_edges_2)
 
 
     graph.prepare_graph(result_dataset=dataset, add_edges=True, avoid_links="OWNS")
-    internal_node_structure = graph.get_graph_data().get("node_structure")
-    internal_edge_structure = graph.get_graph_data().get("edge_structure")
-    expected_edge_structure = [
+    internal_nodes = graph.get_graph_data().get("nodes")
+    internal_edges = graph.get_graph_data().get("edges")
+    expected_edges = [
                                 {'name': 'KNOWS', 'source': p_1, 'target': p_2, 'id': 'edge-1'}
                              ]  # We have now lost en edge
-    assert compare_recordsets(internal_node_structure , expected_node_structure)
-    assert compare_recordsets(internal_edge_structure , expected_edge_structure)
+    assert compare_recordsets(internal_nodes , expected_nodes)
+    assert compare_recordsets(internal_edges , expected_edges)
 
 
     graph.prepare_graph(result_dataset=dataset, add_edges=True, avoid_links="KNOWS")
-    internal_node_structure = graph.get_graph_data().get("node_structure")
-    internal_edge_structure = graph.get_graph_data().get("edge_structure")
-    expected_edge_structure = [
+    internal_nodes = graph.get_graph_data().get("nodes")
+    internal_edges = graph.get_graph_data().get("edges")
+    expected_edges = [
                                 {'name': 'OWNS', 'source': p_1, 'target': c_1, 'id': 'edge-1', 'paid':100},
                               ]
-    assert compare_recordsets(internal_node_structure , expected_node_structure)
-    assert compare_recordsets(internal_edge_structure , expected_edge_structure)
+    assert compare_recordsets(internal_nodes , expected_nodes)
+    assert compare_recordsets(internal_edges , expected_edges)
 
 
     graph.prepare_graph(result_dataset=dataset, add_edges=True, avoid_links=["KNOWS", "OWNS"])
-    internal_node_structure = graph.get_graph_data().get("node_structure")
-    internal_edge_structure = graph.get_graph_data().get("edge_structure")
-    expected_edge_structure = [ ]
-    assert compare_recordsets(internal_node_structure , expected_node_structure)
-    assert compare_recordsets(internal_edge_structure , expected_edge_structure)
+    internal_nodes = graph.get_graph_data().get("nodes")
+    internal_edges = graph.get_graph_data().get("edges")
+    expected_edges = [ ]
+    assert compare_recordsets(internal_nodes , expected_nodes)
+    assert compare_recordsets(internal_edges , expected_edges)
 
 
     with pytest.raises(Exception):
@@ -321,11 +321,11 @@ def test_prepare_graph_3():
     result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
     assert result == [car_id]
 
-    assert graph.get_graph_data()['node_structure'] == [{'color': 'red', 'make': 'Honda',
+    assert graph.get_graph_data()['nodes'] == [{'color': 'red', 'make': 'Honda',
                                                          'manufactured_on': '2019/06/01', 'certified': '2019/08/31',
                                                          'id': car_id, 'internal_id': car_id, '_node_labels': ['Car']}]
 
-    assert graph.get_graph_data()['edge_structure'] == []
+    assert graph.get_graph_data()['edges'] == []
 
 
     # Add a 2nd node, to be linked to the 1st one
@@ -353,18 +353,18 @@ def test_prepare_graph_3():
     result = graph.prepare_graph(result_dataset=dataset, add_edges=True)
     assert compare_unordered_lists(result, [car_id, person_id])
 
-    internal_node_structure = graph.get_graph_data().get("node_structure")
-    internal_edge_structure = graph.get_graph_data().get("edge_structure")
+    internal_nodes = graph.get_graph_data().get("nodes")
+    internal_edges = graph.get_graph_data().get("edges")
 
-    expected_node_structure  = \
+    expected_nodes  = \
             [   {'color': 'red', 'certified': '2019/08/31', 'make': 'Honda', 'manufactured_on': '2019/06/01', 'id': car_id, 'internal_id': car_id, '_node_labels': ['Car']},
                 {'name': 'Julian', 'id': person_id, 'internal_id': person_id, '_node_labels': ['Person']}
             ]
 
-    expected_edge_structure  = [{'name': 'OWNS', 'source': person_id, 'target': car_id, 'id': 'edge-1', 'bought': '2025/11/13'}]
+    expected_edges  = [{'name': 'OWNS', 'source': person_id, 'target': car_id, 'id': 'edge-1', 'bought': '2025/11/13'}]
 
-    assert compare_recordsets(internal_node_structure , expected_node_structure)
-    assert compare_recordsets(internal_edge_structure , expected_edge_structure)
+    assert compare_recordsets(internal_nodes , expected_nodes)
+    assert compare_recordsets(internal_edges , expected_edges)
 
 
 

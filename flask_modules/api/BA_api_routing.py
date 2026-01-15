@@ -2042,7 +2042,7 @@ class ApiRouting:
         @login_required
         def get_filtered():
             """
-            Perform a database search for particular nodes, and return their properties,
+            Perform a database search for particular NODES, and return their properties,
             as well as a total count.
 
             For example, for the use of a record search form or the recordset plugin
