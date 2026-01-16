@@ -9,22 +9,21 @@ Vue.component('vue-cytoscape-5',
             },
             /* graph_data is an object with the following 4 KEYS:
 
-                OLD) "structure"      (an array of objects that represent either nodes or edges).
+                1) "nodes"
+                        An array of objects that represent nodes.
                         The 'id' key is REQUIRED in each object;
                         a '_node_labels' is typically present in node objects (but not required).
-                        Objects representing edges must have the keys 'source', 'target' and 'name',
-                        where the values of 'source' are 'target' must be 'id' values on node objects.
-
-                        EXAMPLE (two nodes followed by an edge):
-                            [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
-                             {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
-                             {'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
-
                         Note: 'id' values can be strings or integers (which eventually get converted to strings)
-                        
-                1) "nodes"
+                         EXAMPLE (two nodes):
+                            [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
+                             {'id': 2, '_node_labels': ['CAR'], 'color': 'white'}]
                 
                 2) "edges"
+                        An array of objects that represent edges.
+                        The keys 'id', source', 'target' and 'name' are REQUIRED in each object,
+                        where the values of 'source' are 'target' must be 'id' values on node objects.
+                        EXAMPLE (edge between the two earlier nodes):
+                            [{'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
 
                 3) "color_mapping"
                         Map of node labels to color names
@@ -107,6 +106,8 @@ Vue.component('vue-cytoscape-5',
                             <button  @click="hide_node_by_id(selected_element.id)">Hide (node only)</button>
                             <br><br>
                             <button  @click="hide_node_and_orphans(selected_element.id)">Hide (incl. orphaned neighbors)</button>
+                            <br><br>
+                            <button  @click="hide_and_bridge_gap(selected_element.id)">Hide (and bridge gap)</button>
                         </template>
                         <br>
                     </p>
@@ -358,12 +359,11 @@ Vue.component('vue-cytoscape-5',
                                 //'shape': 'ellipse',   // Adjust width/height as desired
                                 //'label': 'data(name)',
                                 'label': this.node_caption_funct,
-                                //'background-color': '#8DCC93',
+
                                 'background-color': this.node_color_funct,
 
-                                'border-width': 2,
-                                //'border-color': '#5db665',
                                 'border-color': this.node_border_color_funct,
+                                'border-width': 2,
 
                                 'font-size': '11px',
                                 'color': '#101010',        // Color of the text
@@ -371,6 +371,7 @@ Vue.component('vue-cytoscape-5',
                                 'text-valign': 'center'
                             }
                         },
+
 
                         {
                             selector: 'edge',      // *RELATIONSHIPS* (LINKS)
@@ -382,12 +383,26 @@ Vue.component('vue-cytoscape-5',
                                 'curve-style': 'bezier',
                                 'label': 'data(name)',
                                 'font-size': '10px',
-                                'color': '#000',    // Color of the text
+                                'color': '#000',        // Color of the text
                                 'text-rotation': 'autorotate',
                                 'text-background-color': '#f6f6f6', // Same as graph background
                                 'text-background-opacity': 1
                             }
                         },
+
+
+                        {
+                            selector: 'edge[type = "VIRTUAL_BRIDGE"]',      // *Virtual relationships*.  This must FOLLOW the 'edge' selector
+                            style: {
+                                'width': 6,
+                                'line-style': 'dashed',
+                                'line-dash-pattern': [10-5],
+                                'line-color': '#8B8000',
+                                'target-arrow-color': '#8B8000',
+                                'font-size': '11px'
+                            }
+                        },
+
 
                         {
                             selector: ':selected',   // *SELECTED* node and links
@@ -542,7 +557,6 @@ Vue.component('vue-cytoscape-5',
                 // Save the info about the selected element (in this case a node)
                 this.selected_element = { ...cyto_node_data_obj };      // Store a snapshot (NOT cyto_node_data_obj)
                 this.selected_element_type = "node";
-                //this.selected_collection = node;
                 this.populate_legend_from_node(cyto_node_data_obj);
             },
 
@@ -564,7 +578,6 @@ Vue.component('vue-cytoscape-5',
                 // Save the info about the selected element (in this case an edge)
                 this.selected_element = { ...cyto_edge_data_obj };      // Store a snapshot
                 this.selected_element_type = "edge";
-                //this.selected_collection = edge;
 
                 this.populate_legend_from_edge(cyto_edge_data_obj);
             },
@@ -670,8 +683,61 @@ Vue.component('vue-cytoscape-5',
             },
 
 
+            hide_and_bridge_gap(node_id)
+            /*
+                :param node_id: A string (always a string!) with the Cytoscape ID of a node
+             */
+            {
+                console.log(`In hide_and_bridge_gap().  Searching for node with id: ${node_id}`);
+
+                const node = this.$options.cy_object.getElementById(node_id);
+
+                const neighbors = node.neighborhood().nodes();
+
+                if (neighbors.length === 2) {
+                    const n1 = neighbors[0];
+                    const n2 = neighbors[1];
+                    console.log(`hide_and_bridge_gap(): exactly two neighbors found (${n1.id()} and ${n2.id()})`);
+
+                    const existing_edges_to = n1.edgesTo(n2);  // Get the edges coming from the collection (i.e. the source)
+                                                               // going to another collection (i.e. the target)
+                    const existing_edges_from = n2.edgesTo(n1);
+
+                    if ((existing_edges_to.length > 0)  ||  (existing_edges_from.length > 0))  {
+                        console.log(`hide_and_bridge_gap(): NO bridge will be built because an edge is already present`);
+                        node.remove();
+                    }
+                    else {
+                        console.log("hide_and_bridge_gap(): bridge will be built");
+                        node.remove();
+
+                        this.$options.cy_object.add({
+                            group: 'edges',
+                            data: {
+                                id: `virtual-${n1.id()}--${n2.id()}`,
+                                source: n1.id(),
+                                target: n2.id(),
+                                type: 'VIRTUAL_BRIDGE',
+                                virtual: true,
+                                name: 'VIRTUAL BRIDGE',
+                                provenance: `node id ${node_id}`
+                            }
+                        });
+                    }
+                }
+                else {
+                    console.log(`hide_and_bridge_gap(): unable to bridge the gap. Only possible when exactly 2 neighbors present`);
+                    node.remove();
+                }
+
+                this.sync_vue_data_from_cytoscape();
+            },
+
+
+
             sync_vue_data_from_cytoscape()
             {
+                /*
                 const remaining_nodes = this.$options.cy_object.nodes().map(n => ({ ...n.data() }));
                 // Note: { ...n.data() }  invokes all getters, copies values, and produces a static snapshot
                 console.log("Remaining nodes:");
@@ -680,6 +746,7 @@ Vue.component('vue-cytoscape-5',
                 const remaining_edges = this.$options.cy_object.edges().map(e => ({ ...e.data() }));
                 console.log("Remaining edges:");
                 console.log(remaining_edges);
+                */
 
                 // Update the Vue data
                 this.nodes = remaining_nodes;
@@ -753,7 +820,6 @@ Vue.component('vue-cytoscape-5',
                 this.selected_node_labels = null;
                 this.selected_element = null;
                 this.selected_element_type = null;
-                //this.selected_collection = null;
             },
 
 
