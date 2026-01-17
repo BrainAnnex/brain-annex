@@ -1,8 +1,12 @@
-/*  Used in Search function in main UI,
-    and also suitable for Jupyterlab notebooks
+/*  This version is for the Schema viewer, used in the file "schema_viewer.htm" :
+    it also shows a list of Classes,
+    and offers the option to click on a name it that list, and highlight it in the graph.
+
+    5 groups of Schema-related changes (marked with *** SCHEMA) are applied to the
+    base Vue component 'vue-cytoscape-5'
  */
 
-Vue.component('vue-cytoscape-5',
+Vue.component('vue-cytoscape-5-schema',
     {
         props: {
             graph_data: {
@@ -147,9 +151,21 @@ Vue.component('vue-cytoscape-5',
                         </template>
                     </p>
 
-                    <br><br><br><br>
+
+                    <!-- *** SCHEMA-RELATED extra *** -->
+                    <br>
+                    <b>List of Classes:</b>
+                    <p style="color: #BBB; margin-left:15px; margin-top:0px; margin-bottom:0">Click names to select; click empty space on graph to de-select</p>
+                    <ul>
+                        <li v-for="item in class_list" >
+                            <span @click="highlight_class_node(item)" class="clickable-icon" style='color:#56947E'>{{item}}</span>
+                        </li>
+                    </ul>
+
+
+                    <br><br>
                     <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">
-                        vue-cytoscape-5 , rev. 2
+                        vue-cytoscape-5-schema
                     </span>
                 </div>      <!-- End of side box -->
 
@@ -209,8 +225,11 @@ Vue.component('vue-cytoscape-5',
 
                 sidebox_expanded: true,             // Flag indicating whether to show the plot legend
 
-                plot_layout_style: "breadthfirst"   // CHOICES: 'grid', 'circle', 'random',
+                plot_layout_style: "breadthfirst",  // CHOICES: 'grid', 'circle', 'random',
                                                     //          'concentric', 'breadthfirst', 'cose'
+
+                // *** SCHEMA-RELATED extra ***
+                class_list: []                      // List of all Class names in the Schema
             }
         },
 
@@ -278,6 +297,22 @@ Vue.component('vue-cytoscape-5',
             // Note: it cannot be simply saved as component data, because doing so triggers another call to this
             //       "mounted" Vue hook function, leading to an infinite loop!
             this.$options.cy_object = cy_object;
+
+
+            // *** SCHEMA-RELATED extra ***
+            // Create a list of all Class names in the Schema.  TODO: maybe also save the id's alongside the names
+            for (node of this.graph_structure) {        // Loop over this.graph_structure
+                let labels = node._node_labels;
+                //console.log(`labels: ${_node_labels}`);
+                if (labels !== undefined  &&  labels.includes('CLASS'))  {
+                    //console.log(`ADDING CLASS NAME: '${node.name}'`);
+                    this.class_list.push(node.name);    // This operation is safe, because it doesn't trigger
+                                                        // a new call to this "mounted" Vue hook function!
+                }
+            }
+            // Finally, sort the newly-created list of Class names
+            this.class_list.sort();
+
 
             console.log(`    completed execution of mounted()`);
         },
@@ -852,7 +887,7 @@ Vue.component('vue-cytoscape-5',
                 based on what was specified in "color_mapping" from the "graph_data" prop.
 
                 In case of multiple labels, try them sequentially, until a mapping is found.
-                The label "BA" is (at least for now) skipped - being a special label.
+                The label "SCHEMA" is (at least for now) skipped - being a special label.
                 TODO: introduce "low-priority" labels.
                 If no mapping information is present for any of the labels,
                 or if invoked with an undefined value,
@@ -873,8 +908,10 @@ Vue.component('vue-cytoscape-5',
                 //console.log("map_labels_to_color(): labels: ", labels);    // Example: ["PERSON"]
                 //console.log(this.color_mapping);
 
+
+                // *** SCHEMA-related modification ***
                 for (single_label of labels) {
-                    if ((single_label in this.color_mapping) && (single_label != "BA"))  {
+                    if ((single_label in this.color_mapping) && (single_label != "SCHEMA"))  {
                         const color = this.color_mapping[single_label];
                         //console.log(`Using the color '${color}' for the inside of this node`);
                         return color;
@@ -1063,6 +1100,15 @@ Vue.component('vue-cytoscape-5',
                     this.$options.cy_object.$(selector).select();   // Tell Cytoscape to select this edge
                                                                     // EXAMPLE:  cy_object.$('#edge-3').select()
                 }
+            },
+
+
+
+            highlight_class_node(class_name)
+            // *** SCHEMA-RELATED extra ***
+            // Instruct Cytoscape to select the node corresponding to the given Class name
+            {
+                this.highlight_located_node("CLASS", "name", class_name);
             },
 
 
