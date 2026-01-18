@@ -151,11 +151,11 @@ Vue.component('vue-record-navigator-graph',
                 </span>
             </h2>
 
-            <vue-cytoscape-4
+            <vue-cytoscape-5
                     v-bind:graph_data="graph_data_json"
                     v-bind:component_id="1"
             >
-            </vue-cytoscape-4>
+            </vue-cytoscape-5>
 
 
             <!--  Everything below is diagnostic data shown below the graph  -->
@@ -165,9 +165,15 @@ Vue.component('vue-record-navigator-graph',
                 </div>
                 <b>COLOR MAPPING</b>: {{graph_data_json.color_mapping}}<br>
                 <b>CAPTION MAPPING</b>: {{graph_data_json.caption_mapping}}<br>
-                <b>STRUCTURE</b>:
+                <b>NODE STRUCTURE</b>:
                 <ul>
-                    <li v-for="item in graph_data_json.structure">
+                    <li v-for="item in graph_data_json.nodes">
+                        {{item}}
+                    </li>
+                </ul>
+                <b>EDGE STRUCTURE</b>:
+                <ul>
+                    <li v-for="item in graph_data_json.edges">
                         {{item}}
                     </li>
                 </ul>
@@ -204,9 +210,11 @@ Vue.component('vue-record-navigator-graph',
 
 
                 // Object with all the data needed by the Vue component to display the graph
-                // 3 keys:  "structure" (an array of object literals), "color_mapping" (object literal) and "caption_mapping" (object literal)
+                // 4 keys:  "nodes" and "edges" (arrays of object literals),
+                //          "color_mapping" (object literal) and "caption_mapping" (object literal)
                 graph_data_json: {
-                    structure:  [],
+                    nodes:  [],
+                    edges:  [],
                     color_mapping: {},
                     caption_mapping: {}
                 },
@@ -260,20 +268,20 @@ Vue.component('vue-record-navigator-graph',
                 /*
                 // Example test data
                 this.graph_data_json = {
-                    structure:  [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
-                                 {'id': 2, 'color': 'white', '_node_labels': ['CAR']},
-                                 {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}],
-                    color_mapping: {'PERSON': '#56947E', 'CAR': '#F79768'},
+                    nodes:      [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
+                                 {'id': 2, 'color': 'white', '_node_labels': ['CAR']}]
+                    edges:  [{'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
+                    color_mapping:   {'PERSON': '#56947E', 'CAR': '#F79768'},
                     caption_mapping: {'PERSON': 'name', 'CAR': 'color'}
                 };
-                this.graph_data_json.structure.push({'id': 3, 'color': 'blue', '_node_labels': ['CAR']});
+                this.graph_data_json.nodes.push({'id': 3, 'color': 'blue', '_node_labels': ['CAR']});
 
                 // Test of using actual (unprocessed) results data: sending the nodes (no edges) to the Cytoscape graph
                 for (let record of this.recordset_array) {
                     let data = record.data;
                     data.id = data.internal_id;
                     data.labels = data._node_labels;
-                    this.graph_data_json.structure.push(data);
+                    this.graph_data_json.nodes.push(data);
                 }
                 return;
                 */
@@ -324,12 +332,16 @@ Vue.component('vue-record-navigator-graph',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    // Update the data for the Cytoscape Vue component
-                    this.graph_data_json = {
-                        structure: server_payload,
-                        color_mapping: {},
-                        caption_mapping: {}
-                    };
+                    if (server_payload.length != 2)
+                        alert("Bad format in data returned from the server; not the expected 2-element array");
+                    else
+                        // Update the data for the Cytoscape Vue component
+                        this.graph_data_json = {
+                            nodes: server_payload[0],
+                            edges: server_payload[1],
+                            color_mapping: {},
+                            caption_mapping: {}
+                        };
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -339,7 +351,7 @@ Vue.component('vue-record-navigator-graph',
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                   //...
+                //...
             },
 
 
