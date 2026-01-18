@@ -212,8 +212,9 @@ class MediaManager:
         Fetch and return the contents of a media item stored in a local file.
         In case of error, raise an Exception
 
-        :param uri:         String identifier for a media item
-        :param class_name:
+        :param uri:         String identifier for a media Item
+        :param class_name:  The name of the Schema Class that represents the desired media Item
+                                    (such as an "Image" or "Document")
         :param th:          If not None, then the thumbnail version is returned (only
                                 applicable to images).
                                 If the thumbnail version is not found, but the full-size image

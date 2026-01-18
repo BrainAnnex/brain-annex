@@ -282,8 +282,8 @@ class PagesRouting:
 
             graph_obj = DataManager.get_schema_visualization_data() # An object of class PyGraphScape
             #print(graph_obj)
-            graph_dict = graph_obj.get_graph_data()     # A dict with 3 keys:
-                                                        # "structure", "color_mapping" and "caption_mapping"
+            graph_dict = graph_obj.get_graph_data()     # A dict with 4 keys:
+                                                        # "nodes", "edges", "color_mapping" and "caption_mapping"
             #print(graph_obj.get_graph_data())
 
             return render_template(template,

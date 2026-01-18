@@ -9,7 +9,7 @@
         current_page
         username
         graph_data      Dictionary with all the data needed by the Vue component to display the graph;
-                            3 keys:  "structure", "color_mapping" and "caption_mapping"
+                            4 keys:  "nodes", "edges", "color_mapping" and "caption_mapping"
 #}
 
 <html lang="en">
@@ -73,7 +73,7 @@
 <!--  Everything below is largely diagnostic data shown below the main plot  -->
 <p style="padding:15px">
     The above graphics correspond to the following Cypher query:<br><br>
-    <b>MATCH (c :CLASS), (p :PROPERTY) RETURN c, p</b>
+    <b>MATCH (s :SCHEMA) RETURN s</b>
 </p>
 
 

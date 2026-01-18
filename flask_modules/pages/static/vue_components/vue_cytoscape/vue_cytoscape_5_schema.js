@@ -155,7 +155,9 @@ Vue.component('vue-cytoscape-5-schema',
                     <!-- *** SCHEMA-RELATED extra *** -->
                     <br>
                     <b>List of Classes:</b>
-                    <p style="color: #BBB; margin-left:15px; margin-top:0px; margin-bottom:0">Click names to select; click empty space on graph to de-select</p>
+                    <p style="color: #BBB; margin-left:15px; margin-top:0px; margin-bottom:0">
+                        Click names to select; click empty space on graph to de-select
+                    </p>
                     <ul>
                         <li v-for="item in class_list" >
                             <span @click="highlight_class_node(item)" class="clickable-icon" style='color:#56947E'>{{item}}</span>
@@ -301,10 +303,11 @@ Vue.component('vue-cytoscape-5-schema',
 
             // *** SCHEMA-RELATED extra ***
             // Create a list of all Class names in the Schema.  TODO: maybe also save the id's alongside the names
-            for (node of this.graph_structure) {        // Loop over this.graph_structure
+            for (node of this.nodes) {        // Loop over all the nodes in the graph
                 let labels = node._node_labels;
                 //console.log(`labels: ${_node_labels}`);
                 if (labels !== undefined  &&  labels.includes('CLASS'))  {
+                    // Located a Class node
                     //console.log(`ADDING CLASS NAME: '${node.name}'`);
                     this.class_list.push(node.name);    // This operation is safe, because it doesn't trigger
                                                         // a new call to this "mounted" Vue hook function!
@@ -774,17 +777,16 @@ Vue.component('vue-cytoscape-5-schema',
 
 
             sync_vue_data_from_cytoscape()
+            // Read in node and edge data from the Cytoscape object
             {
-                /*
                 const remaining_nodes = this.$options.cy_object.nodes().map(n => ({ ...n.data() }));
                 // Note: { ...n.data() }  invokes all getters, copies values, and produces a static snapshot
-                console.log("Remaining nodes:");
-                console.log(remaining_nodes);
+                //console.log("Remaining nodes:");
+                //console.log(remaining_nodes);
 
                 const remaining_edges = this.$options.cy_object.edges().map(e => ({ ...e.data() }));
-                console.log("Remaining edges:");
-                console.log(remaining_edges);
-                */
+                //console.log("Remaining edges:");
+                //console.log(remaining_edges);
 
                 // Update the Vue data
                 this.nodes = remaining_nodes;

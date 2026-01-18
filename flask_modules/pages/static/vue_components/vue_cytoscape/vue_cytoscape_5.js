@@ -739,17 +739,16 @@ Vue.component('vue-cytoscape-5',
 
 
             sync_vue_data_from_cytoscape()
+            // Read in node and edge data from the Cytoscape object
             {
-                /*
                 const remaining_nodes = this.$options.cy_object.nodes().map(n => ({ ...n.data() }));
                 // Note: { ...n.data() }  invokes all getters, copies values, and produces a static snapshot
-                console.log("Remaining nodes:");
-                console.log(remaining_nodes);
+                //console.log("Remaining nodes:");
+                //console.log(remaining_nodes);
 
                 const remaining_edges = this.$options.cy_object.edges().map(e => ({ ...e.data() }));
-                console.log("Remaining edges:");
-                console.log(remaining_edges);
-                */
+                //console.log("Remaining edges:");
+                //console.log(remaining_edges);
 
                 // Update the Vue data
                 this.nodes = remaining_nodes;

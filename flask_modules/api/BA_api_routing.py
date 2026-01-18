@@ -3,7 +3,7 @@
     MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
 """
 
-from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
+from flask import Blueprint, jsonify, request, current_app, make_response, abort  # The request package makes available a GLOBAL request object
 from flask_login import login_required
 from app_libraries.data_manager import DataManager
 from app_libraries.documentation_generator import DocumentationGenerator
@@ -920,14 +920,16 @@ class ApiRouting:
                 http://localhost:5000/BA/api/serve_media/Image/1234/th
                 http://localhost:5000/BA/api/serve_media/Document/888
 
-            :param class_name:
-            :param uri: The URI of a data node representing a media Item (such as an "Image" or "Document")
-            :param th:  Only applicable to Images.  If not None, then the thumbnail version is returned
-            :return:    A Flask Response object containing the data for the requested media,
-                            with a header setting the MIME type appropriate for the media format
-                        In case the media isn't found, a 404 response status is sent,
-                            together with an error message
+            :param class_name:  The name of the Schema Class that represents the desired media Item
+                                    (such as an "Image" or "Document")
+            :param uri:         The URI of a data node representing a media Item
+            :param th:          Only applicable to Images.  If not None, then the thumbnail version is returned
+            :return:            A Flask Response object containing the data for the requested media,
+                                    with a header setting the MIME type appropriate for the media format
+                                    In case the media isn't found, a 404 response status is sent,
+                                    together with an error message
             """
+            # TODO: split in 2, and then join the Document side with /serve_document_cover/
             try:
                 (suffix, content) = MediaManager.get_binary_content(uri, class_name=class_name, th=th)
                 response = make_response(content)
@@ -942,6 +944,47 @@ class ApiRouting:
                 response = make_response(err_details, 404)
 
             return response
+
+
+
+        @bp.route('/serve_document_cover/<uri>')
+        @login_required
+        def serve_document_cover(uri):
+            """
+            Retrieve and return the cover image of the specified document
+
+            EXAMPLE of invocation:
+                http://localhost:5000/BA/api/serve_document_cover/7388
+
+            :param uri: The URI of a data node representing a Document Item
+            :return:    A Flask Response object containing the data for the requested media,
+                            with a header setting the MIME type appropriate for the media format
+                            In case the media isn't found, a 404 response status is sent,
+                            together with an error message
+            """
+            #TODO: let the Documents plugin handle this
+            try:
+                # Obtain the name of the folder for the document file;
+                # it includes the final "/"
+                folder, basename, _ = MediaManager.lookup_media_file(uri, class_name="Document")
+                #print(folder, "\n", basename, "\n", suffix)
+                cover_folder = folder + "covers/"       # Subfolder of the document folder
+                filename = f"{basename}.jpg"   # Including the suffix.  EXAMPLE: "my_document_title.jpg"
+                # TODO: make allowance for files that might not be .jpg (or perhaps covert them to JPG during upload?)
+                content = MediaManager.get_from_binary_file(path=cover_folder, filename=filename)
+
+                response = make_response(content)
+                # Set the MIME type
+                mime_type = MediaManager.get_mime_type("jpg")
+                response.headers['Content-Type'] = mime_type
+                #print(f"serve_document_cover() is returning the contents of data file, with file suffix `{suffix}`.  "
+                #      f"Serving with MIME type `{mime_type}`")
+                return response
+                
+            except Exception as ex:
+                #err_details = f'Unable to locate the cover for a Document with entity ID "{uri}". {exceptions.exception_helper(ex)}'
+                #print(f"serve_document_cover() encountered the following error: {err_details}")
+                abort(404)
 
 
 
