@@ -1,6 +1,8 @@
-/*  "Record navigator" with recursive drill-down capabilities to follow links
+/*  "Record navigator" provides a listing of database records,
+    with recursive drill-down capabilities to follow links
     and explore neighbor nodes as sub-records.
-    This version makes use of a Cytoscape Vue sub-component, to generate a graph
+    
+    This version also makes use of a Cytoscape Vue sub-component, to generate a graph
     from the above data.
 
     Currently used in the filter page.
@@ -23,6 +25,7 @@ Vue.component('vue-record-navigator-graph',
 
             <div style="border:1px solid #DDD; padding:10px; background-color: #f4f4f4">
 
+                <!--  Give notice if the recordset is empty  -->
                 <p v-if="recordset_array.length === 0" style="color: gray">
                     NO RECORDS
                 </p>
@@ -188,21 +191,23 @@ Vue.component('vue-record-navigator-graph',
         data: function() {
             return {
                 next_record_id: 0,      // Auto-increment to identify records shown on page
-
+                                        // (this is a UX aid - unrelated to any database id values)
+                                        
                 recordset_array: [],
                                         // Array of objects, with one entry per record (database node)
                                         //
                                         //      EACH ENTRY is an object with 2 keys: "controls" and "data":
                                         //
                                         //      * "controls" is an object with the following keys:
-                                        //                      "record_id" (int)
-                                        //                      "parent_record_id" (int)
-                                        //                      "parent_link" (str)
-                                        //                      "parent_dir" (str: "IN" or "OUT")
-                                        //                      "expand" (bool)
-                                        //                      "indent" (int)
-                                        //                      "links" (array of triples: name, "IN"/"OUT", count)
-                                        //                      "pos" (int) : meant to hold TEMPORARY values
+                                        //                  "record_id" (int - a temporary value assigned by this component)
+                                        //                  "parent_record_id" (int)
+                                        //                  "parent_link" (str)
+                                        //                  "parent_dir" (str: "IN" or "OUT")
+                                        //                  "expand" (bool)
+                                        //                  "indent" (int)
+                                        //                  "links" (array of triples: name, "IN"/"OUT", count)
+                                        //                  "pos" (int) : meant to hold TEMPORARY values
+                                        //                  "duplicate" (bool)
                                         //
                                         //      * "data" is an object containing all the field names and values
                                         //            returned from the database node
@@ -220,6 +225,7 @@ Vue.component('vue-record-navigator-graph',
                 },
 
 
+                // UX feedback
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -434,12 +440,13 @@ Vue.component('vue-record-navigator-graph',
 
 
             populate_subrecords(record, rel_name, dir, new_data_arr)
-            /*  Update the overall array of database records (this.recordset_array),
+            /*  Update the overall array of database records (Vue variable this.recordset_array),
                 to also include records newly returned by the server.
-                The new objects are regarded as sub-records of the given record - neighbor
-                nodes by means of the specified relationship in the given direction - and
-                are to be inserted below the record, with increasing indent; they also
-                get assigned auto-incremented record ID's.
+
+                The new objects in `new_data_arr` are regarded as sub-records
+                of the given record - neighbor nodes by means of the specified relationship in the given direction -
+                and are to be inserted below the record, with increasing indent; they also
+                get assigned auto-incremented record ID's (values just for the UX).
 
                 :param record:       Object
                 :param rel_name:     The name of the relationship to follow (for one hop)
@@ -448,27 +455,41 @@ Vue.component('vue-record-navigator-graph',
              */
             {
                 const parent_record_id = record.controls.record_id;
-                const n_links = new_data_arr.length;
+                const n_links = new_data_arr.length;   // Number of neighbors
 
                 for (let counter = 0; counter < n_links; counter++)  {
+                    // Process each retrieved neighbor in turn
                     let new_entry = {controls: {
                                                     record_id: this.next_record_id,
                                                     expand: false,
-                                                    indent: record.controls.indent + 1,
+                                                    indent: record.controls.indent + 1,      // One extra indent relative to its parent
 
                                                     parent_record_id: parent_record_id,
                                                     parent_link: rel_name,
-                                                    parent_dir: dir
+                                                    parent_dir: dir,
+
+                                                    duplicate: false
                                                 },
                                      data:
                                                 new_data_arr[counter]
                                      };
 
-                    this.next_record_id += 1;   // Advance the auto-increment value
                     console.log(`new_entry: record_id = ${new_entry.controls.record_id}`);
                     console.log(new_entry.data);
 
-                    const i = this.locate_item(parent_record_id);
+                    this.next_record_id += 1;   // Advance the auto-increment value
+
+
+                    // Check whether this child node already appears elsewhere in the listing
+                    let existing_location = this.locate_record_by_dbase_id(new_entry.data.internal_id)     ;
+                    if (existing_location != -1)  {
+                        console.log(`Child record (internal database ID ${new_entry.data.internal_id}) already existed at index position ${existing_location}`);
+                        new_entry.controls.duplicate = true;
+                    }
+                    
+                    
+                    // Locate the parent record, and insert this record just below it              
+                    let i = this.locate_by_record_id(parent_record_id);
 
                     if (i == -1)
                         alert(`Unable to locate any item with a record_id of ${parent_record_id}`);
@@ -481,9 +502,10 @@ Vue.component('vue-record-navigator-graph',
 
 
 
-            locate_item(record_id)
-            /* Attempt to locate a record with the requested id, from the overall array of records.
-               If found, return its index in the array; otherwise, return -1
+            locate_by_record_id(record_id)
+            /* Attempt to locate a record with the requested "record id" (UX numbering system),
+               from the overall array of records.
+               If found, return its index in the overall array of records; otherwise, return -1
              */
             {
                 //console.log(`Attempting to locate the record with record_id '${record_id}'`);
@@ -492,6 +514,25 @@ Vue.component('vue-record-navigator-graph',
 
                 for (var i = 0; i < number_items; i++) {
                     if (this.recordset_array[i].controls.record_id == record_id)
+                        return i;          //  Found it
+                }
+
+                return -1;    // Didn't find it
+            },
+
+
+            locate_record_by_dbase_id(internal_id)
+            /* Attempt to locate a record with the requested internal database ID,
+               from the overall array of records.
+               If found, return its index in the overall array of records; otherwise, return -1
+             */
+            {
+                console.log(`Attempting to locate the record with internal database ID '${internal_id}'`);
+
+                const number_items = this.recordset_array.length;
+
+                for (var i = 0; i < number_items; i++) {
+                    if (this.recordset_array[i].data.internal_id == internal_id)
                         return i;          //  Found it
                 }
 
@@ -612,7 +653,7 @@ Vue.component('vue-record-navigator-graph',
 
 
             /*
-                --------------   SERVER CALLS   ----------------------------------------------------------------
+                --------------  ***  SERVER CALLS  *** ---------------------------------------------------------------
              */
 
             get_link_summary_from_server(record, record_index)
@@ -681,6 +722,7 @@ Vue.component('vue-record-navigator-graph',
             /* Initiate request to server, to get the list of the properties
                of the data nodes linked to the specified node (record),
                by the relationship named by rel_name, in the direction requested by dir
+               (In other words, to bring in selected neighbor nodes into the listing.)
 
                :param record:   Object with the record of interest
                :param rel_name: The name of the relationship to follow (for one hop)
@@ -709,7 +751,7 @@ Vue.component('vue-record-navigator-graph',
             },
 
             finish_get_linked_records_from_server(success, server_payload, error_message, custom_data)
-            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+            /* Callback function to wrap up the action of get_linked_records_from_server() upon getting a response from the server.
 
                 success:        Boolean indicating whether the server call succeeded
                 server_payload: Whatever the server returned (stripped of information about the success of the operation)
@@ -731,9 +773,11 @@ Vue.component('vue-record-navigator-graph',
                     */
                     this.status_message = `Operation completed`;
 
+                    // Unpack the pass-thru data
                     const record =  custom_data[0];
                     const rel_name = custom_data[1];
                     const dir = custom_data[2];
+
                     this.populate_subrecords(record, rel_name, dir, server_payload);
                 }
                 else  {             // Server reported FAILURE
