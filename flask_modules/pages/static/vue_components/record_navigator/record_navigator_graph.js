@@ -83,8 +83,10 @@ Vue.component('vue-record-navigator-graph',
 
                     <!-- Part 3 of 3: all the other fields, incl. internal_id -->
                     <template v-if="item.controls.duplicate">
-                        <span style="font-weight:bold">NODE HIDDEN BECAUSE ALREADY SHOWN</span>
+                        <span style="font-weight:bold">NODE HIDDEN BECAUSE ALREADY SHOWN</span> &nbsp; 
+                        <button @click="reveal_hidden_record(item.controls.record_id)">Show it anyway</button>
                     </template>
+
                     <template v-else>
                         <template
                             v-if="(key != '_node_labels') && (key != 'internal_id')"
@@ -93,53 +95,53 @@ Vue.component('vue-record-navigator-graph',
                             <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
                              \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
                         </template>
-                    </template>
 
+                        &nbsp;
 
-                    &nbsp;
-
-                    <!-- If the link-summary data for the record is hidden, show an arrow to expand the record and show its link summary... -->
-                    <img  v-if="item.controls.expand==false"
-                        src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
-                         @click="toggle_links(item, index)"
-                         class="clickable-icon" style="background-color:black"
-                    >
-
-                    <!-- ...otherwise, if the link-summary data is to be shown, show it -->
-                    <span v-else>
-
-                        <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
-
-                            <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, index, link[0], 'IN', link[2])"
-                                  class="clickable-icon relationship-in"
-                                  v-bind:title="'Show/Hide ' + link[2] + ' IN-bound link(s) \`' + link[0] + '\`'"
-                            >
-                                <!-- Inbound link : show the number of links, an icon, and the link's name -->
-                                {{ link[2] }}
-                                <img src="/BA/pages/static/graphics/20_inbound_4619661.png" alt="Show/Hide IN-bound links">
-                                {{ link[0] }}
-                            </span>
-
-                             <span v-else @click="toggle_linked_records(item, index, link[0], 'OUT', link[2])"
-                                  class="clickable-icon relationship-out"
-                                  v-bind:title="'Show/Hide ' + link[2] + ' OUT-bound link(s) \`' + link[0] + '\`'"
-                             >
-                                <!-- Outbound link : show the number of links, an icon, and the link's name -->
-                                {{ link[2] }}
-                                <img src="/BA/pages/static/graphics/20_outbound_4619660.png" alt="Show/Hide OUT-bound links">
-                                {{ link[0] }}
-                            </span>
-
-                            &nbsp;
-                        </template>
-
-
-                        <!-- Arrow to shrink the record, to hide the links -->
-                        <img src="/BA/pages/static/graphics/arrow_down_22_79479.png" title="Hide LINKS" alt="Hide LINKS"
-                          @click="toggle_links(item, index)"
-                          class="clickable-icon" style="background-color:black"
+                        <!-- If the link-summary data for the record is hidden, show an arrow to expand the record and show its link summary... -->
+                        <img  v-if="item.controls.expand==false"
+                            src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
+                             @click="toggle_links(item, index)"
+                             class="clickable-icon" style="background-color:black"
                         >
-                    </span>
+
+                        <!-- ...otherwise, if the link-summary data is to be shown, show it -->
+                        <span v-else>
+
+                            <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
+
+                                <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, index, link[0], 'IN', link[2])"
+                                      class="clickable-icon relationship-in"
+                                      v-bind:title="'Show/Hide ' + link[2] + ' IN-bound link(s) \`' + link[0] + '\`'"
+                                >
+                                    <!-- Inbound link : show the number of links, an icon, and the link's name -->
+                                    {{ link[2] }}
+                                    <img src="/BA/pages/static/graphics/20_inbound_4619661.png" alt="Show/Hide IN-bound links">
+                                    {{ link[0] }}
+                                </span>
+
+                                 <span v-else @click="toggle_linked_records(item, index, link[0], 'OUT', link[2])"
+                                      class="clickable-icon relationship-out"
+                                      v-bind:title="'Show/Hide ' + link[2] + ' OUT-bound link(s) \`' + link[0] + '\`'"
+                                 >
+                                    <!-- Outbound link : show the number of links, an icon, and the link's name -->
+                                    {{ link[2] }}
+                                    <img src="/BA/pages/static/graphics/20_outbound_4619660.png" alt="Show/Hide OUT-bound links">
+                                    {{ link[0] }}
+                                </span>
+
+                                &nbsp;
+                            </template>
+
+
+                            <!-- Arrow to shrink the record, to hide the links -->
+                            <img src="/BA/pages/static/graphics/arrow_down_22_79479.png" title="Hide LINKS" alt="Hide LINKS"
+                              @click="toggle_links(item, index)"
+                              class="clickable-icon" style="background-color:black"
+                            >
+                        </span>
+
+                    </template>
 
                 </p>    <!--  End of items in the current recordset -->
 
@@ -495,9 +497,9 @@ Vue.component('vue-record-navigator-graph',
 
                     // Check whether this child node already appears elsewhere in the listing
                     let existing_location = this.locate_record_by_dbase_id(new_entry.data.internal_id);
-                     console.log(`existing_location for record with internal_id '${new_entry.data.internal_id}' is ${existing_location}`);
+                    console.log(`existing_location for record with internal_id '${new_entry.data.internal_id}' is ${existing_location}`);
                     if (existing_location != -1)  {
-                        alert("Found record already seen");
+                        //alert("Found record already seen");
                         console.log(`Child record (internal database ID ${new_entry.data.internal_id}) already existed at index position ${existing_location}`);
                         new_entry.controls.duplicate = true;
                     }
@@ -658,10 +660,17 @@ Vue.component('vue-record-navigator-graph',
                     console.log(`    Id's of all children: [${children_ids}]`);
                 }
 
-
                 //console.log("    Returning from locate_children()");
 
                 return children;
+            },
+
+
+
+            reveal_hidden_record(record_id)
+            {
+                alert(`Request to reveal hidden record with record_id ${record_id}`);
+                //TODO: implement   console.log
             },
 
 
