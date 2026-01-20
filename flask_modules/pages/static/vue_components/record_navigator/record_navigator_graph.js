@@ -23,7 +23,7 @@ Vue.component('vue-record-navigator-graph',
             <!-- Outer container, serving as Vue-required template root -->
             <section>
 
-            <div style="border:1px solid #DDD; padding:10px; background-color: #f4f4f4">
+            <div class="records-outerbox">
 
                 <!--  Give notice if the recordset is empty  -->
                 <p v-if="recordset_array.length === 0" style="color: gray">
@@ -33,8 +33,8 @@ Vue.component('vue-record-navigator-graph',
 
                 <!--  For each item in the current recordset -->
                 <p v-for="(item, index) in recordset_array"
-                            style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:3px;
-                                   background-color: white"
+                            class="record"
+                            v-bind:class="{'record-active': !item.controls.duplicate, 'record-inactive': item.controls.duplicate}"
                             v-bind:style="{'margin-left': item.controls.indent * 50 + 'px'}">
 
 
@@ -71,19 +71,32 @@ Vue.component('vue-record-navigator-graph',
                     <!-- Display the data record (all its fields, incl. "internal_id" and "_node_labels")
                       -->
 
-                    <!-- Part 1 of 2: the node LABELS receive special handling -->
+                    <!-- Part 1 of 3: the node's LABELS receive special handling -->
                     <span  v-for="label in item.data._node_labels"  class="node-label">
                         {{label}}
                     </span>
 
-                    <!-- Part 2 of 2: all the other fields, incl. internal_id -->
-                    <template  v-if="key != '_node_labels'"  v-for="(val, key) in item.data">
-                        <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
-                         \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
+                    <!-- Part 2 of 3: the node's internal_id receives special handling -->
+                    <span style="color:#863030; font-size:12px; font-weight: bold" class="monospace">INTERNAL ID: </span>
+                         \`<span style="background-color: rgb(251, 240, 240)">{{item.data.internal_id}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
+
+
+                    <!-- Part 3 of 3: all the other fields, incl. internal_id -->
+                    <template v-if="item.controls.duplicate">
+                        <span style="font-weight:bold">NODE HIDDEN BECAUSE ALREADY SHOWN</span>
+                    </template>
+                    <template v-else>
+                        <template
+                            v-if="(key != '_node_labels') && (key != 'internal_id')"
+                            v-for="(val, key) in item.data"
+                        >
+                            <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
+                             \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
+                        </template>
                     </template>
 
-                    &nbsp;
 
+                    &nbsp;
 
                     <!-- If the link-summary data for the record is hidden, show an arrow to expand the record and show its link summary... -->
                     <img  v-if="item.controls.expand==false"
@@ -481,8 +494,10 @@ Vue.component('vue-record-navigator-graph',
 
 
                     // Check whether this child node already appears elsewhere in the listing
-                    let existing_location = this.locate_record_by_dbase_id(new_entry.data.internal_id)     ;
+                    let existing_location = this.locate_record_by_dbase_id(new_entry.data.internal_id);
+                     console.log(`existing_location for record with internal_id '${new_entry.data.internal_id}' is ${existing_location}`);
                     if (existing_location != -1)  {
+                        alert("Found record already seen");
                         console.log(`Child record (internal database ID ${new_entry.data.internal_id}) already existed at index position ${existing_location}`);
                         new_entry.controls.duplicate = true;
                     }
@@ -737,8 +752,8 @@ Vue.component('vue-record-navigator-graph',
                 const post_obj = {internal_id: internal_id, rel_name: rel_name, dir: dir};
                 const my_var = [record, rel_name, dir];        // Pass-thru parameters
 
-                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
-                console.log(post_obj);
+                //console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
+                //console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
@@ -760,9 +775,9 @@ Vue.component('vue-record-navigator-graph',
                 custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
             */
             {
-                console.log("Finalizing the get_linked_records_from_server() operation...");
-                console.log(`Custom pass-thru data:`);
-                console.log(custom_data)
+                //console.log("Finalizing the get_linked_records_from_server() operation...");
+                //console.log(`Custom pass-thru data:`);
+                //console.log(custom_data)
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     /*  EXAMPLE of server_payload:

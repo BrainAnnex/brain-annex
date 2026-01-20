@@ -2,6 +2,34 @@
  */
 
 
+/* Box around all records */
+div.records-outerbox {
+    border:1px solid #DDD;
+    padding:10px;
+    background-color: #f4f4f4;
+}
+
+
+/* Box around each individual record */
+p.record {
+    border: 1px solid #CCC;
+    padding-bottom: 5px;
+    padding-left: 3px;
+    margin-bottom:2px;
+    margin-top:3px;
+
+}
+
+p.record-active {
+    background-color: white;
+}
+
+p.record-inactive {
+    background-color: yellow;
+}
+
+
+
 /* For a box to pre-pend to record headers */
 span.subrecord-in {
     background-color: #bbe175;
