@@ -29,6 +29,30 @@ p.record-inactive {
 }
 
 
+/* Little rounded boxes for labels */
+span.node-label {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: white;
+    background-color: #444444;
+}
+
+
+span.internal-id-key {
+    color: #913434;         /* #863030 */
+    font-size:12px;
+    font-weight: bold;
+}
+span.internal-id-value {
+    background-color: #913434;    /* rgb(251, 240, 240) */
+    color: white;
+    font-weight: bold;
+    padding: 3px;
+}
+
+
 
 /* For a box to pre-pend to record headers */
 span.subrecord-in {
@@ -47,16 +71,6 @@ span.subrecord-out {
     padding: 5px;
 }
 
-
-/* Little rounded boxes for labels */
-span.node-label {
-    display: inline-block;
-    margin-right: 5px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    color: white;
-    background-color: #444444;
-}
 
 
 /* For little rounded boxes that show a link (either IN or OUT) */

@@ -77,8 +77,9 @@ Vue.component('vue-record-navigator-graph',
                     </span>
 
                     <!-- Part 2 of 3: the node's internal_id receives special handling -->
-                    <span style="color:#863030; font-size:12px; font-weight: bold" class="monospace">INTERNAL ID: </span>
-                         \`<span style="background-color: rgb(251, 240, 240)">{{item.data.internal_id}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
+                    <span class="monospace internal-id-key">INTERNAL ID: </span>
+                         <span class="monospace internal-id-value">{{item.data.internal_id}}</span>
+                         <span style="color:brown; font-weight: bold">|| </span>
 
 
                     <!-- Part 3 of 3: all the other fields, incl. internal_id -->
