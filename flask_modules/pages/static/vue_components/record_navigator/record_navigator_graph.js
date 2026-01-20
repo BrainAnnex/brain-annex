@@ -496,7 +496,7 @@ Vue.component('vue-record-navigator-graph',
 
 
                     // Check whether this child node already appears elsewhere in the listing
-                    let existing_location = this.locate_record_by_dbase_id(new_entry.data.internal_id);
+                    let existing_location = this.find_by_dbase_id(new_entry.data.internal_id);
                     console.log(`existing_location for record with internal_id '${new_entry.data.internal_id}' is ${existing_location}`);
                     if (existing_location != -1)  {
                         //alert("Found record already seen");
@@ -506,10 +506,10 @@ Vue.component('vue-record-navigator-graph',
                     
                     
                     // Locate the parent record, and insert this record just below it              
-                    let i = this.locate_by_record_id(parent_record_id);
+                    const i = this.find_by_record_id(parent_record_id);
 
                     if (i == -1)
-                        alert(`Unable to locate any item with a record_id of ${parent_record_id}`);
+                        alert(`Unable to locate any record with a record_id of ${parent_record_id}`);
                     else  {
                         console.log(`Located parent record at index position ${i}`);
                         this.recordset_array.splice(i+1, 0, new_entry); // Insert the new entry just below its parent
@@ -519,7 +519,7 @@ Vue.component('vue-record-navigator-graph',
 
 
 
-            locate_by_record_id(record_id)
+            find_by_record_id(record_id)
             /* Attempt to locate a record with the requested "record id" (UX numbering system),
                from the overall array of records.
                If found, return its index in the overall array of records; otherwise, return -1
@@ -538,7 +538,7 @@ Vue.component('vue-record-navigator-graph',
             },
 
 
-            locate_record_by_dbase_id(internal_id)
+            find_by_dbase_id(internal_id)
             /* Attempt to locate a record with the requested internal database ID,
                from the overall array of records.
                If found, return its index in the overall array of records; otherwise, return -1
@@ -668,10 +668,22 @@ Vue.component('vue-record-navigator-graph',
 
 
             reveal_hidden_record(record_id)
+            // Remove the "duplicate" flag from the record with the specified `record_id`
             {
-                alert(`Request to reveal hidden record with record_id ${record_id}`);
-                //TODO: implement   console.log
+                console.log(`Request to reveal hidden record with record_id ${record_id}`);
+
+                const i = this.find_by_record_id(record_id);
+
+                if (i == -1)
+                    alert(`Unable to locate any record with a record_id of ${record_id}`);
+                else  {
+                    console.log(`Located record to reveal at index position ${i}`);
+                    let modified_record = this.recordset_array[i];
+                    modified_record.controls.duplicate = false;
+                    this.recordset_array.splice(i, 1, modified_record); // The 1 indicates a simple replacement of an item
+                }
             },
+
 
 
 
