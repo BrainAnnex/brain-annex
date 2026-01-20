@@ -40,13 +40,15 @@ span.node-label {
 }
 
 
+/* For the display of the string "INTERNAL ID" and of its value */
+
 span.internal-id-key {
-    color: #913434;         /* #863030 */
+    color: #913434;                 /* #863030 */
     font-size:12px;
     font-weight: bold;
 }
 span.internal-id-value {
-    background-color: #913434;    /* rgb(251, 240, 240) */
+    background-color: #913434;      /* rgb(251, 240, 240) */
     color: white;
     font-weight: bold;
     padding: 3px;

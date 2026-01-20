@@ -54,7 +54,7 @@ Vue.component('vue-record-navigator-graph',
                             class="subrecord-out"
                             v-bind:title="'Neighbor of node ' + item.controls.parent_record_id + ' by the OUT-bound link \`' + item.controls.parent_link + '\`'"
                             style="display: inline-block; margin-right:10px">
-                            <img src='/BA/pages/static/graphics/20_outbound_4619660.png'>
+                            <img src='/BA/pages/static/graphics/20_outbound_child_4619660.png'>
                             {{item.controls.parent_link}}
                         </span>
 
@@ -62,7 +62,7 @@ Vue.component('vue-record-navigator-graph',
                             class="subrecord-in"
                             v-bind:title="'Neighbor of node ' + item.controls.parent_record_id + ' by the IN-bound link \`' + item.controls.parent_link + '\`'"
                             style="display: inline-block; margin-right:10px">
-                            <img src='/BA/pages/static/graphics/20_inbound_4619661.png'>
+                            <img src='/BA/pages/static/graphics/20_inbound_child_4619661.png'>
                             {{item.controls.parent_link}}
                         </span>
                     </template>
@@ -94,7 +94,8 @@ Vue.component('vue-record-navigator-graph',
                             v-for="(val, key) in item.data"
                         >
                             <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
-                             \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
+                             \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\`
+                             <span style="color:brown; font-weight: bold">|| </span>
                         </template>
 
                         &nbsp;
