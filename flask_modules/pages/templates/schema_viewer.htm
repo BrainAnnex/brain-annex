@@ -9,7 +9,7 @@
         current_page
         username
         graph_data      Dictionary with all the data needed by the Vue component to display the graph;
-                            3 keys:  "structure", "color_mapping" and "caption_mapping"
+                            4 keys:  "nodes", "edges", "color_mapping" and "caption_mapping"
 #}
 
 <html lang="en">
@@ -23,7 +23,7 @@
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_5.css">
 
 
     <!-- JavaScript -->
@@ -58,11 +58,11 @@
 <!--  ~~~~~~~~~  Container for VUE COMPONENTS : the ROOT of the components below  ~~~~~~~~~~~~  -->
 <div id="vue-root">
 
-    <vue-cytoscape-4-schema
+    <vue-cytoscape-5-schema
             v-bind:graph_data="graph_data_json"
             v-bind:component_id="1"
     >
-    </vue-cytoscape-4-schema>
+    </vue-cytoscape-5-schema>
 
 </div>	<!--  ~~~~~~~~~~~~~~~~~~~~~~~~  END of Vue ROOT element  ~~~~~~~~~~~~~~~~~~~~~~~~  -->
 
@@ -73,7 +73,7 @@
 <!--  Everything below is largely diagnostic data shown below the main plot  -->
 <p style="padding:15px">
     The above graphics correspond to the following Cypher query:<br><br>
-    <b>MATCH (c :CLASS), (p :PROPERTY) RETURN c, p</b>
+    <b>MATCH (s :SCHEMA) RETURN s</b>
 </p>
 
 
@@ -95,7 +95,7 @@
 <!--
     Vue components (and other JS if applicable).  This must appear AFTER the Vue-containing elements
   -->
-<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4_schema.js"></script>
+<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_5_schema.js"></script>
 
 
 <script>

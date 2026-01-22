@@ -3,7 +3,7 @@
     MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
 """
 
-from flask import Blueprint, jsonify, request, current_app, make_response  # The request package makes available a GLOBAL request object
+from flask import Blueprint, jsonify, request, current_app, make_response, abort  # The request package makes available a GLOBAL request object
 from flask_login import login_required
 from app_libraries.data_manager import DataManager
 from app_libraries.documentation_generator import DocumentationGenerator
@@ -920,14 +920,16 @@ class ApiRouting:
                 http://localhost:5000/BA/api/serve_media/Image/1234/th
                 http://localhost:5000/BA/api/serve_media/Document/888
 
-            :param class_name:
-            :param uri: The URI of a data node representing a media Item (such as an "Image" or "Document")
-            :param th:  Only applicable to Images.  If not None, then the thumbnail version is returned
-            :return:    A Flask Response object containing the data for the requested media,
-                            with a header setting the MIME type appropriate for the media format
-                        In case the media isn't found, a 404 response status is sent,
-                            together with an error message
+            :param class_name:  The name of the Schema Class that represents the desired media Item
+                                    (such as an "Image" or "Document")
+            :param uri:         The URI of a data node representing a media Item
+            :param th:          Only applicable to Images.  If not None, then the thumbnail version is returned
+            :return:            A Flask Response object containing the data for the requested media,
+                                    with a header setting the MIME type appropriate for the media format
+                                    In case the media isn't found, a 404 response status is sent,
+                                    together with an error message
             """
+            # TODO: split in 2, and then join the Document side with /serve_document_cover/
             try:
                 (suffix, content) = MediaManager.get_binary_content(uri, class_name=class_name, th=th)
                 response = make_response(content)
@@ -942,6 +944,47 @@ class ApiRouting:
                 response = make_response(err_details, 404)
 
             return response
+
+
+
+        @bp.route('/serve_document_cover/<uri>')
+        @login_required
+        def serve_document_cover(uri):
+            """
+            Retrieve and return the cover image of the specified document
+
+            EXAMPLE of invocation:
+                http://localhost:5000/BA/api/serve_document_cover/7388
+
+            :param uri: The URI of a data node representing a Document Item
+            :return:    A Flask Response object containing the data for the requested media,
+                            with a header setting the MIME type appropriate for the media format
+                            In case the media isn't found, a 404 response status is sent,
+                            together with an error message
+            """
+            #TODO: let the Documents plugin handle this
+            try:
+                # Obtain the name of the folder for the document file;
+                # it includes the final "/"
+                folder, basename, _ = MediaManager.lookup_media_file(uri, class_name="Document")
+                #print(folder, "\n", basename, "\n", suffix)
+                cover_folder = folder + "covers/"       # Subfolder of the document folder
+                filename = f"{basename}.jpg"   # Including the suffix.  EXAMPLE: "my_document_title.jpg"
+                # TODO: make allowance for files that might not be .jpg (or perhaps covert them to JPG during upload?)
+                content = MediaManager.get_from_binary_file(path=cover_folder, filename=filename)
+
+                response = make_response(content)
+                # Set the MIME type
+                mime_type = MediaManager.get_mime_type("jpg")
+                response.headers['Content-Type'] = mime_type
+                #print(f"serve_document_cover() is returning the contents of data file, with file suffix `{suffix}`.  "
+                #      f"Serving with MIME type `{mime_type}`")
+                return response
+
+            except Exception as ex:
+                #err_details = f'Unable to locate the cover for a Document with entity ID "{uri}". {exceptions.exception_helper(ex)}'
+                #print(f"serve_document_cover() encountered the following error: {err_details}")
+                abort(404)
 
 
 
@@ -2042,7 +2085,7 @@ class ApiRouting:
         @login_required
         def get_filtered():
             """
-            Perform a database search for particular nodes, and return their properties,
+            Perform a database search for particular NODES, and return their properties,
             as well as a total count.
 
             For example, for the use of a record search form or the recordset plugin
@@ -2165,7 +2208,7 @@ class ApiRouting:
         def assemble_graph_json():
             """
             Construct and return the data needed by the Cytoscape graph visualization,
-            to display all the passed nodes, as well as any edges among them.
+            to display all the requested nodes, as well as any edges among them.
 
             Any date/datetime value will first be "sanitized"
             into a string representation of the date;
@@ -2174,8 +2217,9 @@ class ApiRouting:
             POST VARIABLES:
                 json    (REQUIRED) A JSON-encoded list of internal database ID's of the data nodes of interest
 
-            :return:    A list of dicts defining nodes, and possibly edges as well,
-                            with all the data needed by the Cytoscape graph visualization
+            :return:    A pair with all the data needed by the Cytoscape graph visualization.
+                            The first element in the pair is a list of dicts with the node data;
+                            the second  element in the pair is a list of dicts with the edge data
             """
             # TODO: use this as a ***MODEL*** of future JSON web api calls
             # Extract and parse the POST value
@@ -2209,7 +2253,7 @@ class ApiRouting:
 
             try:
                 graph = PyGraphVisual(db=GraphSchema.db)
-                result = graph.assemble_graph(id_list=pars_list)
+                result = graph.assemble_graph(id_list=pars_list)    # A pair with (node data, edge data)
                 response_data = {"status": "ok", "payload": result}                 # Successful termination
             except Exception as ex:
                 err_details = f"/assemble-graph : unable to construct the Cytoscape graph visualization data.  " \

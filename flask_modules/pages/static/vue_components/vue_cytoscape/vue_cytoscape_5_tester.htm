@@ -43,29 +43,30 @@
         el: '#vue-root-1',
 
         data: {     // THE TEST DATA
-            graph_data_json:
 
+            graph_data_json:
                 {
                     "nodes": [
-                        {'id': 1, 'name': 'Julian', '_node_labels': ['Person']},
-                        {'id': 2, 'color': 'white', 'brand': 'Toyota', '_node_labels': ['Car']},
-                        {'id': 3, 'name': 'Berkeley', '_node_labels': ['City']},
-                        {'id': 4, 'name': 'Bayer', '_node_labels': ['Company']},
-                        {'id': 5, 'name': 'USA', '_node_labels': ['Country']},
-                        {'id': 'country-6', 'name': 'Germany', '_node_labels': ['Country']},
-                        {'id': 'extra-1', 'name': 'Jupiter', '_node_labels': ['Planet']},
-                        {'id': 'extra-2', 'name': 'Pacific', '_node_labels': ['Ocean']},
-                        {'id': 'extra-3', 'name': 'America', '_node_labels': ['Continent']},
-                        {'id': 'extra-4', 'Title': 'Travel to the Amazon', '_node_labels': ['Book']}
+                        {id: 1, name: 'Julian', _node_labels: ['Person']},
+                        {id: 2, 'color': 'white', brand: 'Toyota', _node_labels: ['Car']},
+                        {id: 3, name: 'Berkeley', _node_labels: ['City']},
+                        {id: 4, name: 'Bayer', _node_labels: ['Company']},
+                        {id: 5, name: 'USA', _node_labels: ['Country']},
+                        {id: 'country-6', name: 'Germany', _node_labels: ['Country']},
+                        {id: 'extra-1', name: 'Jupiter', _node_labels: ['Planet']},
+                        {id: 'extra-2', name: 'Pacific', _node_labels: ['Ocean']},
+                        {id: 'extra-3', name: 'America', _node_labels: ['Continent']},
+                        {id: 'extra-4', Title: 'Travel to the Amazon', _node_labels: ['Book']}
                     ],
 
                     "edges": [
-                        {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'},
-                        {'name': 'LIVES IN', 'source': 1, 'target': 3, 'id': 'edge-2'},
-                        {'name': 'WORKS FOR', 'source': 1, 'target': 4, 'id': 'edge-3', 'since': 2025},
-                        {'name': 'LOCATED IN', 'source': 3, 'target': 5, 'id': 'edge-4'},
-                        {'name': 'LOCATED IN', 'source': 4, 'target': 5, 'id': 'edge-5'},
-                        {'name': 'LOCATED IN', 'source': 4, 'target': 'country-6', 'id': 'edge-6'}
+                        {name: 'OWNS', source: 1, target: 2, id: 'edge-1'},
+                        {name: 'LIVES IN', source: 1, target: 3, id: 'edge-2'},
+                        {name: 'WORKS FOR', source: 1, target: 4, id: 'edge-3', 'since': 2025},
+                        {name: 'LOCATED IN', source: 3, target: 5, id: 'edge-4'},
+                        {name: 'LOCATED IN', source: 4, target: 5, id: 'edge-5'},
+                        {name: 'LOCATED IN', source: 4, target: 'country-6', id: 'edge-6'},
+                        //{name: 'VIRTUAL BRIDGE', source: 1, target: 'extra-2', id: 'virtual-test', type: 'VIRTUAL_BRIDGE'}
                     ],
 
                     "color_mapping": {

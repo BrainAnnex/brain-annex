@@ -11,6 +11,7 @@ Vue.component('vue-plugin-d',
                                       "uri": "4849", "schema_code": "d",
                                       "pos": 0}
                                       (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+                                      TODO: take "pos" and "class_name" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
@@ -44,6 +45,20 @@ Vue.component('vue-plugin-d',
                         <!-- Clickable URL -->
                         <span v-html="render_url(current_metadata.url)"></span>
 
+
+                        <!-- Show cover image, if present -->
+                        <img
+                            v-if="show_cover_image"
+                            v-bind:src="cover_image(current_metadata.uri)"
+                            @error="show_cover_image = false"
+                            width=200
+                        >
+
+
+                        <!--
+                            Various metadata that may be present
+                          -->
+
                         <span v-if="current_metadata.year" style="margin-left:25px; color:#555">
                             <template v-if="current_metadata.month">{{current_metadata.month}} / </template>
                             {{current_metadata.year}}
@@ -56,6 +71,7 @@ Vue.component('vue-plugin-d',
                             <span v-if="current_metadata.rating">{{current_metadata.rating}}</span><span v-if="current_metadata.rating" class="star-yellow">&#9733;</span>
                             <span style="margin-left:45px">{{current_metadata.read}}</span>
                         </p>
+
                     </div>
 
 
@@ -156,6 +172,7 @@ Vue.component('vue-plugin-d',
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
 
+                show_cover_image: true,
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -165,13 +182,22 @@ Vue.component('vue-plugin-d',
 
 
 
+
         // ------------------------------   METHODS   ------------------------------
         methods: {
+
             document_url(item)
-            // Return the URL of the full documents
+            // Return the URL of the document's body
             {
-                return '/BA/api/serve_media/Document/' + item.uri;           // Invoke the file server
-             },
+                return '/BA/api/serve_media/Document/' + item.uri;      // URL that generates the desired document
+            },
+
+
+            cover_image(uri)
+            // Return the URL of the document's cover image (possibly a 404 error)
+            {
+                return '/BA/api/serve_document_cover/' + uri;           // URL that generates the desired cover image
+            },
 
 
             edit_content_item()

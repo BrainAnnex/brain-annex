@@ -113,13 +113,13 @@ Vue.component('vue-plugin-i',
             // Return the URL of the full image
             {
                 return '/BA/api/serve_media/Image/' + item_data.uri;           // Invoke the file server
-             },
+            },
 
             image_url_thumb(item_data)
             // Return the URL of the thumbnail version of the image
             {
                 return '/BA/api/serve_media/Image/' + item_data.uri + '/th';  // Invoke the file server, with the thumbnail option
-             },
+            },
 
 
             edit_content_item()

@@ -159,10 +159,10 @@ class DisplayNetwork:
                                         that provides the interactive visualization functionality.
                                         The JS file is expected to implement a Vue.js component by the same name
                                         (but with hyphens in lieu of any underscore in the name, if applicable.)
-                                        EXAMPLE: "vue_cytoscape_4" (assuming that a "vue_cytoscape_4.js" file
-                                                 and a "vue_cytoscape_4.css" file
+                                        EXAMPLE: "vue_cytoscape_5" (assuming that a "vue_cytoscape_5.js" file
+                                                 and a "vue_cytoscape_5.css" file
                                                  exist in the directory specified by the argument `vue_comps_dir`,
-                                                 and that the .js file implements a Vue component named "vue-cytoscape-4")
+                                                 and that the .js file implements a Vue component named "vue-cytoscape-5")
 
         :param filename:            The name of the file into which to place the HTML code
                                         to create the interactive network plot.
@@ -250,18 +250,20 @@ class PyGraphVisual:
     def __init__(self, db=None):
         self.db = db                    # Object of "GraphAccess" class
 
-        self.structure = []             # The data needed by the Cytoscape graph visualization.
-                                        #   A list of dicts defining nodes, and possibly edges as well.
+        self.nodes = []                 # The node data needed by the Cytoscape graph visualization.
+                                        #   A list of dicts defining nodes.
                                         #   NODES must contain the keys 'id' and '_node_labels'
+                                        #   EXAMPLE (2 nodes):
+                                        #   [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
+                                        #    {'id': 2, '_node_labels': ['CAR'], 'color': 'white'}]
+
+        self.edges = []                 # The edge data needed by the Cytoscape graph visualization.
+                                        #   A list of dicts defining edges.
                                         #   EDGES must contain the keys 'name', 'source', and 'target'
                                         #       (and presumably 'id' is required as well?)
-                                        # EXAMPLE (2 nodes and an edge):
-                                        #   [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
-                                        #    {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
-                                        #    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
-
-        self.node_structure = []        # TODO: phase this in
-        self.edge_structure = []        # TODO: phase this in
+                                        # EXAMPLE (1 edge):
+                                        #   [{'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
+                                        #   The above assumes that nodes 1 and 2 exist
 
         self.color_mapping = {}         # Mapping a node label to its interior color (the edge color is an automatic variation)
                                         # EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
@@ -296,8 +298,11 @@ class PyGraphVisual:
 
         :return:    A string with a description of this object
         """
-        s = f"Object describing a graph containing a total of {len(self.structure)} nodes and edges:\n"
-        s += f"    Graph structure: {self.structure}\n"
+        s = f"Object describing a graph containing {len(self.nodes)} nodes " \
+            f"and {len(self.edges)} edges:\n"
+
+        s += f"    Graph Node structure: {self.nodes}\n"
+        s += f"    Graph Edge structure: {self.edges}\n"
         s += f"    Graph color mapping: {self.color_mapping}\n"
         s += f"    Graph caption mapping: {self.caption_mapping}"
 
@@ -310,10 +315,12 @@ class PyGraphVisual:
         Return a data dictionary with all the relevant visualization info
         (typically, to pass to the front-end, for eventual use by the Cytoscape.js library)
 
-        :return:    A dict with 3 keys - "structure", "color_mapping" and "caption_mapping"
+        :return:    A dict with 4 keys - "nodes", "edges", "color_mapping" and "caption_mapping"
                         For more details, see object constructor
         """
-        return {"structure": self.structure,
+        #TODO: perhaps add a 2nd arg, to specify just one element to be returned
+        return {"nodes": self.nodes,
+                "edges": self.edges,
                 "color_mapping": self.color_mapping,
                 "caption_mapping": self.caption_mapping}
 
@@ -329,7 +336,7 @@ class PyGraphVisual:
         NO database operation is performed.  You need to first extract, or have on hand, that node data.
 
         EXAMPLE:    given a call to:  add_node(node_id=1, labels=['PERSON'], data={'name': 'Julian'})
-                    then the internal format, cumulatively added to self.structure, will be:
+                    then the internal format, cumulatively added to self.nodes, will be:
                     {'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'}
 
         :param node_id:     Either an integer or a string to uniquely identify this node in the graph;
@@ -364,7 +371,7 @@ class PyGraphVisual:
 
         d["_node_labels"] = labels
 
-        self.structure.append(d)
+        self.nodes.append(d)
         self._all_node_ids.append(node_id)
 
 
@@ -374,9 +381,11 @@ class PyGraphVisual:
         """
         Prepare and store the data for 1 edge, in a format expected by the visualization front-end.
 
-        EXAMPLE:   {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
+        EXAMPLE:    given a call to:  add_edge(from_node=1, to_node=2, name='OWNS', edge_id='edge-1')
+                    then the internal format, cumulatively added to self.edges, will be:
+                    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
 
-        Note that 'id', in this context, is whatever we pass to the visualization module for the nodes;
+        Note that the id's, in this context, is whatever we pass to the visualization module for the nodes;
         not necessarily related to the internal database ID's
 
         :param from_node:   Integer or a string uniquely identify the "id" of the node where the edge originates
@@ -403,7 +412,7 @@ class PyGraphVisual:
         if properties:
             d.update(properties)    # Also store the edge properties in its dict
 
-        self.structure.append(d)
+        self.edges.append(d)
 
 
 
@@ -502,6 +511,7 @@ class PyGraphVisual:
         :param add_edges:       If True, all existing edges among the displayed nodes
                                     will also be part of the visualization
         :param avoid_links:     Name or list of name of links to avoid including
+
         :return:                A list of values with the internal databased IDs
                                     of all the nodes added to the graph structure
         """
@@ -517,7 +527,8 @@ class PyGraphVisual:
 
         if not cumulative:
             # Reset: clear out any previous graph-structure data, and reset edge number auto-increment
-            self.structure = []
+            self.nodes = []
+            self.edges = []
             self._all_node_ids = []
             self._next_available_edge_id = 1
 
@@ -595,7 +606,7 @@ class PyGraphVisual:
 
 
 
-    def assemble_graph(self, id_list :[int|str]) -> [dict]:
+    def assemble_graph(self, id_list :[int|str]) -> ([dict],[dict]):
         """
         Given a list of node internal id's, construct and return the data needed by the Cytoscape graph visualization.
 
@@ -603,12 +614,13 @@ class PyGraphVisual:
         the time portion, if present, will get dropped
 
         :param id_list: A list of internal id's of database nodes
-        :return:        A list of dicts defining nodes, and possibly edges as well,
-                            with all the data needed by the Cytoscape graph visualization
+        :return:        A pair with all the data needed by the Cytoscape graph visualization:
+                            1) list of dicts defining nodes
+                            2) list of dicts defining edges
         """
         recordset = self.prepare_recordset(id_list)
         self.prepare_graph(result_dataset=recordset, cumulative=False, add_edges=True)
-        return self.structure
+        return (self.nodes , self.edges)
 
 
 

@@ -1,6 +1,8 @@
-/*  "Record navigator" with recursive drill-down capabilities to follow links
+/*  "Record navigator" provides a listing of database records,
+    with recursive drill-down capabilities to follow links
     and explore neighbor nodes as sub-records.
-    This version makes use of a Cytoscape Vue sub-component, to generate a graph
+    
+    This version also makes use of a Cytoscape Vue sub-component, to generate a graph
     from the above data.
 
     Currently used in the filter page.
@@ -21,8 +23,9 @@ Vue.component('vue-record-navigator-graph',
             <!-- Outer container, serving as Vue-required template root -->
             <section>
 
-            <div style="border:1px solid #DDD; padding:10px; background-color: #f4f4f4">
+            <div class="records-outerbox">
 
+                <!--  Give notice if the recordset is empty  -->
                 <p v-if="recordset_array.length === 0" style="color: gray">
                     NO RECORDS
                 </p>
@@ -30,8 +33,8 @@ Vue.component('vue-record-navigator-graph',
 
                 <!--  For each item in the current recordset -->
                 <p v-for="(item, index) in recordset_array"
-                            style="border: 1px solid #CCC; padding-bottom: 5px; padding-left: 3px; margin-bottom:2px; margin-top:3px;
-                                   background-color: white"
+                            class="record"
+                            v-bind:class="{'record-active': !item.controls.duplicate, 'record-inactive': item.controls.duplicate}"
                             v-bind:style="{'margin-left': item.controls.indent * 50 + 'px'}">
 
 
@@ -51,7 +54,7 @@ Vue.component('vue-record-navigator-graph',
                             class="subrecord-out"
                             v-bind:title="'Neighbor of node ' + item.controls.parent_record_id + ' by the OUT-bound link \`' + item.controls.parent_link + '\`'"
                             style="display: inline-block; margin-right:10px">
-                            <img src='/BA/pages/static/graphics/20_outbound_4619660.png'>
+                            <img src='/BA/pages/static/graphics/20_outbound_child_4619660.png'>
                             {{item.controls.parent_link}}
                         </span>
 
@@ -59,7 +62,7 @@ Vue.component('vue-record-navigator-graph',
                             class="subrecord-in"
                             v-bind:title="'Neighbor of node ' + item.controls.parent_record_id + ' by the IN-bound link \`' + item.controls.parent_link + '\`'"
                             style="display: inline-block; margin-right:10px">
-                            <img src='/BA/pages/static/graphics/20_inbound_4619661.png'>
+                            <img src='/BA/pages/static/graphics/20_inbound_child_4619661.png'>
                             {{item.controls.parent_link}}
                         </span>
                     </template>
@@ -68,62 +71,83 @@ Vue.component('vue-record-navigator-graph',
                     <!-- Display the data record (all its fields, incl. "internal_id" and "_node_labels")
                       -->
 
-                    <!-- Part 1 of 2: the node LABELS receive special handling -->
+                    <!-- Part 1 of 3: the node's LABELS receive special handling -->
                     <span  v-for="label in item.data._node_labels"  class="node-label">
                         {{label}}
                     </span>
 
-                    <!-- Part 2 of 2: all the other fields, incl. internal_id -->
-                    <template  v-if="key != '_node_labels'"  v-for="(val, key) in item.data">
-                        <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
-                         \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
+                    <!-- Part 2 of 3: the node's internal_id receives special handling -->
+                    <span class="monospace internal-id-key">INTERNAL ID: </span>
+                         <span class="monospace internal-id-value">{{item.data.internal_id}}</span>
+                         <span style="color:brown; font-weight: bold">|| </span>
+
+
+                    <!-- Part 3 of 3: all the other fields, incl. internal_id -->
+                    <template v-if="item.controls.duplicate">
+                        <span style="font-weight:bold">NODE HIDDEN BECAUSE ALREADY SHOWN</span> &nbsp; 
+                        <button @click="reveal_hidden_record(item.controls.record_id)">Show it anyway</button>
                     </template>
 
-                    &nbsp;
-
-
-                    <!-- If the link-summary data for the record is hidden, show an arrow to expand the record and show its link summary... -->
-                    <img  v-if="item.controls.expand==false"
-                        src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
-                         @click="toggle_links(item, index)"
-                         class="clickable-icon" style="background-color:black"
-                    >
-
-                    <!-- ...otherwise, if the link-summary data is to be shown, show it -->
-                    <span v-else>
-
-                        <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
-
-                            <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, index, link[0], 'IN', link[2])"
-                                  class="clickable-icon relationship-in"
-                                  v-bind:title="'Show/Hide ' + link[2] + ' IN-bound link(s) \`' + link[0] + '\`'"
-                            >
-                                <!-- Inbound link : show the number of links, an icon, and the link's name -->
-                                {{ link[2] }}
-                                <img src="/BA/pages/static/graphics/20_inbound_4619661.png" alt="Show/Hide IN-bound links">
-                                {{ link[0] }}
-                            </span>
-
-                             <span v-else @click="toggle_linked_records(item, index, link[0], 'OUT', link[2])"
-                                  class="clickable-icon relationship-out"
-                                  v-bind:title="'Show/Hide ' + link[2] + ' OUT-bound link(s) \`' + link[0] + '\`'"
-                             >
-                                <!-- Outbound link : show the number of links, an icon, and the link's name -->
-                                {{ link[2] }}
-                                <img src="/BA/pages/static/graphics/20_outbound_4619660.png" alt="Show/Hide OUT-bound links">
-                                {{ link[0] }}
-                            </span>
-
-                            &nbsp;
+                    <template v-else>
+                        <template
+                            v-if="(key != '_node_labels') && (key != 'internal_id')"
+                            v-for="(val, key) in item.data"
+                        >
+                            <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
+                             \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\`
+                             <span style="color:brown; font-weight: bold">|| </span>
                         </template>
 
+                        &nbsp;
 
-                        <!-- Arrow to shrink the record, to hide the links -->
-                        <img src="/BA/pages/static/graphics/arrow_down_22_79479.png" title="Hide LINKS" alt="Hide LINKS"
-                          @click="toggle_links(item, index)"
-                          class="clickable-icon" style="background-color:black"
+                        <!-- If the link-summary data for the record is hidden, show an arrow to expand the record and show its link summary... -->
+                        <img  v-if="item.controls.expand==false"
+                            src="/BA/pages/static/graphics/arrow_right_22_79650.png" title="Show LINKS" alt="Show LINKS"
+                             @click="toggle_links(item, index)"
+                             class="clickable-icon" style="background-color:black"
                         >
-                    </span>
+
+                        <!-- ...otherwise, if the link-summary data is to be shown, show it -->
+                        <span v-else>
+
+                            <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
+
+                                <div v-if="link[1]=='IN'" @click="toggle_linked_records(item, index, link[0], 'IN', link[2])"
+                                      class="clickable-icon relationship-in"
+                                      v-bind:title="'Show/Hide ' + link[2] + ' IN-bound link(s) \`' + link[0] + '\`'"
+                                >
+                                    <!-- Inbound link : show the number of links, an icon, and the link's name -->
+                                    <span class="relationship-in">
+                                        {{ link[2] }}
+                                        <img src="/BA/pages/static/graphics/20_inbound_4619661.png" alt="Show/Hide IN-bound links">
+                                    </span>
+                                    {{ link[0] }}
+                                </div>
+
+                                 <div v-else @click="toggle_linked_records(item, index, link[0], 'OUT', link[2])"
+                                      class="clickable-icon relationship-out"
+                                      v-bind:title="'Show/Hide ' + link[2] + ' OUT-bound link(s) \`' + link[0] + '\`'"
+                                 >
+                                    <!-- Outbound link : show the number of links, an icon, and the link's name -->
+                                    <span class="relationship-out">
+                                        {{ link[2] }}
+                                        <img src="/BA/pages/static/graphics/20_outbound_white_4619660.png" alt="Show/Hide OUT-bound links">
+                                    </span>
+                                    {{ link[0] }}
+                                </div>
+
+                                &nbsp;
+                            </template>
+
+
+                            <!-- Arrow to shrink the record, to hide the links -->
+                            <img src="/BA/pages/static/graphics/arrow_down_22_79479.png" title="Hide LINKS" alt="Hide LINKS"
+                              @click="toggle_links(item, index)"
+                              class="clickable-icon" style="background-color:black"
+                            >
+                        </span>
+
+                    </template>
 
                 </p>    <!--  End of items in the current recordset -->
 
@@ -151,11 +175,11 @@ Vue.component('vue-record-navigator-graph',
                 </span>
             </h2>
 
-            <vue-cytoscape-4
+            <vue-cytoscape-5
                     v-bind:graph_data="graph_data_json"
                     v-bind:component_id="1"
             >
-            </vue-cytoscape-4>
+            </vue-cytoscape-5>
 
 
             <!--  Everything below is diagnostic data shown below the graph  -->
@@ -165,9 +189,15 @@ Vue.component('vue-record-navigator-graph',
                 </div>
                 <b>COLOR MAPPING</b>: {{graph_data_json.color_mapping}}<br>
                 <b>CAPTION MAPPING</b>: {{graph_data_json.caption_mapping}}<br>
-                <b>STRUCTURE</b>:
+                <b>NODE STRUCTURE</b>:
                 <ul>
-                    <li v-for="item in graph_data_json.structure">
+                    <li v-for="item in graph_data_json.nodes">
+                        {{item}}
+                    </li>
+                </ul>
+                <b>EDGE STRUCTURE</b>:
+                <ul>
+                    <li v-for="item in graph_data_json.edges">
                         {{item}}
                     </li>
                 </ul>
@@ -182,21 +212,23 @@ Vue.component('vue-record-navigator-graph',
         data: function() {
             return {
                 next_record_id: 0,      // Auto-increment to identify records shown on page
-
+                                        // (this is a UX aid - unrelated to any database id values)
+                                        
                 recordset_array: [],
                                         // Array of objects, with one entry per record (database node)
                                         //
                                         //      EACH ENTRY is an object with 2 keys: "controls" and "data":
                                         //
                                         //      * "controls" is an object with the following keys:
-                                        //                      "record_id" (int)
-                                        //                      "parent_record_id" (int)
-                                        //                      "parent_link" (str)
-                                        //                      "parent_dir" (str: "IN" or "OUT")
-                                        //                      "expand" (bool)
-                                        //                      "indent" (int)
-                                        //                      "links" (array of triples: name, "IN"/"OUT", count)
-                                        //                      "pos" (int) : meant to hold TEMPORARY values
+                                        //                  "record_id" (int - a temporary value assigned by this component)
+                                        //                  "parent_record_id" (int)
+                                        //                  "parent_link" (str)
+                                        //                  "parent_dir" (str: "IN" or "OUT")
+                                        //                  "expand" (bool)
+                                        //                  "indent" (int)
+                                        //                  "links" (array of triples: name, "IN"/"OUT", count)
+                                        //                  "pos" (int) : meant to hold TEMPORARY values
+                                        //                  "duplicate" (bool)
                                         //
                                         //      * "data" is an object containing all the field names and values
                                         //            returned from the database node
@@ -204,14 +236,17 @@ Vue.component('vue-record-navigator-graph',
 
 
                 // Object with all the data needed by the Vue component to display the graph
-                // 3 keys:  "structure" (an array of object literals), "color_mapping" (object literal) and "caption_mapping" (object literal)
+                // 4 keys:  "nodes" and "edges" (arrays of object literals),
+                //          "color_mapping" (object literal) and "caption_mapping" (object literal)
                 graph_data_json: {
-                    structure:  [],
+                    nodes:  [],
+                    edges:  [],
                     color_mapping: {},
                     caption_mapping: {}
                 },
 
 
+                // UX feedback
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -260,20 +295,20 @@ Vue.component('vue-record-navigator-graph',
                 /*
                 // Example test data
                 this.graph_data_json = {
-                    structure:  [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
-                                 {'id': 2, 'color': 'white', '_node_labels': ['CAR']},
-                                 {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}],
-                    color_mapping: {'PERSON': '#56947E', 'CAR': '#F79768'},
+                    nodes:      [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
+                                 {'id': 2, 'color': 'white', '_node_labels': ['CAR']}]
+                    edges:  [{'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
+                    color_mapping:   {'PERSON': '#56947E', 'CAR': '#F79768'},
                     caption_mapping: {'PERSON': 'name', 'CAR': 'color'}
                 };
-                this.graph_data_json.structure.push({'id': 3, 'color': 'blue', '_node_labels': ['CAR']});
+                this.graph_data_json.nodes.push({'id': 3, 'color': 'blue', '_node_labels': ['CAR']});
 
                 // Test of using actual (unprocessed) results data: sending the nodes (no edges) to the Cytoscape graph
                 for (let record of this.recordset_array) {
                     let data = record.data;
                     data.id = data.internal_id;
                     data.labels = data._node_labels;
-                    this.graph_data_json.structure.push(data);
+                    this.graph_data_json.nodes.push(data);
                 }
                 return;
                 */
@@ -324,12 +359,16 @@ Vue.component('vue-record-navigator-graph',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    // Update the data for the Cytoscape Vue component
-                    this.graph_data_json = {
-                        structure: server_payload,
-                        color_mapping: {},
-                        caption_mapping: {}
-                    };
+                    if (server_payload.length != 2)
+                        alert("Bad format in data returned from the server; not the expected 2-element array");
+                    else
+                        // Update the data for the Cytoscape Vue component
+                        this.graph_data_json = {
+                            nodes: server_payload[0],
+                            edges: server_payload[1],
+                            color_mapping: {},
+                            caption_mapping: {}
+                        };
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -339,7 +378,7 @@ Vue.component('vue-record-navigator-graph',
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                   //...
+                //...
             },
 
 
@@ -422,12 +461,13 @@ Vue.component('vue-record-navigator-graph',
 
 
             populate_subrecords(record, rel_name, dir, new_data_arr)
-            /*  Update the overall array of database records (this.recordset_array),
+            /*  Update the overall array of database records (Vue variable this.recordset_array),
                 to also include records newly returned by the server.
-                The new objects are regarded as sub-records of the given record - neighbor
-                nodes by means of the specified relationship in the given direction - and
-                are to be inserted below the record, with increasing indent; they also
-                get assigned auto-incremented record ID's.
+
+                The new objects in `new_data_arr` are regarded as sub-records
+                of the given record - neighbor nodes by means of the specified relationship in the given direction -
+                and are to be inserted below the record, with increasing indent; they also
+                get assigned auto-incremented record ID's (values just for the UX).
 
                 :param record:       Object
                 :param rel_name:     The name of the relationship to follow (for one hop)
@@ -436,30 +476,46 @@ Vue.component('vue-record-navigator-graph',
              */
             {
                 const parent_record_id = record.controls.record_id;
-                const n_links = new_data_arr.length;
+                const n_links = new_data_arr.length;   // Number of neighbors
 
                 for (let counter = 0; counter < n_links; counter++)  {
+                    // Process each retrieved neighbor in turn
                     let new_entry = {controls: {
                                                     record_id: this.next_record_id,
                                                     expand: false,
-                                                    indent: record.controls.indent + 1,
+                                                    indent: record.controls.indent + 1,      // One extra indent relative to its parent
 
                                                     parent_record_id: parent_record_id,
                                                     parent_link: rel_name,
-                                                    parent_dir: dir
+                                                    parent_dir: dir,
+
+                                                    duplicate: false
                                                 },
                                      data:
                                                 new_data_arr[counter]
                                      };
 
-                    this.next_record_id += 1;   // Advance the auto-increment value
                     console.log(`new_entry: record_id = ${new_entry.controls.record_id}`);
                     console.log(new_entry.data);
 
-                    const i = this.locate_item(parent_record_id);
+                    this.next_record_id += 1;   // Advance the auto-increment value
+
+
+                    // Check whether this child node already appears elsewhere in the listing
+                    let existing_location = this.find_by_dbase_id(new_entry.data.internal_id);
+                    console.log(`existing_location for record with internal_id '${new_entry.data.internal_id}' is ${existing_location}`);
+                    if (existing_location != -1)  {
+                        //alert("Found record already seen");
+                        console.log(`Child record (internal database ID ${new_entry.data.internal_id}) already existed at index position ${existing_location}`);
+                        new_entry.controls.duplicate = true;
+                    }
+                    
+                    
+                    // Locate the parent record, and insert this record just below it              
+                    const i = this.find_by_record_id(parent_record_id);
 
                     if (i == -1)
-                        alert(`Unable to locate any item with a record_id of ${parent_record_id}`);
+                        alert(`Unable to locate any record with a record_id of ${parent_record_id}`);
                     else  {
                         console.log(`Located parent record at index position ${i}`);
                         this.recordset_array.splice(i+1, 0, new_entry); // Insert the new entry just below its parent
@@ -469,9 +525,10 @@ Vue.component('vue-record-navigator-graph',
 
 
 
-            locate_item(record_id)
-            /* Attempt to locate a record with the requested id, from the overall array of records.
-               If found, return its index in the array; otherwise, return -1
+            find_by_record_id(record_id)
+            /* Attempt to locate a record with the requested "record id" (UX numbering system),
+               from the overall array of records.
+               If found, return its index in the overall array of records; otherwise, return -1
              */
             {
                 //console.log(`Attempting to locate the record with record_id '${record_id}'`);
@@ -480,6 +537,25 @@ Vue.component('vue-record-navigator-graph',
 
                 for (var i = 0; i < number_items; i++) {
                     if (this.recordset_array[i].controls.record_id == record_id)
+                        return i;          //  Found it
+                }
+
+                return -1;    // Didn't find it
+            },
+
+
+            find_by_dbase_id(internal_id)
+            /* Attempt to locate a record with the requested internal database ID,
+               from the overall array of records.
+               If found, return its index in the overall array of records; otherwise, return -1
+             */
+            {
+                console.log(`Attempting to locate the record with internal database ID '${internal_id}'`);
+
+                const number_items = this.recordset_array.length;
+
+                for (var i = 0; i < number_items; i++) {
+                    if (this.recordset_array[i].data.internal_id == internal_id)
                         return i;          //  Found it
                 }
 
@@ -590,7 +666,6 @@ Vue.component('vue-record-navigator-graph',
                     console.log(`    Id's of all children: [${children_ids}]`);
                 }
 
-
                 //console.log("    Returning from locate_children()");
 
                 return children;
@@ -598,9 +673,29 @@ Vue.component('vue-record-navigator-graph',
 
 
 
+            reveal_hidden_record(record_id)
+            // Remove the "duplicate" flag from the record with the specified `record_id`
+            {
+                console.log(`Request to reveal hidden record with record_id ${record_id}`);
+
+                const i = this.find_by_record_id(record_id);
+
+                if (i == -1)
+                    alert(`Unable to locate any record with a record_id of ${record_id}`);
+                else  {
+                    console.log(`Located record to reveal at index position ${i}`);
+                    let modified_record = this.recordset_array[i];
+                    modified_record.controls.duplicate = false;
+                    this.recordset_array.splice(i, 1, modified_record); // The 1 indicates a simple replacement of an item
+                }
+            },
+
+
+
+
 
             /*
-                --------------   SERVER CALLS   ----------------------------------------------------------------
+                --------------  ***  SERVER CALLS  *** ---------------------------------------------------------------
              */
 
             get_link_summary_from_server(record, record_index)
@@ -669,6 +764,7 @@ Vue.component('vue-record-navigator-graph',
             /* Initiate request to server, to get the list of the properties
                of the data nodes linked to the specified node (record),
                by the relationship named by rel_name, in the direction requested by dir
+               (In other words, to bring in selected neighbor nodes into the listing.)
 
                :param record:   Object with the record of interest
                :param rel_name: The name of the relationship to follow (for one hop)
@@ -683,8 +779,8 @@ Vue.component('vue-record-navigator-graph',
                 const post_obj = {internal_id: internal_id, rel_name: rel_name, dir: dir};
                 const my_var = [record, rel_name, dir];        // Pass-thru parameters
 
-                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
-                console.log(post_obj);
+                //console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
+                //console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
@@ -697,7 +793,7 @@ Vue.component('vue-record-navigator-graph',
             },
 
             finish_get_linked_records_from_server(success, server_payload, error_message, custom_data)
-            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+            /* Callback function to wrap up the action of get_linked_records_from_server() upon getting a response from the server.
 
                 success:        Boolean indicating whether the server call succeeded
                 server_payload: Whatever the server returned (stripped of information about the success of the operation)
@@ -706,9 +802,9 @@ Vue.component('vue-record-navigator-graph',
                 custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
             */
             {
-                console.log("Finalizing the get_linked_records_from_server() operation...");
-                console.log(`Custom pass-thru data:`);
-                console.log(custom_data)
+                //console.log("Finalizing the get_linked_records_from_server() operation...");
+                //console.log(`Custom pass-thru data:`);
+                //console.log(custom_data)
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     /*  EXAMPLE of server_payload:
@@ -719,9 +815,11 @@ Vue.component('vue-record-navigator-graph',
                     */
                     this.status_message = `Operation completed`;
 
+                    // Unpack the pass-thru data
                     const record =  custom_data[0];
                     const rel_name = custom_data[1];
                     const dir = custom_data[2];
+
                     this.populate_subrecords(record, rel_name, dir, server_payload);
                 }
                 else  {             // Server reported FAILURE

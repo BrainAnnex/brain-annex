@@ -77,6 +77,8 @@
 
     <link rel="stylesheet" href="/BA/pages/static/modules/awesomplete/awesomplete.css">
 
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
+
 
     <!-- Styling for Vue CORE components -->
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/bread_crumbs/bread_crumbs.css">
@@ -605,7 +607,7 @@
 
 <p style="color:#AAA; text-align: center; margin-top:0">Powered by Brain Annex {{site_data.version}}</p>
 
-</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element "vue-root" ~~~~~~~~~~~~~~~~~~~~~  -->
 
 
 
@@ -631,7 +633,6 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/timer/timer.js"></script>
 
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
@@ -639,7 +640,14 @@
 
 
 
-<script>
+<script type="module">
+
+// Import the JS module (it will register the component globally - and it will be completed
+// prior to the instantiation of Vue, below)
+import '/BA/pages/static/vue_components/multiselect/multiselect.js';
+import '/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js';
+
+
 // Instantiation of the ROOT component must come after the definition of the descendant components
 new Vue({
     el: '#vue-root',

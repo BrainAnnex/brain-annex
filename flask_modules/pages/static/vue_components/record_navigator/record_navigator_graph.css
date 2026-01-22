@@ -2,9 +2,63 @@
  */
 
 
+/* Box around all records */
+div.records-outerbox {
+    border:1px solid #DDD;
+    padding:10px;
+    background-color: #f4f4f4;
+}
+
+
+/* Box around each individual record */
+p.record {
+    border: 1px solid #CCC;
+    padding-bottom: 5px;
+    padding-left: 3px;
+    margin-bottom:2px;
+    margin-top:3px;
+
+}
+
+p.record-active {
+    background-color: white;
+}
+
+p.record-inactive {
+    background-color: #a2a2a2;
+}
+
+
+/* Little rounded boxes for labels */
+span.node-label {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: white;
+    background-color: #444444;
+}
+
+
+/* For the display of the string "INTERNAL ID" and of its value */
+
+span.internal-id-key {
+    color: #913434;                 /* #863030 */
+    font-size:12px;
+    font-weight: bold;
+}
+span.internal-id-value {
+    background-color: #913434;      /* rgb(251, 240, 240) */
+    color: white;
+    font-weight: bold;
+    padding: 3px;
+}
+
+
+
 /* For a box to pre-pend to record headers */
 span.subrecord-in {
-    background-color: #bbe175;
+    background-color: #84f5f5;
     color: black;
     font-size: 12px;
     font-weight: bold;
@@ -20,30 +74,48 @@ span.subrecord-out {
 }
 
 
-/* Little rounded boxes for labels */
-span.node-label {
-    display: inline-block;
-    margin-right: 5px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    color: white;
-    background-color: #444444;
-}
-
 
 /* For little rounded boxes that show a link (either IN or OUT) */
 span.relationship-in {
     display: inline-block;
     margin-right: 5px;
-    padding: 3px 8px;
-    color: #333;
-    background-color: #bbe175;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    padding-left: 8px;
+    padding-right: 8px;
+    color: black;
+    background-color: #e1e1e1;  /* #dbdbdb */
 }
 
 span.relationship-out {
     display: inline-block;
     margin-right: 5px;
-    padding: 3px 8px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    padding-left: 8px;
+    padding-right: 8px;
+    color: #fffcfc;
+    background-color: black;
+}
+
+
+/* EXPERIMENTAL */
+div.relationship-in {
+    display: inline-block;
+    margin-right: 5px;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    padding-right: 3px;
+    color: #333;
+    background-color: #84f5f5;  /* #bbe175 */
+}
+
+div.relationship-out {
+    display: inline-block;
+    margin-right: 5px;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    padding-right: 3px;
     color: #333;
     background-color: #fdbeb8;
 }

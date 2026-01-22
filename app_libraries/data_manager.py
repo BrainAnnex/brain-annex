@@ -228,6 +228,8 @@ class DataManager:
 
         graph_obj.assign_color_mapping(label="CLASS", color="graph_darkgreen")
         graph_obj.assign_color_mapping(label="PROPERTY", color="graph_orange")
+        graph_obj.assign_color_mapping(label="LINK", color="graph_teal")
+        graph_obj.assign_color_mapping(label="SCHEMA", color="lightgray")
 
         graph_obj.assign_caption(label="CLASS", caption="name")
         graph_obj.assign_caption(label="PROPERTY", caption="name")

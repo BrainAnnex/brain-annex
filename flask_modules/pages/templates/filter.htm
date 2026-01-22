@@ -28,8 +28,8 @@
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/node_explorer.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/record_navigator/record_navigator_graph.css">
-    <link type="text/css"  rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_5.css">
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
@@ -211,7 +211,7 @@
      the script below must handle both the JS import and the instantiation of Vue, to make sure
      that the former is completed first -->
 
-<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_4.js"></script>
+<script src="/BA/pages/static/vue_components/vue_cytoscape/vue_cytoscape_5.js"></script>
 
 
 <script type="module">
@@ -239,8 +239,8 @@ new Vue({
         skip: 0,
         limit: 10,
 
-        available_fields: [],       // Array of field names for dbase node
-        selected_fields: null,      // Used by the "multiselect" Vue component
+        available_fields: [],       // Array of field names for dbase node (Used by the "multiselect" Vue component)
+        selected_fields: null,      // Used by the "multiselect" Vue component, to hold an array of chosen field names
 
         query_result: [],           // Array of objects, with one entry per record returned by the search
         query_result_summary: "",   // The total count (total number of nodes with requested label in dbase)
