@@ -1,11 +1,38 @@
 # MAKE SURE TO FIRST SET THE ENVIRONMENT VARIABLES, prior to run the pytests in this file!
 
-from brainannex import PyGraphVisual, GraphAccess
+from brainannex import PyGraphVisual, DisplayNetwork, GraphAccess
 from utilities.comparisons import *
 import pytest
 import neo4j.time
 
 
+##################   DisplayNetwork   ##################
+
+def test_export_plot():
+    with pytest.raises(Exception):
+        # Bad arg `graph_data`
+        DisplayNetwork.export_plot(graph_data=123, graphic_component="x", filename="f")
+
+    with pytest.raises(Exception):
+        # Bad arg `graph_data`
+        DisplayNetwork.export_plot(graph_data={"a": 1, "b": 9}, graphic_component="x", filename="f")
+
+    with pytest.raises(Exception):
+        # Bad arg `graph_data`
+        DisplayNetwork.export_plot(graph_data={"nodes": 1, "edges": 2, "color_mapping": 3, "caption_mapping": 4},
+                                   graphic_component="x", filename="f")
+
+    with pytest.raises(Exception):
+        # Bad arg `graph_data`
+        DisplayNetwork.export_plot(graph_data={"nodes": [1], "edges": 2, "color_mapping": 3, "caption_mapping": 4},
+                                   graphic_component="x", filename="f")
+    #TODO: continue testing
+
+
+
+
+
+##################   PyGraphVisual   ##################
 
 def test_get_graph_data():
     graph = PyGraphVisual()
@@ -80,20 +107,31 @@ def test_add_edge():
                                        ]
     assert result["edges"] == [ {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456} ]
 
+
     graph.add_node(node_id="car-1", labels=["Car", "Vehicle"], properties={"color": "white"})
     graph.add_edge(from_node=123, to_node="car-1", name="OWNS", properties={"paid": 100})
 
     result = graph.get_graph_data()
     assert result["color_mapping"] == {}
     assert result["caption_mapping"] == {}
-    assert result["nodes"] == [    {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
-                                            {'id': 456, 'name': 'Val', '_node_labels': ['Person']},
-                                            {'id': 'car-1', 'color': 'white', '_node_labels': ["Car", "Vehicle"]}
-                                        ]
+    assert result["nodes"] == [     {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
+                                    {'id': 456, 'name': 'Val', '_node_labels': ['Person']},
+                                    {'id': 'car-1', 'color': 'white', '_node_labels': ["Car", "Vehicle"]}
+                              ]
     assert result["edges"] == [
-                                            {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456},
-                                            {'id': 'edge-2', 'name': 'OWNS', 'source': 123, 'target': 'car-1', 'paid':100}
-                                        ]
+                                {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456},
+                                {'id': 'edge-2', 'name': 'OWNS', 'source': 123, 'target': 'car-1', 'paid':100}
+                              ]
+
+
+    graph.add_edge(from_node=456, to_node="car-1", name="OWNS",
+                  properties={"source": "source name conflict!", "target": "target name conflict!", "name": "name conflict!", "id": "id name conflict!"})
+    result = graph.get_graph_data()
+    assert result["edges"] == [
+                                {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456},
+                                {'id': 'edge-2', 'name': 'OWNS', 'source': 123, 'target': 'car-1', 'paid':100},
+                                {'id': 'edge-3', 'name': 'OWNS', 'source': 456, 'target': 'car-1', '_name': 'name conflict!', '_source': 'source name conflict!', '_target': 'target name conflict!', '_id': 'id name conflict!'}
+                              ]
 
 
 
@@ -180,7 +218,7 @@ def test_prepare_graph_1():
     assert graph._all_node_ids == [123, 456]
 
 
-    # Adding a record with a key named 'id' (which automatically gets renamed 'id_original'
+    # Adding a record with a key named 'id' (which automatically gets renamed '_id_original'
     dataset += [{'internal_id': 789, "_node_labels": ["Person"], 'name': 'Rese', 'id': 'some value'}]
     result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
     assert result == [123, 456, 789]
@@ -188,7 +226,7 @@ def test_prepare_graph_1():
     internal_nodes = graph.get_graph_data().get("nodes")
     expected_nodes = [{'id': 123, 'internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
                                {'id': 456, 'internal_id': 456, 'name': 'Val',    '_node_labels': ['Person']},
-                               {'id': 789, 'internal_id': 789, 'name': 'Rese',   '_node_labels': ['Person'], 'id_original': 'some value'}]
+                               {'id': 789, 'internal_id': 789, 'name': 'Rese',   '_node_labels': ['Person'], '_id_original': 'some value'}]
 
     assert compare_recordsets(internal_nodes , expected_nodes)
 
@@ -197,9 +235,9 @@ def test_prepare_graph_1():
 
     assert compare_recordsets(internal_edges , expected_edges)
 
-    dataset += [{'internal_id': 666, 'id': 'X', 'id_original': 'Y' }]
+    dataset += [{'internal_id': 666, 'id': 'X', '_id_original': 'Y' }]
     with pytest.raises(Exception):
-        # Unable to rename 'id' as 'id_original', because it already exists
+        # Unable to rename 'id' as '_id_original', because it already exists
         graph.prepare_graph(result_dataset=dataset, add_edges=False)
 
 

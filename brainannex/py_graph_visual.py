@@ -140,12 +140,15 @@ class DisplayNetwork:
             2) component_id
 
         :param graph_data:          A python dictionary of data to pass to the Vue component.
-                                        It must contain 3 keys:
-                                            'structure'         A list of dicts
-                                                EXAMPLE (two nodes followed by an edge):
+                                        It must contain 4 keys:
+                                            'nodes'         A list of dicts with node data
+                                                EXAMPLE (two nodes):
                                                     [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
-                                                     {'id': 2, '_node_labels': ['CAR'], 'color': 'white'},
-                                                     {'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
+                                                     {'id': 2, '_node_labels': ['CAR'], 'color': 'white'}]
+
+                                            'edges'         A list of dicts with edge data
+                                                EXAMPLE (an edge between the two nodes of the previous example):
+                                                    [{'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
 
                                                 Note: 'id' values can be integers or strings
 
@@ -180,18 +183,23 @@ class DisplayNetwork:
                                               a URL.  EXAMPLE: "https://life123.science/libraries/vue_components/"
         :return:                    None
         """
-        # TODO: split the 'structure' list into separate lists of nodes and edges
+        # TODO: expand pytest
 
         # Perform data validation
         assert type(graph_data) == dict, "export_plot(): argument `graph_data` must be a python dictionary"
 
-        assert len(graph_data) == 3, \
-                "export_plot(): argument `graph_data` must contains exactly 3 keys, " \
-                "named 'structure', 'color_mapping', 'caption_mapping'"
+        assert len(graph_data) == 4, \
+                f"export_plot(): argument `graph_data` must contains exactly 4 keys, " \
+                f"named 'nodes', 'edges', 'color_mapping', 'caption_mapping'.  " \
+                f"Instead, it contains the following keys: {list(graph_data)}"
 
-        assert ('structure' in graph_data) and type(graph_data['structure']) == list, \
-                f"export_plot(): the argument `graph_data` must contain a key named 'structure' whose value is a list.  " \
-                f"Passed value: {graph_data.get('structure')}"
+        assert ('nodes' in graph_data) and type(graph_data['nodes']) == list, \
+                f"export_plot(): the argument `graph_data` must contain a key named 'nodes' whose value is a list.  " \
+                f"Passed value: {graph_data.get('nodes')}"
+
+        assert ('edges' in graph_data) and type(graph_data['edges']) == list, \
+                f"export_plot(): the argument `graph_data` must contain a key named 'edges' whose value is a list.  " \
+                f"Passed value: {graph_data.get('edges')}"
 
         assert ('color_mapping' in graph_data) and type(graph_data['color_mapping']) == dict, \
                 f"export_plot(): the argument `graph_data` must contain a key named 'color_mapping' whose value is a python dictionary.  " \
@@ -392,8 +400,10 @@ class PyGraphVisual:
         :param to_node:     Integer or a string uniquely identify the "id" of the node where the edge ends
         :param name:        Name of the relationship
         :param edge_id:     [OPTIONAL]  If not provided, strings such as "edge-123" are used,
-                                        with auto-generated consecutive integers
-        :param properties:  A dict with all the edge properties of interest
+                                with auto-generated consecutive integers
+        :param properties:  [OPTIONAL]  A dict with all the edge properties of interest.
+                                If keys with conflicting names are present ('name', 'source', 'target', 'id'),
+                                an underscore is prefixed to them
 
         :return:            None
         """
@@ -410,6 +420,19 @@ class PyGraphVisual:
             self._next_available_edge_id += 1        # Maintain an auto-increment value for edge ID's
 
         if properties:
+            if "name" in properties:
+                properties["_name"] = properties["name"]
+                del properties["name"]
+            if "source" in properties:
+                properties["_source"] = properties["source"]
+                del properties["source"]
+            if "target" in properties:
+                properties["_target"] = properties["target"]
+                del properties["target"]
+            if "id" in properties:
+                properties["_id"] = properties["id"]
+                del properties["id"]
+
             d.update(properties)    # Also store the edge properties in its dict
 
         self.edges.append(d)
@@ -494,18 +517,21 @@ class PyGraphVisual:
     def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
-        as returned by GraphAccess.get_nodes() - construct and save in the object visualization data for them.
+        as returned by GraphAccess.get_nodes() - construct and save inside this pyhon object
+        the visualization data for them.
 
         Each dictionary entry MUST have a key named "internal_id".
-        If any key named "id" is found, it get automatically renamed "id_original" (since "id" is used by the visualization software);
-        if "id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
+        If any key named "id" is found, it get automatically renamed "_id_original" (since "id" is used by the visualization software);
+        if "_id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
         Though not required, a key named "_node_labels" is typically present as well.
 
         Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
         the time portion, if present, will get dropped
 
         :param result_dataset:  A list of dictionary data about graph-database nodes;
-                                    each dict must contain an entry with the key "internal_id"
+                                    each dict must contain an entry with the key "internal_id".
+                                    No problem if duplicates in "internal_id" are present;
+                                    only the fist of one duplicates gets processed
         :param cumulative:      If False (default) then any previous call to this function will get ignored,
                                     and a new graph is appended
         :param add_edges:       If True, all existing edges among the displayed nodes
@@ -537,19 +563,21 @@ class PyGraphVisual:
         node_list = []      # Running list of internal databased IDs, for nodes in `result_dataset`
         for node in result_dataset:
             internal_id = node.get("internal_id")
-
             assert internal_id is not None, \
                 f"prepare_graph() - the following record lacks the required `internal_id` key: {node}"
 
-            node_clone = node.copy()
+            if internal_id in node_list:
+                # Ignore records already seen (duplicates in `internal_id`)
+                print(f"prepare_graph(): ignoring duplicate record with `internal_id` = {internal_id}")
+                continue
 
-            #del node_clone["internal_id"]
+            node_clone = node.copy()
             
             if "id" in node_clone:
-                assert "id_original" not in node_clone, \
-                    f"prepare_graph(): keys named `id` are routinely automatically renamed `id_original`, " \
-                    f"but the latter key also already exists!  Found in: {node}"
-                node_clone["id_original"] = node_clone["id"] 
+                assert "_id_original" not in node_clone, \
+                    f"prepare_graph(): keys named `id` are routinely automatically renamed `_id_original`, " \
+                    f"but the latter key also already exists!  Found in: {node_clone}"
+                node_clone["_id_original"] = node_clone["id"]
                 del node_clone["id"]
                 id_key_renaming = True
 
@@ -559,7 +587,6 @@ class PyGraphVisual:
                 labels = node["_node_labels"]
             else:
                 labels = ""
-
 
             self.add_node(node_id=internal_id, labels=labels,
                           properties=self.db.sanitize_date_times(node_clone, drop_time=True))
@@ -600,7 +627,7 @@ class PyGraphVisual:
 
         if id_key_renaming:
             print("prepare_graph(): keys named `id` were found in one or more of the records; "
-                  "they were renamed `id_original` to avoid conflict with internal database IDs")
+                  "they were renamed `_id_original` to avoid conflict with internal database IDs")
             
         return node_list
 
