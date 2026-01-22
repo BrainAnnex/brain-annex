@@ -10,21 +10,25 @@ Vue.component('vue-plugin-rs',
                                 it means that it's a newly-created header, not yet registered with the server
                                 (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
 
-                                EXAMPLE :
-                                        { class_name: "Recordset",
-                                          pos: 100,
+                                EXAMPLE of item_data:
+                                        {   class_name: "Recordset",
+                                            class_handler:"recordsets",
+                                            pos: 100,
+                                            schema_code: "rs",
+                                            uri: "rs-7",
 
-                                          filter_label: "Restaurants",
-                                          caption: "Berkeley locations",
-                                          n_group: 10,
-                                          order_by: "name",
-                                          clause_key: "city",
-                                          clause_value: "Berkeley",
-                                          schema_code: "rs",
-                                          uri: "rs-7"
+                                            caption: "Expressions",
+                                            fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields
+                                            filter_label: "Restaurants",
+                                            caption: "Berkeley locations",
+                                            n_group: 10,
+                                            order_by: "name",
+                                            clause_key: "city",
+                                            clause_value: "Berkeley"
                                         }
                                       (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
                             TODO: take "pos" and "class_name" out of item_data !  Start passing internal_id
+
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Recordset on the page
@@ -134,7 +138,8 @@ Vue.component('vue-plugin-rs',
                             </td>
                             <td v-show="editing_mode">
                                 <!-- Button will be disabled until something is typed in any of the field,
-                                     so that the new_record object is not empty -->
+                                     so that the new_record object is not empty
+                                  -->
                                 <button @click="save_new_record"
                                         v-bind:disabled="Object.keys(new_record).length === 0"
                                 >
@@ -148,7 +153,7 @@ Vue.component('vue-plugin-rs',
                 </div>
 
 
-                <!-- Recordset PAGE NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
+                <!-- Recordset PAGE NAVIGATION (hidden if newly-created recordset)  TODO: maybe turn into a sub-component -->
                 <div class="navigator-controls">
                     <span class="table-caption" style="margin-right:15px">{{this.pre_edit_metadata.caption}}</span>
                     <span class="table-caption" style="margin-right:15px; font-size:10px">{{this.pre_edit_metadata.filter_label}}</span>
@@ -183,7 +188,7 @@ Vue.component('vue-plugin-rs',
                 </p>
 
 
-                <!-- RECORDSET EDITOR (for the overall structure): in *VIEWING* MODE -->
+                <!-- RECORDSET EDITOR (for the overall structure): in ***VIEWING*** MODE -->
                 <div v-if="editing_mode && !recordset_editing"
                      style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b>
@@ -201,7 +206,7 @@ Vue.component('vue-plugin-rs',
                 </div>
 
 
-                <!-- RECORDSET EDITOR (for the overall structure): in *EDITING* MODE -->
+                <!-- RECORDSET EDITOR (for the overall structure): in ***EDITING*** MODE -->
                 <div v-if="recordset_editing" style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
                     <b>RECORDSET definition</b><br>
                     <table>
@@ -233,12 +238,14 @@ Vue.component('vue-plugin-rs',
                                 </td>
                         </tr>
 
+                        <!--
                         <tr>
                             <td style="text-align: right">Fields to include (blank = ALL)</td>
                             <td>
                                 <input v-model="current_metadata.fields" size="70">
                             </td>
                         </tr>
+                        -->
 
                         <tr>
                             <td style="text-align: right">Filter</td>
@@ -266,8 +273,25 @@ Vue.component('vue-plugin-rs',
                             <td style="text-align: right">Caption</td>
                             <td>
                                 <input v-model="current_metadata.caption" size="25">
-                                </td>
+                            </td>
                         </tr>
+
+
+                        <tr>
+                            <td style="text-align: right">Fields to include (blank = ALL)</td>
+                            <td>
+                                <vue-multiselect
+                                    v-model="fields_to_show"
+                                    v-bind:options=headers
+                                    placeholder="Select fields to include (in order)"
+                                    v-bind:multiple="true">
+                                </vue-multiselect>
+                                <br>
+                                <span style="color: gray">SELECTED: {{fields_to_show}}</span>
+                            </td>
+                        </tr>
+
+
                     </table>
                 </div>
 
@@ -314,6 +338,11 @@ Vue.component('vue-plugin-rs',
 
                 size_choices: [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,75,100,125,150,200,250,300,400,500], // Options for pull-down menu
 
+                fields_to_show: [],             // Array of chosen field names.
+                                                // Note: kept separate from the field in object "this.current_metadata", in order to be reactive
+                                                //       when changed by the multiselect menu
+                fields_to_show_pre_edit: [],    // Array of chosen field names; a backup copy, in case edit is cancelled
+
                 record_being_editing: null, // The "ID" of the record currently being edited, if any;
                                             // for now, only one record at a time may be edited
 
@@ -331,8 +360,10 @@ Vue.component('vue-plugin-rs',
                  */
                 current_metadata: Object.assign({}, this.item_data),    // Initially clone from the original data passed to this component
 
+
                 // Clone of the above object, used to restore the original data in case of a Cancel or failed save
                 pre_edit_metadata: Object.assign({}, this.item_data),   // Initially clone from the original data passed to this component
+
 
                 // The following applies to the single record currently being edited (just one at most).
                 // This object contains the values bound to the editing fields,
@@ -372,6 +403,21 @@ Vue.component('vue-plugin-rs',
             this.get_fields();      // Fetch from the server the field names for this Recordset
 
             this.get_recordset(1);  // Fetch contents of the 1st block of the Recordset from the server
+
+
+            //this.current_metadata.fields_array = this.string_to_array(this.item_data.fields);
+            //this.pre_edit_metadata.fields_array = this.string_to_array(this.item_data.fields);
+        },
+
+
+        beforeMount()
+        {
+            console.log("~~~~~~~~~ In beforeMount()");
+            this.current_metadata.fields_array = this.string_to_array(this.item_data.fields);       // TODO: phase out
+            this.pre_edit_metadata.fields_array = this.string_to_array(this.item_data.fields);      // TODO: phase out
+
+            this.fields_to_show = this.string_to_array(this.item_data.fields);
+            this.fields_to_show_pre_edit = this.string_to_array(this.item_data.fields);     // A backup copy, in case edit is cancelled
         },
 
 
@@ -394,25 +440,14 @@ Vue.component('vue-plugin-rs',
                 return [from, to];
             },
 
+
+
             headers_to_include()
             {
-                //console.log(`this.current_metadata`);
-                //console.log(this.current_metadata);
-                if (! ("fields" in this.current_metadata))  {
-                    //console.log(`"fields" is NOT in the object`);
-                    return this.headers;    // Use all the headers
-                }
-                //else
-                    //console.log(`"fields" is in the object`);
+                if (this.fields_to_show.length > 0)     // If any headers are specified
+                    return this.fields_to_show;         //      then just return them
 
-                const fields = this.current_metadata.fields;
-
-                if (fields.trim() == "")
-                    return this.headers;    // Use all the headers
-
-                const arr = fields.split(",").map(x => x.trim());    // Turn into array, and zap leading/trailing blanks from each entry
-
-                return arr;
+                return this.headers;        // Otherwise, use ALL the headers
             }
 
         },
@@ -422,6 +457,47 @@ Vue.component('vue-plugin-rs',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
+
+            string_to_array(s)
+            // Generate an array of headers to use for the tabular listings
+            {
+                //console.log(`string_to_array`);
+                //console.log(s);
+
+                const fields = s;    // String of comma-separated field names.  EXAMPLE: "French, English, notes"
+
+                if (fields.trim() == "")
+                    return this.headers;    // Use all the headers
+
+                const arr = fields.split(",").map(x => x.trim());    // Turn into array, and zap leading/trailing blanks from each entry
+
+                return arr;
+            },
+
+
+
+            available_fields()
+            // Generate an array of all the available fields, for use by the multiselect component
+            {
+                // TODO: maybe not necessary?  Just return this.headers
+
+                //console.log(`this.item_data`);
+                //console.log(this.item_data);
+                if (! ("fields" in this.item_data))  {
+                    alert(`Missing "fields" is prop "this.item_data"`);
+                    return [];    // Nothing is available
+                }
+
+                const fields = this.item_data.fields;    // String of comma-separated field names.  EXAMPLE: "French, English, notes"
+
+                if (fields.trim() == "")
+                    return this.headers;    // Use all the headers
+
+                const arr = fields.split(",").map(x => x.trim());    // Turn into array, and zap leading/trailing blanks from each entry
+
+                return arr;
+            },
+
 
             insert_blanks(str)
             /*  For the purpose of facilitating the breakup by the browser
@@ -478,6 +554,7 @@ Vue.component('vue-plugin-rs',
                 // Restore the data to how it was prior to the aborted changes
 
                 this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone from pre_edit_metadata
+                this.fields_to_show = this.fields_to_show_pre_edit;                 // Restored from pre-edit data
 
                 this.recordset_editing = false;               // Exit the editing mode for the recordset definition
             },
@@ -695,6 +772,7 @@ Vue.component('vue-plugin-rs',
 
             save_recordset_edit()
             // Send a request to the server, to update or create this RECORDSET's definition
+            // (note: NOT to be confused with editing of individual records)
             {
                 console.log(`In save_recordset_edit(), for Recordset with URI '${this.current_metadata.uri}'`);
 
@@ -715,7 +793,8 @@ Vue.component('vue-plugin-rs',
                                     // Node properties (in particular,
                                     //     note that "class" and "label" are properties, not Schema data)
                                     filter_label: this.current_metadata.filter_label,     // Used to identify nodes considered part of  this Recordset
-                                    fields: this.current_metadata.fields,
+                                    //fields: this.current_metadata.fields,
+                                    fields: this.fields_to_show.join(", "),             // EXAMPLE: "name, city, rating"
                                     n_group: n_group,
                                     order_by: this.current_metadata.order_by,
                                     clause_key: this.current_metadata.clause_key,
@@ -731,7 +810,8 @@ Vue.component('vue-plugin-rs',
                                     class_name: this.item_data.class_name,
 
                                     filter_label: this.current_metadata.filter_label,  // Used to identify nodes considered part of  this Recordset
-                                    fields: this.current_metadata.fields,
+                                    //fields: this.current_metadata.fields,
+                                    fields: this.fields_to_show.join(", "),             // EXAMPLE: "name, city, rating"
                                     n_group: n_group,
                                     order_by: this.current_metadata.order_by,
                                     clause_key: this.current_metadata.clause_key,
@@ -905,7 +985,7 @@ Vue.component('vue-plugin-rs',
                         this.current_page
               */
             {
-                skip = (page-1) * this.current_metadata.n_group;
+                let skip = (page-1) * this.current_metadata.n_group;
 
                 //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.current_metadata.uri}'`);
 

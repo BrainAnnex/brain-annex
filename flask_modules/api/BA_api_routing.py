@@ -980,7 +980,7 @@ class ApiRouting:
                 #print(f"serve_document_cover() is returning the contents of data file, with file suffix `{suffix}`.  "
                 #      f"Serving with MIME type `{mime_type}`")
                 return response
-                
+
             except Exception as ex:
                 #err_details = f'Unable to locate the cover for a Document with entity ID "{uri}". {exceptions.exception_helper(ex)}'
                 #print(f"serve_document_cover() encountered the following error: {err_details}")
