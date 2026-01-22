@@ -112,25 +112,29 @@ Vue.component('vue-record-navigator-graph',
 
                             <template v-for="link in item.controls.links">  <!-- Show all the links (inbound and outbound) -->
 
-                                <span v-if="link[1]=='IN'" @click="toggle_linked_records(item, index, link[0], 'IN', link[2])"
+                                <div v-if="link[1]=='IN'" @click="toggle_linked_records(item, index, link[0], 'IN', link[2])"
                                       class="clickable-icon relationship-in"
                                       v-bind:title="'Show/Hide ' + link[2] + ' IN-bound link(s) \`' + link[0] + '\`'"
                                 >
                                     <!-- Inbound link : show the number of links, an icon, and the link's name -->
-                                    {{ link[2] }}
-                                    <img src="/BA/pages/static/graphics/20_inbound_4619661.png" alt="Show/Hide IN-bound links">
+                                    <span class="relationship-in">
+                                        {{ link[2] }}
+                                        <img src="/BA/pages/static/graphics/20_inbound_4619661.png" alt="Show/Hide IN-bound links">
+                                    </span>
                                     {{ link[0] }}
-                                </span>
+                                </div>
 
-                                 <span v-else @click="toggle_linked_records(item, index, link[0], 'OUT', link[2])"
+                                 <div v-else @click="toggle_linked_records(item, index, link[0], 'OUT', link[2])"
                                       class="clickable-icon relationship-out"
                                       v-bind:title="'Show/Hide ' + link[2] + ' OUT-bound link(s) \`' + link[0] + '\`'"
                                  >
                                     <!-- Outbound link : show the number of links, an icon, and the link's name -->
-                                    {{ link[2] }}
-                                    <img src="/BA/pages/static/graphics/20_outbound_4619660.png" alt="Show/Hide OUT-bound links">
+                                    <span class="relationship-out">
+                                        {{ link[2] }}
+                                        <img src="/BA/pages/static/graphics/20_outbound_white_4619660.png" alt="Show/Hide OUT-bound links">
+                                    </span>
                                     {{ link[0] }}
-                                </span>
+                                </div>
 
                                 &nbsp;
                             </template>

@@ -110,6 +110,8 @@ class InterGraph:
         Attempt to establish a connection to the Neo4j database, using the credentials stored in the object.
         In the process, create and save a driver object.
         """
+        # TODO: address occasional error "Failed to read from defunct connection"
+        #       (happens when connected to WiFi hot spot from cell data)
         assert self.host, "Host name must be specified in order to connect to the Neo4j database"
         assert self.credentials, "Neo4j database credentials (username and password) must be specified in order to connect to it"
 
