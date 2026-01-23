@@ -403,16 +403,12 @@ Vue.component('vue-plugin-rs',
             this.get_fields();      // Fetch from the server the field names for this Recordset
 
             this.get_recordset(1);  // Fetch contents of the 1st block of the Recordset from the server
-
-
-            //this.current_metadata.fields_array = this.string_to_array(this.item_data.fields);
-            //this.pre_edit_metadata.fields_array = this.string_to_array(this.item_data.fields);
         },
 
 
         beforeMount()
         {
-            console.log("~~~~~~~~~ In beforeMount()");
+            //console.log("~~~~~~~~~ In beforeMount()");
             this.current_metadata.fields_array = this.string_to_array(this.item_data.fields);       // TODO: phase out
             this.pre_edit_metadata.fields_array = this.string_to_array(this.item_data.fields);      // TODO: phase out
 
@@ -474,29 +470,6 @@ Vue.component('vue-plugin-rs',
                 return arr;
             },
 
-
-
-            available_fields()
-            // Generate an array of all the available fields, for use by the multiselect component
-            {
-                // TODO: maybe not necessary?  Just return this.headers
-
-                //console.log(`this.item_data`);
-                //console.log(this.item_data);
-                if (! ("fields" in this.item_data))  {
-                    alert(`Missing "fields" is prop "this.item_data"`);
-                    return [];    // Nothing is available
-                }
-
-                const fields = this.item_data.fields;    // String of comma-separated field names.  EXAMPLE: "French, English, notes"
-
-                if (fields.trim() == "")
-                    return this.headers;    // Use all the headers
-
-                const arr = fields.split(",").map(x => x.trim());    // Turn into array, and zap leading/trailing blanks from each entry
-
-                return arr;
-            },
 
 
             insert_blanks(str)
@@ -645,7 +618,7 @@ Vue.component('vue-plugin-rs',
                                  };     // Note: not using (at least for now, `uri` nor `class_name`)
 
                 // Go over each field name of the recordset
-                for (field_name of this.headers)    // Looping over array
+                for (let field_name of this.headers)    // Looping over array
                     post_obj[field_name] = this.record_latest[field_name];
 
                 console.log(`In save_record_edit(): about to contact the server at "${url_server_api}" .  POST object:`);
@@ -729,7 +702,7 @@ Vue.component('vue-plugin-rs',
                 //console.log("New record just entered:");
                 //console.log(this.new_record);
 
-                for (k in this.new_record ) {
+                for (let k in this.new_record ) {
                     //console.log(`key: '${k}' , value: ${this.new_record[k]}`);
                     post_obj[k] = this.new_record[k];
                 }
@@ -875,7 +848,6 @@ Vue.component('vue-plugin-rs',
 
 
 
-
             get_all_labels()
             /*  Make a server call to obtain all the node labels present in the database
                 EXAMPLE:   ['label_1', 'label_2']
@@ -976,7 +948,6 @@ Vue.component('vue-plugin-rs',
 
 
 
-
             get_recordset(page)
             /*  Request from the server the specified page (group of records) of the recordset.
                 If successful, it will update the values for:
@@ -1003,8 +974,8 @@ Vue.component('vue-plugin-rs',
 
                 const my_var = page;        // Optional parameter to pass
 
-                console.log(`About to contact the server at ${url_server_api} .  GET object:`);
-                console.log(get_obj);
+                //console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+                //console.log(get_obj);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
