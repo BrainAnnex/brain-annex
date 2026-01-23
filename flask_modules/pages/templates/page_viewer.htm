@@ -1212,6 +1212,7 @@ new Vue({
 
             // Assemble the data for a new Content Item.
             // Using an auto-incremented negative number as a temporary URI is a convention to indicate a NEW Content Item
+            let blank_record;
             if (class_name)     // If a class name was passed, store it
                 blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
             else  {               // No class name was provided.  TODO: obsolete - this branch no longer in use
@@ -1241,6 +1242,7 @@ new Vue({
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
 
             // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
+            let blank_record;
             if (class_name)   // If a class name was passed, store it
                 blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: "BOTTOM"};
             else {            // No class name was provided.  TODO: obsolete - this branch no longer in use
