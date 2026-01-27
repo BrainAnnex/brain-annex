@@ -1270,7 +1270,7 @@ new Vue({
                 return;
             }
 
-            url_server = `/BA/api/delete/${item.uri}/${item.class_name}`;
+            const url_server = `/BA/api/delete/${item.uri}/${item.class_name}`;
             ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_delete, custom_data: index});
 
         },  // delete_content_item()
@@ -1374,8 +1374,6 @@ new Vue({
             console.log(url_server);
 
             ServerCommunication.contact_server_OLD(url_server, {callback_fn: this.finish_move_down, custom_data: i});
-            //ServerCommunication.contact_server_TEXT(url_server, "", this.finish_move_down, i);
-
         }, // move_down_content_item
 
 
