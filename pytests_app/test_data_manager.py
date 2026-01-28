@@ -9,9 +9,6 @@ from app_libraries.data_manager import DataManager
 @pytest.fixture(scope="module")
 def db():
     neo_obj = GraphAccess(debug=False)
-    #GraphSchema.set_database(neo_obj)
-    #Categories.db = neo_obj
-    #Collections.set_database(neo_obj)
     DataManager.set_database(neo_obj)
     yield neo_obj
 

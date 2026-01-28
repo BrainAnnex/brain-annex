@@ -233,8 +233,8 @@ class ServerCommunication
                                                         //      TODO: turn into a method that first logs the first part of the response
                                                         //            (helpful in case of parsing errors)
         .then(server_response => {                      // Manage the server response
-            console.log("Server response received by send_data_to_server(): ");
-            console.log(server_response);
+            //console.log("Server response received by send_data_to_server(): ");
+            //console.log(server_response);
             // Check if the response indicates failure
             const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
             if (error_msg != "")    // If server reported failure

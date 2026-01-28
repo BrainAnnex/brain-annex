@@ -2242,7 +2242,7 @@ class ApiRouting:
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
 
-            print("In assemble_graph_json() -  pars_list: ", pars_list)
+            #print("In assemble_graph_json() -  pars_list: ", pars_list)
 
             if type(pars_list) != list:
                 err_details = f"/assemble-graph : the passed JSON value should be a list (array); " \

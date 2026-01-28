@@ -1249,6 +1249,50 @@ class DataManager:
 
 
     @classmethod
+    def visit_node_neighborhood(cls, node_internal_id : int|str, known_neighbors :[int|str]) -> dict:
+        """
+        Given a database node, identified by its internal ID,
+        locate all its neighbors EXCEPT the specified ones,
+        and return the full data for those neighbors, their links to the original node, and their links to each other (if applicable).
+        The data is returned in a format compatible with the Cytoscape visualization.
+        Note: the original node is NOT returned.
+
+        :param node_internal_id:    The internal database ID of the node whose neighbors we want to explore
+        :param known_neighbors:     (Possibly empty) list of internal database ID nodes to exclude
+        :return:                    A dict with 2 keys: "nodes" and "edges"
+        """
+
+        # Two other approaches considered but not utilized:
+        #neighbors = cls.db.get_parents_and_children(internal_id=node_internal_id)
+        #neighbors_alt = cls.db.explore_neighborhood(start_id=node_internal_id, max_hops=1, include_start_node=False)
+
+        q = '''
+            MATCH (node)--(neighbor)
+            WHERE id(node) = $internal_id
+            RETURN id(neighbor) AS neighbor_id
+            '''
+        data_binding = {"internal_id": node_internal_id}
+
+        result = cls.db.query(q, data_binding=data_binding, single_column="neighbor_id")
+
+        neighbor_set = set(result)
+        known_neighbors_set = set(known_neighbors)
+
+        new_neighbors = neighbor_set - known_neighbors_set  # Set difference
+        subgraph = {node_internal_id} | new_neighbors       # Set union
+
+        graph = PyGraphVisual(db=cls.db)
+
+        nodes, edges = graph.assemble_graph(id_list = list(subgraph))
+
+        trimmed_nodes = [n for n in nodes if n["internal_id"] != node_internal_id]
+
+        return {"nodes": trimmed_nodes, "edges": edges}
+
+
+
+
+    @classmethod
     def extract_website_title(cls, url :str) -> str:
         """
         Retrieve the Title of a remote webpage, given its URL

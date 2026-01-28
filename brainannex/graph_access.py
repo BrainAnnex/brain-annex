@@ -17,9 +17,7 @@ from typing import Union, List, Tuple
     ----------------------------------------------------------------------------------
     HISTORY and AUTHORS:
     
-        GraphAccess was created, and is being maintained, primarily by Julian West,
-        in the context of the BrainAnnex.org open-source project.
-        For change log, see the "LIBRARIES" entries in https://brainannex.org/history
+        For change log, see  https://brainannex.org/history
                 
         Reverse chronological order:
                
@@ -27,11 +25,11 @@ from typing import Union, List, Tuple
                 to emphasize potential use with other graph databases besides Neo4j.
                 The database-specific portions were extracted and separated 
                 into a family of parent classes ("InterGraph"), one per supported database:
-                currently supported are versions 4 and 5 of the Neo4j database
+                currently supported are the versions 4 and 5 of the Neo4j database
         
         - NeoAccess is a fork of NeoInterface; it started out in late 2021.
                 This library was released independently on PyPI for a period of time, but
-                eventually got re-incorporated into the broader library `brainannex`
+                eventually got re-integrated into the broader library `brainannex`
 
         - NeoInterface (the parent library)
                 was co-authored by Alexey Kuznetsov and Julian West in 2021,
@@ -40,16 +38,14 @@ from typing import Union, List, Tuple
                 NeoInterface is in part based on the earlier library Neo4jLiaison,
                 as well as on a library developed by Alexey Kuznetsov.
 
-        - Neo4jLiaison, an ancestor library now obsoleted, was authored by Julian West in 2020
+        - Neo4jLiaison, an ancestor library now obsolete, was authored by Julian West in 2020
                 (https://github.com/BrainAnnex/neo4j-liaison)
 
     ----------------------------------------------------------------------------------
 	MIT License
 
-        Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
+        Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project.
 
-        This file is part of the "Brain Annex" project (https://BrainAnnex.org),
-        though it's released independently.
         See "AUTHORS", above, for full credits.
 	----------------------------------------------------------------------------------
 '''
@@ -1692,17 +1688,16 @@ class GraphAccess(InterGraph):
 
     def get_parents_and_children(self, internal_id :int|str) -> ():
         """
-        Fetch all the nodes connected to the given one by INbound relationships to it (its "parents"),
-        as well as by OUTbound relationships to it (its "children")
-        TODO: allow specifying a relationship name to follow
+        Fetch all the nodes connected to the given one by IN-bound relationships to it (its "parents"),
+        as well as by OUT-bound relationships to it (its "children")
 
         :param internal_id: The internal database ID of the node of interest
         :return:            A dictionary with 2 keys: 'parent_list' and 'child_list'
                                 The values are lists of dictionaries with 3 keys: "internal_id", "label", "rel"
                                 EXAMPLE of individual items in either parent_list or child_list:
-                                {'internal_id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}
+                                {'internal_id': 163, 'labels': ['Car'], 'rel': 'OWNS'}
         """
-
+        # TODO: allow specifying a relationship name to follow
         # Fetch the parents
         cypher = f"MATCH (parent)-[inbound]->(n) WHERE id(n) = {internal_id} " \
                  "RETURN id(parent) AS internal_id, labels(parent) AS labels, type(inbound) AS rel"
