@@ -91,7 +91,20 @@ Vue.component('vue-cytoscape-5',
 
                     <!-- ...else, if a node or edge is selected on the plot -->
                     <p v-else class="legend-block">
-                        SELECTED:
+
+                        <p v-if="selected_element_type == 'node'" style="border: 1px solid #CCC; background-color: rgb(215, 215, 215); padding: 8px">
+                            HIDE NODE:<br><br>
+                            <button  @click="hide_node_by_id(selected_element.id)">Node only</button>
+                            <br><br>
+                            <button  @click="hide_node_and_orphans(selected_element.id)">And orphaned neighbors</button>
+                            <br><br>
+                            <button  @click="hide_and_bridge_gap(selected_element.id)">Also bridge gap</button>
+                        </p>
+
+                        <p v-if="selected_element_type == 'node'">
+                            <b>SELECTED NODE</b>
+                        </p>
+
                         <template v-for="label_name in selected_node_labels">
                             <div class="label" v-bind:style="{'background-color': color_mapping[label_name]}">{{label_name}}</div>
                         </template>
@@ -101,16 +114,6 @@ Vue.component('vue-cytoscape-5',
                             <span v-html="item"></span>
                             <br>
                         </template>
-
-                        <br><br>
-                        <template v-if="selected_element_type == 'node'">
-                            <button  @click="hide_node_by_id(selected_element.id)">Hide (node only)</button>
-                            <br><br>
-                            <button  @click="hide_node_and_orphans(selected_element.id)">Hide (incl. orphaned neighbors)</button>
-                            <br><br>
-                            <button  @click="hide_and_bridge_gap(selected_element.id)">Hide (and bridge gap)</button>
-                        </template>
-                        <br>
                     </p>
 
 
