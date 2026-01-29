@@ -1,8 +1,7 @@
 # *** CAUTION! ***  The database gets cleared out during some of the tests!
 
 import pytest
-from neoaccess import GraphAccess
-from brainannex.graph_schema.neo_schema import GraphSchema
+from brainannex import GraphAccess, GraphSchema
 
 
 

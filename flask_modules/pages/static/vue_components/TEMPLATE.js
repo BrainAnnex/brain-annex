@@ -88,7 +88,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 ---------   SERVER CALLS   ---------
              */
 
-            server_communication_POST()          /* "POST"  version */
+            server_communication_POST()          /* *** "POST" ***  version */
             /* Initiate request to server
              */
             {
@@ -118,7 +118,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             },
 
 
-            server_communication_GET()          /* "GET"  version */
+            server_communication_GET()          /*  *** "GET" ***  version */
             /* Initiate request to server
              */
             {
@@ -144,6 +144,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
 
+            // COMMON handler, for GET/POST
             finish_server_communication(success, server_payload, error_message, custom_data)
             /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
 
