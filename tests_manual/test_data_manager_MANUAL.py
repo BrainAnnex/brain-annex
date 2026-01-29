@@ -16,9 +16,14 @@ def db():
 
 
 
-def test_foo(db):
+def test_extract_node_neighborhood(db):
 
-    result = DataManager.visit_node_neighborhood(node_internal_id=853, known_neighbors=[13, 23488, 1967, 1])
+    result = DataManager.extract_node_neighborhood(node_internal_id=535,
+                                                   known_neighbors=['2', '24176', '72817', '24052', '24053', '24054', '72698', '24060', '24061', '24062', '24063'],
+                                                  max_neighbors=10)
+
+    #result = DataManager.extract_node_neighborhood(node_internal_id=2, known_neighbors=[],
+    #                                               max_neighbors=10)
 
     print("NODES:")
     for n in result["nodes"]:

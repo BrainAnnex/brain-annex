@@ -1249,17 +1249,42 @@ class DataManager:
 
 
     @classmethod
-    def visit_node_neighborhood(cls, node_internal_id : int|str, known_neighbors :[int|str]) -> dict:
+    def extract_node_neighborhood(cls, node_internal_id :int|str, known_neighbors :[int|str], max_neighbors=10) -> dict:
         """
         Given a database node, identified by its internal ID,
         locate all its neighbors EXCEPT the specified ones,
-        and return the full data for those neighbors, their links to the original node, and their links to each other (if applicable).
+        and return the full data for those neighbors,
+        their links to the original node, and their links to each other (if applicable).
         The data is returned in a format compatible with the Cytoscape visualization.
-        Note: the original node is NOT returned.
+        Note: the original node is NOT returned (but links to it are)
+
+        Any date/datetime value will first be "sanitized"
+        into a string representation of the date;
+        the time portion, if present, will get dropped
 
         :param node_internal_id:    The internal database ID of the node whose neighbors we want to explore
         :param known_neighbors:     (Possibly empty) list of internal database ID nodes to exclude
+        :param max_neighbors:       [OPTIONAL] The max number of NEW neighbors to return
         :return:                    A dict with 2 keys: "nodes" and "edges"
+                                        EXAMPLE:
+                                                    "nodes": [
+                                                        {
+                                                            "_node_labels": ["Car", "Vehicle"],
+                                                            "date_created": "2025/06/23",
+                                                            "id": 23487,
+                                                            "internal_id": 23487,
+                                                            "brand": "Toyota",
+                                                            "color": white
+                                                        }
+                                                    ],
+                                                    "edges": [
+                                                        {
+                                                            "id": "edge-29",
+                                                            "name": "OWNS",
+                                                            "source": 23487,
+                                                            "target": 853
+                                                        }
+                                                    ]
         """
 
         # Two other approaches considered but not utilized:
@@ -1275,20 +1300,36 @@ class DataManager:
 
         result = cls.db.query(q, data_binding=data_binding, single_column="neighbor_id")
 
+        known_neighbors = [int(n) for n in known_neighbors]     # TODO: The int() conversion is database-specific!
+
         neighbor_set = set(result)
         known_neighbors_set = set(known_neighbors)
 
         new_neighbors = neighbor_set - known_neighbors_set  # Set difference
-        subgraph = {node_internal_id} | new_neighbors       # Set union
+
+        if max_neighbors is not None:
+            # Discard as many elements as needed, to bring the set size to within its allowed max
+            while len(new_neighbors) > max_neighbors: new_neighbors.pop()
+
+        subgraph = {node_internal_id} | new_neighbors       # Set union: put together the original node with the selected neighbors
+        # `subgraph` is the set of the internal ID's of the original node, and some of all of its immediate neighbors
+        #print("subgraph: ", subgraph)
 
         graph = PyGraphVisual(db=cls.db)
 
         nodes, edges = graph.assemble_graph(id_list = list(subgraph))
+        # Make an adjustment to all the elements of the `nodes` list
+        for n in nodes:
+            n["id"] = str(n["id"])
 
-        trimmed_nodes = [n for n in nodes if n["internal_id"] != node_internal_id]
+        trimmed_nodes = [n for n in nodes if n["internal_id"] != node_internal_id]  # Drop the original node
+        # Make an adjustment to all the elements of the `edges` list
+        for e in edges:
+            e["source"] = str(e["source"])
+            e["target"] = str(e["target"])
+            e["id"] = f"edge-{e['source']}--{e['target']}"  # TODO: manage in PyGraphVisual
 
         return {"nodes": trimmed_nodes, "edges": edges}
-
 
 
 
