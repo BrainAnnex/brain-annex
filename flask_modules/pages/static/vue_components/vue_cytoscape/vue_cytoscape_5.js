@@ -245,7 +245,7 @@ Vue.component('vue-cytoscape-5',
 
 
 
-        // ---------------------  UPDATED  ----------------------
+        // ---------------------  UPDATED HOOK  ----------------------
         updated()
         /* The "updated" Vue hook is invoked when the data changes, after the virtual DOM is re-rendered.
             It happens when the props of the component change,
@@ -258,7 +258,7 @@ Vue.component('vue-cytoscape-5',
 
 
 
-        // ---------------------  MOUNTED  ----------------------
+        // ---------------------  MOUNTED HOOK  ----------------------
         mounted()
         /*  Note: the "mounted" Vue hook is invoked later in the process of launching this component;
             waiting this late is needed.
@@ -448,7 +448,7 @@ Vue.component('vue-cytoscape-5',
                 cy_object.on('dblclick', 'node', this.handle_double_click);// A double-click on a node on the graph
 
                 /*
-                // EXAMPLES of adding nodes
+                // EXAMPLES of adding individual nodes
                 cy_object.add([
                     { data: { id: 4, _node_labels: ['import'] , name: 'Restaurants' }, position: {x: 80, y: 100} }
                 ]);
@@ -528,7 +528,7 @@ Vue.component('vue-cytoscape-5',
 
 
             /*
-                EVENT HANDLERS
+                ------  EVENT HANDLERS  ------
              */
 
 
@@ -593,17 +593,135 @@ Vue.component('vue-cytoscape-5',
                 :param ev:  Event data object, which contains the key `target`
              */
             {
-                console.log("In handle_double_click()");
                 const node = ev.target;                 // A cytoscape.Collection (1 node wrapped in a Collection)
 
                 const cyto_node_data_obj = node.data();// A JavaScript object containing the node’s data fields:
                                                         // the key 'id',
                                                         // plus typically '_node_labels', and all the node properties
+                console.log("In handle_double_click().  Node data:");
                 console.log({ ...cyto_node_data_obj }); // Log a snapshot of the object
 
                 const node_id = cyto_node_data_obj.id;
 
-                alert("Double-click actions not yet implemented");
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/extract-node-neighborhood";
+
+                // Get neighboring nodes in the graph (immediate neighbors)
+                const neighbor_nodes = node.neighborhood().nodes();     // Filter for nodes only
+                //console.log("Neighbor nodes:");
+                //console.log({ ...neighbor_nodes }); // Log a snapshot
+                const neighbor_ids = neighbor_nodes.map(n => n.id());       // Extract the ID's from each node in the Collection
+
+                const post_data =  {"node_internal_id" : cyto_node_data_obj.internal_id,
+                                    "known_neighbors" : neighbor_ids,
+                                    "max_neighbors" : 10};
+
+                //const my_var = "some value";        // Optional parameter to pass thru, if needed
+
+                console.log(`In handle_double_click(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_data);
+
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_data,
+                             json_encode_send: true,
+                             callback_fn: this.finish_handle_double_click  //, custom_data: my_var
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_handle_double_click(success, server_payload, error_message, custom_data)
+            /* Callback function to wrap up the action of handle_double_click() upon getting a response from the server.
+
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+                custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+            */
+            {
+                console.log("Finalizing the handle_double_click() operation...");
+                //console.log(`Custom pass-thru data:`);
+                //console.log(custom_data)
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    const new_nodes = server_payload.nodes;
+                    console.log(new_nodes);
+                    const new_edges = server_payload.edges;
+                    console.log(new_edges);
+                    this.status_message = `Operation completed`;
+
+                    this.nodes.push(...new_nodes);  // It mutates the array this.nodes
+                    //this.edges.push(...new_edges);  // It mutates the array this.edges
+                    for (let ne of new_edges)
+                        if (this.edge_exists(ne))
+                            console.log(`Skipping adding edge from ${ne.source} to ${ne.target}`)
+                        else
+                            this.edges.push(ne);
+
+                    /*
+                    if (new_nodes.length > 0)
+                        this.$options.cy_object.add([
+                            { data: new_nodes[0] }
+                        ]);
+                    if (new_nodes.length > 1)
+                        this.$options.cy_object.add([
+                            { data: new_nodes[1] }
+                        ]);
+                    */
+
+                    /*
+                    this.$options.cy_object.add(
+                        new_nodes.map(data => ({
+                                        group: 'nodes',
+                                        data: data
+                                  })
+                        )
+                    );
+
+                    this.$options.cy_object.add(
+                        new_edges.map(data => ({
+                                        group: 'edges',
+                                        data: data
+                                  })
+                        )
+                    );
+                    */
+
+                    this.$options.cy_object.batch(() => {
+
+                        this.$options.cy_object.add([
+                          ...new_nodes.map(data => ({ group: 'nodes', data: data })),
+                          ...new_edges.map(data => ({ group: 'edges', data: data }))
+                        ]);
+
+
+                        // Layout must be run because by default the new nodes
+                        // all get places at the same default position
+                        this.$options.cy_object.layout({
+                            name: this.plot_layout_style,   // Such as 'grid', 'breadthfirst', etc.
+                            animate: true
+                        }).run();
+
+                    });
+
+                    this.clear_legend();        // Unset the details of the node selection (in the legend)
+                    this.extract_names();       // Extract the label names and the edge names
+
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    //...
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                //...
             },
 
 
@@ -641,6 +759,8 @@ Vue.component('vue-cytoscape-5',
 
             hide_node_by_id(node_id)
             /*
+                Hide a single node, specified by its ID
+
                 :param node_id: A string (always a string!) with the Cytoscape ID of a node
              */
             {
@@ -660,6 +780,9 @@ Vue.component('vue-cytoscape-5',
 
             hide_node_and_orphans(node_id)
             /*
+                Hide the given node,
+                as well as all its immediate neighbors whose only links are to the given node.
+
                 :param node_id: A string (always a string!) with the Cytoscape ID of a node
              */
             {
@@ -667,7 +790,7 @@ Vue.component('vue-cytoscape-5',
 
                 const node = this.$options.cy_object.getElementById(node_id);
 
-                // Get neighboring nodes
+                // Get neighboring nodes (immediate neighbors)
                 const neighbor_nodes = node.neighborhood().nodes();     // Filter for nodes only
                 console.log("Neighbor nodes:");
                 console.log({ ...neighbor_nodes }); // Log a snapshot
@@ -714,6 +837,7 @@ Vue.component('vue-cytoscape-5',
                         console.log("hide_and_bridge_gap(): bridge will be built");
                         node.remove();
 
+                        // Create a new edge, to represent a "bridge" spanning the deleted node
                         this.$options.cy_object.add({
                             group: 'edges',
                             data: {
@@ -756,7 +880,7 @@ Vue.component('vue-cytoscape-5',
 
                 this.clear_legend();        // Unset the details of the node selection (in the legend)
 
-                this.extract_names();
+                this.extract_names();       // Extract the label names and the edge names
             },
 
 
@@ -947,25 +1071,6 @@ Vue.component('vue-cytoscape-5',
                     }
                 }
 
-                /*
-                if ("name" in node)
-                    return "name";
-                if ("Name" in node)
-                    return "Name";
-                if ("title" in node)
-                    return "title";
-                if ("Title" in node)
-                    return "Title";
-                if ("caption" in node)
-                    return "caption";
-                if ("Caption" in node)
-                    return "Caption";
-                if ("model" in node)
-                    return "model";
-                if ("brand" in node)
-                    return "brand";
-                */
-
                 // Nothing could be found; fall back to the generic default
                 //console.log("map_labels_to_caption_field(): no typical common names identified. Falling back to the generic default");
                 return default_caption_field_name;
@@ -1122,7 +1227,6 @@ Vue.component('vue-cytoscape-5',
                 //console.log(`In locate_node_by_id().  Searching for node with id: ${node_id}`);
                 //console.log(typeof node_id);
 
-
                 // Loop over array of nodes
                 //for (el of this.nodes)  {      // el is an object that represents a node
                 for (i in this.nodes) {   // Note:  i will be an integer, not an array element!!
@@ -1146,8 +1250,8 @@ Vue.component('vue-cytoscape-5',
 
 
             locate_adjacent_edges(node_id)
-            /*  Locate and return the indexes of all the element of the this.edges array
-                whose 'source' or 'target' matches the passed node 'id' value.
+            /*  Locate and return the indexes of all the elements of the this.edges array
+                whose either 'source' or 'target' matches the passed node 'id' value.
                 The index values are returned in REVERSE numerical position (for ease of deleting them
                 with the splice function, for example)
 
@@ -1172,8 +1276,20 @@ Vue.component('vue-cytoscape-5',
                 }
 
                 return adjacent_edges;
-            }
+            },
 
+
+            edge_exists(edge)
+            {
+                const source = edge.source;
+                const target = edge.target;
+
+                for (let e of this.edges)
+                    if ((e.source == source) && (e.target == target))
+                        return true;
+
+                return false;
+            }
 
 
         }  // METHODS

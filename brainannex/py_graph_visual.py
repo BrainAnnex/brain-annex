@@ -494,6 +494,7 @@ class PyGraphVisual:
                             EXAMPLE:
                             [{'internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
         """
+        # TODO: move to GraphAccess
         assert type(id_list) == list, \
             f"initialize_graph(): argument `id_list` must be a list; it is of type {type(id_list)}"
 
@@ -517,10 +518,10 @@ class PyGraphVisual:
     def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
-        as returned by GraphAccess.get_nodes() - construct and save inside this pyhon object
+        as returned by GraphAccess.get_nodes() - construct, and save inside this pyhon object,
         the visualization data for them.
 
-        Each dictionary entry MUST have a key named "internal_id".
+        Each passed dictionary entry MUST have a key named "internal_id".
         If any key named "id" is found, it get automatically renamed "_id_original" (since "id" is used by the visualization software);
         if "_id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
         Though not required, a key named "_node_labels" is typically present as well.
@@ -635,9 +636,11 @@ class PyGraphVisual:
 
     def assemble_graph(self, id_list :[int|str]) -> ([dict],[dict]):
         """
-        Given a list of node internal id's, construct and return the data needed by the Cytoscape graph visualization.
+        Given a list of node internal id's, construct and return
+        the data needed by the Cytoscape graph visualization (including all properties).
 
-        Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
+        Any date/datetime value found in the database will first be "sanitized"
+        into a string representation of the date;
         the time portion, if present, will get dropped
 
         :param id_list: A list of internal id's of database nodes
@@ -654,10 +657,10 @@ class PyGraphVisual:
     def link_node_groups(self, group1 :[int|str], group2 :[int|str]) -> None:
         """
         Search the database for any edges from any of the nodes in the 1st group, to any node in the 2nd group.
-        Any located edge will be added to the visualization data stored in this object
+        Any located edge will be added to the visualization data stored in this object.
 
-        :param group1:  List of the internal databased IDs of the 1st group of nodes
-        :param group2:  List of the internal databased IDs of the 2nd group of nodes
+        :param group1:  List of the internal databased IDs of the 1st group of database nodes
+        :param group2:  List of the internal databased IDs of the 2nd group of database nodes
         :return:        None
         """
         q = '''

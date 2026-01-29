@@ -2,9 +2,7 @@
 
 
 import pytest
-from brainannex.utilities.comparisons import compare_unordered_lists, compare_recordsets
-from neoaccess import GraphAccess
-from brainannex.graph_schema.neo_schema_OBSOLETE import GraphSchema_OBSOLETE, SchemaCache
+from brainannex import GraphAccess, GraphSchema
 
 
 # Provide a database connection that can be used by the various tests that need it

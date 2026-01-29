@@ -42,7 +42,11 @@ class ServerCommunication
                                             callback_fn = undefined,
                                             custom_data = undefined
                                         } = {} )
-    /*  Send a request to the server at the specified URL
+    /*  TODO: obsolete.  Protocol to switch to newer version:
+                if post_obj or post_body is used, insert :   method: "POST"
+                    and rename post_obj or post_body to data_obj
+
+        Send a request to the server at the specified URL
         The expected eventual payload is a JSON string
 
             method:         Either "GET" or "POST" - optional, by default "GET"
@@ -229,8 +233,8 @@ class ServerCommunication
                                                         //      TODO: turn into a method that first logs the first part of the response
                                                         //            (helpful in case of parsing errors)
         .then(server_response => {                      // Manage the server response
-            console.log("Server response received by send_data_to_server(): ");
-            console.log(server_response);
+            //console.log("Server response received by send_data_to_server(): ");
+            //console.log(server_response);
             // Check if the response indicates failure
             const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
             if (error_msg != "")    // If server reported failure

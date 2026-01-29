@@ -112,6 +112,37 @@ class ApiRouting:
 
 
     @classmethod
+    def parse_json_from_request_body(cls):
+        """
+        Extract and parse the JSON-encoded POST body.
+        The calling function ought to account for the possibility of errors,
+        for example arising from a request lacking mimetype indicates "application/json",
+        or a JSON string that isn't parsable
+
+        :param api_name:    String to include in case of errors
+        :return:            The python data decoded from the JSON string that was passed in the POST body
+        """
+        # Extract and parse the JSON-encoded POST body
+        request_parameters = request.get_json() # This parses the JSON-encoded string in the POST message,
+                                                # provided that mimetype indicates "application/json";
+                                                # otherwise, it'll return None
+                                                # An error will occur if the JSON string is not parsable
+        #print("request_parameters: ", request_parameters)
+        # `request_parameters` could be a string, int, list, dict, or other complex data structured passed by the client
+
+        # Note: `request_parameters` will be None if the request's mimetype was not "application/json";
+        # give a clear error message in such a case (otherwise, a None value is passed thru,
+        # and will cause obscure error messages downstream)
+        # See:  https://web.archive.org/web/20220622001546/https://flask.palletsprojects.com/en/1.1.x/api/
+        #       "If the mimetype does not indicate JSON (application/json, see is_json()), this returns None"
+        assert request_parameters is not None, \
+            "the client request does not have the expected MIME type of 'application/json'"
+
+        return request_parameters
+
+
+
+    @classmethod
     def explain_flask_request(cls, request_obj :request) -> None:
         """
         Print out a bunch of information to elucidate the contents
@@ -2205,7 +2236,7 @@ class ApiRouting:
 
         @bp.route('/assemble-graph', methods=['POST'])
         @login_required
-        def assemble_graph_json():
+        def assemble_graph_api():
             """
             Construct and return the data needed by the Cytoscape graph visualization,
             to display all the requested nodes, as well as any edges among them.
@@ -2221,18 +2252,20 @@ class ApiRouting:
                             The first element in the pair is a list of dicts with the node data;
                             the second  element in the pair is a list of dicts with the edge data
             """
-            # TODO: use this as a ***MODEL*** of future JSON web api calls
-            # Extract and parse the POST value
+            # TODO: use this as a ***MODEL*** of future JSON web api calls  (turn some common elements into helper functions)
+
+            # Extract and parse the JSON-encoded POST body
             try:
+                #TODO - switch to using:    request_parameters = cls.parse_json_from_request_body()
                 pars_list = request.get_json()      # This parses the JSON-encoded string in the POST message,
                                                     # provided that mimetype indicates "application/json";
                                                     # otherwise, it'll return None
                                                     # An error will occur if the JSON string is not parsable
-                # EXAMPLE: [34, 2, 412]    The individual list entries are internal database ID's (int or str)
-                # See: https://flask.palletsprojects.com/en/1.1.x/api/
+
                 # Note: `pars_list` will be None if the request's mimetype was not "application/json";
                 # give a clear error message in such a case (otherwise, the None value is passed thru,
                 # and will cause obscure error messages downstream)
+                # See: https://flask.palletsprojects.com/en/1.1.x/api/
                 assert pars_list is not None, \
                     "the client request does not have the expected MIME type 'application/json'"
             except Exception as ex:
@@ -2242,7 +2275,8 @@ class ApiRouting:
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
 
-            print("In assemble_graph_json() -  pars_list: ", pars_list)
+            #print("In assemble_graph_json() -  pars_list: ", pars_list)
+            # EXAMPLE: [34, 2, 412]    The individual list entries are internal database ID's (int or str)
 
             if type(pars_list) != list:
                 err_details = f"/assemble-graph : the passed JSON value should be a list (array); " \
@@ -2264,6 +2298,97 @@ class ApiRouting:
             #print(f"assemble_graph_json() is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/extract-node-neighborhood', methods=['POST'])
+        @login_required
+        def extract_node_neighborhood_api():
+            """
+            Construct and return the data needed by the Cytoscape graph visualization,
+            to display all the neighbors of the requested node,
+            EXCEPT any specified ones to avoid,
+            as well as any edges among them and to the original node.
+            The original node is NOT returned.
+
+            Any date/datetime value will first be "sanitized"
+            into a string representation of the date;
+            the time portion, if present, will get dropped
+
+            POST VARIABLES:
+                json    (REQUIRED) A JSON-encoded dict:
+                            "node_internal_id"      The internal database ID (int or str)
+                                                        of the node whose neighbors we want to explore
+                            "known_neighbors:       (Possibly empty) list of internal database ID nodes to exclude
+
+            ~~~ EXAMPLE ~~~
+                http://localhost:5000/BA/api/extract-node-neighborhood
+                using a POST with body:  {"node_internal_id" : 853, "known_neighbors" : [13, 1967], "max_neighbors" : 25}
+
+                Returning:
+                    {
+                        "status": "ok",
+                        "payload": {
+                            "nodes": [
+                                {
+                                    "_node_labels": ["Car", "Vehicle"],
+                                    "date_created": "2025/06/23",
+                                    "id": 23487,
+                                    "internal_id": 23487,
+                                    "brand": "Toyota",
+                                    "color": white
+                                }
+                            ],
+                            "edges": [
+                                {
+                                    "id": "edge-29",
+                                    "name": "OWNS",
+                                    "source": 23487,
+                                    "target": 853
+                                }
+                            ]
+                        }
+                    }
+
+            :return:    A dict with 2 keys: "nodes" and "edges",
+                            in a format ready to be passed to the Cytoscape visualization module
+            """
+            # Extract and parse the JSON-encoded POST body
+            try:
+                request_parameters = cls.parse_json_from_request_body()
+            except Exception as ex:
+                err_details = f"/extract-node-neighborhood : Unable to parse JSON request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            print("In extract-node-neighborhood() -  request_parameters: ", request_parameters)
+            # EXAMPLE:  {"node_internal_id": 853, "known_neighbors": [13, 1967], "max_neighbors": 2}}
+
+            if type(request_parameters) != dict:
+                err_details = f"/extract-node-neighborhood : the passed JSON value should be a dictionary; " \
+                              f"instead, it's of type {type(request_parameters)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                result = DataManager.extract_node_neighborhood(node_internal_id=request_parameters.get("node_internal_id"),
+                                                               known_neighbors=request_parameters.get("known_neighbors"),
+                                                               max_neighbors=request_parameters.get("max_neighbors"))
+
+                response_data = {"status": "ok", "payload": result}                 # Successful termination
+            except Exception as ex:
+                err_details = f"/extract-node-neighborhood : unable to construct the Cytoscape graph visualization data.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+
+            print(f"/extract-node-neighborhood is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
 
