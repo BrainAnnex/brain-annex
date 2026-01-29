@@ -114,7 +114,7 @@
                        [[label]]
                        </option>
                 </select>
-                <span style="color: gray">REQUIRED</span>
+                <span style="color: gray">(Optional but RECOMMENDED)</span>
             </td>
 
         </tr>
@@ -162,8 +162,8 @@
     </table>
 
     <br>
-    <button @click="submit_query" v-bind:disabled="!label">
-        Submit query <span v-if="!label">(MUST pick a label first)</span>
+    <button @click="submit_query">
+        Submit query <span v-if="!label">(Warning: query may be slow if you don't pick a label)</span>
     </button>
 
 </div>  <!-- class='form-box' -->
