@@ -105,7 +105,7 @@
         </tr>
         -->
         <tr>
-            <td>Label Name</td>
+            <td style="font-weight: bold">Label Name</td>
 
             <td>
                 <select v-model="label" @change='lookup_fields'>
@@ -122,7 +122,7 @@
         <tr>
             <td style="border-left: 2px solid green; padding-left: 3px;">Key Names</td>
             <td style="padding-top: 10px">
-                <!--SELECTED: [[selected_fields]]<br>-->
+                <!-- SELECTED: [[selected_fields]]  /  [[key_name]]<br> -->
                 <vue-multiselect
                     v-model="selected_fields"
                     v-bind:options=available_fields
@@ -133,13 +133,17 @@
             </td>
         </tr>
 
-        <!-- Maybe turn this row into part of an optional "advanced" mode
+        <!-- Maybe turn this row into part of an optional "advanced" mode -->
         <tr>
-            <td style="border-left: 2px solid green; padding-left: 3px;">Key Name (typed in)</td><td><input type="text" size="50" v-model="key_name">
-            <span class="form-comment">If provided, it takes priority over values from menu</span>
+            <td style="border-left: 2px solid green; padding-left: 3px; color: #555; font-size:12px">
+                Additional Key Name
+            </td>
+            <td>
+                <input type="text" size="50" v-model="key_name">
+                <span class="form-comment">Type in just 1 name</span>
             </td>
         </tr>
-        -->
+
 
         <tr>
             <td style="border-left: 2px solid green; padding-left: 3px;">Key Value</td>
@@ -154,7 +158,7 @@
             </td>
         </tr>
         <tr>
-            <td style="color:gray">SKIP</td><td><input type="text" size="2" v-model="skip"></td>
+            <td style="color:#555; font-size:12px">SKIP</td><td><input type="text" size="2" v-model="skip"></td>
         </tr>
         <tr>
             <td style="font-weight: bold">LIMIT</td><td><input type="text" size="2" v-model="limit"></td>
@@ -240,7 +244,7 @@ new Vue({
         limit: 10,
 
         available_fields: [],       // Array of field names for dbase node (Used by the "multiselect" Vue component)
-        selected_fields: null,      // Used by the "multiselect" Vue component, to hold an array of chosen field names
+        selected_fields: [],        // Used by the "multiselect" Vue component, to hold an array of chosen field names
 
         query_result: [],           // Array of objects, with one entry per record returned by the search
         query_result_summary: "",   // The total count (total number of nodes with requested label in dbase)
@@ -307,17 +311,19 @@ new Vue({
 
 
         submit_query()
-        // Invoked when the user presses the "Submit Query" button, to perform a dbase search
+        // Invoked when the user presses the "Submit query" button, to perform a dbase search
         {
             // Send the request to the server, using a GET
             const url_server_api = "/BA/api/get_filtered";
 
-            var fields_to_search_for = "";
+            let fields_to_search_for = [];                                  // Array of field names to use in the search (with implicit OR)
 
-            if (this.key_name)
-                fields_to_search_for = this.key_name;           // A manually-typed field name over-rides choices from menu
-            else if (this.selected_fields)
-                fields_to_search_for = this.selected_fields;    // Lower priority
+            if (this.selected_fields.length > 0)                            // If values were picked thru the multi-select pulldown menu
+                fields_to_search_for = Object.values(this.selected_fields); // Clone, to avoid disturbing the multi-select pulldown menu
+
+            if (this.key_name)                                  // The user provided a typed-in value
+                fields_to_search_for.push(this.key_name);       // Append the manually-typed key name to the array
+
 
             const get_obj = {label: this.label,
                              key_name: fields_to_search_for,
