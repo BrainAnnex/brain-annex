@@ -44,7 +44,20 @@ div.label {
     margin-bottom: 5px;
     border-radius: 10px;
     border: 1px solid #d0d0d0;
+    cursor: pointer;
 }
+
+div.label-to-inspect {
+    padding: 5px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    border-radius: 10px;
+    border: 1px solid #d0d0d0;
+    background-color: white;
+    font-weight: bold;
+    font-size: 18px;
+}
+
 
 div.edge {
     display: inline-block;
@@ -64,6 +77,12 @@ p.legend-block {
     padding-top: 0;
 }
 
+div.label-box {
+    border: 1px solid gray;
+    background-color: #eee;
+    padding: 4px;
+    margin: 5px;
+}
 
 /* For the graph legend */
 span.property-value {

@@ -74,14 +74,16 @@ Vue.component('vue-cytoscape-5',
                     >
 
 
-                    <!-- If nothing is selected on the plot, show the list of labels... -->
+                    <!-- If nothing is selected on the plot, show a listing of all labels... -->
                     <p v-if="!legend_html" class="legend-block">
                         <b>Node labels</b><br><br>
                         <template v-for="label in label_names">
-                            <div class="label" v-bind:style="{'background-color': color_mapping[label]}">{{label}}</div>
+                            <div class="label" @click="show_label_box = !show_label_box; label_to_inspect = label"
+                                v-bind:style="{'background-color': color_mapping[label]}"
+                            >
+                            {{label}}
+                            </div>
                         </template>
-
-
 
                         <br><br><br>
                         <span style="color: #888; font-style: italic">Select a node or edge<br>on the graph</span>
@@ -116,6 +118,25 @@ Vue.component('vue-cytoscape-5',
                         </template>
                     </p>
 
+
+                    <div v-if="show_label_box" class="label-box">
+
+                        <div class="label-to-inspect"
+                             v-bind:style="{'background-color': color_mapping[label_to_inspect]}"
+                        >
+                            {{label_to_inspect}}
+                        </div>
+
+                        <br>
+                        <i>Color:</i> {{color_mapping[label_to_inspect]}}<br><br>
+                        <i>Shape:</i> circle<br><br>
+                        <i>Size:</i> medium<br><br>
+                        <i>Caption:</i> {{caption_mapping[label_to_inspect]}}<br><br>
+                        CHANGE caption:<br>
+                        <template v-for="caption in possible_captions(label_to_inspect)">
+                            <span class="clickable-icon" @click=change_caption(caption)> ({{caption}}) </span>
+                        </template>
+                    </div>
 
 
                     <!-- Pulldown menu to change desired plot style -->
@@ -152,7 +173,7 @@ Vue.component('vue-cytoscape-5',
 
                     <br><br><br><br>
                     <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">
-                        vue-cytoscape-5 , rev. 2
+                        vue-cytoscape-5 , rev. 3
                     </span>
                 </div>      <!-- End of side box -->
 
@@ -188,6 +209,8 @@ Vue.component('vue-cytoscape-5',
                 label_names: [],        // Array of unique label names throughout the graph
                 edge_names: [],         // Array of unique edge names  throughout the graph
 
+                show_label_box: false,  // Whether or not to show a box where to edit the label-specific mappings
+                label_to_inspect: null, // Name of label featured in the above box
 
                 // Data about the currently-selected node or edge
                 selected_node_labels: null,     // Array of labels of the currently-selected node
@@ -329,6 +352,43 @@ Vue.component('vue-cytoscape-5',
 
         // ---------------------  METHODS  ----------------------
         methods: {
+
+            /**
+             * Assemble an array of typical captions associated to the given node label.
+             * Note that the node properties used for the captions,
+             * aren't required to be consistent in a graph database.
+             *
+             * @param {string} label    - The name of a node label
+             *
+             * @returns {string[]}      - An array of caption names previously used in nodes with the given label
+             */
+            possible_captions(label)
+            {
+                //console.log(`In possible_captions(): generating caption options for label "${label}"`);
+
+                let candidate_captions = [];
+
+                // Loop over all the nodes in the graph, and locate node with a match in label
+                for (let n of this.nodes) {
+                    // EXAMPLE of n :   {'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']}
+
+                    if (n._node_labels.includes(label))
+                        for (let key of Object.keys(n))   // Consider each key of the node
+                            if ((key !== "_node_labels") && (!candidate_captions.includes(key)))
+                                // Collect any key not already seen, EXCEPT for "_node_labels"
+                                candidate_captions.push(key);
+                }
+
+                //return ["id", "name", "Title", "d"];
+                return candidate_captions;
+            },
+
+
+            change_caption(caption)
+            {
+                alert(`Will change caption to "${caption}"`);
+            },
+
 
             create_graph(element_id)
             /*  Let Cytoscape.js render (or re-render) the requested plot.
@@ -542,6 +602,9 @@ Vue.component('vue-cytoscape-5',
             */
             {
                 this.clear_legend();
+
+                this.show_label_box = false;
+                this.label_to_inspect = null;
             },
 
 
