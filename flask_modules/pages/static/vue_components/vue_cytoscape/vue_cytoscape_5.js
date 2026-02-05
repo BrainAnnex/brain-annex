@@ -1152,24 +1152,24 @@ Vue.component('vue-cytoscape-5',
                 const default_caption_field_name = "id";
 
                 if (labels === undefined)  {
-                    //console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Using a default value")
+                    console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Using a default value")
                 }
                 else  {
-                    //console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
+                    console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
                     //console.log(this.graph_data.caption_mapping);
 
                     for (single_label of labels) {
-                        if (single_label in this.graph_data.caption_mapping)  {
-                            //const caption_field_name = this.graph_data.caption_mapping[single_label];
+                        console.log(`Searching for default caption for label "${single_label}"`);
+                        if (single_label in this.caption_mapping)  {
                             const caption_field_name = this.caption_mapping[single_label];
-                            //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
+                            console.log(`Using the field '${caption_field_name}' for the caption of this node`);
                             return caption_field_name;
                         }
                     }
                 }
 
                 // If we get here, no mapping information was available.  Try some typical names
-                //console.log(`map_labels_to_caption_field(): no mapping information was available. Trying common names for node with id ${node_id}...`);
+                console.log(`map_labels_to_caption_field(): no mapping information was available. Trying common names for node with id ${node_id}...`);
 
                 const node_index = this.locate_node_by_id(node_id);
                 //console.log(node_index);
