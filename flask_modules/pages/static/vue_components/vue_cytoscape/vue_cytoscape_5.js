@@ -74,14 +74,16 @@ Vue.component('vue-cytoscape-5',
                     >
 
 
-                    <!-- If nothing is selected on the plot, show the list of labels... -->
+                    <!-- If nothing is selected on the plot, show a listing of all labels... -->
                     <p v-if="!legend_html" class="legend-block">
                         <b>Node labels</b><br><br>
                         <template v-for="label in label_names">
-                            <div class="label" v-bind:style="{'background-color': color_mapping[label]}">{{label}}</div>
+                            <div class="label"  @click="edit_label_info(label)"
+                                 v-bind:style="{'background-color': color_mapping[label]}"
+                            >
+                                {{label}}
+                            </div>
                         </template>
-
-
 
                         <br><br><br>
                         <span style="color: #888; font-style: italic">Select a node or edge<br>on the graph</span>
@@ -92,8 +94,9 @@ Vue.component('vue-cytoscape-5',
                     <!-- ...else, if a node or edge is selected on the plot -->
                     <p v-else class="legend-block">
 
-                        <p v-if="selected_element_type == 'node'" style="border: 1px solid #CCC; background-color: rgb(215, 215, 215); padding: 8px">
-                            HIDE NODE:<br><br>
+                        <p v-if="selected_element_type == 'node'" class="node-hide-buttons">
+                            <span style="color:#4f4f4f">HIDE NODE</span>
+                            <br><br>
                             <button  @click="hide_node_by_id(selected_element.id)">Node only</button>
                             <br><br>
                             <button  @click="hide_node_and_orphans(selected_element.id)">And orphaned neighbors</button>
@@ -106,7 +109,11 @@ Vue.component('vue-cytoscape-5',
                         </p>
 
                         <template v-for="label_name in selected_node_labels">
-                            <div class="label" v-bind:style="{'background-color': color_mapping[label_name]}">{{label_name}}</div>
+                            <div class="label"  @click="edit_label_info(label_name)"
+                                v-bind:style="{'background-color': color_mapping[label_name]}"
+                            >
+                                {{label_name}}
+                            </div>
                         </template>
                         <br><br>
 
@@ -118,8 +125,35 @@ Vue.component('vue-cytoscape-5',
 
 
 
+                    <!-- Show an info box about a label, with default color, caption, etc -->
+                    <div v-if="show_label_box" class="label-box">
+
+                        <div class="label-to-inspect"
+                             v-bind:style="{'background-color': color_mapping[label_to_inspect]}"
+                        >
+                            {{label_to_inspect}}
+                        </div>
+
+                        <br>
+                        <i>Color:</i> {{color_mapping[label_to_inspect]}}<br><br>
+
+                        <i>Caption:</i><br>
+                        <!-- Pulldown menu to show the current caption, and all other available choices.
+                             The handler function change_caption() gets invoked as soon as user selects an entry from the menu
+                          -->
+                        <select @change='change_caption' v-model="caption_selected_option">
+                            <option v-for="item in possible_captions(label_to_inspect)" v-bind:value="item">
+                                {{item}}
+                            </option>
+                        </select>
+
+                        <br><br>
+                        <i>Shape:</i> circle<br>
+                        <i>Size:</i> medium<br>
+                    </div>
+
+
                     <!-- Pulldown menu to change desired plot style -->
-                    <br>
                     <hr>
                     <p class="legend-block">
                         <i>Plot layout style:</i>
@@ -152,7 +186,7 @@ Vue.component('vue-cytoscape-5',
 
                     <br><br><br><br>
                     <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">
-                        vue-cytoscape-5 , rev. 2
+                        vue-cytoscape-5 , rev. 3
                     </span>
                 </div>      <!-- End of side box -->
 
@@ -189,6 +223,11 @@ Vue.component('vue-cytoscape-5',
                 edge_names: [],         // Array of unique edge names  throughout the graph
 
 
+                show_label_box: false,          // Whether or not to show a box where to edit the label-specific mappings
+                label_to_inspect: null,         // Name of label featured in the above box
+                caption_selected_option:  "",   // This will determine the default selection in the menu to change the caption
+
+
                 // Data about the currently-selected node or edge
                 selected_node_labels: null,     // Array of labels of the currently-selected node
                 legend_html: null,              // Array of HTML string to display lines of formatted data on the legend,
@@ -223,15 +262,18 @@ Vue.component('vue-cytoscape-5',
         // ---------------------  WATCH  ----------------------
 
         watch: {
+
+            /**
+             *  This function is automatically invoked ONLY when the `graph_data` prop changes
+             *  Note: the "immediate" option cannot be used (presumably because too early in mount cycle)
+             */
             graph_data(newVal, oldVal)
-            // Runs ONLY when the `graph_data` prop changes
-            // Note: the "immediate" option cannot be used (presumably because too early in mount cycle)
             {
                 console.log(`In 'vue-cytoscape-5': the "watch" on the prop "graph_data" reveals that it has changed`);
 
                 this.nodes = this.graph_data.nodes;
                 this.edges = this.graph_data.edges;
-                this.extract_names();
+                this.extract_names();          // Extract the label names and the edge names
 
                 const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given
@@ -271,7 +313,7 @@ Vue.component('vue-cytoscape-5',
         {
             console.log(`The 'vue-cytoscape-5' component is now mounted`);
 
-            this.extract_names();
+            this.extract_names();              // Extract the label names and the edge names
 
             const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given
@@ -330,6 +372,75 @@ Vue.component('vue-cytoscape-5',
         // ---------------------  METHODS  ----------------------
         methods: {
 
+            /**
+             *  Invoked as soon as user selects an entry
+             *  from the menu to change the default caption for a particular label
+             */
+            change_caption()
+            {
+                console.log(`Just selected caption "${this.caption_selected_option}" for label "${this.label_to_inspect}"`);
+
+                // Update the default label->caption mapping
+                this.caption_mapping[this.label_to_inspect] = this.caption_selected_option;
+
+                // Re-apply the stylesheet.  This: re-evaluates styles for all elements,
+                // but doesn't re-run the layout (in particular, it preserves the positions)
+                // Note:  Cytoscape caches the computed style, and does not re-run
+                //        the styling functions, such as our node_caption_funct(), unless it knows something changed
+                this.$options.cy_object.style().update();
+            },
+
+
+
+            /**
+             *  Invoked when the user click on the icon (tag) of a particular node label name
+             */
+            edit_label_info(label)
+            {
+                if (label != this.label_to_inspect)  {
+                    this.show_label_box = true;
+                    this.label_to_inspect = label;
+                    this.caption_selected_option = this.caption_mapping[label];
+                }
+                else {
+                    // If the user re-clicks on the same label, toggle the display of the box
+                    this.show_label_box = !this.show_label_box;
+                }
+            },
+
+
+
+            /**
+             * Assemble an array of typical captions associated to the given node label.
+             * Note that the node properties used for the captions,
+             * aren't required to be consistent in a graph database.
+             *
+             * @param {string} label    - The name of a node label
+             *
+             * @returns {string[]}      - An array of caption names previously used in nodes with the given label
+             */
+            possible_captions(label)
+            {
+                //console.log(`In possible_captions(): generating caption options for label "${label}"`);
+
+                let candidate_captions = [];
+
+                // Loop over all the nodes in the graph, and locate node with a match in label
+                for (let n of this.nodes) {
+                    // EXAMPLE of n :   {'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']}
+
+                    if (n._node_labels.includes(label))
+                        for (let key of Object.keys(n))   // Consider each key of the node
+                            if ((key !== "_node_labels") && (!candidate_captions.includes(key)))
+                                // Collect any key not already seen, EXCEPT for "_node_labels"
+                                candidate_captions.push(key);
+                }
+
+                return candidate_captions;  // EXAMPLE:  ['id', 'name']
+            },
+
+
+
             create_graph(element_id)
             /*  Let Cytoscape.js render (or re-render) the requested plot.
 
@@ -337,7 +448,7 @@ Vue.component('vue-cytoscape-5',
 
                 1) this Vue component is first created
                 2) its input graph data changes
-                3) the user asks for a different layout
+                3) the user asks for a different layout -> TODO - alternative not tested: cy.layout({ name: 'cose' }).run();
 
                 Replace the contents of the desired HTML element (whose id is specified by the given `element_id`)
                 with the graphic structure created by Cytoscape
@@ -364,6 +475,7 @@ Vue.component('vue-cytoscape-5',
                                 'height': 75,
                                 //'shape': 'ellipse',   // Adjust width/height as desired
                                 //'label': 'data(name)',
+                                //'label': 'data(display_label)',     // [UNTESTED] Where `display_label` is a data field set accordingly
                                 'label': this.node_caption_funct,
 
                                 'background-color': this.node_color_funct,
@@ -461,6 +573,12 @@ Vue.component('vue-cytoscape-5',
                 ]);
                 */
 
+                /* TODO: maybe handle here the part
+                    this.$options.cy_object = cy_object;
+
+                    (so that the calling function don't all have to bother with it)
+                 */
+
                 return cy_object;         // The newly-created Cytoscape object
 
             },  // create_graph
@@ -542,6 +660,9 @@ Vue.component('vue-cytoscape-5',
             */
             {
                 this.clear_legend();
+
+                this.show_label_box = false;
+                this.label_to_inspect = null;
             },
 
 
