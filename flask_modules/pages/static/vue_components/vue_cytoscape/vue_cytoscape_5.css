@@ -75,6 +75,14 @@ div.edge {
 p.legend-block {
     padding: 5px;
     padding-top: 0;
+    margin-top: 0;
+}
+
+/* A box to organize all the various hide-node buttons */
+p.node-hide-buttons {
+    border: 1px solid #CCC;
+    background-color: rgb(202, 202, 202);
+    padding: 8px;
 }
 
 div.label-box {
