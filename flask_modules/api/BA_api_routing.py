@@ -2663,7 +2663,7 @@ class ApiRouting:
                     Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
                                                           upload_folder=post_data.get("upload_folder"),
                                                           index_pdf=current_app.config['INDEX_PDF_FILES'])
-                                                          # 'INDEX_PDF_FILES' settting is defined in main file
+                                                          # 'INDEX_PDF_FILES' setting is defined in main file
                 response = ""
 
             except Exception as ex:

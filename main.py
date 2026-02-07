@@ -164,7 +164,16 @@ app = Flask(__name__)   # The Flask object (exposed, at the top level of this mo
 
 ### Save in the "app" object various module-specific data, to propagate to those modules
 app.config['BRANDING'] = extract_par("BRANDING", SETTINGS)
-app.config['INDEX_PDF_FILES'] = bool(extract_par("INDEX_PDF_FILES", SETTINGS))
+index_pdf_files = extract_par("INDEX_PDF_FILES", SETTINGS)
+if index_pdf_files.lower() == "true":
+    app.config['INDEX_PDF_FILES'] = True
+elif index_pdf_files.lower() == "false":
+    app.config['INDEX_PDF_FILES'] = False
+else:
+    raise Exception(f"The only valid values for the "
+                    f"configuration parameter `INDEX_PDF_FILES` are True or False ; the value you provided was: `{index_pdf_files}`")
+
+
 
 # TODO: add the final slash to all folders, if not already present
 
