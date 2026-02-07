@@ -55,10 +55,11 @@ class ApiRouting:
     static_folder = "static"        # Relative to this module's location
     #static_url_path = "/assets"    # Not used by this module
     config_pars = {}                # Dict with all the app configuration parameters
+                                    # TODO: Ditch, and replace cls.config_pars['name'] with current_app.config['name']
 
 
-    MEDIA_FOLDER = None             # Location where the media for Content Items is stored
-    UPLOAD_FOLDER = None            # Temporary location for uploads
+    #MEDIA_FOLDER = None             # Location where the media for Content Items is stored
+    #UPLOAD_FOLDER = None            # Temporary location for uploads
 
     debug = False                   # Flag indicating whether a debug mode is to be used by all methods of this class
                                     #       (currently, in very limited use)
@@ -2578,7 +2579,7 @@ class ApiRouting:
             # Move the uploaded file from its temp location to the appropriate media folder (depending on class_name)
             # TODO: let upload_helper (optionally) handle it
         
-            src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
+            src_fullname = current_app.config['UPLOAD_FOLDER'] + tmp_filename_for_upload        # cls.UPLOAD_FOLDER
 
             if not post_data.get("upload_folder"):    # If not explicitly passed (EXAMPLE: "documents/Ebooks & Articles")
                 dest_folder = MediaManager.default_file_path(class_name=class_name)
@@ -2660,8 +2661,9 @@ class ApiRouting:
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Document":    # TODO: move to plugin_support.py
                     Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
-                                                          upload_folder=post_data.get("upload_folder"))
-
+                                                          upload_folder=post_data.get("upload_folder"),
+                                                          index_pdf=current_app.config['INDEX_PDF_FILES'])
+                                                          # 'INDEX_PDF_FILES' settting is defined in main file
                 response = ""
 
             except Exception as ex:

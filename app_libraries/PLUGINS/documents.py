@@ -128,9 +128,11 @@ class Documents:
 
 
     @classmethod
-    def new_content_item_successful(cls, uri :str, pars :dict, mime_type :str, upload_folder :str) -> None:
+    def new_content_item_successful(cls, uri :str, pars :dict,
+                                    mime_type :str, upload_folder :str, index_pdf=True) -> None:
         """
-        Invoked after a new Content Item of this type (Document) gets successfully added to the database
+        Invoked after a new Content Item of this type (Document) gets successfully added to the database.
+        Only text and PDF are currently supported.
 
         :param uri:         A string with the URI of the Content Item
         :param pars:        Dict with the various properties of this Content Item
@@ -141,6 +143,7 @@ class Documents:
                                 otherwise, it's the name of the folder where this Document was uploaded
                                 (*exclusive* of the common path and of the final "/")
                                 EXAMPLE: 'documents/Ebooks & Articles'
+        :param index_pdf:       [OPTIONAL] If True (default), the contents of PDF files will be indexed
         :return:            None
         """
         filename = pars["basename"] + "." + pars["suffix"]      # EXAMPLE: "my_file.txt"
@@ -167,6 +170,10 @@ class Documents:
             unique_words = FullTextIndexing.extract_unique_good_words(body)
 
         elif mime_type == "application/pdf":    # TODO: also include EPUB
+            if not index_pdf:
+                print("new_content_item_successful(): PDF file will NOT get indexed, as requested")
+                return
+                
             unique_words = cls.parse_pdf(full_file_name)
             #TODO: also store in database the doc.page_count and non-trivial values in doc.metadata
 
