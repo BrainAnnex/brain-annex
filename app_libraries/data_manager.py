@@ -541,7 +541,7 @@ class DataManager:
 
 
         :param request_data: A dictionary with the keys, "rel_name" and "dir",
-                                plus either "uri" or "internal_id" (the latter takes priority)
+                                plus either "uri" or "_internal_id" (the latter takes priority)
 
         :return:             A list of dictionaries with all the properties of the neighbor nodes,
                              including an extra field called "_node_labels", with a string of label names
@@ -554,8 +554,8 @@ class DataManager:
         assert dir in ["IN", "OUT"], \
             f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
 
-        if "internal_id" in request_data:       # "internal_id" takes priority, as a way to identify the node
-            match = int(request_data["internal_id"])
+        if "_internal_id" in request_data:       # "_internal_id" takes priority, as a way to identify the node
+            match = int(request_data["_internal_id"])
             return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True, include_labels=True, limit=100)
         else:
             assert "uri" in request_data, \
@@ -763,7 +763,7 @@ class DataManager:
 
         :return:            A dict with the internal database ID and uri
                                 assigned to the newly-created node
-                                EXAMPLE: {"internal_id": 123, "uri": "rs-8"}
+                                EXAMPLE: {"_internal_id": 123, "uri": "rs-8"}
         """
         # TODO: more Schema enforcement
         # TODO: make the generation of the URI optional
@@ -772,7 +772,7 @@ class DataManager:
 
         internal_id = GraphSchema.create_data_node(class_name=class_name, properties=item_data, new_uri=new_uri)
 
-        return {"internal_id": internal_id, "uri": new_uri}
+        return {"_internal_id": internal_id, "uri": new_uri}
 
 
 
@@ -1138,12 +1138,12 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, '_node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, '_node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
-            internal_id = node["internal_id"]   # Ignore the PyCharm's complain about the data type!
+            internal_id = node["_internal_id"]   # Ignore the PyCharm's complain about the data type!
             #print("\n\n--- internal_id: ", internal_id)
 
 
@@ -1165,7 +1165,7 @@ class DataManager:
             new_result = []     # SET OUTSIDE of this loop
             
             labels = node["_node_labels"]
-            del node["internal_id"]
+            del node["_internal_id"]
             del node["_node_labels"]
             dn = GraphSchema.DataNode(internal_id=internal_id, labels=labels], properties=node)
             # All the above lines would be un-necessary if FullTextIndexing.search_word returned a DataNode object!
@@ -1220,12 +1220,12 @@ class DataManager:
 
         result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, '_node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, '_node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
-            internal_id = node["internal_id"]   # Ignore the PyCharm's complain about the data type!
+            internal_id = node["_internal_id"]   # Ignore the PyCharm's complain about the data type!
             #print("\n\n--- internal_id: ", internal_id)
 
 
@@ -1272,7 +1272,7 @@ class DataManager:
                                                             "_node_labels": ["Car", "Vehicle"],
                                                             "date_created": "2025/06/23",
                                                             "id": 23487,
-                                                            "internal_id": 23487,
+                                                            "_internal_id": 23487,
                                                             "brand": "Toyota",
                                                             "color": white
                                                         }
@@ -1296,7 +1296,7 @@ class DataManager:
             WHERE id(node) = $internal_id
             RETURN id(neighbor) AS neighbor_id
             '''
-        data_binding = {"internal_id": node_internal_id}
+        data_binding = {"_internal_id": node_internal_id}
 
         result = cls.db.query(q, data_binding=data_binding, single_column="neighbor_id")
 
@@ -1322,7 +1322,7 @@ class DataManager:
         for n in nodes:
             n["id"] = str(n["id"])
 
-        trimmed_nodes = [n for n in nodes if n["internal_id"] != node_internal_id]  # Drop the original node
+        trimmed_nodes = [n for n in nodes if n["_internal_id"] != node_internal_id]  # Drop the original node
         # Make an adjustment to all the elements of the `edges` list
         for e in edges:
             e["source"] = str(e["source"])
@@ -1455,7 +1455,7 @@ class DataManager:
 
         :return:            A pair with two elements:
                                 1. A (possibly-empty) list of dictionaries; each dict contains the data for a node,
-                                    including a field called "internal_id" that has the internal database ID,
+                                    including a field called "_internal_id" that has the internal database ID,
                                     and a field called "_node_labels" with a list of the node's label names
                                 2.  What the number of nodes would be in the absence of limit/skip value
         """

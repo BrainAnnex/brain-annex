@@ -57,10 +57,6 @@ class ApiRouting:
     config_pars = {}                # Dict with all the app configuration parameters
                                     # TODO: Ditch, and replace cls.config_pars['name'] with current_app.config['name']
 
-
-    #MEDIA_FOLDER = None             # Location where the media for Content Items is stored
-    #UPLOAD_FOLDER = None            # Temporary location for uploads
-
     debug = False                   # Flag indicating whether a debug mode is to be used by all methods of this class
                                     #       (currently, in very limited use)
 
@@ -1175,7 +1171,7 @@ class ApiRouting:
                 The response body will be something like:
                     {
                       "payload": {
-                        "internal_id": 1234,
+                        "_internal_id": 1234,
                         "uri": "q-88"
                       },
                       "status": "ok"
@@ -1208,7 +1204,7 @@ class ApiRouting:
                 payload = DataManager.create_data_node(class_name=class_name,
                                                        item_data=pars_dict)
                 # It returns the internal database ID and the URI of the newly-created Data Node
-                # EXAMPLE: {"internal_id": 123, "uri": "rs-8"}
+                # EXAMPLE: {"_internal_id": 123, "uri": "rs-8"}
 
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
@@ -2141,7 +2137,7 @@ class ApiRouting:
 
             RETURNED JSON PAYLOAD:
                 recordset:   A list of dicts with the filtered data; each dict contains the data for a node,
-                                including a field called "internal_id" that has the internal database ID,
+                                including a field called "_internal_id" that has the internal database ID,
                                 and a field called "_node_labels" with a list of the node's label names
                 total_count: The total number of nodes in the database with the given label - NOT considering the remainder of the filter
                                 if no label was provided, None
@@ -2335,7 +2331,7 @@ class ApiRouting:
                                     "_node_labels": ["Car", "Vehicle"],
                                     "date_created": "2025/06/23",
                                     "id": 23487,
-                                    "internal_id": 23487,
+                                    "_internal_id": 23487,
                                     "brand": "Toyota",
                                     "color": white
                                 }

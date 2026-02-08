@@ -257,7 +257,7 @@ def test_get_sibling_categories(db):
     entry = result[0]
     assert entry["name"] == "Italian"   # The sibling of "French" is "Italian"
     assert entry["uri"] == italian_uri
-    assert entry["internal_id"] == italian_internal_id
+    assert entry["_internal_id"] == italian_internal_id
     #assert compare_unordered_lists(entry["_node_labels"], ['Category', 'BA'])
 
     result = Categories.get_sibling_categories(italian_internal_id)
@@ -265,7 +265,7 @@ def test_get_sibling_categories(db):
     entry = result[0]
     assert entry["name"] == "French"   # The sibling of "Italian" is "French"
 
-    expected = {"name": "French", "uri": french_uri, "internal_id": french_internal_id, "_node_labels": ['BA', 'Category']}
+    expected = {"name": "French", "uri": french_uri, "_internal_id": french_internal_id, "_node_labels": ['BA', 'Category']}
 
     # We'll check the node labels separately, because their order may be reshuffled
     assert compare_unordered_lists(entry["_node_labels"], expected["_node_labels"])

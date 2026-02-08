@@ -68,7 +68,7 @@ Vue.component('vue-record-navigator-graph',
                     </template>
 
 
-                    <!-- Display the data record (all its fields, incl. "internal_id" and "_node_labels")
+                    <!-- Display the data record (all its fields, incl. "_internal_id" and "_node_labels")
                       -->
 
                     <!-- Part 1 of 3: the node's LABELS receive special handling -->
@@ -76,13 +76,13 @@ Vue.component('vue-record-navigator-graph',
                         {{label}}
                     </span>
 
-                    <!-- Part 2 of 3: the node's internal_id receives special handling -->
+                    <!-- Part 2 of 3: the node's internal id receives special handling -->
                     <span class="monospace internal-id-key">INTERNAL ID: </span>
-                         <span class="monospace internal-id-value">{{item.data.internal_id}}</span>
+                         <span class="monospace internal-id-value">{{item.data._internal_id}}</span>
                          <span style="color:brown; font-weight: bold">|| </span>
 
 
-                    <!-- Part 3 of 3: all the other fields, incl. internal_id -->
+                    <!-- Part 3 of 3: all the other fields, incl. _internal_id -->
                     <template v-if="item.controls.duplicate">
                         <span style="font-weight:bold">NODE HIDDEN BECAUSE ALREADY SHOWN</span> &nbsp; 
                         <button @click="reveal_hidden_record(item.controls.record_id)">Show it anyway</button>
@@ -90,7 +90,7 @@ Vue.component('vue-record-navigator-graph',
 
                     <template v-else>
                         <template
-                            v-if="(key != '_node_labels') && (key != 'internal_id')"
+                            v-if="(key != '_node_labels') && (key != '_internal_id')"
                             v-for="(val, key) in item.data"
                         >
                             <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
@@ -232,7 +232,7 @@ Vue.component('vue-record-navigator-graph',
                                         //
                                         //      * "data" is an object containing all the field names and values
                                         //            returned from the database node
-                                        //           (incl. the special fields "internal_id" and "_node_labels")
+                                        //           (incl. the special fields "_internal_id" and "_node_labels")
 
 
                 // Object with all the data needed by the Vue component to display the graph
@@ -306,7 +306,7 @@ Vue.component('vue-record-navigator-graph',
                 // Test of using actual (unprocessed) results data: sending the nodes (no edges) to the Cytoscape graph
                 for (let record of this.recordset_array) {
                     let data = record.data;
-                    data.id = data.internal_id;
+                    data.id = data._internal_id;
                     data.labels = data._node_labels;
                     this.graph_data_json.nodes.push(data);
                 }
@@ -321,7 +321,7 @@ Vue.component('vue-record-navigator-graph',
                 let node_internal_ids = [];
                 for (let record of this.recordset_array) {
                     let data = record.data;
-                    node_internal_ids.push(data.internal_id);
+                    node_internal_ids.push(data._internal_id);
                 }
 
                 const post_data = node_internal_ids;
@@ -416,7 +416,7 @@ Vue.component('vue-record-navigator-graph',
                 // The given record will be referred to as "parent", because we'll be dealing
                 // with its "children" (neighbor database nodes)
                 const parent_record_id = record.controls.record_id;
-                const parent_internal_id = record.data.internal_id;
+                const parent_internal_id = record.data._internal_id;
                 console.log(`In toggle_linked_records() - parent_record_id: ${parent_record_id} | parent_internal_id: ${parent_internal_id} | index: ${index} | rel_name: "${rel_name}" | dir: "${dir}"`);
 
                 console.log(`    checking if immediate children by the relationship "${rel_name}" are present...`);
@@ -502,11 +502,11 @@ Vue.component('vue-record-navigator-graph',
 
 
                     // Check whether this child node already appears elsewhere in the listing
-                    let existing_location = this.find_by_dbase_id(new_entry.data.internal_id);
-                    console.log(`existing_location for record with internal_id '${new_entry.data.internal_id}' is ${existing_location}`);
+                    let existing_location = this.find_by_dbase_id(new_entry.data._internal_id);
+                    console.log(`existing_location for record with _internal_id '${new_entry.data._internal_id}' is ${existing_location}`);
                     if (existing_location != -1)  {
                         //alert("Found record already seen");
-                        console.log(`Child record (internal database ID ${new_entry.data.internal_id}) already existed at index position ${existing_location}`);
+                        console.log(`Child record (internal database ID ${new_entry.data._internal_id}) already existed at index position ${existing_location}`);
                         new_entry.controls.duplicate = true;
                     }
                     
@@ -555,7 +555,7 @@ Vue.component('vue-record-navigator-graph',
                 const number_items = this.recordset_array.length;
 
                 for (var i = 0; i < number_items; i++) {
-                    if (this.recordset_array[i].data.internal_id == internal_id)
+                    if (this.recordset_array[i].data._internal_id == internal_id)
                         return i;          //  Found it
                 }
 
@@ -708,7 +708,7 @@ Vue.component('vue-record-navigator-graph',
             {
                 console.log(`Getting the links summary info for record id ${record.controls.record_id}`);
 
-                const internal_id = record.data.internal_id;
+                const internal_id = record.data._internal_id;
                 if (internal_id == null)  {
                     alert("get_link_summary_from_server(): the record lacks an internal database ID.  Its links cannot be expanded");
                     return;
@@ -771,7 +771,7 @@ Vue.component('vue-record-navigator-graph',
                :param dir:      Either "IN" or "OUT"
              */
             {
-                const internal_id = record.data.internal_id;
+                const internal_id = record.data._internal_id;
 
                 console.log(`get_linked_records_from_server(): Getting the properties of data nodes linked to record with internal dbase ID ${internal_id} by means of the ${dir}-bound relationship '${rel_name}'`);
 
@@ -809,8 +809,8 @@ Vue.component('vue-record-navigator-graph',
                     console.log("    server call was successful; it returned: ", server_payload);
                     /*  EXAMPLE of server_payload:
                             [
-                                {uri: "100", internal_id: 2, name: "mushrooms pie", eval: "+"},
-                                {uri: "180", internal_id: 9, name: "Margherita pie", eval: "OK"}
+                                {uri: "100", _internal_id: 2, name: "mushrooms pie", eval: "+"},
+                                {uri: "180", _internal_id: 9, name: "Margherita pie", eval: "OK"}
                             ]
                     */
                     this.status_message = `Operation completed`;

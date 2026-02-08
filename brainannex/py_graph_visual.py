@@ -492,14 +492,14 @@ class PyGraphVisual:
 
         :return:        A list of dicts, with the node properties plus the special fields `internal_id` and `_node_labels`
                             EXAMPLE:
-                            [{'internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
+                            [{'_internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
         """
         # TODO: move to GraphAccess
         assert type(id_list) == list, \
-            f"initialize_graph(): argument `id_list` must be a list; it is of type {type(id_list)}"
+            f"prepare_recordset(): argument `id_list` must be a list; it is of type {type(id_list)}"
 
         assert self.db, \
-            "initialize_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
+            "prepare_recordset(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
 
         if id_list == []:
             return []       # No data was passed
@@ -521,7 +521,7 @@ class PyGraphVisual:
         as returned by GraphAccess.get_nodes() - construct, and save inside this pyhon object,
         the visualization data for them.
 
-        Each passed dictionary entry MUST have a key named "internal_id".
+        Each passed dictionary entry MUST have a key named "_internal_id".
         If any key named "id" is found, it get automatically renamed "_id_original" (since "id" is used by the visualization software);
         if "_id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
         Though not required, a key named "_node_labels" is typically present as well.
@@ -530,8 +530,8 @@ class PyGraphVisual:
         the time portion, if present, will get dropped
 
         :param result_dataset:  A list of dictionary data about graph-database nodes;
-                                    each dict must contain an entry with the key "internal_id".
-                                    No problem if duplicates in "internal_id" are present;
+                                    each dict must contain an entry with the key "_internal_id".
+                                    No problem if duplicates in "_internal_id" are present;
                                     only the fist of one duplicates gets processed
         :param cumulative:      If False (default) then any previous call to this function will get ignored,
                                     and a new graph is appended
@@ -563,7 +563,7 @@ class PyGraphVisual:
         id_key_renaming = False
         node_list = []      # Running list of internal databased IDs, for nodes in `result_dataset`
         for node in result_dataset:
-            internal_id = node.get("internal_id")
+            internal_id = node.get("_internal_id")
             assert internal_id is not None, \
                 f"prepare_graph() - the following record lacks the required `internal_id` key: {node}"
 

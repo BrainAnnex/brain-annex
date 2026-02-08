@@ -733,7 +733,7 @@ Vue.component('vue-cytoscape-5',
                 // Get neighboring nodes in the graph (immediate neighbors)
                 const neighbor_nodes = node.neighborhood().nodes();     // Filter for nodes only
                 //console.log("Neighbor nodes:");
-                //console.log({ ...neighbor_nodes }); // Log a snapshot
+                //console.log({ ...neighbor_nodes });   // Log a snapshot
                 const neighbor_ids = neighbor_nodes.map(n => n.id());       // Extract the ID's from each node in the Collection
 
                 const post_data =  {"node_internal_id" : cyto_node_data_obj.internal_id,

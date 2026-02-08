@@ -65,7 +65,7 @@ def extract_par(name :str, d, display=True) -> str:
         print(f"{name}: *********")
 
     return value
-#########################################
+#################################################################################
 
 
 config = ConfigParser()
@@ -196,14 +196,11 @@ Navigation.setup(app)
 PagesRouting.setup(app)
 
 # The BrainAnnex-provided web API endpoints
-#ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER      # TODO: phase out in favor of the new app.config['MEDIA_FOLDER']
-#ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER    # TODO: phase out in favor of the new app.config['UPLOAD_FOLDER']
 ApiRouting.setup(app)
 
 # Examples of generic pages and web API
 SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
 SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
-
 
 
 

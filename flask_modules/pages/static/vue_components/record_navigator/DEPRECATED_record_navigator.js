@@ -74,7 +74,7 @@ Vue.component('vue-record-navigator',
                         {{label}}
                     </span>
 
-                    <!-- Part 2 of 2: all the other fields, incl. internal_id -->
+                    <!-- Part 2 of 2: all the other fields, incl. _internal_id -->
                     <template  v-if="key != '_node_labels'"  v-for="(val, key) in item.data">
                         <span style="color:grey; font-size:12px" class="monospace">{{key}}: </span>
                          \`<span style="background-color: rgb(251, 240, 240)">{{val}}</span>\` <span style="color:brown; font-weight: bold">|| </span>
@@ -157,7 +157,7 @@ Vue.component('vue-record-navigator',
                                         //
                                         //      * "data" is an object containing all the field names and values
                                         //            returned from the database node
-                                        //            (incl. the special fields "internal_id" and "_node_labels")
+                                        //            (incl. the special fields "_internal_id" and "_node_labels")
 
 
                 // UX feedback
@@ -320,9 +320,9 @@ Vue.component('vue-record-navigator',
 
 
                     // Check whether this child node already appears elsewhere in the listing
-                    let existing_location = this.locate_record_by_dbase_id(new_entry.data.internal_id)     ;
+                    let existing_location = this.locate_record_by_dbase_id(new_entry.data._internal_id)     ;
                     if (existing_location != -1)  {
-                        console.log(`Child record (internal database ID ${new_entry.data.internal_id}) already existed at index position ${existing_location}`);
+                        console.log(`Child record (internal database ID ${new_entry.data._internal_id}) already existed at index position ${existing_location}`);
                         new_entry.controls.duplicate = true;
                     }
 
@@ -371,7 +371,7 @@ Vue.component('vue-record-navigator',
                 const number_items = this.recordset_array.length;
 
                 for (var i = 0; i < number_items; i++) {
-                    if (this.recordset_array[i].data.internal_id == internal_id)
+                    if (this.recordset_array[i].data._internal_id == internal_id)
                         return i;          //  Found it
                 }
 
@@ -505,7 +505,7 @@ Vue.component('vue-record-navigator',
             {
                 console.log(`Getting the links summary info for record id ${record.controls.record_id}`);
 
-                const internal_id = record.data.internal_id;
+                const internal_id = record.data._internal_id;
                 if (internal_id == null)  {
                     alert("get_link_summary_from_server(): the record lacks an internal database ID.  Its links cannot be expanded");
                     return;
@@ -568,7 +568,7 @@ Vue.component('vue-record-navigator',
                :param dir:      Either "IN" or "OUT"
              */
             {
-                const internal_id = record.data.internal_id;
+                const internal_id = record.data._internal_id;
 
                 console.log(`get_linked_records_from_server(): Getting the properties of data nodes linked to record with internal dbase ID ${internal_id} by means of the ${dir}-bound relationship '${rel_name}'`);
 

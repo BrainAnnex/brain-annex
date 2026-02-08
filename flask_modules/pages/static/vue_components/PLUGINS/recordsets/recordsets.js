@@ -91,7 +91,7 @@ Vue.component('vue-plugin-rs',
                             <td v-for="field_name in headers_to_include">
 
                                 <!-- VIEW mode -->
-                                <span v-if="record.internal_id != record_being_editing"
+                                <span v-if="record._internal_id != record_being_editing"
                                     v-html="render_cell(record[field_name])"
                                 ></span>
 
@@ -109,7 +109,7 @@ Vue.component('vue-plugin-rs',
 
                             <!-- The control cell (for editing a single existing record) -->
                             <td v-show="editing_mode" style="background-color: #f2f2f2">
-                                <span v-if="record.internal_id == record_being_editing">
+                                <span v-if="record._internal_id == record_being_editing">
                                     <button @click="save_record_edit">SAVE</button>
                                     <a @click.prevent="cancel_record_edit" href="#" style="margin-left:15px">Cancel</a>
                                 </span>
@@ -539,16 +539,16 @@ Vue.component('vue-plugin-rs',
                 Invoked when the user clicks on the "EDIT" control for that record
 
                 :param record:  An object with the standard properties
-                                    "internal_id", "_node_labels", and "uri" [may or may not have a value],
+                                    "_internal_id", "_node_labels", and "uri" [may or may not have a value],
                                     plus whatever fields are part of the given particular record (node)
-                                    EXAMPLE:  {internal_id: 123, _node_labels: ["Restaurant"], uri: "r-88",
+                                    EXAMPLE:  {_internal_id: 123, _node_labels: ["Restaurant"], uri: "r-88",
                                                name: "Pizzeria NY", city: "NYC"}
              */
             {
                 console.log(`Editing the following individual record in the current recordset:`);
                 console.log(record);
 
-                this.record_being_editing = record.internal_id;     // Specify that editing is in progress for this record
+                this.record_being_editing = record._internal_id;     // Specify that editing is in progress for this record
 
                 this.record_latest = Object.assign({}, record);     // Clone the record object into a temporary variable
                                                                     // to which the editing fields are bound
@@ -614,7 +614,7 @@ Vue.component('vue-plugin-rs',
                 const url_server_api = "/BA/api/update_content_item_JSON";
 
                 const post_obj = {
-                                    internal_id: this.record_latest.internal_id
+                                    internal_id: this.record_latest._internal_id
                                  };     // Note: not using (at least for now, `uri` nor `class_name`)
 
                 // Go over each field name of the recordset

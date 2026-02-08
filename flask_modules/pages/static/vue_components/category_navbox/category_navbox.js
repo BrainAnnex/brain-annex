@@ -16,7 +16,7 @@ Vue.component('vue-category-navbox',
             subcategories:          List of the subcategories of the Current Category
             siblings_categories:    List of the sibling categories of the Current Category;
                                     each item is an object, whose keys include
-                                    "uri" and "name", "remarks" and "internal_id" (among others)
+                                    "uri" and "name", "remarks" and "_internal_id" (among others)
             all_categories:         EXAMPLE:
                                         [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"},
                                          {"uri": "523", "name": "work", 'pinned': True}]

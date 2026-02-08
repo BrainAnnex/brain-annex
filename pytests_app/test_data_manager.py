@@ -57,15 +57,15 @@ def test_get_records_by_link(db):
     expected = [{"name": "Julian", "city": "Berkeley", '_node_labels': ['person']}]
     assert result == expected
 
-    request_data = {"internal_id": book_2, "rel_name": "OWNS", "dir": "IN"}
+    request_data = {"_internal_id": book_2, "rel_name": "OWNS", "dir": "IN"}
     result = DataManager.get_records_by_link(request_data)
-    expected = [{"internal_id": person_id, "name": "Julian", "city": "Berkeley", '_node_labels': ['person']}]
+    expected = [{"_internal_id": person_id, "name": "Julian", "city": "Berkeley", '_node_labels': ['person']}]
     assert result == expected
 
-    request_data = {"internal_id": person_id, "rel_name": "OWNS", "dir": "OUT"}
+    request_data = {"_internal_id": person_id, "rel_name": "OWNS", "dir": "OUT"}
     result = DataManager.get_records_by_link(request_data)
-    expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', 'internal_id': book_1, '_node_labels': ['book']} ,
-                {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2, '_node_labels': ['book']}]
+    expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', '_internal_id': book_1, '_node_labels': ['book']} ,
+                {'title': 'Intro to Hilbert Spaces', '_internal_id': book_2, '_node_labels': ['book']}]
     assert compare_recordsets(result, expected)
 
 
@@ -173,15 +173,15 @@ def test_get_filtered(db):
 
     # No filtration
     assert DataManager.get_filtered({}) == (
-                                            [{'gender': 'F', 'age': 22, 'internal_id': internal_id, '_node_labels': ["Test Label"]}]
+                                            [{'gender': 'F', 'age': 22, '_internal_id': internal_id, '_node_labels': ["Test Label"]}]
                                             , 1
                                            )
     # Filtration by labels
     assert DataManager.get_filtered({"label": "Test Label"}) == \
-           ( [{'gender': 'F', 'age': 22, 'internal_id': internal_id, '_node_labels': ["Test Label"]}] , 1 )
+           ( [{'gender': 'F', 'age': 22, '_internal_id': internal_id, '_node_labels': ["Test Label"]}] , 1 )
     assert DataManager.get_filtered({"label": "WRONG_Label"}) == ( [] , 0 )
     assert DataManager.get_filtered({"key_name": "age", "key_value": 22}) == \
-           ( [{'gender': 'F', 'age': 22, 'internal_id': internal_id, '_node_labels': ["Test Label"]}] , 1 )
+           ( [{'gender': 'F', 'age': 22, '_internal_id': internal_id, '_node_labels': ["Test Label"]}] , 1 )
     assert DataManager.get_filtered({"key_name": "age", "key_value": 99}) == ( [] , 0 )
     assert DataManager.get_filtered({"label": "WRONG_Label", "key_name": "age", "key_value": 22}) == ( [] , 0 )
 
