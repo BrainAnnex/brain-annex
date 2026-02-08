@@ -172,10 +172,10 @@ class Collections:
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=data_binding,
                                      extra_labels="BA",
-                                     links=[{"_internal_id": collection_id,
+                                     links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
-                                    ],
+                                            ],
                                      new_uri=new_uri
                                      )
         return new_uri
@@ -500,10 +500,10 @@ class Collections:
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=data_binding,
                                      extra_labels="BA",
-                                     links=[{"_internal_id": collection_id,
+                                     links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
-                                    ],
+                                            ],
                                      new_uri=new_uri
                                      )
         return new_uri
@@ -617,10 +617,10 @@ class Collections:
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=item_properties,
                                      extra_labels="BA",
-                                     links=[{"_internal_id": collection_id,
+                                     links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": new_pos}}
-                                    ],
+                                            ],
                                      new_uri=new_uri
                                      )
         return new_uri

@@ -320,6 +320,36 @@ def test_get_node_labels(db):
 
 
 
+def test_get_all_node_labels(db):
+    pass    # TODO
+
+
+
+def test_find_first_duplicate(db):
+    db.empty_dbase()
+    assert db.find_first_duplicate(labels="car", property_name="color") is None
+
+    car_1 = db.create_node("car", {'color': 'red', 'brand': 'Toyota'})
+    assert db.find_first_duplicate(labels="car", property_name="color") is None
+
+    car_2 = db.create_node("car", {'color': 'red', 'brand': 'Ford'})
+
+    result = db.find_first_duplicate(labels="car", property_name="color")
+    assert (result == {"FIRST_INTERNAL_ID": car_1, "SECOND_INTERNAL_ID": car_2, "color": "red"}
+         or result == {"FIRST_INTERNAL_ID": car_2, "SECOND_INTERNAL_ID": car_1, "color": "red"})
+         # The order isn't known
+
+    assert db.find_first_duplicate(labels="car", property_name="brand") is None
+    assert db.find_first_duplicate(labels="boat", property_name="color") is None
+
+    car_3 = db.create_node("car", {'color': 'white', 'brand': 'Ford'})
+
+    result = db.find_first_duplicate(labels="car", property_name="brand")
+    assert (result == {"FIRST_INTERNAL_ID": car_2, "SECOND_INTERNAL_ID": car_3, "brand": "Ford"}
+         or result == {"FIRST_INTERNAL_ID": car_3, "SECOND_INTERNAL_ID": car_2, "brand": "Ford"})
+         # The order isn't known
+
+
 
 
 ###  ~ FOLLOW LINKS ~
@@ -593,18 +623,18 @@ def test_explore_neighborhood(db):
     assert result == []
 
     rese_id = db.create_node_with_links(labels="Person", properties={"name": "Rese"},
-                                    links=[{"_internal_id": julian_id, "rel_name": "FRIENDS OF"}])
+                                        links=[{"internal_id": julian_id, "rel_name": "FRIENDS OF"}])
     result = db.explore_neighborhood(start_id=julian_id)
     assert result == [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']}]
 
     result = db.explore_neighborhood(start_id=julian_id, include_start_node=True)
-    expected = [{'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']},
+    expected = [{'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']},
                 {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
 
     val_id = db.create_node_with_links(labels="Person", properties={"name": "Val"},
-                                    links=[{"_internal_id": julian_id, "rel_name": "FRIENDS OF"}])
+                                    links=[{"internal_id": julian_id, "rel_name": "FRIENDS OF"}])
     result = db.explore_neighborhood(start_id=julian_id)
     expected = [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
                 {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']}]
@@ -618,7 +648,7 @@ def test_explore_neighborhood(db):
 
 
     car_id = db.create_node_with_links(labels="Car", properties={"color": "red"},
-                                    links=[{"_internal_id": val_id, "rel_name": "IS OWNED BY"}])
+                                    links=[{"internal_id": val_id, "rel_name": "IS OWNED BY"}])
     result = db.explore_neighborhood(start_id=julian_id)
     expected = [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
                 {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']},
@@ -984,7 +1014,7 @@ def test_create_node_with_links(db):
         db.create_node_with_links(labels="A", links=666)    # links isn't a list/None
 
     with pytest.raises(Exception):
-        db.create_node_with_links(labels="A", links=[{"_internal_id": 9999, "rel_name": "GHOST"}])   # Linking to non-existing node
+        db.create_node_with_links(labels="A", links=[{"internal_id": 9999, "rel_name": "GHOST"}])   # Linking to non-existing node
 
     # Create a first node, with no links
     car_id = db.create_node_with_links(labels = ["CAR", "INVENTORY"],
@@ -1010,11 +1040,11 @@ def test_create_node_with_links(db):
             labels="PERSON",
             properties={"name": "Julian", "city": "Berkeley"},
             links=[
-                {"_internal_id": dept_id,
+                {"internal_id": dept_id,
                  "rel_name": "EMPLOYS",
                  "rel_dir": "IN"},
 
-                {"_internal_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "OWNS",
                  "rel_attrs": {"since": 2021} }
             ]
@@ -1037,10 +1067,10 @@ def test_create_node_with_links(db):
             labels="PERSON",
             properties={"name": "Val", "city": "San Francisco"},
             links=[
-                {"_internal_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "DRIVES"},
 
-                {"_internal_id": car_id,
+                {"internal_id": car_id,
                  "rel_name": "DRIVES"}
             ]
         )
@@ -1073,18 +1103,18 @@ def test_assemble_query_for_linking(db):
         db._assemble_query_for_linking([{'_internal_id': 123}])
 
 
-    result = db._assemble_query_for_linking([{"_internal_id": 123, "rel_name": "LIVES IN"}])
+    result = db._assemble_query_for_linking(links=[{"internal_id": 123, "rel_name": "LIVES IN"}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 123', 'MERGE (n)-[:`LIVES IN` ]->(ex0)', {})
 
-    result = db._assemble_query_for_linking([{"_internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
+    result = db._assemble_query_for_linking([{"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 456', 'MERGE (n)<-[:`EMPLOYS` ]-(ex0)', {})
 
-    result = db._assemble_query_for_linking([{"_internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}])
+    result = db._assemble_query_for_linking([{"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}])
     assert result == ('MATCH (ex0)', 'WHERE id(ex0) = 789', 'MERGE (n)-[:`OWNS` {`since`: $EDGE0_1}]->(ex0)', {'EDGE0_1': 2022})
 
 
-    result = db._assemble_query_for_linking([{"_internal_id": 123, "rel_name": "LIVES IN"} ,
-                                             {"_internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
+    result = db._assemble_query_for_linking([{"internal_id": 123, "rel_name": "LIVES IN"} ,
+                                             {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"}])
     assert result == ('MATCH (ex0), (ex1)',
                       'WHERE id(ex0) = 123 AND id(ex1) = 456',
                       'MERGE (n)-[:`LIVES IN` ]->(ex0)\nMERGE (n)<-[:`EMPLOYS` ]-(ex1)',
@@ -1094,9 +1124,9 @@ def test_assemble_query_for_linking(db):
 
     result = db._assemble_query_for_linking(
                         [
-                            {"_internal_id": 123, "rel_name": "LIVES IN"},
-                            {"_internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
-                            {"_internal_id": 789, "rel_name": "IS OWNED BY", "rel_dir": "IN", "rel_attrs": {"since": 2022, "tax rate": "X 23"}}
+                            {"internal_id": 123, "rel_name": "LIVES IN"},
+                            {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
+                            {"internal_id": 789, "rel_name": "IS OWNED BY", "rel_dir": "IN", "rel_attrs": {"since": 2022, "tax rate": "X 23"}}
                         ])
     assert result == (
                         'MATCH (ex0), (ex1), (ex2)',

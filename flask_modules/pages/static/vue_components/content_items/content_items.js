@@ -590,7 +590,8 @@ Vue.component('vue-content-items',
 
                IMPORTANT: if no handler is registered, default to the generic "r" (general records) handler
 
-               TODO: "schema_code" attribute ought to be stored on the Class nodes, not on the Data nodes
+               TODO: the "schema_code" attribute ought to give way to "handler"
+                     (which is stored on the Class nodes, not on the Data nodes)
 
                :param item:                 An object representing a Content Item
                :param registered_plugins:   A list of item codes for which a plugin exists

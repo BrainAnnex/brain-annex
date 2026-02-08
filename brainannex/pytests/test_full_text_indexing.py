@@ -230,7 +230,7 @@ def test_add_words_to_index(db):
 
     # Create a data node of type "Indexer", and link it up to the passed Content Item data node
     indexer_id = GraphSchema.create_data_node(class_name="Indexer",
-                                              links=[{"_internal_id": content_id, "rel_name": "has_index",
+                                              links=[{"internal_id": content_id, "rel_name": "has_index",
                                                       "rel_dir": "IN"}])
     # ...and then index some words to it
     n_added = FullTextIndexing.add_words_to_index(indexer_id=indexer_id,
@@ -257,7 +257,7 @@ def test_add_words_to_index(db):
     content_id = GraphSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...then create a data node of type "Indexer", and link it up to the passed Content Item data node
     indexer_id = GraphSchema.create_data_node(class_name="Indexer",
-                                              links=[{"_internal_id": content_id, "rel_name": "has_index",
+                                              links=[{"internal_id": content_id, "rel_name": "has_index",
                                                       "rel_dir": "IN"}])
     # ...and then index some words to it
     n_added = FullTextIndexing.add_words_to_index(indexer_id=indexer_id,

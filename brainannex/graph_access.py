@@ -101,7 +101,8 @@ class GraphAccess(InterGraph):
                             at present, there's no way to request an "OR" operation
 
         :param internal_id: The internal database ID of the node of interest.
-                                If specified, it OVER-RIDES all the remaining arguments [except for the labels (TODO: revisit this)]
+                                If specified, it OVER-RIDES all the remaining arguments
+                                [except for the labels (TODO: revisit this)]
 
         :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
         :param key_value:   The required value for the above key; if provided, key_name must be present, too
@@ -414,24 +415,41 @@ class GraphAccess(InterGraph):
 
         :return:    A list of strings, sorted alphabetically
         """
+        # TODO: pytest
         label_list = self.get_labels()    # Database-specific operation to retrieve all the node labels in the database
 
         return sorted(label_list)
 
 
 
-    def find_first_duplicate(self, labels :str, property_name :str) -> Union[dict, None]:
+    def find_first_duplicate(self, labels :str, property_name :str) -> dict|None:
         """
         Search the database for node duplicates based on the given labels/property_name pairing;
-        return the first duplicate, or None if not found
+        return the first duplicate pair, or None if not found.
 
-        :param labels:          For now, just 1 label
+        Duplicate values must be EXACT: for example, integer values or absolutely-identical strings;
+        "red" will NOT match "Red".
+        Do NOT use to match floating-point values.
+
+        ~~~ EXAMPLE ~~~
+            find_first_duplicate(labels="car", property_name="color")
+
+            If the database has at least 2 "car" nodes with the same "color" property
+            (for example, if we have two red cars),
+            the above call might return:  {"FIRST_INTERNAL_ID": 15, "SECOND_INTERNAL_ID": 23, "color": "red"}
+            where 15 and 23 (int or string values)
+            are the internal database IDs - in any order - of two duplicates that were found.
+            It's possible that other duplicates might also present; this function only checks for the EXISTENCE of duplicates
+
+
+        :param labels:          For now, just 1 database label
         :param property_name:   A string with the name of the node property of interest
-        :return:                If no duplicates are present, return None;
-                                otherwise return a dict such as
-                                {'FIRST_INTERNAL_ID': 123, 'SECOND_INTERNAL_ID': 999, 'my_property_name': "I'm a duplicate"}
+        :return:                If no duplicates (based on label + property_name) are present, return None;
+                                    otherwise return a dict such as
+                                    {"FIRST_INTERNAL_ID": 123, "SECOND_INTERNAL_ID": 999, "my_property_name": "I'm a duplicate"}
+                                    where 'my_property_name' is the argument `property_name`
         """
-        #TODO: generalize labels; pytest
+        #TODO: generalize to multiple labels
         q = f'''
             MATCH (n1 :{labels}), (n2 :{labels})
             WHERE n1.`{property_name}` = n2.`{property_name}`
@@ -625,8 +643,8 @@ class GraphAccess(InterGraph):
         if attached_to is None:
             links = None
         else:
-            links = [{"_internal_id": existing_node_id, "rel_name": rel_name, "rel_dir": rel_dir}
-                     for existing_node_id in attached_to]
+            links = [{"internal_id": existing_node_id, "rel_name": rel_name, "rel_dir": rel_dir}
+                            for existing_node_id in attached_to]
 
         return self.create_node_with_links(labels=labels, properties=properties, links=links, merge=merge)
 
@@ -652,9 +670,9 @@ class GraphAccess(InterGraph):
             create_node_with_links(
                                 labels="PERSON",
                                 properties={"name": "Julian", "city": "Berkeley"},
-                                links=[ {"_internal_id": 123, "rel_name": "LIVES IN"},
-                                        {"_internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
-                                        {"_internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
+                                links=[ {"internal_id": 123, "rel_name": "LIVES IN"},
+                                        {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
+                                        {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
                                       ]
             )
 
@@ -666,7 +684,7 @@ class GraphAccess(InterGraph):
                                 to give to the links connecting to them;
                                 use None, or an empty list, to indicate if there aren't any.
                                 Each dict contains the following keys:
-                                    "_internal_id"   REQUIRED - to identify an existing node
+                                    "internal_id"   REQUIRED - to identify an existing node
                                     "rel_name"      REQUIRED - the name to give to the link
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
@@ -769,7 +787,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def _assemble_query_for_linking(self, links: list) -> tuple:
+    def _assemble_query_for_linking(self, links :list) -> tuple:
         """
         Helper function for create_node_with_links(), and perhaps future methods.
 
@@ -798,12 +816,12 @@ class GraphAccess(InterGraph):
 
         data_binding = {}
         for i, edge in enumerate(links):
-            match_internal_id = edge.get("_internal_id")
+            match_internal_id = edge.get("internal_id")
             if match_internal_id is None:    # Caution: it might be zero
-                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing '_internal_id' key for the node to link to (in list element {edge})")
+                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing 'internal_id' key for the node to link to (in list element {edge})")
 
             assert type(match_internal_id) == int, \
-                f"GraphAccess._assemble_query_for_linking(): The value of the '_internal_id' key must be an integer. The type was {type(match_internal_id)}"
+                f"GraphAccess._assemble_query_for_linking(): The value of the 'internal_id' key must be an integer. The type was {type(match_internal_id)}"
 
             rel_name = edge.get("rel_name")
             if not rel_name:
@@ -2417,7 +2435,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def create_nodes_from_python_data(self, python_data, root_labels: Union[str, List[str]], level=1) -> List[int]:
+    def create_nodes_from_python_data(self, python_data, root_labels: Union[str, List[str]], level=1) -> List[int|str]:
         """
         Recursive function to add data from a JSON structure to the database, to create a tree:
         either a single node, or a root node with children.
@@ -2425,14 +2443,14 @@ class GraphAccess(InterGraph):
 
         If the data is a literal, first turn it into a dictionary using a key named "value".
 
-        Return the Neo4j ID's of the root node(s)
+        Return the internal database ID's of the root node(s)
 
         :param python_data: Python data to import.
                                 The data can be a literal, or list, or dictionary
                                 - and lists/dictionaries may be nested
         :param root_labels: String, or list of strings, to be used as Neo4j labels for the root node(s)
         :param level:       Recursion level (also used for debugging, to make the indentation more readable)
-        :return:            List of integer Neo4j internal ID's (possibly empty), of the root node(s) created
+        :return:            List (possibly empty) of internal database ID's of the root node(s) created
         """
         indent_str = self.indent_chooser(level)
         self.debug_print(f"{indent_str}{level}. ~~~~~:")
@@ -2469,7 +2487,7 @@ class GraphAccess(InterGraph):
                 children_list = []
                 for child_id in children_info:
                     #children_list.append( (child_id, root_labels) )
-                    children_list.append( {"_internal_id": child_id, "rel_name":root_labels} )
+                    children_list.append( {"internal_id": child_id, "rel_name":root_labels} )
                 self.debug_print(f"{indent_str}Attaching the root nodes of the list elements to a common parent")
                 return [self.create_node_with_links(labels=root_labels, properties=None, links=children_list)]
 
@@ -2503,30 +2521,31 @@ class GraphAccess(InterGraph):
                 node_properties[k] = v      # Add the key/value to the running list of properties of the new node
                 if self.debug:
                     print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}. Node properties so far: {node_properties}")
-                else:
-                    print(f"{indent_str}The value (`{self.debug_trim(v)}`) is a literal of type {type(v)}")      # Concise version
+                #else:
+                    #print(f"{indent_str}The value (`{self.debug_trim(v)}`) is a literal of type {type(v)}")      # Concise version
 
             elif type(v) == dict:
                 self.debug_print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
                 # Recursive call
                 new_node_id_list = self.create_nodes_from_python_data(python_data=v, root_labels=k, level=level + 1)
                 if len(new_node_id_list) > 1:
-                    raise Exception("Internal error: processing a dictionary is returning more than 1 root node")
+                    raise Exception("dict_importer() - Internal error: processing a dictionary is returning more than 1 root node")
                 elif len(new_node_id_list) == 1:
                     new_node_id = new_node_id_list[0]
-                    children_info.append( {"_internal_id": new_node_id, "rel_name": k} )  # Append dict entry to the running list
+                    children_info.append( {"internal_id": new_node_id, "rel_name": k} )  # Append dict entry to the running list
                 # Note: if the list is empty, do nothing
 
             elif type(v) == list:
                 self.debug_print(f"{indent_str}Processing a list (with {len(v)} elements):")
                 new_children = self.list_importer(l=v, labels=k, level=level)
                 for child_id in new_children:
-                    children_info.append( {"_internal_id": child_id, "rel_name": k} )     # Append dict entry to the running list
+                    children_info.append( {"internal_id": child_id, "rel_name": k} )     # Append dict entry to the running list
 
             # Note: if v is None, no action is taken.  Dictionary entries with values of None are disregarded
 
 
-        self.debug_print(f"{indent_str}dict_importer assembled node_properties: {node_properties} | children_info: {children_info}")
+        self.debug_print(f"{indent_str}dict_importer assembled node_properties: {node_properties} "
+                         f"| children_info: {children_info}")
         return self.create_node_with_links(labels=labels, properties=node_properties, links=children_info)
 
 

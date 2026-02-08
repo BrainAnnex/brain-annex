@@ -359,7 +359,7 @@ class FullTextIndexing:
                                                                    "rel_dir": "IN"}])
         '''
         indexer_id = GraphSchema.create_data_node(class_name="Indexer",
-                                                  links =[{"_internal_id": internal_id, "rel_name": "has_index",
+                                                  links=[{"internal_id": internal_id, "rel_name": "has_index",
                                                           "rel_dir": "IN"}])
 
         cls.add_words_to_index(indexer_id=indexer_id, unique_words=unique_words, to_lower_case=to_lower_case)

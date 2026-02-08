@@ -276,7 +276,7 @@ class GraphSchema:
     def get_class_internal_id(cls, class_name :str) -> int:
         """
         Returns the internal database ID of the Class node with the given name,
-        or raise an Exception if not found, or if more than one is found.
+        or raise an Exception if not found or if more than one is found.
         Note: unique Class names are assumed.
 
         :param class_name:  The name of the desired class
@@ -3249,8 +3249,8 @@ class GraphSchema:
         EXAMPLE:
             create_data_node(class_name="Cars",
                              properties={"make": "Toyota", "color": "white"},
-                             links=[{"_internal_id": 123, "rel_name": "OWNED_BY", "rel_dir": "IN"}])
-                                    {"_internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
+                             links=[{"internal_id": 123, "rel_name": "OWNED_BY", "rel_dir": "IN"}])
+                                    {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
                             )
 
         :param class_name:  The name of an existing Class node, to which the new Data Node belongs to
@@ -3260,15 +3260,15 @@ class GraphSchema:
                                 IN ADDITION TO the Class name (which is always used as label)
         :param new_uri:     [OPTIONAL]  If a string is passed as `new_uri`, then a field (node property) called "uri"
                                 is set to that value
-        :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
+        :param silently_drop: [OPTIONAL] If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
                                 Note: only applicable for "Strict" schema - otherwise, anything goes!
-        :param links:       OPTIONAL list of dicts identifying existing nodes,
+        :param links:       [OPTIONAL] List of dicts identifying existing nodes,
                                 and specifying the name, direction and optional properties
                                 to give to the links connecting to them;
-                                use None, or an empty list, to indicate if there aren't any
+                                use None, or an empty list, to indicate if there aren't any.
                                 Each dict contains the following keys:
-                                    "_internal_id"  REQUIRED - to identify an existing node
+                                    "internal_id"   REQUIRED - to identify an existing node
                                     "rel_name"      REQUIRED - the name to give to the link
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
@@ -3276,7 +3276,6 @@ class GraphSchema:
         :return:            The internal database ID of the new data node just created;
                                 if unable to create it, an Exception is raised
         """
-        # TODO: verify that required attributes are present
         # TODO: verify that all the requested links conform to the Schema
         # TODO: consider allowing creation of multiple nodes from one call
         # TODO: allow a new URI to be automatically generated from a namespace?
@@ -3329,9 +3328,9 @@ class GraphSchema:
 
         # TODO: perhaps merge the two approaches, node creation with and without links
         if links is not None:
-            allowed_keys = {'_internal_id', 'rel_name', 'rel_dir', 'rel_attrs'}
+            allowed_keys = {'internal_id', 'rel_name', 'rel_dir', 'rel_attrs'}
             for d in links:
-                assert "_internal_id" in d, \
+                assert "internal_id" in d, \
                     f"GraphSchema.create_data_node(): the `links` argument must be a list of dicts that contain the key '_internal_id'; the dict in question: {d}"
 
                 assert "rel_name" in d, \
@@ -3344,11 +3343,12 @@ class GraphSchema:
 
             properties_to_set["_CLASS"] = class_name       # Expand the dictionary, to also include the Schema data
             new_internal_id = cls.db.create_node_with_links(labels=labels,
-                                               properties=properties_to_set,
-                                               links=links, merge=False)
+                                                            properties=properties_to_set,
+                                                            links=links, merge=False)
         else:
             new_internal_id = cls._create_data_node_helper(class_name=class_name,
-                                                labels=labels, properties_to_set=properties_to_set)
+                                                           labels=labels,
+                                                           properties_to_set=properties_to_set)
 
         return new_internal_id
 
@@ -5296,7 +5296,7 @@ class GraphSchema:
 
 
     @classmethod
-    def create_tree_from_dict(cls, d :dict, class_name :str, level=1, cache=None) -> Union[int, None]:
+    def create_tree_from_dict(cls, d :dict, class_name :str, level=1, cache=None) -> int|None:
         """
         Add a new data node (which may turn into a tree root) of the specified Class,
         with data from the given dictionary:
@@ -5308,7 +5308,7 @@ class GraphSchema:
         or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
 
         IMPORTANT:  any part of the data that doesn't match the Schema,
-                    gets silently dropped.  TODO: issue some report about anything that gets dropped
+                    gets silently dropped.
 
         EXAMPLES:
         (1) {"state": "California", "city": "Berkeley"}
@@ -5332,6 +5332,7 @@ class GraphSchema:
         :return:            The Neo4j ID of the newly created node,
                                 or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
         """
+        # TODO: issue some report about anything that gets dropped
         assert cache is not None, "GraphSchema.create_tree_from_dict(): the argument `cache` cannot be None"
         assert type(d) == dict, f"GraphSchema.create_tree_from_dict(): the argument `d` must be a dictionary (instead, it's {type(d)})"
 
@@ -5456,7 +5457,7 @@ class GraphSchema:
             cls.debug_print(f"{indent_str}Skipping creating node of class `{class_name}` that has no properties and no children")
             return None   # Using None to indicate "skipped node/subtree"
         else:
-            links = [{"_internal_id": child[0], "rel_name": child[1], "rel_dir": "OUT"}
+            links = [{"internal_id": child[0], "rel_name": child[1], "rel_dir": "OUT"}
                             for child in children_info]
             # Note: an internal database ID is returned by the next call
             '''

@@ -1953,7 +1953,7 @@ def test_create_data_node_4(db):
     # Create a new data node for a "patient", linked to the existing "doctor" data point (OUT-bound relationship)
     patient_internal_id = GraphSchema.create_data_node(class_name="patient",
                                                        properties={"name": "Jill", "age": 22, "balance": 145},
-                                                       links=[{"_internal_id": doctor_internal_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
+                                                       links=[{"internal_id": doctor_internal_id, "rel_name": "IS_ATTENDED_BY", "rel_dir": "OUT"}]
                                                        )
 
     q = '''
@@ -1970,7 +1970,7 @@ def test_create_data_node_4(db):
     #   this time, also assign a "uri" to the new data node, and it's an IN-bound relationship
     result_internal_id = GraphSchema.create_data_node(class_name="result",
                                                       properties={"biomarker": "glucose", "value": 99},
-                                                      links=[{"_internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                      links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
                                                       new_uri="RESULT-1")
     q = '''
         MATCH 
@@ -1992,7 +1992,7 @@ def test_create_data_node_4(db):
     #   agan with a specific "uri" assigned to the new data node
     result2_internal_id = GraphSchema.create_data_node(class_name="result",
                                                        properties={"biomarker": "cholesterol", "value": 180},
-                                                       links=[{"_internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
+                                                       links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
                                                        new_uri="RESULT-2")
     q = '''
         MATCH 
@@ -2016,11 +2016,11 @@ def test_create_data_node_4(db):
     # Create another "patient" node, linked to the existing "doctor" data node, this time with some extra properties
     patient_internal_id_2 = GraphSchema.create_data_node(class_name="patient",
                                                          properties={"name": "Jack", "age": 99, "balance": 8000},
-                                                         links=[{"_internal_id": doctor_internal_id,
+                                                         links=[{"internal_id": doctor_internal_id,
                                                                  "rel_name": "IS_ATTENDED_BY",
                                                                  "rel_dir": "OUT",
                                                                  "rel_attrs": {"since": 1999}
-                                                                }]
+                                                                 }]
                                                          )
 
     q = '''
@@ -2038,9 +2038,9 @@ def test_create_data_node_4(db):
     with pytest.raises(Exception):
         GraphSchema.create_data_node(class_name="patient",
                                      properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                     links=[{"_internal_id": -1,             # No such node exists
+                                     links=[{"internal_id": -1,  # No such node exists
                                              "rel_name": "IS_ATTENDED_BY"
-                                            }]
+                                             }]
                                      )
 
     with pytest.raises(Exception):
@@ -2058,13 +2058,13 @@ def test_create_data_node_4(db):
     with pytest.raises(Exception):
         GraphSchema.create_data_node(class_name="patient",
                                      properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                     links=[{"_internal_id": doctor_internal_id}]  # Missing required keys
+                                     links=[{"internal_id": doctor_internal_id}]  # Missing required keys
                                      )
 
     with pytest.raises(Exception):
         GraphSchema.create_data_node(class_name="patient",
                                      properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                     links=[{"_internal_id": doctor_internal_id,
+                                     links=[{"internal_id": doctor_internal_id,
                                              "rel_name": "IS_ATTENDED_BY",
                                              "unexpected_key": 666}]  # Unexpected key
                                      )

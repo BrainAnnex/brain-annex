@@ -460,7 +460,7 @@ class Categories:
 
         GraphSchema.create_data_node(class_name="Category", extra_labels ="BA",
                                      properties = data_dict,
-                                     links = [{"_internal_id": parent_category_internal_id,
+                                     links= [{"internal_id": parent_category_internal_id,
                                              "rel_name": "BA_subcategory_of"}],
                                      new_uri=new_uri)
 
