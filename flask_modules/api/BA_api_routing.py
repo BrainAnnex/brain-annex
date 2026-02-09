@@ -991,12 +991,14 @@ class ApiRouting:
                             together with an error message
             """
             #TODO: let the Documents plugin handle this
+
+            COVERS_FOLDER = "covers/"  # TODO: for now, this must be matched to documents.py
             try:
                 # Obtain the name of the folder for the document file;
                 # it includes the final "/"
                 folder, basename, _ = MediaManager.lookup_media_file(uri, class_name="Document")
                 #print(folder, "\n", basename, "\n", suffix)
-                cover_folder = folder + "covers/"       # Subfolder of the document folder
+                cover_folder = folder + COVERS_FOLDER       # Subfolder of the document folder
                 filename = f"{basename}.jpg"   # Including the suffix.  EXAMPLE: "my_document_title.jpg"
                 # TODO: make allowance for files that might not be .jpg (or perhaps covert them to JPG during upload?)
                 content = MediaManager.get_from_binary_file(path=cover_folder, filename=filename)

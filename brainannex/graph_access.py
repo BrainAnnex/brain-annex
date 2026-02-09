@@ -450,6 +450,9 @@ class GraphAccess(InterGraph):
                                     where 'my_property_name' is the argument `property_name`
         """
         #TODO: generalize to multiple labels
+        assert type(labels) == str, \
+            f"find_first_duplicate(): argument `labels` must be (for now) a string, not a {type(labels)}"
+
         q = f'''
             MATCH (n1 :{labels}), (n2 :{labels})
             WHERE n1.`{property_name}` = n2.`{property_name}`

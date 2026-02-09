@@ -11,6 +11,7 @@ class Documents:
     """
 
     SCHEMA_CLASS_NAME = "Document"
+    COVERS_FOLDER = "covers/"      # TODO: for now, this must be matched to BA_api_routing.py
 
 
     @classmethod
@@ -79,6 +80,43 @@ class Documents:
         :return:            The altered data_binding dictionary.  In case of error, an Exception is raised.
         """
         pass    # No action needed
+
+
+
+    @classmethod
+    def before_update_content(cls, entity_id :str, item_data :dict) -> dict:
+        """
+        Invoked before a Document gets updated in the database
+
+        :param entity_id:
+        :param item_data:   A dict with various fields for this Document
+        :return:            Just pass thru the `item_data` dictionary
+        """
+        print(f"In Documents.before_update_content() - entity_id: `{entity_id}` | item_data: {item_data}")
+        new_basename = item_data.get("basename")
+        new_suffix =   item_data.get("suffix")
+
+        folder, old_basename, old_suffix = \
+                MediaManager.get_media_item_file(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
+
+        print(f"folder: {folder}, old_basename: {old_basename}, old_suffix: {old_suffix}")
+
+        MediaManager.rename_media_file(folder=folder,
+                                       old_basename=old_basename, old_suffix=old_suffix,
+                                       new_basename=new_basename, new_suffix=new_suffix)
+
+         # Also rename the cover image (always a jpg file), if present
+        MediaManager.rename_media_file(folder=folder,
+                                       old_basename=old_basename+cls.COVERS_FOLDER, old_suffix="jpg",
+                                       new_basename=new_basename+cls.COVERS_FOLDER,
+                                       ignore_missing=True)
+
+        '''
+        if os.path.exists(f"{folder}{cls.COVERS_FOLDER}{old_basename}.jpg"):
+            MediaManager.move_file(src=f"{folder}{cls.COVERS_FOLDER}{old_basename}.jpg", dest=f"{folder}{cls.COVERS_FOLDER}{new_basename}.jpg")
+        '''
+
+        return item_data
 
 
 
@@ -202,13 +240,13 @@ class Documents:
 
 
     @classmethod
-    def update_content_item_successful(cls, uri: int, pars: dict) -> None:
+    def update_content_item_successful(cls, entity_id :str, pars: dict) -> None:
         """
         Invoked after a Content Item of this type gets successfully updated
 
-        :param uri: An integer with the URI of the Content Item
-        :param pars:Dict with the various properties of this Content Item
-        :return:    None
+        :param entity_id:   A string to identify this Document
+        :param pars:        Dict with the various properties of this Content Item
+        :return:            None
         """
         pass    # Nothing to do
 

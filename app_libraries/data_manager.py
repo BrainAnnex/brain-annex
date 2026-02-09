@@ -640,18 +640,18 @@ class DataManager:
         :param entity_id:   String with a unique identifier for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
         :param update_data: A dict of data field names and their desired new values
+                                EXAMPLE: {'basename': 'my new filename', 'caption': 'my new caption'}
         :param label:       [OPTIONAL] String with a Label of the Content Item
         :return:            None
         """
+        print("In DataManager.update_content_item(): update_data = ", update_data)
 
         assert GraphSchema.class_name_exists(class_name), \
                 f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
-        if class_name:
-            #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="uri", class_name=class_name), \
-            assert GraphSchema.data_node_exists(find=(class_name, entity_id)), \
-                    f"update_content_item(): no Content Item found with URI `{entity_id}` and class `{class_name}`"
+        assert GraphSchema.data_node_exists(find=(class_name, entity_id)), \
+                f"update_content_item(): no Content Item found with class `{class_name}` and entity ID `{entity_id}`"
 
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
@@ -667,11 +667,13 @@ class DataManager:
 
         if class_name == "Note":
             update_data = Notes.before_update_content(update_data)
+        elif class_name == "Document":
+            update_data = Documents.before_update_content(entity_id=entity_id, item_data=update_data)
 
 
         if plugin_support.is_media_class(class_name):
             # If the Content Item is a Media Item, do some special handling
-            MediaManager.before_update_content(uri=entity_id, set_dict=update_data, class_name=class_name)
+            MediaManager.before_update_content(entity_id=entity_id, set_dict=update_data, class_name=class_name)
 
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
@@ -691,6 +693,10 @@ class DataManager:
                 raise Exception(f"update_content_item(): Requested Class ({class_name}) doesn't exist; no update performed")
             else:
                 raise Exception("update_content_item(): No update performed")
+
+
+        #if class_name == "Document":
+        #    Documents.update_content_item_successful(entity_id, original_post_data)
 
 
 
