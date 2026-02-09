@@ -164,6 +164,59 @@ def test_switch_category(db):
 
 
 
+def test_search_for_terms(db):
+    pass    # TODO
+
+def test_search_for_word(db):
+    pass    # TODO
+
+def test_search_for_all_words(db):
+    pass    # TODO
+
+
+
+def test_extract_node_neighborhood(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        DataManager.extract_node_neighborhood(node_internal_id=None, known_neighbors=[])
+
+    # Non-existent node
+    result = DataManager.extract_node_neighborhood(node_internal_id=1, known_neighbors=None)
+    assert result == {'nodes': [], 'edges': []}
+
+    with pytest.raises(Exception):
+        DataManager.extract_node_neighborhood(node_internal_id=1, known_neighbors="not a list!")
+
+    car_node = db.create_node(labels="Car", properties={"color": "white"})
+
+    result = DataManager.extract_node_neighborhood(node_internal_id=car_node, known_neighbors=None)
+    assert result == {'nodes': [], 'edges': []}
+
+    owner_1 = db.create_attached_node(labels="Person", properties={"name": "Julian"},
+                            attached_to=car_node, rel_name="OWNS", rel_dir="OUT")
+
+    # Neighbors of the Car node
+    result = DataManager.extract_node_neighborhood(node_internal_id=car_node, known_neighbors=None)
+    assert result == {'nodes': [{'_node_labels': ['Person'], 'name': 'Julian', '_internal_id': owner_1, 'id': str(owner_1)}],
+                      'edges': [{'name': 'OWNS', 'source': str(owner_1), 'target': str(car_node), 'id': f'edge-{owner_1}--{car_node}'}]}
+
+    result = DataManager.extract_node_neighborhood(node_internal_id=car_node, known_neighbors=[owner_1])
+    assert result == {'nodes': [], 'edges': []}
+
+
+    # Neighbors of the owner_1 node
+    result = DataManager.extract_node_neighborhood(node_internal_id=owner_1, known_neighbors=None)
+    assert result == {'nodes': [{'_node_labels': ['Car'], 'color': 'white', '_internal_id': car_node, 'id': str(car_node)}],
+                      'edges': [{'name': 'OWNS', 'source': str(owner_1), 'target': str(car_node), 'id': f'edge-{owner_1}--{car_node}'}]}
+
+    result = DataManager.extract_node_neighborhood(node_internal_id=owner_1, known_neighbors=[car_node])
+    assert result == {'nodes': [], 'edges': []}
+
+    #TODO: more tests
+
+
+
 def test_get_filtered(db):
     db.empty_dbase()
 

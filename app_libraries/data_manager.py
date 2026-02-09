@@ -4,6 +4,7 @@ from brainannex import GraphAccess, GraphSchema, \
 import app_libraries.PLUGINS.plugin_support as plugin_support
 from app_libraries.PLUGINS.notes import Notes
 from app_libraries.PLUGINS.documents import Documents
+from app_libraries.PLUGINS.images import Images
 from app_libraries.upload_helper import UploadHelper
 from app_libraries.media_manager import MediaManager
 
@@ -531,7 +532,7 @@ class DataManager:
 
 
     @classmethod
-    def get_records_by_link(cls, request_data: dict) -> [dict]:
+    def get_records_by_link(cls, request_data :dict) -> [dict]:
         """
         Locate and return the data (properties) of the nodes linked to the one specified
         by either its uri or internal database ID, up to a max of 100.
@@ -541,7 +542,7 @@ class DataManager:
 
 
         :param request_data: A dictionary with the keys, "rel_name" and "dir",
-                                plus either "uri" or "_internal_id" (the latter takes priority)
+                                plus either "uri" or "internal_id" (the latter takes priority)
 
         :return:             A list of dictionaries with all the properties of the neighbor nodes,
                              including an extra field called "_node_labels", with a string of label names
@@ -554,8 +555,8 @@ class DataManager:
         assert dir in ["IN", "OUT"], \
             f"get_records_by_link(): The value of the parameter `dir` must be either 'IN' or 'OUT'. The value passed was '{dir}'"
 
-        if "_internal_id" in request_data:       # "_internal_id" takes priority, as a way to identify the node
-            match = int(request_data["_internal_id"])
+        if "internal_id" in request_data:       # "internal_id" takes priority, as a way to identify the node
+            match = int(request_data["internal_id"])
             return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True, include_labels=True, limit=100)
         else:
             assert "uri" in request_data, \
@@ -637,7 +638,7 @@ class DataManager:
             - if a field isn't mentioned, no change is applied to it
             - leading/trailing blanks in the field values are stripped away
 
-        :param entity_id:   String with a unique identifier for the Content Item to update
+        :param entity_id:   String with a unique identifier (within the given Class) for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
         :param update_data: A dict of data field names and their desired new values
                                 EXAMPLE: {'basename': 'my new filename', 'caption': 'my new caption'}
@@ -665,15 +666,17 @@ class DataManager:
         #           db_data = GraphSchema.fetch_data_node(uri=uri)
         #           Then pass db_data as a parameter to the plugin-specific modules
 
+
+        # Do some special handling specific to various types of Content Items
         if class_name == "Note":
             update_data = Notes.before_update_content(update_data)
         elif class_name == "Document":
             update_data = Documents.before_update_content(entity_id=entity_id, item_data=update_data)
-
-
-        if plugin_support.is_media_class(class_name):
-            # If the Content Item is a Media Item, do some special handling
-            MediaManager.before_update_content(entity_id=entity_id, set_dict=update_data, class_name=class_name)
+        elif class_name == "Image":
+            update_data = Images.before_update_content(entity_id=entity_id, item_data=update_data)
+        #elif plugin_support.is_media_class(class_name):
+            # If the Content Item is a Media Item (other than Document)
+            #MediaManager.before_update_content(entity_id=entity_id, set_dict=update_data, class_name=class_name)
 
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
@@ -1261,6 +1264,7 @@ class DataManager:
         locate all its neighbors EXCEPT the specified ones,
         and return the full data for those neighbors,
         their links to the original node, and their links to each other (if applicable).
+
         The data is returned in a format compatible with the Cytoscape visualization.
         Note: the original node is NOT returned (but links to it are)
 
@@ -1269,7 +1273,8 @@ class DataManager:
         the time portion, if present, will get dropped
 
         :param node_internal_id:    The internal database ID of the node whose neighbors we want to explore
-        :param known_neighbors:     (Possibly empty) list of internal database ID nodes to exclude
+        :param known_neighbors:     (Possibly empty) list of internal database ID nodes to exclude.
+                                        None is also acceptable in lieu of an empty list.
         :param max_neighbors:       [OPTIONAL] The max number of NEW neighbors to return
         :return:                    A dict with 2 keys: "nodes" and "edges"
                                         EXAMPLE:
@@ -1292,6 +1297,7 @@ class DataManager:
                                                         }
                                                     ]
         """
+        cls.db.assert_valid_internal_id(node_internal_id)
 
         # Two other approaches considered but not utilized:
         #neighbors = cls.db.get_parents_and_children(internal_id=node_internal_id)
@@ -1302,9 +1308,16 @@ class DataManager:
             WHERE id(node) = $internal_id
             RETURN id(neighbor) AS neighbor_id
             '''
-        data_binding = {"_internal_id": node_internal_id}
+        data_binding = {"internal_id": node_internal_id}
 
         result = cls.db.query(q, data_binding=data_binding, single_column="neighbor_id")
+
+        if known_neighbors is None:
+            known_neighbors = []
+
+        assert type(known_neighbors) == list, \
+            f"extract_node_neighborhood(): the argument `known_neighbors`, if provided, must be a list.  " \
+            f"The passed value was of type {type(known_neighbors)}"
 
         known_neighbors = [int(n) for n in known_neighbors]     # TODO: The int() conversion is database-specific!
 
@@ -1314,6 +1327,9 @@ class DataManager:
         new_neighbors = neighbor_set - known_neighbors_set  # Set difference
 
         if max_neighbors is not None:
+            assert type(max_neighbors) == int, \
+                f"extract_node_neighborhood(): argument `max_neighbors`, if provided, must be an integer value.  " \
+                f"The passed value was of type {type(max_neighbors)}"
             # Discard as many elements as needed, to bring the set size to within its allowed max
             while len(new_neighbors) > max_neighbors: new_neighbors.pop()
 

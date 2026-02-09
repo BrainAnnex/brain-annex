@@ -11,7 +11,7 @@ class Documents:
     """
 
     SCHEMA_CLASS_NAME = "Document"
-    COVERS_FOLDER = "covers/"      # TODO: for now, this must be matched to BA_api_routing.py
+    COVERS_FOLDER = "_covers/"      # TODO: for now, this must be matched to BA_api_routing.py
 
 
     @classmethod
@@ -86,9 +86,9 @@ class Documents:
     @classmethod
     def before_update_content(cls, entity_id :str, item_data :dict) -> dict:
         """
-        Invoked before a Document gets updated in the database
+        Invoked before a Document's metadata gets updated in the database
 
-        :param entity_id:
+        :param entity_id:   String with a unique identifier (within the given Class) for the Content Item to update
         :param item_data:   A dict with various fields for this Document
         :return:            Just pass thru the `item_data` dictionary
         """
@@ -105,31 +105,15 @@ class Documents:
                                        old_basename=old_basename, old_suffix=old_suffix,
                                        new_basename=new_basename, new_suffix=new_suffix)
 
-         # Also rename the cover image (always a jpg file), if present
-        MediaManager.rename_media_file(folder=folder,
-                                       old_basename=old_basename+cls.COVERS_FOLDER, old_suffix="jpg",
-                                       new_basename=new_basename+cls.COVERS_FOLDER,
+        # Also rename the cover image (always a jpg file), if present
+        # TODO: in case of failure, catch error and restore old name of main file,
+        #       prior to throwing an Exception
+        MediaManager.rename_media_file(folder=folder+cls.COVERS_FOLDER,
+                                       old_basename=old_basename, old_suffix="jpg",
+                                       new_basename=new_basename,
                                        ignore_missing=True)
 
-        '''
-        if os.path.exists(f"{folder}{cls.COVERS_FOLDER}{old_basename}.jpg"):
-            MediaManager.move_file(src=f"{folder}{cls.COVERS_FOLDER}{old_basename}.jpg", dest=f"{folder}{cls.COVERS_FOLDER}{new_basename}.jpg")
-        '''
-
         return item_data
-
-
-
-    @classmethod
-    def update_content_NOT_SUPPORTED(cls, data_binding: dict, set_dict: dict) -> dict:
-        """
-
-        :param data_binding:
-        :param set_dict:
-        :return:            The altered data_binding dictionary
-        """
-
-        return {}
 
 
 

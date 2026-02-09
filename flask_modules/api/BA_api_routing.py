@@ -116,7 +116,6 @@ class ApiRouting:
         for example arising from a request lacking mimetype indicates "application/json",
         or a JSON string that isn't parsable
 
-        :param api_name:    String to include in case of errors
         :return:            The python data decoded from the JSON string that was passed in the POST body
         """
         # Extract and parse the JSON-encoded POST body
@@ -992,7 +991,7 @@ class ApiRouting:
             """
             #TODO: let the Documents plugin handle this
 
-            COVERS_FOLDER = "covers/"  # TODO: for now, this must be matched to documents.py
+            COVERS_FOLDER = "_covers/"  # TODO: for now, this must be matched to documents.py
             try:
                 # Obtain the name of the folder for the document file;
                 # it includes the final "/"
@@ -1115,7 +1114,7 @@ class ApiRouting:
                 rel_name                The name of the relationship to follow across one hop
                 dir                     Must be either "IN" or "OUT"
             """
-            # TODO: provide flexibility for the max number returned (currenly hardwired)
+            # TODO: provide flexibility for the max number returned (currently hardwired)
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
@@ -2318,7 +2317,8 @@ class ApiRouting:
                 json    (REQUIRED) A JSON-encoded dict:
                             "node_internal_id"      The internal database ID (int or str)
                                                         of the node whose neighbors we want to explore
-                            "known_neighbors:       (Possibly empty) list of internal database ID nodes to exclude
+                            "known_neighbors":      (Possibly empty) list of internal database ID nodes to exclude
+                            "max_neighbors":        An optional bound on the number of neighbors to locate
 
             ~~~ EXAMPLE ~~~
                 http://localhost:5000/BA/api/extract-node-neighborhood
@@ -2363,7 +2363,7 @@ class ApiRouting:
 
 
             print("In extract-node-neighborhood() -  request_parameters: ", request_parameters)
-            # EXAMPLE:  {"node_internal_id": 853, "known_neighbors": [13, 1967], "max_neighbors": 2}}
+            # EXAMPLE:  {"node_internal_id": '853', "known_neighbors": ['13', '197'], "max_neighbors": 2}}
 
             if type(request_parameters) != dict:
                 err_details = f"/extract-node-neighborhood : the passed JSON value should be a dictionary; " \

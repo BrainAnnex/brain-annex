@@ -43,7 +43,7 @@ def test_default_file_path():
     assert MediaManager.default_file_path(class_name="Document") == "D:/media/my_media_folder/documents/"
 
     assert MediaManager.default_file_path(class_name="Image", thumb=False) == "D:/media/my_media_folder/images/"
-    assert MediaManager.default_file_path(class_name="Image", thumb=True) == "D:/media/my_media_folder/images/resized/"
+    assert MediaManager.default_file_path(class_name="Image", thumb=True) == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}"
 
 
 
@@ -56,7 +56,7 @@ def test_retrieve_full_path(db):
                                  new_uri="image-1")
 
     assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/"
-    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == "D:/media/my_media_folder/images/resized/"
+    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}"
 
     with pytest.raises(Exception):
         assert MediaManager.retrieve_full_path("unknown_uri")
@@ -69,7 +69,7 @@ def test_retrieve_full_path(db):
     GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
     assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/Tahiti vacation/"
-    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == "D:/media/my_media_folder/images/Tahiti vacation/resized/"
+    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}"
 
 
 
@@ -82,7 +82,8 @@ def test_lookup_media_file(db):
                                  new_uri="image-1")
 
     assert MediaManager.lookup_media_file(uri="image-1", class_name="Image") == ("D:/media/my_media_folder/images/", "snap1", "jpg")
-    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) == ("D:/media/my_media_folder/images/resized/", "snap1", "jpg")
+    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) \
+            == (f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}", "snap1", "jpg")
 
     with pytest.raises(Exception):
         assert MediaManager.lookup_media_file("unknown_uri", class_name="Image")
@@ -95,7 +96,8 @@ def test_lookup_media_file(db):
     GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
 
     assert MediaManager.lookup_media_file(uri="image-1", class_name="Image") == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
-    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) == ("D:/media/my_media_folder/images/Tahiti vacation/resized/", "snap1", "jpg")
+    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) \
+            == (f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}", "snap1", "jpg")
 
 
 
@@ -134,7 +136,8 @@ def test_get_full_filename(db):
                                  new_uri="image-1")
 
     assert MediaManager.get_full_filename("image-1", class_name="Image") == "D:/media/my_media_folder/images/snap1.jpg"
-    assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) == "D:/media/my_media_folder/images/resized/snap1.jpg"
+    assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) \
+                == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}snap1.jpg"
 
     with pytest.raises(Exception):
         assert MediaManager.get_full_filename("unknown_uri", class_name="Image")
@@ -148,7 +151,7 @@ def test_get_full_filename(db):
 
     assert MediaManager.get_full_filename("image-1", class_name="Image") == "D:/media/my_media_folder/images/Tahiti vacation/snap1.jpg"
     assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) == \
-                                "D:/media/my_media_folder/images/Tahiti vacation/resized/snap1.jpg"
+                                f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}snap1.jpg"
 
 
 
@@ -159,7 +162,7 @@ def test_rename_media_file():
 
     # No action taken
     MediaManager.rename_media_file(folder="test_files/", old_basename="I_dont_exist", old_suffix="txt",
-                                       new_basename="irrelevant", ignore_missing=True)
+                                   new_basename="irrelevant", ignore_missing=True)
 
     with pytest.raises(Exception):
         MediaManager.rename_media_file(folder="test_files/", old_basename="sample_file_1", old_suffix="txt",

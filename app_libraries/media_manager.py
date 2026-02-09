@@ -23,9 +23,12 @@ class MediaManager:
                         #                     (notice the forward slashes, even on Windows)
                         # This class variable gets set by initialize.py
 
-    DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder (a subfolder of cls.MEDIA_FOLDER)
+    DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder
+                            # (a subfolder of cls.MEDIA_FOLDER)
                             # EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
                             # This class variable gets set by initialize.py
+
+    RESIZED_FOLDER = "_resized/"    # TODO: this ought to be managed by the Images class
 
 
 
@@ -104,7 +107,7 @@ class MediaManager:
         folder += default_folder + "/"
 
         if thumb:
-            folder += "resized/"
+            folder += cls.RESIZED_FOLDER
 
         return folder
 
@@ -138,7 +141,7 @@ class MediaManager:
         folder_name = dir_names[0]
 
         if thumb:
-            folder_name += "/resized"
+            return cls.MEDIA_FOLDER + folder_name + "/" + cls.RESIZED_FOLDER
 
         return cls.MEDIA_FOLDER + folder_name + "/"
 
@@ -248,12 +251,12 @@ class MediaManager:
 
 
     @classmethod
-    def get_binary_content(cls, uri :str, class_name :str, th) -> (str, bytes):
+    def get_binary_content(cls, entity_id :str, class_name :str, th) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored in a local file.
         In case of error, raise an Exception
 
-        :param uri:         String identifier for a media Item
+        :param entity_id:   Unique identifier string (within the given Class) for a media Item
         :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param th:          If not None, then the thumbnail version is returned (only
                                 applicable to images).
@@ -278,7 +281,7 @@ class MediaManager:
 
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder, basename, suffix = cls.lookup_media_file(uri, class_name=class_name, thumb=th)
+        folder, basename, suffix = cls.lookup_media_file(entity_id, class_name=class_name, thumb=th)
 
         filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "my_pic.jpg"
 
@@ -288,7 +291,7 @@ class MediaManager:
 
         except Exception as ex:
             # File I/O failed
-            error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
+            error_msg = f"Reading of data file for Content Item `{entity_id}` failed: {ex}"
             print(error_msg)
             if not th:
                 raise Exception(error_msg)
@@ -299,14 +302,14 @@ class MediaManager:
                 # Attempt to resize the full-sized version, and save the new thumbnail file
                 try:
                     # Get the folder for the full-size images
-                    images_folder = cls.retrieve_full_path(uri=uri, thumb=False)
+                    images_folder = cls.retrieve_full_path(uri=entity_id, thumb=False)
                     source_full_name = images_folder + filename
                     print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
 
                     # Full-size version was found; obtain its dimensions
                     width, height = ImageProcessing.get_image_size(source_full_name)
                     # Create a thumbnail version
-                    thumb_folder = cls.retrieve_full_path(uri=uri, thumb=th)
+                    thumb_folder = cls.retrieve_full_path(uri=entity_id, thumb=th)
                     # Carry out the resizing, and save the thumbnail file
                     print("    Attempting to create a thumbnail version of it")
                     #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
@@ -332,40 +335,6 @@ class MediaManager:
                         error_msg = f"Unable to load the full-size version of image, either. {ex}"
                         print(error_msg)
                         raise Exception(error_msg)
-
-
-
-    @classmethod
-    def before_update_content(cls, class_name :str, entity_id :str, set_dict :dict) -> None:
-        """
-        Invoked before a Media Item of this type gets updated in the database
-
-        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
-        :param entity_id:   Unique identifier for the Media Item of Interest (in the context of its Class)
-        :param set_dict:    A dict of field values to eventually set into the database
-        :return:            None
-        """
-        #print(f"In before_update_content() - entity_id: `{entity_id}` | class_name: `{class_name}` | set_dict: {set_dict}")
-        basename = set_dict.get("basename")
-        suffix =   set_dict.get("suffix")
-
-        if basename or suffix:
-            if basename:
-                check = cls.check_valid_file_name(basename)
-                assert check == "", \
-                    f"before_update_content(): Non-acceptable character found in destination file name: {check}"
-
-            folder, old_basename, old_suffix = cls.lookup_media_file(entity_id, class_name=class_name)
-            #folder = cls.lookup_file_path(class_name=class_name)
-            old_full_name = f"{folder}{old_basename}.{old_suffix}"
-
-            new_basename = basename if basename else old_basename
-            new_suffix = suffix if suffix else old_suffix
-            new_full_name = f"{folder}{new_basename}.{new_suffix}"
-
-            if new_full_name != old_full_name:
-                print(f"MediaManager.before_update_content(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
-                cls.move_file(src=old_full_name, dest=new_full_name)
 
 
 
@@ -400,16 +369,16 @@ class MediaManager:
         if new_basename:
             bad_character = MediaManager.check_valid_file_name(new_basename)
             assert bad_character == "", \
-                f"MediaManager.rename_media_file(): Non-acceptable character found in destination file name: {bad_character}"
+                f"MediaManager.rename_media_file(): The intended destination file name ({new_basename}) contains a non-acceptable character: {bad_character}"
         else:
             new_basename = old_basename
 
         if new_suffix:
             bad_character = MediaManager.check_valid_file_extension(new_suffix)
             assert bad_character == "", \
-                f"MediaManager.rename_media_file(): Non-acceptable character found in destination file suffix: {bad_character}"
+                f"MediaManager.rename_media_file(): The intended destination file suffix ({new_suffix}) contains a non-acceptable character: {bad_character}"
             assert len(new_suffix) < 5, \
-                f"MediaManager.rename_media_file(): Excessively long destination file suffix ({len(new_suffix)} characters)"
+                f"MediaManager.rename_media_file(): The intended destination file suffix ({new_suffix}) is too long ({len(new_suffix)} characters)"
 
         else:
             new_suffix = old_suffix
@@ -586,7 +555,7 @@ class MediaManager:
         :param directory:   EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
         :param db:          Object of type "GraphAccess"; TODO: should be able to avoid it
                                                                 by using the GraphSchema layer instead
-        :return:            A list of names of "orphaned" file s
+        :return:            A list of names of "orphaned" files
         """
         file_list = os.listdir(directory)
         print(f"Total number of files: {len(file_list)}")
@@ -749,7 +718,7 @@ class ImageProcessing:
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
         :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
         :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
-                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/"
+                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/_resized/"
         :param src_width:       Pixel width of the original image
         :param src_height:      Pixel height of the original image
         :return:                None
@@ -810,7 +779,7 @@ class ImageProcessing:
         """
         Return the size of the given image.
 
-        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/my image.jpg"
+        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/my image.jpg"
         :return:                    The pair (width, height) with the image dimensions in pixels.  In case of error, an Exception is raised
         """
         image = Image.open(source_full_name)
@@ -823,7 +792,7 @@ class ImageProcessing:
     def process_uploaded_image(cls, media_folder :str, basename :str, suffix :str) -> dict:
         """
         If possible, obtain the size of the image, resize it to a thumbnail,
-        save the thumbnail in the "resized/" subfolder of the specified media folder;
+        save the thumbnail in the "_resized/" subfolder of the specified media folder;
         not all images (such as SVG's) can be resized.
 
         Return a dictionary of additional image-specific properties that will go in the database.
@@ -850,7 +819,7 @@ class ImageProcessing:
             # Create and save a thumbnail version
             ImageProcessing.save_thumbnail(src_folder = media_folder,
                                            filename = filename,
-                                           save_to_folder = media_folder+"resized/",
+                                           save_to_folder = media_folder+cls.RESIZED_FOLDER,
                                            src_width=width, src_height=height)
 
             print(f"process_uploaded_image(): Uploaded image has width {width} , height: {height}.  "
@@ -871,7 +840,7 @@ class ImageProcessing:
         Print out some info about the given image:
         the file format, the pixel format, the image size and (if any) the color palette
 
-        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/media/resized/my image.jpg"
+        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/media/my image.jpg"
         :return:                    None
         """
         image = Image.open(source_full_name)
