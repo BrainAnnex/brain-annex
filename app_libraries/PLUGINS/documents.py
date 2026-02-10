@@ -11,6 +11,7 @@ class Documents:
     """
 
     SCHEMA_CLASS_NAME = "Document"
+    COVERS_FOLDER = "_covers/"      # TODO: for now, this must be matched to BA_api_routing.py
 
 
     @classmethod
@@ -83,15 +84,36 @@ class Documents:
 
 
     @classmethod
-    def update_content_NOT_SUPPORTED(cls, data_binding: dict, set_dict: dict) -> dict:
+    def before_update_content(cls, entity_id :str, item_data :dict) -> dict:
         """
+        Invoked before a Document's metadata gets updated in the database
 
-        :param data_binding:
-        :param set_dict:
-        :return:            The altered data_binding dictionary
+        :param entity_id:   String with a unique identifier (within the given Class) for the Content Item to update
+        :param item_data:   A dict with various fields for this Document
+        :return:            Just pass thru the `item_data` dictionary
         """
+        print(f"In Documents.before_update_content() - entity_id: `{entity_id}` | item_data: {item_data}")
+        new_basename = item_data.get("basename")
+        new_suffix =   item_data.get("suffix")
 
-        return {}
+        folder, old_basename, old_suffix = \
+                MediaManager.get_media_item_file(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
+
+        print(f"folder: {folder}, old_basename: {old_basename}, old_suffix: {old_suffix}")
+
+        MediaManager.rename_media_file(folder=folder,
+                                       old_basename=old_basename, old_suffix=old_suffix,
+                                       new_basename=new_basename, new_suffix=new_suffix)
+
+        # Also rename the cover image (always a jpg file), if present
+        # TODO: in case of failure, catch error and restore old name of main file,
+        #       prior to throwing an Exception
+        MediaManager.rename_media_file(folder=folder+cls.COVERS_FOLDER,
+                                       old_basename=old_basename, old_suffix="jpg",
+                                       new_basename=new_basename,
+                                       ignore_missing=True)
+
+        return item_data
 
 
 
@@ -128,9 +150,11 @@ class Documents:
 
 
     @classmethod
-    def new_content_item_successful(cls, uri :str, pars :dict, mime_type :str, upload_folder :str) -> None:
+    def new_content_item_successful(cls, uri :str, pars :dict,
+                                    mime_type :str, upload_folder :str, index_pdf=True) -> None:
         """
-        Invoked after a new Content Item of this type (Document) gets successfully added to the database
+        Invoked after a new Content Item of this type (Document) gets successfully added to the database.
+        Only text and PDF are currently supported.
 
         :param uri:         A string with the URI of the Content Item
         :param pars:        Dict with the various properties of this Content Item
@@ -141,6 +165,7 @@ class Documents:
                                 otherwise, it's the name of the folder where this Document was uploaded
                                 (*exclusive* of the common path and of the final "/")
                                 EXAMPLE: 'documents/Ebooks & Articles'
+        :param index_pdf:       [OPTIONAL] If True (default), the contents of PDF files will be indexed
         :return:            None
         """
         filename = pars["basename"] + "." + pars["suffix"]      # EXAMPLE: "my_file.txt"
@@ -167,6 +192,10 @@ class Documents:
             unique_words = FullTextIndexing.extract_unique_good_words(body)
 
         elif mime_type == "application/pdf":    # TODO: also include EPUB
+            if not index_pdf:
+                print("new_content_item_successful(): PDF file will NOT get indexed, as requested")
+                return
+                
             unique_words = cls.parse_pdf(full_file_name)
             #TODO: also store in database the doc.page_count and non-trivial values in doc.metadata
 
@@ -195,13 +224,13 @@ class Documents:
 
 
     @classmethod
-    def update_content_item_successful(cls, uri: int, pars: dict) -> None:
+    def update_content_item_successful(cls, entity_id :str, pars: dict) -> None:
         """
         Invoked after a Content Item of this type gets successfully updated
 
-        :param uri: An integer with the URI of the Content Item
-        :param pars:Dict with the various properties of this Content Item
-        :return:    None
+        :param entity_id:   A string to identify this Document
+        :param pars:        Dict with the various properties of this Content Item
+        :return:            None
         """
         pass    # Nothing to do
 

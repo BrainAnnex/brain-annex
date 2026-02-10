@@ -230,8 +230,8 @@ def test_add_words_to_index(db):
 
     # Create a data node of type "Indexer", and link it up to the passed Content Item data node
     indexer_id = GraphSchema.create_data_node(class_name="Indexer",
-                                              links =[{"internal_id": content_id, "rel_name": "has_index",
-                                                     "rel_dir": "IN"}])
+                                              links=[{"internal_id": content_id, "rel_name": "has_index",
+                                                      "rel_dir": "IN"}])
     # ...and then index some words to it
     n_added = FullTextIndexing.add_words_to_index(indexer_id=indexer_id,
                                                   unique_words={"lab", "research", "R/D"}, to_lower_case=True)
@@ -257,8 +257,8 @@ def test_add_words_to_index(db):
     content_id = GraphSchema.create_data_node(class_name="Content Item", properties={"filename": "My_Other_Document.txt"})
     # ...then create a data node of type "Indexer", and link it up to the passed Content Item data node
     indexer_id = GraphSchema.create_data_node(class_name="Indexer",
-                                              links =[{"internal_id": content_id, "rel_name": "has_index",
-                                                     "rel_dir": "IN"}])
+                                              links=[{"internal_id": content_id, "rel_name": "has_index",
+                                                      "rel_dir": "IN"}])
     # ...and then index some words to it
     n_added = FullTextIndexing.add_words_to_index(indexer_id=indexer_id,
                                                   unique_words={"RESEARCH", "science"}, to_lower_case=True)
@@ -419,7 +419,7 @@ def test_search_word(db):
     assert FullTextIndexing.search_word("ab") == [content_id_1]         # This will match both "lab" and "absence"
 
     result = FullTextIndexing.search_word("  Shipping   ", all_properties=True)
-    assert result == [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, '_node_labels': ['Content Item']}]
+    assert result == [{'filename': 'My_Document.pdf', '_internal_id': content_id_1, '_node_labels': ['Content Item']}]
 
 
     # Add a 2nd data node of type "Content Item"...
@@ -437,8 +437,8 @@ def test_search_word(db):
     assert compare_unordered_lists(FullTextIndexing.search_word("ship"), [content_id_1, content_id_2])  # ...while "ship" matches both
 
     result = FullTextIndexing.search_word("ship", all_properties=True)
-    expected = [{'filename': 'My_Document.pdf', 'internal_id': content_id_1, '_node_labels': ['Content Item']},
-                {'filename': 'some_other_file.txt', 'internal_id': content_id_2, '_node_labels': ['Content Item']}
+    expected = [{'filename': 'My_Document.pdf', '_internal_id': content_id_1, '_node_labels': ['Content Item']},
+                {'filename': 'some_other_file.txt', '_internal_id': content_id_2, '_node_labels': ['Content Item']}
                ]
 
     assert compare_recordsets(result, expected)

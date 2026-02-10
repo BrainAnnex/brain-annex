@@ -23,9 +23,12 @@ class MediaManager:
                         #                     (notice the forward slashes, even on Windows)
                         # This class variable gets set by initialize.py
 
-    DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder (a subfolder of cls.MEDIA_FOLDER)
+    DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder
+                            # (a subfolder of cls.MEDIA_FOLDER)
                             # EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
                             # This class variable gets set by initialize.py
+
+    RESIZED_FOLDER = "_resized/"    # TODO: this ought to be managed by the Images class
 
 
 
@@ -87,7 +90,7 @@ class MediaManager:
         """
         Return the default file path, including the final "/", of the media files associated to the given schema Class
 
-        :param class_name:  The name of the Class of the media item of interest
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param thumb:       If True, then the "thumbnail" version is returned
                                 (only applicable to some media types, such as images)
         :return:            The full file path, including the final "/"
@@ -104,7 +107,7 @@ class MediaManager:
         folder += default_folder + "/"
 
         if thumb:
-            folder += "resized/"
+            folder += cls.RESIZED_FOLDER
 
         return folder
 
@@ -138,9 +141,51 @@ class MediaManager:
         folder_name = dir_names[0]
 
         if thumb:
-            folder_name += "/resized"
+            return cls.MEDIA_FOLDER + folder_name + "/" + cls.RESIZED_FOLDER
 
         return cls.MEDIA_FOLDER + folder_name + "/"
+
+
+
+    @classmethod
+    def get_media_item_file(cls, class_name :str, entity_id :str) -> (str, str, str):
+        """
+        Retrieve the full file path, basename and suffix of the a media item identified by its Class and Entity ID.
+
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param entity_id:   Unique identifier string (within the given Class) for the Media Item of Interest
+
+        :return:            The triplet (filepath, basename, suffix)
+                                Notes:  filepath ends with a "/"
+                                        the basename is exclusive of path and of suffix
+                                        the suffix does NOT include the dot
+                                EXAMPLE:
+                                    ("D:/media/my_media_folder/images/", "my_pict", "jpg")
+        """
+        content_node = GraphSchema.get_single_data_node(node_id=entity_id, id_key="uri", class_name=class_name)
+        #print("content_node:", content_node)
+        if content_node is None:
+            raise Exception(f'get_media_item_file(): Metadata not found for the Media file of Class `{class_name}` and Entity ID "{entity_id}"')
+
+        basename = content_node['basename']
+        suffix = content_node['suffix']
+
+        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=entity_id, id_key="uri",
+                                             link_name="BA_stored_in", properties="name")
+        #print("dir_names: ", dir_names)
+
+        assert len(dir_names) < 2, \
+            f"get_media_item_file(): more than 1 directory is associated " \
+            f"with a media file of Class {class_name} and Entity ID `{entity_id}`"
+
+        if len(dir_names) == 0:     # No custom directory was specified
+            path = cls.default_file_path(class_name=class_name)    # including the final "/"
+        else:
+            folder_name = dir_names[0]
+            path = cls.MEDIA_FOLDER + folder_name + "/"
+
+
+        return (path, basename, suffix)
 
 
 
@@ -150,7 +195,7 @@ class MediaManager:
 
         :param uri:         Together with the Class name, this string provides
                                 a unique identifier for the Media Item of interest
-        :param class_name:  Name of the Schema Class for this media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param thumb:       If True, return the folder for the thumbnail image instead;
                                 ignored if the file suffix is "svg" (regardless of case),
                                 because SVG files cannot be resized
@@ -161,7 +206,7 @@ class MediaManager:
                                 EXAMPLE:
                                     ("D:/media/my_media_folder/images/", "snap1", "jpg")
         """
-        #TODO: maybe combine this method and retrieve_full_path()
+        #TODO: phase out in favor of get_media_item_file()
 
         content_node = GraphSchema.get_single_data_node(node_id=uri, id_key="uri", class_name=class_name)
         #print("content_node:", content_node)
@@ -189,7 +234,7 @@ class MediaManager:
 
         :param uri:         Together with the Class name, this string provides
                                 a unique identifier for the Media Item of interest
-        :param class_name:  Name of the Schema Class for this media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param thumb:       If True, return the folder for the thumbnail image instead;
                                 ignored if the file suffix is "svg" (regardless of case),
                                 because SVG files cannot be resized
@@ -205,16 +250,14 @@ class MediaManager:
 
 
 
-
     @classmethod
-    def get_binary_content(cls, uri :str, class_name :str, th) -> (str, bytes):
+    def get_binary_content(cls, entity_id :str, class_name :str, th) -> (str, bytes):
         """
         Fetch and return the contents of a media item stored in a local file.
         In case of error, raise an Exception
 
-        :param uri:         String identifier for a media Item
-        :param class_name:  The name of the Schema Class that represents the desired media Item
-                                    (such as an "Image" or "Document")
+        :param entity_id:   Unique identifier string (within the given Class) for a media Item
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param th:          If not None, then the thumbnail version is returned (only
                                 applicable to images).
                                 If the thumbnail version is not found, but the full-size image
@@ -238,7 +281,7 @@ class MediaManager:
 
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder, basename, suffix = cls.lookup_media_file(uri, class_name=class_name, thumb=th)
+        folder, basename, suffix = cls.lookup_media_file(entity_id, class_name=class_name, thumb=th)
 
         filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "my_pic.jpg"
 
@@ -248,7 +291,7 @@ class MediaManager:
 
         except Exception as ex:
             # File I/O failed
-            error_msg = f"Reading of data file for Content Item `{uri}` failed: {ex}"
+            error_msg = f"Reading of data file for Content Item `{entity_id}` failed: {ex}"
             print(error_msg)
             if not th:
                 raise Exception(error_msg)
@@ -259,14 +302,14 @@ class MediaManager:
                 # Attempt to resize the full-sized version, and save the new thumbnail file
                 try:
                     # Get the folder for the full-size images
-                    images_folder = cls.retrieve_full_path(uri=uri, thumb=False)
+                    images_folder = cls.retrieve_full_path(uri=entity_id, thumb=False)
                     source_full_name = images_folder + filename
                     print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
 
                     # Full-size version was found; obtain its dimensions
                     width, height = ImageProcessing.get_image_size(source_full_name)
                     # Create a thumbnail version
-                    thumb_folder = cls.retrieve_full_path(uri=uri, thumb=th)
+                    thumb_folder = cls.retrieve_full_path(uri=entity_id, thumb=th)
                     # Carry out the resizing, and save the thumbnail file
                     print("    Attempting to create a thumbnail version of it")
                     #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
@@ -296,35 +339,57 @@ class MediaManager:
 
 
     @classmethod
-    def before_update_content(cls, uri :str, set_dict :dict, class_name :str) -> None:
+    def rename_media_file(cls, folder :str,
+                          old_basename :str, old_suffix :str,
+                          new_basename=None, new_suffix=None,
+                          ignore_missing=False) -> None:
         """
-        Invoked before a Media Item of this type gets updated in the database
+        An Exception is raised if the file was not found,
+        or if another file with new name already exists
 
-        :param uri:         Unique identifier for the Media Item of Interest
-        :param set_dict:    A dict of field values to eventually set into the database
-        :param class_name:
-        :return:            None
+        :param folder:          Full name of the folder (directory) where the media file resides,
+                                    optionally including the final "/"
+                                    EXAMPLE (on Windows):   "D:/media/my_media_folder/"  (FORWARD slashes!)
+        :param old_basename:    EXAMPLE: "my pict"
+        :param old_suffix:      EXAMPLE: "jpg"
+        :param new_basename:    [OPTIONAL]
+        :param new_suffix:      [OPTIONAL]
+        :param ignore_missing:  [OPTIONAL]  If True, no error is raised if the old file is missing;
+                                    default is False
+        :return:                None
         """
-        #print(f"In before_update_content() - uri: `{uri}` | class_name: `{class_name}` | set_dict: {set_dict}")
-        basename = set_dict.get("basename")
-        suffix =   set_dict.get("suffix")
+        if (new_basename is None) and (new_suffix is None):
+            return  # Nothing to do
 
-        if basename or suffix:
-            if basename:
-                check = cls.check_file_name(basename)
-                assert check == "", \
-                    f"before_update_content(): Non-acceptable character found in destination file name: {check}"
+        # Add a final slash, if not already provided
+        if folder[-1] != "/":
+            folder += "/"
 
-            folder, old_basename, old_suffix = cls.lookup_media_file(uri, class_name=class_name)
-            #folder = cls.lookup_file_path(class_name=class_name)
-            old_full_name = f"{folder}{old_basename}.{old_suffix}"
+        # If new names aren't available, re-use the old ones
+        if new_basename:
+            bad_character = MediaManager.check_valid_file_name(new_basename)
+            assert bad_character == "", \
+                f"MediaManager.rename_media_file(): The intended destination file name ({new_basename}) contains a non-acceptable character: {bad_character}"
+        else:
+            new_basename = old_basename
 
-            new_basename = basename if basename else old_basename
-            new_suffix = suffix if suffix else old_suffix
-            new_full_name = f"{folder}{new_basename}.{new_suffix}"
+        if new_suffix:
+            bad_character = MediaManager.check_valid_file_extension(new_suffix)
+            assert bad_character == "", \
+                f"MediaManager.rename_media_file(): The intended destination file suffix ({new_suffix}) contains a non-acceptable character: {bad_character}"
+            assert len(new_suffix) < 5, \
+                f"MediaManager.rename_media_file(): The intended destination file suffix ({new_suffix}) is too long ({len(new_suffix)} characters)"
 
-            if new_full_name != old_full_name:
-                print(f"MediaManager.before_update_content(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
+        else:
+            new_suffix = old_suffix
+
+
+        old_full_name = f"{folder}{old_basename}.{old_suffix}"
+        new_full_name = f"{folder}{new_basename}.{new_suffix}"
+
+        if new_full_name != old_full_name:
+            print(f"MediaManager.rename_media_file(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
+            if not ignore_missing or os.path.exists(old_full_name):
                 cls.move_file(src=old_full_name, dest=new_full_name)
 
 
@@ -335,7 +400,7 @@ class MediaManager:
         Delete the specified media file, assumed in a standard location
 
         :param uri:         Unique identifier for the Media Item of Interest
-        :param class_name:
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param thumb:       If True, then the "thumbnail" version is deleted
                                 (only applicable to some media types, such as images)
         :return:            True if successful, or False otherwise
@@ -347,7 +412,7 @@ class MediaManager:
 
 
     @classmethod
-    def move_file(cls, src: str, dest: str) -> None:
+    def move_file(cls, src :str, dest :str) -> None:
         """
         Rename (move) the specified file.
         An Exception is raised if the file was not found,
@@ -357,6 +422,8 @@ class MediaManager:
         :param dest:   New full name (incl. path) of the file to rename
         :return:       None
         """
+        #print(f"move_file(): src='{src}' | dest: '{dest}'")
+
         assert src != dest, \
             f"move_file(): The requested source and destination file names are the same! (`{src}`)"
 
@@ -366,25 +433,46 @@ class MediaManager:
         assert not os.path.exists(dest), \
             f"move_file(): A file with the requested destination name (`{dest}`) already exists"
 
-
+        # Rename (move)
         os.rename(src, dest)
 
 
 
     @classmethod
-    def check_file_name(cls, filename :str) -> str:
+    def check_valid_file_name(cls, filename :str) -> str:
         """
         Check the given filename against a list of acceptable filename characters, based on a slightly-expanded
         (but still conservative) version of the POSIX portable file name character set
         https://www.ibm.com/docs/en/zos/3.1.0?topic=locales-posix-portable-file-name-character-set
 
+        :filename:  A string with the file name (EXCLUSIVE of extension) to examine
         :return:    The first non-allowed character, if applicable;
                         if all characters are good, return ""
         """
-        allowed_chars = " .,-_()&@0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        ALLOWED_CHARS = " .,-_()&@0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
         for character in filename:
-            if character not in allowed_chars:
+            if character not in ALLOWED_CHARS:
+                return character
+
+        return ""
+
+
+    @classmethod
+    def check_valid_file_extension(cls, suffix :str) -> str:
+        """
+        Check the given filename extension (suffix) against a list of acceptable characters,
+        based on a very conservative approach.
+        No check is done on the length
+
+        :suffix:    A string with the filename extension (EXCLUSIVE of the dot ".") to examine
+        :return:    The first non-allowed character, if applicable;
+                        if all characters are good, return ""
+        """
+        ALLOWED_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"   # TODO: consider expanding
+
+        for character in suffix:
+            if character not in ALLOWED_CHARS:
                 return character
 
         return ""
@@ -434,7 +522,7 @@ class MediaManager:
         Attempt to create a presumably-missing media folder for the media associated to the given schema Class.
         If the folder already exists, no action taken.
 
-        :param class_name:  Name of a schema Class that has associated media.  EXAMPLE: "Document"
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :return:            None
         """
         folder_name = cls.DEFAULT_FOLDERS.get(class_name)   # EXAMPLE: "documents"
@@ -467,7 +555,7 @@ class MediaManager:
         :param directory:   EXAMPLE:  "D:/tmp/transfer"  (Use forward slashes even on Windows!)
         :param db:          Object of type "GraphAccess"; TODO: should be able to avoid it
                                                                 by using the GraphSchema layer instead
-        :return:            A list of names of "orphaned" file s
+        :return:            A list of names of "orphaned" files
         """
         file_list = os.listdir(directory)
         print(f"Total number of files: {len(file_list)}")
@@ -630,7 +718,7 @@ class ImageProcessing:
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
         :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
         :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
-                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/"
+                                    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/_resized/"
         :param src_width:       Pixel width of the original image
         :param src_height:      Pixel height of the original image
         :return:                None
@@ -691,7 +779,7 @@ class ImageProcessing:
         """
         Return the size of the given image.
 
-        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/resized/my image.jpg"
+        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/my image.jpg"
         :return:                    The pair (width, height) with the image dimensions in pixels.  In case of error, an Exception is raised
         """
         image = Image.open(source_full_name)
@@ -704,7 +792,7 @@ class ImageProcessing:
     def process_uploaded_image(cls, media_folder :str, basename :str, suffix :str) -> dict:
         """
         If possible, obtain the size of the image, resize it to a thumbnail,
-        save the thumbnail in the "resized/" subfolder of the specified media folder;
+        save the thumbnail in the "_resized/" subfolder of the specified media folder;
         not all images (such as SVG's) can be resized.
 
         Return a dictionary of additional image-specific properties that will go in the database.
@@ -731,14 +819,14 @@ class ImageProcessing:
             # Create and save a thumbnail version
             ImageProcessing.save_thumbnail(src_folder = media_folder,
                                            filename = filename,
-                                           save_to_folder = media_folder+"resized/",
+                                           save_to_folder = media_folder+cls.RESIZED_FOLDER,
                                            src_width=width, src_height=height)
 
             print(f"process_uploaded_image(): Uploaded image has width {width} , height: {height}.  "
                   f"Thumbnail successfully created and stored")
             properties = {"caption": basename, "width": width, "height": height}
         except Exception as ex:
-            print("process_uploaded_image(): Unable to resize image")
+            print(f"process_uploaded_image(): Unable to resize image.  {ex}")
             properties = {"caption": basename}
 
 
@@ -752,8 +840,8 @@ class ImageProcessing:
         Print out some info about the given image:
         the file format, the pixel format, the image size and (if any) the color palette
 
-        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/media/resized/my image.jpg"
-        :return:                    None.  In case of error, an Exception is raised
+        :param source_full_name:    EXAMPLE (on Windows): "D:/Docs/media/my image.jpg"
+        :return:                    None
         """
         image = Image.open(source_full_name)
 

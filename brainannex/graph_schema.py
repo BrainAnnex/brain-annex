@@ -276,7 +276,7 @@ class GraphSchema:
     def get_class_internal_id(cls, class_name :str) -> int:
         """
         Returns the internal database ID of the Class node with the given name,
-        or raise an Exception if not found, or if more than one is found.
+        or raise an Exception if not found or if more than one is found.
         Note: unique Class names are assumed.
 
         :param class_name:  The name of the desired class
@@ -293,7 +293,7 @@ class GraphSchema:
         assert len(result) <= 1, \
             f"GraphSchema.get_class_internal_id(): more than 1 Class node named `{class_name}` was found in the Schema"
 
-        return result[0]["internal_id"]
+        return result[0]["_internal_id"]
 
 
 
@@ -2364,7 +2364,7 @@ class GraphSchema:
                                 Valid choices: "CONTAINS", "STARTS WITH", "ENDS WITH"
         :param case_sensitive:[OPTIONAL] Only applies if key_value is a string.
                                 By default True; use False, to disregard case in string matches
-        :param include_id:  [OPTIONAL] If True, also return an extra field named "internal_id",
+        :param include_id:  [OPTIONAL] If True, also return an extra field named "_internal_id",
                                 with the internal database ID value; by default, False
         :param include_labels:  [OPTIONAL] If True, also return an extra field named "_node_labels",
                                 with a list of the node labels; by default, False
@@ -2458,7 +2458,7 @@ class GraphSchema:
             '''
 
         if include_id:
-            q += ''' , id(n) AS internal_id
+            q += ''' , id(n) AS _internal_id
                  '''
 
         if include_labels:
@@ -2490,7 +2490,7 @@ class GraphSchema:
                 CONTAINS toLower($key_value)
             )
             
-            RETURN n, id(n) AS internal_id, labels(n) AS _node_labels
+            RETURN n, id(n) AS _internal_id, labels(n) AS _node_labels
             ORDER BY n.`name` 
             SKIP 8 
             LIMIT 4
@@ -2585,7 +2585,7 @@ class GraphSchema:
             raise Exception(f"GraphSchema.get_data_node_internal_id(): more than 1 Data Node "
                             f"with the given uri ('{uri}') was found ({len(result)} were found)")
 
-        return result[0]["internal_id"]
+        return result[0]["_internal_id"]
 
 
 
@@ -2601,7 +2601,7 @@ class GraphSchema:
         #TODO: merge with get_data_node_internal_id()
 
         match = cls.db.match(key_name=key_name, key_value=key_value)
-        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="internal_id")
+        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="_internal_id")
 
         assert result is not None, \
             f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`"
@@ -2765,10 +2765,10 @@ class GraphSchema:
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
                                 Leave blank to use the internal database ID
         :param include_internal_id: [OPTIONAL] If True, then the internal database ID of the relationships is also
-                                        included in the dict's, using the key "internal_id"
+                                        included in the dict's, using the key "_internal_id"
 
         :return:            A list of dict, with key/values for the properties of each link.
-                                If include_internal_id is True, an extra key named "internal_id" will be present.
+                                If include_internal_id is True, an extra key named "_internal_id" will be present.
                                 EXAMPLE, with include_internal_id = False:
                                     [{'Rank': 99}, {'Rank': 123}, {}]     (Two links with properties, and one without)
         """
@@ -2998,8 +2998,8 @@ class GraphSchema:
         Return all the values stored at all the Data Nodes of the specified Class.
         Each values comprises all the node fields, the internal database ID and the node labels.
 
-        EXAMPLE: [{'year': 2023, 'make': 'Ford', 'internal_id': 123, '_node_labels': ['Motor Vehicle']},
-                  {'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}
+        EXAMPLE: [{'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']},
+                  {'year': 2013, 'make': 'Toyota', '_internal_id': 4, '_node_labels': ['Motor Vehicle']}
                  ]
 
         See also: data_nodes_of_class()
@@ -3036,7 +3036,7 @@ class GraphSchema:
         See also: get_all_data_nodes_of_class()
 
         :param class_name:      Name of a Schema Class
-        :param return_option:   Either "uri" or "internal_id"
+        :param return_option:   Either "uri" or "_internal_id"
         :return:                Return the uri's or internal database ID's
                                         of all the Data Nodes of the given Class
         """
@@ -3045,8 +3045,8 @@ class GraphSchema:
         # TODO: pytest the 'return_option' argument
         # TODO: offer options to select only some nodes
 
-        assert return_option in ["uri", "internal_id"], \
-            "data_nodes_of_class(): the argument `return_option` must be either 'uri' or 'internal_id'"
+        assert return_option in ["uri", "_internal_id"], \
+            "data_nodes_of_class(): the argument `return_option` must be either 'uri' or '_internal_id'"
 
         q = '''
             MATCH (n {_CLASS: $class_name}) 
@@ -3055,7 +3055,7 @@ class GraphSchema:
         if return_option == "uri":
             q += "RETURN n.uri AS uri"
         else:
-            q += "RETURN id(n) AS internal_id"
+            q += "RETURN id(n) AS _internal_id"
 
 
         res = cls.db.query(q, {"class_name": class_name}, single_column=return_option)
@@ -3221,8 +3221,8 @@ class GraphSchema:
 
 
     @classmethod
-    def create_data_node(cls, class_name :str, properties = None, extra_labels = None,
-                         new_uri=None, silently_drop=False, links = None) -> Union[int, str]:
+    def create_data_node(cls, class_name :str, properties=None, extra_labels=None,
+                         new_uri=None, silently_drop=False, links=None) -> int|str:
         """
         Create a new data node, of the specified Class,
         with the given optional properties, and optional extra label(s),
@@ -3260,13 +3260,13 @@ class GraphSchema:
                                 IN ADDITION TO the Class name (which is always used as label)
         :param new_uri:     [OPTIONAL]  If a string is passed as `new_uri`, then a field (node property) called "uri"
                                 is set to that value
-        :param silently_drop: If True, any requested properties not allowed by the Schema are simply dropped;
+        :param silently_drop: [OPTIONAL] If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
                                 Note: only applicable for "Strict" schema - otherwise, anything goes!
-        :param links:       OPTIONAL list of dicts identifying existing nodes,
+        :param links:       [OPTIONAL] List of dicts identifying existing nodes,
                                 and specifying the name, direction and optional properties
                                 to give to the links connecting to them;
-                                use None, or an empty list, to indicate if there aren't any
+                                use None, or an empty list, to indicate if there aren't any.
                                 Each dict contains the following keys:
                                     "internal_id"   REQUIRED - to identify an existing node
                                     "rel_name"      REQUIRED - the name to give to the link
@@ -3276,7 +3276,6 @@ class GraphSchema:
         :return:            The internal database ID of the new data node just created;
                                 if unable to create it, an Exception is raised
         """
-        # TODO: verify that required attributes are present
         # TODO: verify that all the requested links conform to the Schema
         # TODO: consider allowing creation of multiple nodes from one call
         # TODO: allow a new URI to be automatically generated from a namespace?
@@ -3285,7 +3284,7 @@ class GraphSchema:
         # Validate arguments
         assert (extra_labels is None) or isinstance(extra_labels, (str, list, tuple)), \
             "GraphSchema.create_data_node(): argument `extra_labels`, " \
-            "if passed, must be a string, or list/tuple of strings"
+            "if passed, must be a string, or a list/tuple of strings"
 
         if properties is not None:
             assert type(properties) == dict, \
@@ -3332,7 +3331,7 @@ class GraphSchema:
             allowed_keys = {'internal_id', 'rel_name', 'rel_dir', 'rel_attrs'}
             for d in links:
                 assert "internal_id" in d, \
-                    f"GraphSchema.create_data_node(): the `links` argument must be a list of dicts that contain the key 'internal_id'; the dict in question: {d}"
+                    f"GraphSchema.create_data_node(): the `links` argument must be a list of dicts that contain the key '_internal_id'; the dict in question: {d}"
 
                 assert "rel_name" in d, \
                     f"GraphSchema.create_data_node(): the `links` argument must be a list of dicts that contain the key 'rel_name'; the dict in question: {d}"
@@ -3344,11 +3343,12 @@ class GraphSchema:
 
             properties_to_set["_CLASS"] = class_name       # Expand the dictionary, to also include the Schema data
             new_internal_id = cls.db.create_node_with_links(labels=labels,
-                                               properties=properties_to_set,
-                                               links=links, merge=False)
+                                                            properties=properties_to_set,
+                                                            links=links, merge=False)
         else:
             new_internal_id = cls._create_data_node_helper(class_name=class_name,
-                                                labels=labels, properties_to_set=properties_to_set)
+                                                           labels=labels,
+                                                           properties_to_set=properties_to_set)
 
         return new_internal_id
 
@@ -3402,7 +3402,7 @@ class GraphSchema:
                 MERGE (dn {labels_str} {{`{primary_key}`: rec['{primary_key}']}}) 
                 SET dn {set_operator}= rec 
                 SET dn.`_CLASS` = "{class_name}" 
-                RETURN id(dn) as internal_id 
+                RETURN id(dn) AS _internal_id 
                 '''
             # EXAMPLE, with data_binding {'record': {'name': 'CA'}},
             #          assuming the dbase internal ID of the Class node "State" is 123:
@@ -3411,7 +3411,7 @@ class GraphSchema:
                 MERGE (dn :`State` {`name`: rec['name']}) 
                 SET dn += rec 
                 SET dn.`_CLASS` = "my class name" 
-                RETURN id(dn) as internal_id 
+                RETURN id(dn) AS _internal_id 
             '''
 
             result = cls.db.update_query(q, data_binding={"record": properties_to_set})
@@ -3424,7 +3424,7 @@ class GraphSchema:
             q = f'''          
                 CREATE (dn {labels_str} {cypher_props_str})
                 SET dn.`_CLASS` = "{class_name}"        
-                RETURN id(dn) AS internal_id
+                RETURN id(dn) AS _internal_id
                 '''
 
             result = cls.db.update_query(q, data_binding)
@@ -3433,7 +3433,7 @@ class GraphSchema:
 
         #print("_create_data_node_helper(): result = ", result)
         if result.get('nodes_created') == 1:
-            return result['returned_data'][0]['internal_id']    # The internal database ID of the newly-created node
+            return result['returned_data'][0]['_internal_id']    # The internal database ID of the newly-created node
 
         return None     # No new node was created
 
@@ -3460,7 +3460,7 @@ class GraphSchema:
                                 2) True if a new Data Node was created, or False if not (i.e. an existing one was found)
         """
         # TODO: eventually absorb into create_data_node()
-        # TODO: maybe return a dict with 2 keys: "internal_id" and "created" ? (like done by NeoAccess)
+        # TODO: maybe return a dict with 2 keys: "_internal_id" and "created" ? (like done by NeoAccess)
 
         assert (type(properties) == dict) and (properties != {}), \
             "GraphSchema.add_data_node_merge(): the `properties` argument MUST be a dictionary, and cannot be empty"
@@ -3487,12 +3487,12 @@ class GraphSchema:
 
         q = f'''
             MERGE (n :`{class_name}` {attributes_str})       
-            RETURN id(n) AS internal_id
+            RETURN id(n) AS _internal_id
             '''
 
         result = cls.db.update_query(q, data_dictionary)
 
-        internal_id = result["returned_data"][0]["internal_id"]     # The internal database ID
+        internal_id = result["returned_data"][0]["_internal_id"]     # The internal database ID
                                                                     # of the node found or just created
 
         if result.get("nodes_created") == 1:
@@ -3545,12 +3545,12 @@ class GraphSchema:
 
             q = f'''
                 MERGE (n :`{class_name}` {attributes_str})     
-                RETURN id(n) AS internal_id
+                RETURN id(n) AS _internal_id
                 '''
 
             result = cls.db.update_query(q, data_dictionary)
 
-            internal_id = result["returned_data"][0]["internal_id"]     # The internal database ID
+            internal_id = result["returned_data"][0]["_internal_id"]     # The internal database ID
                                                                         # of the node found or just created
             if result.get("nodes_created") == 1:
                 new_id_list.append(internal_id)         # A new node was created
@@ -4425,7 +4425,7 @@ class GraphSchema:
                     UNWIND data AS record 
                     CREATE (dn {labels_str}) 
                     SET dn = record , dn.`_CLASS` = $class_name
-                    RETURN id(dn) as internal_id 
+                    RETURN id(dn) AS _internal_id 
                     '''
 
             else:                   # More complex scenario possibly involving existing nodes
@@ -4438,7 +4438,7 @@ class GraphSchema:
                     UNWIND data AS record 
                     MERGE (dn {labels_str} {primary_key_s}) 
                     SET dn {set_operator}= record , dn.`_CLASS` = $class_name
-                    RETURN id(dn) as internal_id 
+                    RETURN id(dn) AS _internal_id 
                     '''
 
 
@@ -4451,7 +4451,7 @@ class GraphSchema:
 
             import_data = result['returned_data']
             for import_item in import_data:
-                internal_id_list.append(import_item['internal_id'])  # The internal database ID of the created or updated nodes
+                internal_id_list.append(import_item['_internal_id'])  # The internal database ID of the created or updated nodes
 
             if report and ((batch_count+1) % report_frequency == 0):
                 print(f"     Interim status: at the end of this batch, imported a grand total of {len(internal_id_list)} record(s), and created a grand total of {created_node_count} new node(s)")
@@ -5296,7 +5296,7 @@ class GraphSchema:
 
 
     @classmethod
-    def create_tree_from_dict(cls, d :dict, class_name :str, level=1, cache=None) -> Union[int, None]:
+    def create_tree_from_dict(cls, d :dict, class_name :str, level=1, cache=None) -> int|None:
         """
         Add a new data node (which may turn into a tree root) of the specified Class,
         with data from the given dictionary:
@@ -5308,7 +5308,7 @@ class GraphSchema:
         or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
 
         IMPORTANT:  any part of the data that doesn't match the Schema,
-                    gets silently dropped.  TODO: issue some report about anything that gets dropped
+                    gets silently dropped.
 
         EXAMPLES:
         (1) {"state": "California", "city": "Berkeley"}
@@ -5332,6 +5332,7 @@ class GraphSchema:
         :return:            The Neo4j ID of the newly created node,
                                 or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
         """
+        # TODO: issue some report about anything that gets dropped
         assert cache is not None, "GraphSchema.create_tree_from_dict(): the argument `cache` cannot be None"
         assert type(d) == dict, f"GraphSchema.create_tree_from_dict(): the argument `d` must be a dictionary (instead, it's {type(d)})"
 
@@ -5703,7 +5704,7 @@ class GraphSchema:
             WHERE id(n) = $internal_id AND n.uri IS NULL
             SET n.uri = $new_uri
             '''
-        data_binding = {"internal_id": internal_id, "new_uri": new_uri}
+        data_binding = {"_internal_id": internal_id, "new_uri": new_uri}
         #cls.db.debug_query_print(q, data_binding)
 
         stats = cls.db.update_query(q, data_binding=data_binding)

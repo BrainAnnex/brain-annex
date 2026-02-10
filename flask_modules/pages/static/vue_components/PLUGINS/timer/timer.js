@@ -55,32 +55,27 @@ Vue.component('vue-plugin-timer',
                         </tr>
 
                         <tr class="caption">
-                            <td align="center">Hrs</td>
-                            <td align="center">Min</td>
+                            <td align="right">Min</td>
+                            <td>&nbsp;</td>
                             <td align="center">Sec</td>
                         </tr>
 
                         <tr class="inputNumbers">
                             <td align="right">
-                                <input type="text" v-model="hrs" id="hours" maxlength="2" size="1"> :
+                                <input type="text" v-model="min" id="min" maxlength="2" size="1">
                             </td>
-                            <td align="right">
-                                <input type="text" v-model="min" id="min" maxlength="2" size="1"> :
-                            </td>
+                            <td align="center">&nbsp; : &nbsp;</td>
                             <td align="center">
                                 <input type="text" v-model="sec" id="sec" maxlength="2" size="1">
                             </td>
                         </tr>
 
                         <tr>
-                        <td align="center">
-                                <img @click="add_time_clock('hrs')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/plus_24_173078.png">
-                                <img @click="sub_time_clock('hrs')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/minus_24_173056.png">
-                            </td>
-                            <td align="center">
+                            <td align="right">
                                 <img @click="add_time_clock('min')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/plus_24_173078.png">
                                 <img @click="sub_time_clock('min')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/minus_24_173056.png">
                             </td>
+                            <td>&nbsp;</td>
                             <td align="center">
                                 <img @click="add_time_clock('sec')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/plus_24_173078.png">
                                 <img @click="sub_time_clock('sec')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/minus_24_173056.png">
@@ -174,15 +169,13 @@ Vue.component('vue-plugin-timer',
                 //audio_file: "dreamscape-alarm-clock-117680.mp3", //this.item_data.ringtone,    // See list of available files in "alarms" subfolder
                                                         // TODO: it might be good to have a default here
 
-                show_timer: "00:00:00",                 // The timer's display
+                show_timer: "00:00",                 // The timer's display
 
-                // The following 3 are the parts of the value that the alarm gets set to
-                hrs: 0,
+                // The following 2 are the parts of the value that the alarm gets set to
                 min: 0,
                 sec: 0,
 
-                // The following 3 are the parts of the display
-                show_hrs: 0,
+                // The following 2 are the parts of the display
                 show_min: 0,
                 show_sec: 0,
 
@@ -202,7 +195,7 @@ Vue.component('vue-plugin-timer',
         // --------------------------   METHODS   --------------------------
         methods: {
             button_name()
-            // Pick a name for the Start/Resume button
+            // Pick a text to show on the Start/Resume button
             {
                 if (this.stopped)
                     return "Start";
@@ -247,46 +240,66 @@ Vue.component('vue-plugin-timer',
 
 
 
-            add_time_clock(units)
-            /*
-                units: Either 'hrs', 'min' or 'sec'
+            /**
+             * Invoked when the user clicks on the '+' icon.
+             * It sets the "min" and "sec" Vue data variables.
+             *
+             * @param {string} units    - Either 'min' or 'sec'
+             *
+             * @returns {void}
              */
+            add_time_clock(units)
             {
                 //console.log(`In add_time_clock(): units = "${units}"`);
 
-                if (units == "hrs")
-                    this.hrs = this.increment_time(this.hrs, 23);
-                else if (units == "min")
+                if (units == "min")
                     this.min = this.increment_time(this.min, 59);
                 else
                     this.sec = this.increment_time(this.sec, 59);
             },
 
-            sub_time_clock(units)
-            /*
-                units: Either 'hrs', 'min' or 'sec'
+
+            /**
+             * Invoked when the user clicks on the '-' icon.
+             * It sets the "min" and "sec" Vue data variables.
+             *
+             * @param {string} units    - Either 'min' or 'sec'
+             *
+             * @returns {void}
              */
+            sub_time_clock(units)
             {
                 //console.log(`In sub_time_clock(): units = "${units}"`);
 
-                if (units == "hrs")
-                    this.hrs = this.decrement_time(this.hrs, 23);
-                else if (units == "min")
-                    this.min = this.decrement_time(this.min, 59);
+                // To address a browser (at least Firefox) flaw that
+                // turns Vue integer values into strings upon re-starting the browser on the cached page
+                this.min = parseInt(this.min);
+                this.sec = parseInt(this.sec);
+
+                if (units == "min")
+                    this.min = this.decrement_time(this.min);
                 else
-                    this.sec = this.decrement_time(this.sec, 59);
+                    this.sec = this.decrement_time(this.sec);
             },
 
-            increment_time(num, max)  {
+            /**
+             * Increment by 1, modulo max
+             */
+            increment_time(num, max)
+            {
                 if (num+1 > max)
                     return 0;
 
                 return num+1;
             },
 
-            decrement_time(num, max)  {
+            /**
+             * Decrement by 1, but don't go below 0
+             */
+            decrement_time(num)
+            {
                 if (num == 0)
-                    return 0;       // return max;
+                    return 0;
 
                 return num-1;
             },
@@ -299,14 +312,19 @@ Vue.component('vue-plugin-timer',
             {
                 console.log(`In set_limit(): strtstop = ${strtstop}`);
 
+                // To address a browser (at least Firefox) flaw that
+                // turns Vue integer values into strings upon re-starting the browser on the cached page
+                this.min = parseInt(this.min);
+                this.sec = parseInt(this.sec);
+
                 // Prevent multiple settimeouts
                 if (this.st)
                     clearTimeout(this.st);
 
                 if (this.pause)  {  // If in a paused state
                     limit = this.show_timer;
-                    console.log(`    limit = "${limit}" [NO LONGER USED]`);      // EXAMPLE: "00:00:05"
-                    var parselimit_arr = [this.show_hrs, this.show_min, this.show_sec];
+                    console.log(`    limit = "${limit}" [NO LONGER USED]`);      // EXAMPLE: "00:05"
+                    var parselimit_arr = [this.show_min, this.show_sec];
 
                     if (!strtstop)  {
                         this.pause = false;     // Take out of paused state
@@ -314,7 +332,7 @@ Vue.component('vue-plugin-timer',
                     }
                 }
                 else  {
-                    var parselimit_arr = [this.hrs, this.min, this.sec];
+                    var parselimit_arr = [this.min, this.sec];
                     if (!strtstop)
                         this.stopped = false;
                 }
@@ -322,8 +340,8 @@ Vue.component('vue-plugin-timer',
                 console.log(`    parselimit_arr = ${parselimit_arr}`);      // EXAMPLE: [1, 23, 40]
 
 
-                // Convert to seconds
-                this.parselimit = parselimit_arr[0]*3600 + parselimit_arr[1]*60 + parselimit_arr[2];   // TODO: in some cases, this could be NaN !
+                // Convert the min/sec pair to seconds
+                this.parselimit = parselimit_arr[0]*60 + parselimit_arr[1];
                 console.log(`    this.parselimit = ${this.parselimit}`);    // EXAMPLE: 105
                 
                 // Exit if timer wasn't set
@@ -383,14 +401,13 @@ Vue.component('vue-plugin-timer',
                     cursec = this.parselimit % 60;
                 }
 
-                //console.log(`    curhour = ${curhour} | curmin = ${curmin} | cursec = ${cursec}`);
+                //console.log(`    curmin = ${curmin} | cursec = ${cursec}`);
 
-                this.show_hrs = curhour;
                 this.show_min = curmin;
                 this.show_sec = cursec;
 
                 // Format as 3 padded groups of characters, separated by ":"
-                this.show_timer = this.format(this.show_hrs) + ":" + this.format(this.show_min) + ":" + this.format(this.show_sec);
+                this.show_timer = this.format(this.show_min) + ":" + this.format(this.show_sec);
 
                 this.st = setTimeout(this.begin_timer, 1000);    // 1-sec timeout
             },
@@ -409,14 +426,15 @@ Vue.component('vue-plugin-timer',
             reset_timer()
             // Reset the timer
             {
-                this.show_timer = "00:00:00";
+                this.show_timer = "00:00";
                 this.pause = false;         // Clear the paused state (if applicable)
                 this.stopped = true;
             },
 
 
+
             /*
-                --------  SERVER CALLS  --------
+                ----------  SERVER CALLS  ----------
              */
 
             save()

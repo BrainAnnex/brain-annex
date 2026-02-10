@@ -103,8 +103,8 @@ def test_add_edge():
     assert result["color_mapping"] == {}
     assert result["caption_mapping"] == {}
     assert result["nodes"] == [ {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
-                                         {'id': 456, 'name': 'Val', '_node_labels': ['Person']}
-                                       ]
+                                {'id': 456, 'name': 'Val', '_node_labels': ['Person']}
+                               ]
     assert result["edges"] == [ {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456} ]
 
 
@@ -180,13 +180,13 @@ def test_prepare_recordset():
     p_1 = db.create_node(labels="Person", properties={'name': 'Julian'})
 
     result = graph.prepare_recordset(id_list=[p_1])
-    assert result == [{'internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'}]
+    assert result == [{'_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'}]
 
 
     p_2 = db.create_node(labels="Person", properties={'name': 'Val'})
     result = graph.prepare_recordset(id_list=[p_1, p_2])
-    expected = [{'internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
-                {'internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'}]
+    expected = [{'_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
+                {'_internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'}]
     assert compare_recordsets(result, expected)
 
 
@@ -197,8 +197,8 @@ def test_prepare_graph_1():
     graph = PyGraphVisual(db=db)
 
     # Prepare a graph with 2 nodes and no links
-    dataset = [  {"internal_id": 123, "_node_labels": ["Person"], 'name': 'Julian'},
-                 {"internal_id": 456, "_node_labels": ["Person"], 'name': 'Val'}
+    dataset = [  {"_internal_id": 123, "_node_labels": ["Person"], 'name': 'Julian'},
+                 {"_internal_id": 456, "_node_labels": ["Person"], 'name': 'Val'}
               ]
 
     result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
@@ -209,8 +209,8 @@ def test_prepare_graph_1():
     assert internal_data['color_mapping'] == {}
     assert internal_data['caption_mapping'] == {}
 
-    expected_nodes = [{'id': 123, 'internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
-                                {'id': 456, 'internal_id': 456, 'name': 'Val', '_node_labels': ['Person']}]
+    expected_nodes = [{'id': 123, '_internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
+                      {'id': 456, '_internal_id': 456, 'name': 'Val', '_node_labels': ['Person']}]
     expected_edges = []
 
     assert compare_recordsets(internal_data["nodes"] , expected_nodes)
@@ -219,14 +219,14 @@ def test_prepare_graph_1():
 
 
     # Adding a record with a key named 'id' (which automatically gets renamed '_id_original'
-    dataset += [{'internal_id': 789, "_node_labels": ["Person"], 'name': 'Rese', 'id': 'some value'}]
+    dataset += [{'_internal_id': 789, "_node_labels": ["Person"], 'name': 'Rese', 'id': 'some value'}]
     result = graph.prepare_graph(result_dataset=dataset, add_edges=False)
     assert result == [123, 456, 789]
 
     internal_nodes = graph.get_graph_data().get("nodes")
-    expected_nodes = [{'id': 123, 'internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
-                               {'id': 456, 'internal_id': 456, 'name': 'Val',    '_node_labels': ['Person']},
-                               {'id': 789, 'internal_id': 789, 'name': 'Rese',   '_node_labels': ['Person'], '_id_original': 'some value'}]
+    expected_nodes = [ {'id': 123, '_internal_id': 123, 'name': 'Julian', '_node_labels': ['Person']},
+                       {'id': 456, '_internal_id': 456, 'name': 'Val',    '_node_labels': ['Person']},
+                       {'id': 789, '_internal_id': 789, 'name': 'Rese',   '_node_labels': ['Person'], '_id_original': 'some value'}]
 
     assert compare_recordsets(internal_nodes , expected_nodes)
 
@@ -235,7 +235,7 @@ def test_prepare_graph_1():
 
     assert compare_recordsets(internal_edges , expected_edges)
 
-    dataset += [{'internal_id': 666, 'id': 'X', '_id_original': 'Y' }]
+    dataset += [{'_internal_id': 666, 'id': 'X', '_id_original': 'Y' }]
     with pytest.raises(Exception):
         # Unable to rename 'id' as '_id_original', because it already exists
         graph.prepare_graph(result_dataset=dataset, add_edges=False)
@@ -263,9 +263,9 @@ def test_prepare_graph_2():
     assert compare_unordered_lists(result, [p_1, p_2, c_1])
     assert compare_unordered_lists(graph._all_node_ids, [p_1, p_2, c_1])
 
-    expected_nodes = [{'id': p_1, 'internal_id': p_1, 'name': 'Julian', '_node_labels': ['Person']},
-                               {'id': p_2, 'internal_id': p_2, 'name': 'Val',    '_node_labels': ['Person']},
-                               {'id': c_1, 'internal_id': c_1, 'color': 'white', '_node_labels': ['Car']}]
+    expected_nodes = [{'id': p_1, '_internal_id': p_1, 'name': 'Julian', '_node_labels': ['Person']},
+                               {'id': p_2, '_internal_id': p_2, 'name': 'Val',    '_node_labels': ['Person']},
+                               {'id': c_1, '_internal_id': c_1, 'color': 'white', '_node_labels': ['Car']}]
 
     internal_data = graph.get_graph_data()
     assert compare_recordsets(internal_data["nodes"] , expected_nodes)
@@ -361,7 +361,7 @@ def test_prepare_graph_3():
 
     assert graph.get_graph_data()['nodes'] == [{'color': 'red', 'make': 'Honda',
                                                          'manufactured_on': '2019/06/01', 'certified': '2019/08/31',
-                                                         'id': car_id, 'internal_id': car_id, '_node_labels': ['Car']}]
+                                                         'id': car_id, '_internal_id': car_id, '_node_labels': ['Car']}]
 
     assert graph.get_graph_data()['edges'] == []
 
@@ -395,8 +395,8 @@ def test_prepare_graph_3():
     internal_edges = graph.get_graph_data().get("edges")
 
     expected_nodes  = \
-            [   {'color': 'red', 'certified': '2019/08/31', 'make': 'Honda', 'manufactured_on': '2019/06/01', 'id': car_id, 'internal_id': car_id, '_node_labels': ['Car']},
-                {'name': 'Julian', 'id': person_id, 'internal_id': person_id, '_node_labels': ['Person']}
+            [   {'color': 'red', 'certified': '2019/08/31', 'make': 'Honda', 'manufactured_on': '2019/06/01', 'id': car_id, '_internal_id': car_id, '_node_labels': ['Car']},
+                {'name': 'Julian', 'id': person_id, '_internal_id': person_id, '_node_labels': ['Person']}
             ]
 
     expected_edges  = [{'name': 'OWNS', 'source': person_id, 'target': car_id, 'id': 'edge-1', 'bought': '2025/11/13'}]
@@ -429,15 +429,15 @@ def test_assemble_graph():
     p_1 = db.create_node(labels="Person", properties={'name': 'Julian'})
 
     result = graph.assemble_graph(id_list=[p_1])
-    assert result == ([{'id': p_1, 'internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'}] , [])
+    assert result == ([{'id': p_1, '_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'}] , [])
 
     p_2 = db.create_node(labels="Person", properties={'name': 'Val'})
 
     result = graph.assemble_graph(id_list=[p_1, p_2])
     #print(result)
     #return
-    expected_nodes = [{'id': p_1, 'internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
-                      {'id': p_2, 'internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'}
+    expected_nodes = [{'id': p_1, '_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
+                      {'id': p_2, '_internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'}
                     ]
     expected_edges = []
 
@@ -452,9 +452,9 @@ def test_assemble_graph():
                                              })
 
     result = graph.assemble_graph(id_list=[p_1, p_2, c_1])
-    expected_nodes = [  {'id': p_1, 'internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
-                        {'id': p_2, 'internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'},
-                        {'id': c_1, 'internal_id': c_1, '_node_labels': ['Car'], 'color': 'red', 'make': 'Honda', 'certified': '2019/08/31', 'manufactured_on': '2019/06/01'}
+    expected_nodes = [  {'id': p_1, '_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
+                        {'id': p_2, '_internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'},
+                        {'id': c_1, '_internal_id': c_1, '_node_labels': ['Car'], 'color': 'red', 'make': 'Honda', 'certified': '2019/08/31', 'manufactured_on': '2019/06/01'}
                      ]
     expected_edges = []
     assert compare_recordsets(result[0], expected_nodes)

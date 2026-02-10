@@ -422,12 +422,12 @@ def test_import_json_data(db):
     match = db.match(labels="User", properties={"name": "Eve"})
     retrieved_records = db.get_nodes(match, return_internal_id=True)
     assert len(retrieved_records) == 1
-    id_eve = retrieved_records[0]["internal_id"]
+    id_eve = retrieved_records[0]["_internal_id"]
 
     match = db.match(labels=["Person", "Client"], properties={"name": "Adam"})
     retrieved_records = db.get_nodes(match, return_internal_id=True)
     assert len(retrieved_records) == 1
-    id_adam = retrieved_records[0]["internal_id"]
+    id_adam = retrieved_records[0]["_internal_id"]
 
     retrieved_records = db.get_nodes(match_all)
     assert len(retrieved_records) == 2

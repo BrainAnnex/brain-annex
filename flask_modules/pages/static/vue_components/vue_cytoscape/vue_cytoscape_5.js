@@ -16,15 +16,20 @@ Vue.component('vue-cytoscape-5',
                         a '_node_labels' is typically present in node objects (but not required).
                         Note: 'id' values can be strings or integers (which eventually get converted to strings)
                          EXAMPLE (two nodes):
-                            [{'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'},
-                             {'id': 2, '_node_labels': ['CAR'], 'color': 'white'}]
-                
+                            [{'id': '1', '_internal_id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
+                             {'id': '2', '_internal_id': 2, 'color': 'white', '_node_labels': ['CAR', 'VEHICLE']}
+                            ]
+
+                           Note that '_internal_id' might be an integer or a string
+                                (depending on the underlying database),
+                                while 'id' (the value used by Cytoscape) is always a string
+
                 2) "edges"
                         An array of objects that represent edges.
                         The keys 'id', source', 'target' and 'name' are REQUIRED in each object,
                         where the values of 'source' are 'target' must be 'id' values on node objects.
                         EXAMPLE (edge between the two earlier nodes):
-                            [{'id': 'edge-1', 'source': 1, 'target': 2, 'name': 'OWNS'}]
+                            [{'id': 'edge-1', 'source': '1', 'target': '2', 'name': 'OWNS'}]
 
                 3) "color_mapping"
                         Map of node labels to color names
@@ -200,13 +205,17 @@ Vue.component('vue-cytoscape-5',
             return {
 
                 nodes: this.graph_data.nodes,   /* An array of objects that represent nodes
-                                                   EXAMPLE: [{'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
-                                                             {'id': 2, 'color': 'white', '_node_labels': ['CAR']}
+                                                   EXAMPLE: [{'id': '1', '_internal_id': 1, 'name': 'Julian', '_node_labels': ['PERSON']},
+                                                             {'id': '2', '_internal_id': 2, 'color': 'white', '_node_labels': ['CAR', 'VEHICLE']}
                                                             ]
+
+                                                   Note that '_internal_id' might be an integer or a string
+                                                        (depending on the underlying database),
+                                                        while 'id' (the value used by Cytoscape) is always a string
                                                  */
                 
                 edges: this.graph_data.edges,   /* An array of objects that represent edges
-                                                   EXAMPLE: [{'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}]
+                                                   EXAMPLE: [{'name': 'OWNS', 'source': '1', 'target': '2', 'id': 'edge-1'}]
                                                  */
 
                 color_mapping: this.graph_data.color_mapping,
@@ -733,10 +742,10 @@ Vue.component('vue-cytoscape-5',
                 // Get neighboring nodes in the graph (immediate neighbors)
                 const neighbor_nodes = node.neighborhood().nodes();     // Filter for nodes only
                 //console.log("Neighbor nodes:");
-                //console.log({ ...neighbor_nodes }); // Log a snapshot
+                //console.log({ ...neighbor_nodes });   // Log a snapshot
                 const neighbor_ids = neighbor_nodes.map(n => n.id());       // Extract the ID's from each node in the Collection
 
-                const post_data =  {"node_internal_id" : cyto_node_data_obj.internal_id,
+                const post_data =  {"node_internal_id" : cyto_node_data_obj._internal_id,
                                     "known_neighbors" : neighbor_ids,
                                     "max_neighbors" : 10};
 

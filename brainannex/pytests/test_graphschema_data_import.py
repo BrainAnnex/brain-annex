@@ -75,9 +75,9 @@ def test_import_pandas_nodes_1(db):
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
         MATCH (s :State {name:state_name, `_CLASS`: "State"})
-        RETURN id(s) AS internal_id
+        RETURN id(s) AS _internal_id
         '''
-    result = db.query(q, single_column="internal_id")
+    result = db.query(q, single_column="_internal_id")
     assert compare_unordered_lists(result, import_state_list)
 
 
@@ -96,9 +96,9 @@ def test_import_pandas_nodes_1(db):
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
         MATCH (s :State {name:state_name, `_CLASS`: "State"})
-        RETURN id(s) AS internal_id
+        RETURN id(s) AS _internal_id
         '''
-    result = db.query(q, single_column="internal_id")
+    result = db.query(q, single_column="_internal_id")
     assert compare_unordered_lists(result, import_state_list)
 
 
@@ -115,9 +115,9 @@ def test_import_pandas_nodes_1(db):
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
         MATCH (s :State {name:state_name, `_CLASS`: "State"})
-        RETURN id(s) AS internal_id
+        RETURN id(s) AS _internal_id
         '''
-    result = db.query(q, single_column="internal_id")
+    result = db.query(q, single_column="_internal_id")
     assert compare_unordered_lists(result, import_state_list)
 
 
@@ -134,9 +134,9 @@ def test_import_pandas_nodes_1(db):
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
         MATCH (s :State {name:state_name, `_CLASS`: "State"})
-        RETURN id(s) AS internal_id
+        RETURN id(s) AS _internal_id
         '''
-    result = db.query(q, single_column="internal_id")
+    result = db.query(q, single_column="_internal_id")
     assert compare_unordered_lists(result, import_state_list)
 
 
@@ -203,13 +203,13 @@ def test_import_pandas_nodes_3(db):
     assert import_result_2["number_nodes_created"] == 2         # One of the 3 imports doesn't lead to node creation
     assert len(import_result_2["affected_nodes_ids"]) == 3      # 3 nodes were either created or updated
 
-    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'         # Retrieve the record that was in both dataframes
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) AS _internal_id'         # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
     assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013, '_CLASS': 'Motor Vehicle'} # The duplicate record 'c2' was updated by the new one
                                                                                                 # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                                 # and the 'year' value was left untouched
-    assert result[0]["internal_id"] in import_result_2["affected_nodes_ids"]
+    assert result[0]["_internal_id"] in import_result_2["affected_nodes_ids"]
     assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
@@ -228,14 +228,14 @@ def test_import_pandas_nodes_3(db):
     assert import_result_2["number_nodes_created"] == 2         # One of the 3 imports doesn't lead to node creation
     assert len(import_result_2["affected_nodes_ids"]) == 3      # 3 nodes were either created or updated
 
-    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'     # Retrieve the record that was in both dataframes
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) AS _internal_id'     # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
 
     assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', '_CLASS': 'Motor Vehicle'}  # The duplicate record 'c2' was completely replaced by the new one
                                                                                     # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                     # and (unlike before) the 'year' value is gone
-    assert result[0]["internal_id"] in import_result_2["affected_nodes_ids"]
+    assert result[0]["_internal_id"] in import_result_2["affected_nodes_ids"]
     assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
@@ -260,9 +260,9 @@ def test_import_pandas_nodes_4(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  '_internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', '_internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   '_internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']}
                ]
     assert compare_recordsets(result, expected)
 
@@ -285,12 +285,12 @@ def test_import_pandas_nodes_4(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle'], 'color': 'white'},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  '_internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    '_internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle'], 'color': 'white'},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   '_internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']},
 
-                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[2], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', '_internal_id': import_car_list_2[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     '_internal_id': import_car_list_2[2], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -323,11 +323,11 @@ def test_import_pandas_nodes_5(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      '_internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', '_internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      '_internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -350,11 +350,11 @@ def test_import_pandas_nodes_5(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'color': 'red',    'make': 'Honda',     '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'color': 'black',  'make': 'Ford',      '_internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'color': 'pink',   'make': 'Chevrolet', '_internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue',   'make': 'Fiat',      '_internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -386,11 +386,11 @@ def test_import_pandas_nodes_6(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'year': 2005, 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'year': 2025, 'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, '_internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', 'year': 2005, '_internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'year': 2025, '_internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -411,11 +411,11 @@ def test_import_pandas_nodes_6(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', '_internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', '_internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', '_internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]
 
     assert compare_recordsets(result, expected)
@@ -436,12 +436,12 @@ def test_import_pandas_nodes_6(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c4', 'internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'internal_id': import_car_list[4], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', '_internal_id': import_car_list[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c4', '_internal_id': import_car_list[3], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', '_internal_id': import_car_list[4], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', '_internal_id': import_car_list[5], '_node_labels': ['Motor Vehicle']}
                ]
 
     assert compare_recordsets(result, expected)
@@ -497,9 +497,9 @@ def test_import_pandas_nodes_1_OLD(db):
     q = '''
         UNWIND ["CA", "NY", "OR"] AS state_name
         MATCH (s :State {name:state_name, `_CLASS`: "State"})
-        RETURN id(s) AS internal_id
+        RETURN id(s) AS _internal_id
         '''
-    result = db.query(q, single_column="internal_id")
+    result = db.query(q, single_column="_internal_id")
 
     assert compare_unordered_lists(result, import_state_list_1)
 
@@ -518,9 +518,9 @@ def test_import_pandas_nodes_1_OLD(db):
     q = '''
         UNWIND ["CA", "NY", "OR", "NV", "WA"] AS state_name
         MATCH (s :State {name:state_name, `_CLASS`: "State"})
-        RETURN id(s) AS internal_id
+        RETURN id(s) AS _internal_id
         '''
-    result = db.query(q, single_column="internal_id")
+    result = db.query(q, single_column="_internal_id")
 
     assert set(result) == set(import_state_list_1).union(set(import_state_list_2))
 
@@ -554,13 +554,13 @@ def test_import_pandas_nodes_1_OLD(db):
                                                                  primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
     assert len(import_car_list_2) == 2
 
-    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'         # Retrieve the record that was in both dataframes
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) AS _internal_id'         # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
     assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', 'year':2013, '_CLASS': 'Motor Vehicle'} # The duplicate record 'c2' was updated by the new one
                                                                                                 # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                                 # and the 'year' value was left untouched
-    assert result[0]["internal_id"] in import_car_list_1
+    assert result[0]["_internal_id"] in import_car_list_1
     assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
@@ -576,14 +576,14 @@ def test_import_pandas_nodes_1_OLD(db):
                                                                  primary_key="vehicle ID", duplicate_option="replace")   # Duplicate records will be REPLACED (not "merged") this time
     assert len(import_car_list_2) == 2
 
-    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) as internal_id'     # Retrieve the record that was in both dataframes
+    q = 'MATCH (m:`Motor Vehicle` {`vehicle ID`: "c2"}) RETURN m, id(m) AS _internal_id'     # Retrieve the record that was in both dataframes
     result = db.query(q)
     assert len(result) == 1
 
     assert result[0]["m"] == {'vehicle ID': 'c2', 'make': 'BMW', 'color': 'white', '_CLASS': 'Motor Vehicle'}  # The duplicate record 'c2' was completely replaced by the new one
                                                                                     # Notice how the Toyota became a BMW, the 'color' was added,
                                                                                     # and (unlike before) the 'year' value is gone
-    assert result[0]["internal_id"] in import_car_list_1
+    assert result[0]["_internal_id"] in import_car_list_1
     assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
 
@@ -605,9 +605,9 @@ def test_import_pandas_nodes_2_OLD(db):
 
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', 'internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  '_internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', '_internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   '_internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']}
                ]
     assert compare_recordsets(result, expected)
 
@@ -626,12 +626,12 @@ def test_import_pandas_nodes_2_OLD(db):
     assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
     result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
     expected = [
-                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  'internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    'internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle'], 'color': 'white'},
-                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   'internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  '_internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    '_internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle'], 'color': 'white'},
+                {'VID': 'c3', 'year': 2023, 'manufacturer': 'Ford',   '_internal_id': import_car_list_1[2], '_node_labels': ['Motor Vehicle']},
 
-                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', 'internal_id': import_car_list_2[0], '_node_labels': ['Motor Vehicle']},
-                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     'internal_id': import_car_list_2[1], '_node_labels': ['Motor Vehicle']}
+                {'VID': 'c4', 'color': 'red', 'year': 2005, 'manufacturer': 'Chevrolet', '_internal_id': import_car_list_2[0], '_node_labels': ['Motor Vehicle']},
+                {'VID': 'c5', 'color': 'blue', 'year': 2025, 'manufacturer': 'Fiat',     '_internal_id': import_car_list_2[1], '_node_labels': ['Motor Vehicle']}
                ]    # Notice how the 'c2' record got updated
 
     assert compare_recordsets(result, expected)
@@ -822,25 +822,25 @@ def test_import_pandas_links_OLD_2(db):
                                                   link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 10
-    assert result[0]["internal_id"] in link_ids
+    assert result[0]["_internal_id"] in link_ids
 
     result = GraphSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
                                                   link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 12
-    assert result[0]["internal_id"] in link_ids
+    assert result[0]["_internal_id"] in link_ids
 
     result = GraphSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
                                                   link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 13
-    assert result[0]["internal_id"] in link_ids
+    assert result[0]["_internal_id"] in link_ids
 
     result = GraphSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
                                                   link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert "Rank" not in result[0]      # No value got set, because it was a missing value (NaN) in the imported dataframe
-    assert result[0]["internal_id"] in link_ids
+    assert result[0]["_internal_id"] in link_ids
 
 
 
@@ -1267,25 +1267,25 @@ def test_get_data_link_properties(db):
                                                   link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 10
-    assert result[0]["internal_id"] in link_ids
+    assert result[0]["_internal_id"] in link_ids
 
     result = GraphSchema.get_data_link_properties(node1_id="Chicago", node2_id="Illinois", id_key="name",
                                                   link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 12
-    assert result[0]["internal_id"] in link_ids
+    assert result[0]["_internal_id"] in link_ids
 
     result = GraphSchema.get_data_link_properties(node1_id="New York City", node2_id="New York", id_key="name",
                                                   link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert result[0]["Rank"] == 13
-    assert result[0]["internal_id"] in link_ids
+    assert result[0]["_internal_id"] in link_ids
 
     result = GraphSchema.get_data_link_properties(node1_id="San Francisco", node2_id="California", id_key="name",
                                                   link_name="IS_IN", include_internal_id=True)
     assert len(result) == 1
     assert "Rank" not in result[0]      # No value got set, because it was a missing value (NaN) in the imported dataframe
-    assert result[0]["internal_id"] in link_ids
+    assert result[0]["_internal_id"] in link_ids
 
 
 
