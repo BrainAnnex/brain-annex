@@ -57,12 +57,12 @@ def test_get_records_by_link(db):
     expected = [{"name": "Julian", "city": "Berkeley", '_node_labels': ['person']}]
     assert result == expected
 
-    request_data = {"_internal_id": book_2, "rel_name": "OWNS", "dir": "IN"}
+    request_data = {"internal_id": book_2, "rel_name": "OWNS", "dir": "IN"}
     result = DataManager.get_records_by_link(request_data)
     expected = [{"_internal_id": person_id, "name": "Julian", "city": "Berkeley", '_node_labels': ['person']}]
     assert result == expected
 
-    request_data = {"_internal_id": person_id, "rel_name": "OWNS", "dir": "OUT"}
+    request_data = {"internal_id": person_id, "rel_name": "OWNS", "dir": "OUT"}
     result = DataManager.get_records_by_link(request_data)
     expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', '_internal_id': book_1, '_node_labels': ['book']} ,
                 {'title': 'Intro to Hilbert Spaces', '_internal_id': book_2, '_node_labels': ['book']}]
