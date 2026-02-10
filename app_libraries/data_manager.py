@@ -4,6 +4,7 @@ from brainannex import GraphAccess, GraphSchema, \
 import app_libraries.PLUGINS.plugin_support as plugin_support
 from app_libraries.PLUGINS.notes import Notes
 from app_libraries.PLUGINS.documents import Documents
+from app_libraries.PLUGINS.images import Images
 from app_libraries.upload_helper import UploadHelper
 from app_libraries.media_manager import MediaManager
 
@@ -531,7 +532,7 @@ class DataManager:
 
 
     @classmethod
-    def get_records_by_link(cls, request_data: dict) -> [dict]:
+    def get_records_by_link(cls, request_data :dict) -> [dict]:
         """
         Locate and return the data (properties) of the nodes linked to the one specified
         by either its uri or internal database ID, up to a max of 100.
@@ -637,21 +638,21 @@ class DataManager:
             - if a field isn't mentioned, no change is applied to it
             - leading/trailing blanks in the field values are stripped away
 
-        :param entity_id:   String with a unique identifier for the Content Item to update
+        :param entity_id:   String with a unique identifier (within the given Class) for the Content Item to update
         :param class_name:  Name of the Schema Class of the Content Item
         :param update_data: A dict of data field names and their desired new values
+                                EXAMPLE: {'basename': 'my new filename', 'caption': 'my new caption'}
         :param label:       [OPTIONAL] String with a Label of the Content Item
         :return:            None
         """
+        print("In DataManager.update_content_item(): update_data = ", update_data)
 
         assert GraphSchema.class_name_exists(class_name), \
                 f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
-        if class_name:
-            #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="uri", class_name=class_name), \
-            assert GraphSchema.data_node_exists(find=(class_name, entity_id)), \
-                    f"update_content_item(): no Content Item found with URI `{entity_id}` and class `{class_name}`"
+        assert GraphSchema.data_node_exists(find=(class_name, entity_id)), \
+                f"update_content_item(): no Content Item found with class `{class_name}` and entity ID `{entity_id}`"
 
 
         # PLUGIN-SPECIFIC OPERATIONS that *change* set_dict and perform filesystem operations
@@ -665,13 +666,17 @@ class DataManager:
         #           db_data = GraphSchema.fetch_data_node(uri=uri)
         #           Then pass db_data as a parameter to the plugin-specific modules
 
+
+        # Do some special handling specific to various types of Content Items
         if class_name == "Note":
             update_data = Notes.before_update_content(update_data)
-
-
-        if plugin_support.is_media_class(class_name):
-            # If the Content Item is a Media Item, do some special handling
-            MediaManager.before_update_content(uri=entity_id, set_dict=update_data, class_name=class_name)
+        elif class_name == "Document":
+            update_data = Documents.before_update_content(entity_id=entity_id, item_data=update_data)
+        elif class_name == "Image":
+            update_data = Images.before_update_content(entity_id=entity_id, item_data=update_data)
+        #elif plugin_support.is_media_class(class_name):
+            # If the Content Item is a Media Item (other than Document)
+            #MediaManager.before_update_content(entity_id=entity_id, set_dict=update_data, class_name=class_name)
 
 
         # Update, possibly adding and/or dropping fields, the properties of the existing Data Node
@@ -691,6 +696,10 @@ class DataManager:
                 raise Exception(f"update_content_item(): Requested Class ({class_name}) doesn't exist; no update performed")
             else:
                 raise Exception("update_content_item(): No update performed")
+
+
+        #if class_name == "Document":
+        #    Documents.update_content_item_successful(entity_id, original_post_data)
 
 
 
@@ -763,7 +772,7 @@ class DataManager:
 
         :return:            A dict with the internal database ID and uri
                                 assigned to the newly-created node
-                                EXAMPLE: {"internal_id": 123, "uri": "rs-8"}
+                                EXAMPLE: {"_internal_id": 123, "uri": "rs-8"}
         """
         # TODO: more Schema enforcement
         # TODO: make the generation of the URI optional
@@ -772,7 +781,7 @@ class DataManager:
 
         internal_id = GraphSchema.create_data_node(class_name=class_name, properties=item_data, new_uri=new_uri)
 
-        return {"internal_id": internal_id, "uri": new_uri}
+        return {"_internal_id": internal_id, "uri": new_uri}
 
 
 
@@ -1138,12 +1147,12 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, '_node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, '_node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
-            internal_id = node["internal_id"]   # Ignore the PyCharm's complain about the data type!
+            internal_id = node["_internal_id"]   # Ignore the PyCharm's complain about the data type!
             #print("\n\n--- internal_id: ", internal_id)
 
 
@@ -1165,7 +1174,7 @@ class DataManager:
             new_result = []     # SET OUTSIDE of this loop
             
             labels = node["_node_labels"]
-            del node["internal_id"]
+            del node["_internal_id"]
             del node["_node_labels"]
             dn = GraphSchema.DataNode(internal_id=internal_id, labels=labels], properties=node)
             # All the above lines would be un-necessary if FullTextIndexing.search_word returned a DataNode object!
@@ -1220,12 +1229,12 @@ class DataManager:
 
         result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', 'internal_id': 318, '_node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', 'internal_id': 3, '_node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
-            internal_id = node["internal_id"]   # Ignore the PyCharm's complain about the data type!
+            internal_id = node["_internal_id"]   # Ignore the PyCharm's complain about the data type!
             #print("\n\n--- internal_id: ", internal_id)
 
 
@@ -1255,6 +1264,7 @@ class DataManager:
         locate all its neighbors EXCEPT the specified ones,
         and return the full data for those neighbors,
         their links to the original node, and their links to each other (if applicable).
+
         The data is returned in a format compatible with the Cytoscape visualization.
         Note: the original node is NOT returned (but links to it are)
 
@@ -1263,7 +1273,8 @@ class DataManager:
         the time portion, if present, will get dropped
 
         :param node_internal_id:    The internal database ID of the node whose neighbors we want to explore
-        :param known_neighbors:     (Possibly empty) list of internal database ID nodes to exclude
+        :param known_neighbors:     (Possibly empty) list of internal database ID nodes to exclude.
+                                        None is also acceptable in lieu of an empty list.
         :param max_neighbors:       [OPTIONAL] The max number of NEW neighbors to return
         :return:                    A dict with 2 keys: "nodes" and "edges"
                                         EXAMPLE:
@@ -1272,7 +1283,7 @@ class DataManager:
                                                             "_node_labels": ["Car", "Vehicle"],
                                                             "date_created": "2025/06/23",
                                                             "id": 23487,
-                                                            "internal_id": 23487,
+                                                            "_internal_id": 23487,
                                                             "brand": "Toyota",
                                                             "color": white
                                                         }
@@ -1286,6 +1297,7 @@ class DataManager:
                                                         }
                                                     ]
         """
+        cls.db.assert_valid_internal_id(node_internal_id)
 
         # Two other approaches considered but not utilized:
         #neighbors = cls.db.get_parents_and_children(internal_id=node_internal_id)
@@ -1300,6 +1312,13 @@ class DataManager:
 
         result = cls.db.query(q, data_binding=data_binding, single_column="neighbor_id")
 
+        if known_neighbors is None:
+            known_neighbors = []
+
+        assert type(known_neighbors) == list, \
+            f"extract_node_neighborhood(): the argument `known_neighbors`, if provided, must be a list.  " \
+            f"The passed value was of type {type(known_neighbors)}"
+
         known_neighbors = [int(n) for n in known_neighbors]     # TODO: The int() conversion is database-specific!
 
         neighbor_set = set(result)
@@ -1308,6 +1327,9 @@ class DataManager:
         new_neighbors = neighbor_set - known_neighbors_set  # Set difference
 
         if max_neighbors is not None:
+            assert type(max_neighbors) == int, \
+                f"extract_node_neighborhood(): argument `max_neighbors`, if provided, must be an integer value.  " \
+                f"The passed value was of type {type(max_neighbors)}"
             # Discard as many elements as needed, to bring the set size to within its allowed max
             while len(new_neighbors) > max_neighbors: new_neighbors.pop()
 
@@ -1322,7 +1344,7 @@ class DataManager:
         for n in nodes:
             n["id"] = str(n["id"])
 
-        trimmed_nodes = [n for n in nodes if n["internal_id"] != node_internal_id]  # Drop the original node
+        trimmed_nodes = [n for n in nodes if n["_internal_id"] != node_internal_id]  # Drop the original node
         # Make an adjustment to all the elements of the `edges` list
         for e in edges:
             e["source"] = str(e["source"])
@@ -1455,7 +1477,7 @@ class DataManager:
 
         :return:            A pair with two elements:
                                 1. A (possibly-empty) list of dictionaries; each dict contains the data for a node,
-                                    including a field called "internal_id" that has the internal database ID,
+                                    including a field called "_internal_id" that has the internal database ID,
                                     and a field called "_node_labels" with a list of the node's label names
                                 2.  What the number of nodes would be in the absence of limit/skip value
         """

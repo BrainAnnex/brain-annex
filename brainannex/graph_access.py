@@ -101,7 +101,8 @@ class GraphAccess(InterGraph):
                             at present, there's no way to request an "OR" operation
 
         :param internal_id: The internal database ID of the node of interest.
-                                If specified, it OVER-RIDES all the remaining arguments [except for the labels (TODO: revisit this)]
+                                If specified, it OVER-RIDES all the remaining arguments
+                                [except for the labels (TODO: revisit this)]
 
         :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
         :param key_value:   The required value for the above key; if provided, key_name must be present, too
@@ -148,7 +149,7 @@ class GraphAccess(InterGraph):
                                     OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
 
         :param return_internal_id:  Flag indicating whether to also include the internal database node ID in the returned data
-                                    (using "internal_id" as its key in the returned dictionary)
+                                    (using "_internal_id" as its key in the returned dictionary)
         :param return_labels:   Flag indicating whether to also include the database label names in the returned data
                                     (using "_node_labels" as its key in the returned dictionary)
 
@@ -177,12 +178,12 @@ class GraphAccess(InterGraph):
                                              ]
                                     Note that ALL the attributes of each node are returned - and that they may vary across records.
                                     If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
-                                            of the form     "internal_id": some integer with the Neo4j internal node ID
+                                            of the form     "_internal_id": some integer with the Neo4j internal node ID
                                     If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
                                             of the form     "_node_labels": [list of Neo4j label(s) attached to that node]
                                     EXAMPLE using both of the above flags:
-                                        [  {"internal_id": 145, "_node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
-                                           {"internal_id": 222, "_node_labels": ["person"], "gender": "M", "location": "Berkeley"}
+                                        [  {"_internal_id": 145, "_node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
+                                           {"_internal_id": 222, "_node_labels": ["person"], "gender": "M", "location": "Berkeley"}
                                         ]
         """
         # TODO: provide an option to specify the desired fields
@@ -203,13 +204,13 @@ class GraphAccess(InterGraph):
         #       rather than dictionaries indexes by "n"
         if return_internal_id and return_labels:
             result_list = self.query_extended(cypher, data_binding, flatten=True)
-            # Note: query_extended() provides both 'internal_id' and '_node_labels'
+            # Note: query_extended() provides both '_internal_id' and '_node_labels'
         elif return_internal_id:    # but not return_labels
             result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['_node_labels'])
         elif return_labels:         # but not return_internal_id
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id'])
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['_internal_id'])
         else:
-            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['internal_id', '_node_labels'])
+            result_list = self.query_extended(cypher, data_binding, flatten=True, fields_to_exclude=['_internal_id', '_node_labels'])
 
         # Deal with empty result lists
         if len(result_list) == 0:   # If no results were produced
@@ -287,7 +288,7 @@ class GraphAccess(InterGraph):
         :param labels:              A string or list/tuple of strings.  Use None if not to be included in search
         :param primary_key_name:    The name of the primary key by which to look the record up
         :param primary_key_value:   The desired value of the primary key
-        :param return_internal_id:  If True, an extra entry is present in the dictionary, with the key "internal_id"
+        :param return_internal_id:  If True, an extra entry is present in the dictionary, with the key "_internal_id"
 
         :return:                    A dictionary, if a unique record was found; or None if not found
         """
@@ -414,24 +415,44 @@ class GraphAccess(InterGraph):
 
         :return:    A list of strings, sorted alphabetically
         """
+        # TODO: pytest
         label_list = self.get_labels()    # Database-specific operation to retrieve all the node labels in the database
 
         return sorted(label_list)
 
 
 
-    def find_first_duplicate(self, labels :str, property_name :str) -> Union[dict, None]:
+    def find_first_duplicate(self, labels :str, property_name :str) -> dict|None:
         """
         Search the database for node duplicates based on the given labels/property_name pairing;
-        return the first duplicate, or None if not found
+        return the first duplicate pair, or None if not found.
 
-        :param labels:          For now, just 1 label
+        Duplicate values must be EXACT: for example, integer values or absolutely-identical strings;
+        "red" will NOT match "Red".
+        Do NOT use to match floating-point values.
+
+        ~~~ EXAMPLE ~~~
+            find_first_duplicate(labels="car", property_name="color")
+
+            If the database has at least 2 "car" nodes with the same "color" property
+            (for example, if we have two red cars),
+            the above call might return:  {"FIRST_INTERNAL_ID": 15, "SECOND_INTERNAL_ID": 23, "color": "red"}
+            where 15 and 23 (int or string values)
+            are the internal database IDs - in any order - of two duplicates that were found.
+            It's possible that other duplicates might also present; this function only checks for the EXISTENCE of duplicates
+
+
+        :param labels:          For now, just 1 database label
         :param property_name:   A string with the name of the node property of interest
-        :return:                If no duplicates are present, return None;
-                                otherwise return a dict such as
-                                {'FIRST_INTERNAL_ID': 123, 'SECOND_INTERNAL_ID': 999, 'my_property_name': "I'm a duplicate"}
+        :return:                If no duplicates (based on label + property_name) are present, return None;
+                                    otherwise return a dict such as
+                                    {"FIRST_INTERNAL_ID": 123, "SECOND_INTERNAL_ID": 999, "my_property_name": "I'm a duplicate"}
+                                    where 'my_property_name' is the argument `property_name`
         """
-        #TODO: generalize labels; pytest
+        #TODO: generalize to multiple labels
+        assert type(labels) == str, \
+            f"find_first_duplicate(): argument `labels` must be (for now) a string, not a {type(labels)}"
+
         q = f'''
             MATCH (n1 :{labels}), (n2 :{labels})
             WHERE n1.`{property_name}` = n2.`{property_name}`
@@ -518,7 +539,7 @@ class GraphAccess(InterGraph):
         if len(result_list) != 1:
             raise Exception("GraphAccess.create_node(): failed to create the requested new node")
 
-        return result_list[0]['internal_id']           # Return the Neo4j internal ID of the node just created
+        return result_list[0]['_internal_id']    # Return the internal database ID of the node just created
 
 
 
@@ -534,7 +555,7 @@ class GraphAccess(InterGraph):
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
 
         :return:            A dict with 2 keys: "created" (True if a new node was created, or False otherwise)
-                                                and "internal_id"
+                                                and "_internal_id"
         """
         # TODO: test
 
@@ -552,23 +573,23 @@ class GraphAccess(InterGraph):
         cypher_labels = CypherUtils.prepare_labels(labels)
 
         # Assemble the complete Cypher query
-        q = f"MERGE (n {cypher_labels} {attributes_str}) RETURN id(n) AS internal_id"
+        q = f"MERGE (n {cypher_labels} {attributes_str}) RETURN id(n) AS _internal_id"
 
 
         result = self.update_query(q, data_dictionary)
 
-        internal_id = result["returned_data"][0]["internal_id"]     # The internal database ID of the node found or just created
+        internal_id = result["returned_data"][0]["_internal_id"]     # The internal database ID of the node found or just created
 
         if result.get("nodes_created", 0) == 1:
-            return {"created": True, "internal_id": internal_id}
+            return {"created": True, "_internal_id": internal_id}
         else:
-            return {"created": False, "internal_id": internal_id}
+            return {"created": False, "_internal_id": internal_id}
 
 
 
-    def create_attached_node(self, labels, properties = None,
-                             attached_to = None, rel_name = None, rel_dir = "OUT",
-                             merge=True) -> int:
+    def create_attached_node(self, labels :str|list|tuple, properties=None,
+                             attached_to=None, rel_name=None, rel_dir="OUT",
+                             merge=True) -> int|str:
         """
         Create a new node (or possibly re-use an existing one),
         with the given labels and optional specified properties,
@@ -596,18 +617,21 @@ class GraphAccess(InterGraph):
                                     rel_name="EMPLOYS"
             )
 
-        :param labels:      Labels to assign to the newly-created node (a string, possibly empty, or list of strings)
+        :param labels:      A string, or list/tuple of strings, with label(s) to assign to the new node;
+                                blanks allowed inside strings
         :param properties:  (OPTIONAL) A dictionary of optional properties to assign to the newly-created node
-        :param attached_to: (OPTIONAL) An integer, or list/tuple of integers,
+        :param attached_to: (OPTIONAL) An integer/string, or list/tuple of integers/string,
                                 with internal database ID's to identify the existing nodes;
                                 use None, or an empty list, to indicate if there aren't any
         :param rel_name:    (OPTIONAL) Name of the newly created relationships.
                                 This is required, if an attached_to list was provided
-        :param rel_dir:     (OPTIONAL) Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationships to create
+        :param rel_dir:     (OPTIONAL) Either "OUT"(default), "IN" or "BOTH".
+                                Direction(s) of the relationships to create, relative to the new node.
+                                "OUT" means from the new node; "IN" means to the new node
         :param merge:       (OPTIONAL) If True (default), a new node gets created only if there's no existing node
                                 with the same properties and labels
 
-        :return:            An integer with the internal database ID of the newly-created node
+        :return:            The internal database ID of the newly-created node
         """
         if type(attached_to) == int:
             attached_to = [attached_to]
@@ -626,239 +650,15 @@ class GraphAccess(InterGraph):
             links = None
         else:
             links = [{"internal_id": existing_node_id, "rel_name": rel_name, "rel_dir": rel_dir}
-                     for existing_node_id in attached_to]
+                            for existing_node_id in attached_to]
 
         return self.create_node_with_links(labels=labels, properties=properties, links=links, merge=merge)
 
 
 
-    def create_node_with_links(self, labels :str|list|tuple, properties=None, links=None, merge=False) -> int|str:
+    def create_node_with_relationships(self, labels, properties=None, connections=None) -> int|str:
         """
-        Create a new node, with the given labels and optional properties,
-        and link it up to all the EXISTING nodes that are specified
-        in the (possibly empty) list of link nodes, identified by their Neo4j internal ID's.
-
-        The list of link nodes also contains the names to give to each link,
-        as well as their directions (by default OUT-bound from the newly-created node)
-        and, optionally, properties on the links.
-
-        If any of the requested link nodes isn't found,
-        then no new node is created, and an Exception is raised.
-
-        Note: the new node may be created even in situations where Exceptions are raised;
-              for example, if attempting to create two identical relationships to the same existing node.
-
-        EXAMPLE (assuming the nodes with the specified internal database IDs already exist):
-            create_node_with_links(
-                                labels="PERSON",
-                                properties={"name": "Julian", "city": "Berkeley"},
-                                links=[ {"internal_id": 123, "rel_name": "LIVES IN"},
-                                        {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
-                                        {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
-                                      ]
-            )
-
-        :param labels:      Labels to assign to the newly-created node (optional but recommended):
-                                a string or list/tuple of strings; blanks allowed inside strings
-        :param properties:  A dictionary of optional properties to assign to the newly-created node
-        :param links:       Optional list of dicts identifying existing nodes,
-                                and specifying the name, direction and optional properties
-                                to give to the links connecting to them;
-                                use None, or an empty list, to indicate if there aren't any.
-                                Each dict contains the following keys:
-                                    "internal_id"   REQUIRED - to identify an existing node
-                                    "rel_name"      REQUIRED - the name to give to the link
-                                    "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
-                                    "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
-        :param merge:       (OPTIONAL; default False) If True, a new node gets created only if there's no existing node
-                                with the same properties and labels
-
-        :return:            An integer or string with the internal database ID of the newly-created node
-        """
-        # TODO:  test more the `merge` arg
-
-        assert properties is None or type(properties) == dict, \
-            f"GraphAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
-
-        assert links is None or type(links) == list, \
-            f"GraphAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
-
-
-        # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
-        #   to define the new node to be created
-        labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
-        (cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(properties)
-        # EXAMPLE:
-        #   cypher_props_str = "{`name`: $par_1, `city`: $par_2}"
-        #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
-
-        # Define the portion of the Cypher query to create the new node
-        if merge:
-            q_CREATE = f"MERGE (n {labels_str} {cypher_props_str})"
-        else:
-            q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
-            # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
-
-
-        if links:
-            q_MATCH, q_WHERE, q_MERGE, additional_data_binding = self._assemble_query_for_linking(links)
-            # Put all the parts of the Cypher query together (*except* for a RETURN statement)
-            q = q_MATCH + "\n" + q_WHERE + "\n" + q_CREATE + "\n" + q_MERGE
-
-            # Merge additional_data_binding into the data_binding dict
-            data_binding.update(additional_data_binding)
-        else:
-            links = []      # To avoid problems with the None value, further down
-            q = q_CREATE
-
-
-        # Put all the parts of the Cypher query together (*except* for a RETURN statement)
-        q += "\nRETURN id(n) AS internal_id"
-        # EXAMPLE of q:
-        '''
-        MATCH (ex0), (ex1)
-        WHERE id(ex0) = 4 AND id(ex1) = 3
-        CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})
-        MERGE (n)<-[:`EMPLOYS` ]-(ex0)
-        MERGE (n)-[:`OWNS` {`since`: $EDGE1_1}]->(ex1)
-        RETURN id(n) AS internal_id       
-        '''
-        # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'EDGE1_1': 2021}
-
-        result = self.update_query(q, data_binding)
-        #self.debug_print(f"Result of update_query in create_node_with_links():\n{result}")
-        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'internal_id': 604}]}
-
-
-        # Assert that the query produced the expected actions
-        if not merge:
-            if result.get("nodes_created", 0) != 1:
-                raise Exception("GraphAccess.create_node_with_links(): failed to create the new node "
-                                "(check whether the requested link-to nodes exist)")
-
-            if not labels:
-                expected_number_labels = 0
-            elif type(labels) == str:
-                expected_number_labels = 1
-            else:
-                expected_number_labels = len(labels)
-
-            if result.get("labels_added", 0) != expected_number_labels:
-                raise Exception(f"GraphAccess.create_node_with_links(): failed to set the {expected_number_labels} label(s) expected on the new node")
-
-
-        if result.get("relationships_created", 0) != len(links):
-            raise Exception(f"GraphAccess.create_node_with_links(): failed to create all the {len(links)} requested relationships")
-
-        # Determine the number of entries in the data_binding dict, where the value isn't None
-        expected_number_properties = sum(1 for v in data_binding.values() if v is not None)
-        if result.get("properties_set", 0) != expected_number_properties:
-            raise Exception(f"GraphAccess.create_node_with_links(): Was expecting to set {expected_number_properties} properties on the new node and its relationships; "
-                            f"instead, {result.get('properties_set')} got set")
-
-        returned_data = result.get("returned_data")
-        #print("returned_data", returned_data)
-        if len(returned_data) == 0:
-            raise Exception("GraphAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
-
-        internal_id = returned_data[0].get("internal_id", None)
-        if internal_id is None:    # Note: internal_id might be zero
-            raise Exception("GraphAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
-
-        return internal_id    # Return the Neo4j ID of the new node
-
-
-
-    def _assemble_query_for_linking(self, links: list) -> tuple:
-        """
-        Helper function for create_node_with_links(), and perhaps future methods.
-
-        Given a list of existing nodes, and info on links to create to/from them,
-        define the portions of the Cypher query to locate the existing nodes,
-        and to link up to them.
-        No query is actually run.
-
-        :param links:   A list: SEE explanation in create_node_with_links()
-        :return:        A 4-tuple with the parts of the query, as well as the needed data binding
-                            1) q_MATCH
-                            2) q_WHERE
-                            3) q_MERGE
-                            4) data_binding
-        """
-
-        assert links and type(links) == list and len(links) > 0, \
-            f"GraphAccess._assemble_query_for_linking(): the argument must be a non-empty list"
-
-        # Define the portion of the Cypher query to locate the existing nodes
-        q_MATCH = "MATCH"
-        q_WHERE = "WHERE"
-
-        # Define the portion of the Cypher query to link up to any of the existing nodes
-        q_MERGE = ""
-
-        data_binding = {}
-        for i, edge in enumerate(links):
-            match_internal_id = edge.get("internal_id")
-            if match_internal_id is None:    # Caution: it might be zero
-                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing 'internal_id' key for the node to link to (in list element {edge})")
-
-            assert type(match_internal_id) == int, \
-                f"GraphAccess._assemble_query_for_linking(): The value of the 'internal_id' key must be an integer. The type was {type(match_internal_id)}"
-
-            rel_name = edge.get("rel_name")
-            if not rel_name:
-                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing name ('rel_name' key) for the new relationship (in list element {edge})")
-
-            node_dummy_name = f"ex{i}"  # EXAMPLE: "ex3".   The "ex" stands for "existing node"
-            q_MATCH += f" (ex{i})"      # EXAMPLE: " (ex3)"
-
-            q_WHERE += f" id({node_dummy_name}) = {match_internal_id}"   # EXAMPLE: " id(ex3) = 123"
-
-
-            rel_dir = edge.get("rel_dir", "OUT")        # "OUT" is the default value
-            rel_attrs = edge.get("rel_attrs", None)     # By default, no relationship attributes
-
-            # Process the optional relationship properties
-            (rel_attrs_str, cypher_dict_for_edge) = CypherUtils.dict_to_cypher(rel_attrs, prefix=f"EDGE{i}_")
-            # EXAMPLE of rel_attrs_str:         '{since: $EDGE1_par_1}'  (possibly a blank string)
-            # EXAMPLE of cypher_dict_for_edge:  {'EDGE1_par_1': 2021}    (possibly an empty dict)
-
-            data_binding.update(cypher_dict_for_edge)           # Merge cypher_dict_for_edge into the data_binding dictionary
-
-            if rel_dir == "OUT":
-                q_MERGE += f"MERGE (n)-[:`{rel_name}` {rel_attrs_str}]->({node_dummy_name})"  # Form an OUT-bound connection
-                # EXAMPLE of term:  "MERGE (n)-[:`OWNS` {since: $EDGE1_par_1}]->(ex1)"
-            else:
-                q_MERGE += f"MERGE (n)<-[:`{rel_name}` {rel_attrs_str}]-({node_dummy_name})"  # Form an IN-bound connection
-                # EXAMPLE of term:  "MERGE (n)<-[:`EMPLOYS` ]-(ex0)"
-
-            if i+1 < len(links):
-                q_MATCH += ","          # Comma separator, except at the end
-                q_WHERE += " AND"
-                q_MERGE += "\n"
-            # END for
-
-        # EXAMPLE of q_MATCH at this stage; note that (ex0), etc, refer to EXisting nodes:
-        # "MATCH (ex0), (ex1)"
-
-        # EXAMPLE of q_MERGE:
-        '''
-        MERGE (n)<-[:`EMPLOYS` ]-(ex0)
-        MERGE (n)-[:`OWNS` {since: $EDGE1_par_1}]->(ex1)
-        '''
-
-        # EXAMPLE of q_WHERE:
-        # "WHERE id(ex0) = 123 AND id(ex1) = 456"
-
-        return q_MATCH, q_WHERE, q_MERGE, data_binding
-
-
-
-    def create_node_with_relationships(self, labels, properties=None, connections=None) -> int:
-        """
-        TODO: this method may no longer be needed, given the new method create_node_with_links()
-              Maybe ditch, or extract the Neo4j ID's from the connections,
-              and call create_node_with_links()
+        DEPRECATED: use create_node_with_links() instead!
 
         Create a new node with relationships to zero or more PRE-EXISTING nodes
         (identified by their labels and key/value pairs).
@@ -866,7 +666,7 @@ class GraphAccess(InterGraph):
         If the specified pre-existing nodes aren't found, then no new node is created,
         and an Exception is raised.
 
-        On success, return the Neo4j internal ID of the new node just created.
+        On success, return the internal database ID of the new node just created.
 
         Note: if all connections are in one direction, and with same (property-less) relationship name,
               and to nodes with known Neo4j internal IDs, then
@@ -887,7 +687,8 @@ class GraphAccess(InterGraph):
                                             ]
             )
 
-        :param labels:      A string, or list of strings, with label(s) to assign to the new node
+        :param labels:      A string, or list/tuple of strings, with label(s) to assign to the new node;
+                                blanks allowed inside strings
         :param properties:  A dictionary of properties to assign to the new node
         :param connections: A (possibly empty) list of dictionaries with the following keys
                             (all optional unless otherwise specified):
@@ -903,6 +704,11 @@ class GraphAccess(InterGraph):
         :return:            If successful, an integer with the Neo4j internal ID of the node just created;
                                 otherwise, an Exception is raised
         """
+        '''
+        TODO: this method may no longer be needed, given the new method create_node_with_links()
+              Maybe ditch, or extract the internale database ID's from the connections,
+              and call create_node_with_links()
+        '''
         #print(f"In create_node_with_relationships().  connections: {connections}")
 
         # Prepare strings suitable for inclusion in a Cypher query, to define the new node to be created
@@ -988,7 +794,7 @@ class GraphAccess(InterGraph):
         (n)-[:OWNS {since: $NODE1_par_1}]->(ex1)'''
 
         # Put all the parts of the Cypher query together
-        q = q_MATCH + "\n" + q_CREATE + "\n" + q_MERGE + "RETURN id(n) AS internal_id"
+        q = q_MATCH + "\n" + q_CREATE + "\n" + q_MERGE + "RETURN id(n) AS _internal_id"
         #print("\n", q)
         #print("\n", data_binding)
         # EXAMPLE of q:
@@ -996,13 +802,13 @@ class GraphAccess(InterGraph):
         CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})
         MERGE (n)<-[:EMPLOYS ]-(ex0)
         MERGE (n)-[:OWNS {`since`: $NODE1_par_1}]->(ex1)
-        RETURN id(n) AS internal_id
+        RETURN id(n) AS _internal_id
         '''
         # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'NODE0_VAL': 'IT', 'NODE1_VAL': 12345, 'NODE1_par_1': 2021}
 
         result = self.update_query(q, data_binding)
         #print("Result of update_query in create_node_with_relationships(): ", result)
-        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'internal_id': 604}]}
+        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'_internal_id': 604}]}
 
 
         # Assert that the query produced the expected actions
@@ -1025,11 +831,236 @@ class GraphAccess(InterGraph):
         if len(returned_data) == 0:
             raise Exception("create_node_with_relationships(): Unable to extract internal ID of the newly-created node")
 
-        internal_id = returned_data[0].get("internal_id", None)
+        internal_id = returned_data[0].get("_internal_id", None)
         if internal_id is None:    # Note: internal_id might be zero
-            raise Exception("create_node_with_relationships(): Unable to extract internal ID of the newly-created node")
+            raise Exception("create_node_with_relationships(): Unable to extract "
+                            "the internal database ID of the newly-created node")
+
+        return internal_id    # Return the internal database ID of the new node
+
+
+
+    def create_node_with_links(self, labels :str|list|tuple, properties=None, links=None, merge=False) -> int|str:
+        """
+        Create a new node, with the given labels and optional properties,
+        and link it up to all the EXISTING nodes that are specified
+        in the (possibly empty) list of link nodes, identified by their Neo4j internal ID's.
+
+        The list of link nodes also contains the names to give to each link,
+        as well as their directions (by default OUT-bound from the newly-created node)
+        and, optionally, properties on the links.
+
+        If any of the requested link nodes isn't found,
+        then no new node is created, and an Exception is raised.
+
+        Note: the new node may be created even in situations where Exceptions are raised;
+              for example, if attempting to create two identical relationships to the same existing node.
+
+        SEE ALSO: the simpler create_attached_node()
+
+        EXAMPLE (assuming the nodes with the specified internal database IDs already exist):
+            create_node_with_links(
+                                labels="PERSON",
+                                properties={"name": "Julian", "city": "Berkeley"},
+                                links=[ {"internal_id": 123, "rel_name": "LIVES IN"},
+                                        {"internal_id": 456, "rel_name": "EMPLOYS", "rel_dir": "IN"},
+                                        {"internal_id": 789, "rel_name": "OWNS", "rel_attrs": {"since": 2022}}
+                                      ]
+            )
+
+        :param labels:      A string, or list/tuple of strings, with label(s) to assign to the new node;
+                                blanks allowed inside strings
+        :param properties:  A dictionary of optional properties to assign to the newly-created node
+        :param links:       Optional list of dicts identifying existing nodes,
+                                and specifying the name, direction and optional properties
+                                to give to the links connecting to them;
+                                use None, or an empty list, to indicate if there aren't any.
+                                Each dict contains the following keys:
+                                    "internal_id"   REQUIRED - to identify an existing node
+                                    "rel_name"      REQUIRED - the name to give to the link
+                                    "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
+                                    "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
+        :param merge:       (OPTIONAL; default False) If True, a new node gets created only if there's no existing node
+                                with the same properties and labels
+
+        :return:            An integer or string with the internal database ID of the newly-created node
+        """
+        # TODO:  test more the `merge` arg
+
+        assert properties is None or type(properties) == dict, \
+            f"GraphAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
+
+        assert links is None or type(links) == list, \
+            f"GraphAccess.create_node_with_links(): The argument `links` must be a list or None; instead, it's of type {type(links)}"
+
+
+        # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
+        #   to define the new node to be created
+        labels_str = CypherUtils.prepare_labels(labels)    # EXAMPLE:  ":`CAR`:`INVENTORY`"
+        (cypher_props_str, data_binding) = CypherUtils.dict_to_cypher(properties)
+        # EXAMPLE:
+        #   cypher_props_str = "{`name`: $par_1, `city`: $par_2}"
+        #   data_binding = {'par_1': 'Julian', 'par_2': 'Berkeley'}
+
+        # Define the portion of the Cypher query to create the new node
+        if merge:
+            q_CREATE = f"MERGE (n {labels_str} {cypher_props_str})"
+        else:
+            q_CREATE = f"CREATE (n {labels_str} {cypher_props_str})"
+            # EXAMPLE:  "CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})"
+
+
+        if links:
+            q_MATCH, q_WHERE, q_MERGE, additional_data_binding = self._assemble_query_for_linking(links)
+            # Put all the parts of the Cypher query together (*except* for a RETURN statement)
+            q = q_MATCH + "\n" + q_WHERE + "\n" + q_CREATE + "\n" + q_MERGE
+
+            # Merge additional_data_binding into the data_binding dict
+            data_binding.update(additional_data_binding)
+        else:
+            links = []      # To avoid problems with the None value, further down
+            q = q_CREATE
+
+
+        # Put all the parts of the Cypher query together (*except* for a RETURN statement)
+        q += "\nRETURN id(n) AS _internal_id"
+        # EXAMPLE of q:
+        '''
+        MATCH (ex0), (ex1)
+        WHERE id(ex0) = 4 AND id(ex1) = 3
+        CREATE (n :`PERSON` {`name`: $par_1, `city`: $par_2})
+        MERGE (n)<-[:`EMPLOYS` ]-(ex0)
+        MERGE (n)-[:`OWNS` {`since`: $EDGE1_1}]->(ex1)
+        RETURN id(n) AS _internal_id       
+        '''
+        # EXAMPLE of data_binding : {'par_1': 'Julian', 'par_2': 'Berkeley', 'EDGE1_1': 2021}
+
+        result = self.update_query(q, data_binding)
+        #self.debug_print(f"Result of update_query in create_node_with_links():\n{result}")
+        # EXAMPLE: {'labels_added': 1, 'relationships_created': 2, 'nodes_created': 1, 'properties_set': 3, 'returned_data': [{'_internal_id': 604}]}
+
+
+        # Assert that the query produced the expected actions
+        if not merge:
+            if result.get("nodes_created", 0) != 1:
+                raise Exception("GraphAccess.create_node_with_links(): failed to create the new node "
+                                "(check whether the requested link-to nodes exist)")
+
+            if not labels:
+                expected_number_labels = 0
+            elif type(labels) == str:
+                expected_number_labels = 1
+            else:
+                expected_number_labels = len(labels)
+
+            if result.get("labels_added", 0) != expected_number_labels:
+                raise Exception(f"GraphAccess.create_node_with_links(): failed to set the {expected_number_labels} label(s) expected on the new node")
+
+
+        if result.get("relationships_created", 0) != len(links):
+            raise Exception(f"GraphAccess.create_node_with_links(): failed to create all the {len(links)} requested relationships")
+
+        # Determine the number of entries in the data_binding dict, where the value isn't None
+        expected_number_properties = sum(1 for v in data_binding.values() if v is not None)
+        if result.get("properties_set", 0) != expected_number_properties:
+            raise Exception(f"GraphAccess.create_node_with_links(): Was expecting to set {expected_number_properties} properties on the new node and its relationships; "
+                            f"instead, {result.get('properties_set')} got set")
+
+        returned_data = result.get("returned_data")
+        #print("returned_data", returned_data)
+        if len(returned_data) == 0:
+            raise Exception("GraphAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
+
+        internal_id = returned_data[0].get("_internal_id", None)
+        if internal_id is None:    # Note: internal_id might be zero
+            raise Exception("GraphAccess.create_node_with_links(): Unable to extract internal ID of the newly-created node")
 
         return internal_id    # Return the Neo4j ID of the new node
+
+
+
+    def _assemble_query_for_linking(self, links :list) -> tuple:
+        """
+        Helper function for create_node_with_links(), and perhaps future methods.
+
+        Given a list of existing nodes, and info on links to create to/from them,
+        define the portions of the Cypher query to locate the existing nodes,
+        and to link up to them.
+        No query is actually run.
+
+        :param links:   A list: SEE explanation in create_node_with_links()
+        :return:        A 4-tuple with the parts of the query, as well as the needed data binding
+                            1) q_MATCH
+                            2) q_WHERE
+                            3) q_MERGE
+                            4) data_binding
+        """
+
+        assert links and type(links) == list and len(links) > 0, \
+            f"GraphAccess._assemble_query_for_linking(): the argument must be a non-empty list"
+
+        # Define the portion of the Cypher query to locate the existing nodes
+        q_MATCH = "MATCH"
+        q_WHERE = "WHERE"
+
+        # Define the portion of the Cypher query to link up to any of the existing nodes
+        q_MERGE = ""
+
+        data_binding = {}
+        for i, edge in enumerate(links):
+            match_internal_id = edge.get("internal_id")
+            if match_internal_id is None:    # Caution: it might be zero
+                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing 'internal_id' key for the node to link to (in list element {edge})")
+
+            assert type(match_internal_id) == int, \
+                f"GraphAccess._assemble_query_for_linking(): The value of the 'internal_id' key must be an integer. The type was {type(match_internal_id)}"
+
+            rel_name = edge.get("rel_name")
+            if not rel_name:
+                raise Exception(f"GraphAccess._assemble_query_for_linking(): Missing name ('rel_name' key) for the new relationship (in list element {edge})")
+
+            node_dummy_name = f"ex{i}"  # EXAMPLE: "ex3".   The "ex" stands for "existing node"
+            q_MATCH += f" (ex{i})"      # EXAMPLE: " (ex3)"
+
+            q_WHERE += f" id({node_dummy_name}) = {match_internal_id}"   # EXAMPLE: " id(ex3) = 123"
+
+
+            rel_dir = edge.get("rel_dir", "OUT")        # "OUT" is the default value
+            rel_attrs = edge.get("rel_attrs", None)     # By default, no relationship attributes
+
+            # Process the optional relationship properties
+            (rel_attrs_str, cypher_dict_for_edge) = CypherUtils.dict_to_cypher(rel_attrs, prefix=f"EDGE{i}_")
+            # EXAMPLE of rel_attrs_str:         '{since: $EDGE1_par_1}'  (possibly a blank string)
+            # EXAMPLE of cypher_dict_for_edge:  {'EDGE1_par_1': 2021}    (possibly an empty dict)
+
+            data_binding.update(cypher_dict_for_edge)           # Merge cypher_dict_for_edge into the data_binding dictionary
+
+            if rel_dir == "OUT":
+                q_MERGE += f"MERGE (n)-[:`{rel_name}` {rel_attrs_str}]->({node_dummy_name})"  # Form an OUT-bound connection
+                # EXAMPLE of term:  "MERGE (n)-[:`OWNS` {since: $EDGE1_par_1}]->(ex1)"
+            else:
+                q_MERGE += f"MERGE (n)<-[:`{rel_name}` {rel_attrs_str}]-({node_dummy_name})"  # Form an IN-bound connection
+                # EXAMPLE of term:  "MERGE (n)<-[:`EMPLOYS` ]-(ex0)"
+
+            if i+1 < len(links):
+                q_MATCH += ","          # Comma separator, except at the end
+                q_WHERE += " AND"
+                q_MERGE += "\n"
+            # END for
+
+        # EXAMPLE of q_MATCH at this stage; note that (ex0), etc, refer to EXisting nodes:
+        # "MATCH (ex0), (ex1)"
+
+        # EXAMPLE of q_MERGE:
+        '''
+        MERGE (n)<-[:`EMPLOYS` ]-(ex0)
+        MERGE (n)-[:`OWNS` {since: $EDGE1_par_1}]->(ex1)
+        '''
+
+        # EXAMPLE of q_WHERE:
+        # "WHERE id(ex0) = 123 AND id(ex1) = 456"
+
+        return q_MATCH, q_WHERE, q_MERGE, data_binding
 
 
 
@@ -1599,7 +1630,7 @@ class GraphAccess(InterGraph):
         :param neighbor_labels: [OPTIONAL] label(s) required on the neighbor nodes; nodes that don't match are ignored.
                                     If used, provide either a string or list of strings
 
-        :param include_id:      [OPTIONAL] If True, also return an extra field named "internal_id",
+        :param include_id:      [OPTIONAL] If True, also return an extra field named "_internal_id",
                                     with the internal database ID value; by default, False
         :param include_labels:  [OPTIONAL] If True, also return an extra field named "_node_labels",
                                     with a list of the node labels; by default, False
@@ -1607,7 +1638,7 @@ class GraphAccess(InterGraph):
                                     by default 100
 
         :return:                A list of dictionaries with all the properties of the neighbor nodes.
-                                    If `include_id` is True, then each dict also contains a key named "internal_id",
+                                    If `include_id` is True, then each dict also contains a key named "_internal_id",
                                     with the internal database ID value.
                                     Any datetime, etc, value in the database are first converted to python strings
         """
@@ -1636,7 +1667,7 @@ class GraphAccess(InterGraph):
         q += CypherUtils.prepare_where(where) + " RETURN neighbor"
 
         if include_id:
-            q += " , id(neighbor) AS internal_id"
+            q += " , id(neighbor) AS _internal_id"
 
         if include_labels:
             q += " , labels(neighbor) AS _node_labels"
@@ -1693,29 +1724,29 @@ class GraphAccess(InterGraph):
 
         :param internal_id: The internal database ID of the node of interest
         :return:            A dictionary with 2 keys: 'parent_list' and 'child_list'
-                                The values are lists of dictionaries with 3 keys: "internal_id", "label", "rel"
+                                The values are lists of dictionaries with 3 keys: "_internal_id", "label", "rel"
                                 EXAMPLE of individual items in either parent_list or child_list:
-                                {'internal_id': 163, 'labels': ['Car'], 'rel': 'OWNS'}
+                                {'_internal_id': 163, 'labels': ['Car'], 'rel': 'OWNS'}
         """
         # TODO: allow specifying a relationship name to follow
         # Fetch the parents
         cypher = f"MATCH (parent)-[inbound]->(n) WHERE id(n) = {internal_id} " \
-                 "RETURN id(parent) AS internal_id, labels(parent) AS labels, type(inbound) AS rel"
+                 "RETURN id(parent) AS _internal_id, labels(parent) AS labels, type(inbound) AS rel"
 
         parent_list = self.query(cypher)
         # EXAMPLE of parent_list:
-        #       [{'internal_id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'},
-        #        {'internal_id': 150, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}]
+        #       [{'_internal_id': 163, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'},
+        #        {'_internal_id': 150, 'labels': ['Subject'], 'rel': 'HAS_TREATMENT'}]
 
 
         # Fetch the children
         cypher = f"MATCH (n)-[outbound]->(child) WHERE id(n) = {internal_id} " \
-                 "RETURN id(child) AS internal_id, labels(child) AS labels, type(outbound) AS rel"
+                 "RETURN id(child) AS _internal_id, labels(child) AS labels, type(outbound) AS rel"
 
         child_list = self.query(cypher)
         # EXAMPLE of child_list:
-        #       [{'internal_id': 107, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'},
-        #        {'internal_id': 103, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'}]
+        #       [{'_internal_id': 107, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'},
+        #        {'_internal_id': 103, 'labels': ['Source Data Row'], 'rel': 'FROM_DATA'}]
 
 
         return (parent_list, child_list)
@@ -1739,10 +1770,10 @@ class GraphAccess(InterGraph):
         :param order_by:    (OPTIONAL) If specified, it must be the name of a field in
                                 the sibling nodes, to order the results by; capitalization is ignored
         :return:            A list of dictionaries, with one element for each "sibling";
-                                each element contains the 'internal_id' and '_node_labels' keys,
+                                each element contains the '_internal_id' and '_node_labels' keys,
                                 plus whatever attributes are stored on that node.
                                 EXAMPLE of single element:
-                                {'name': 'French', 'internal_id': 123, '_node_labels': ['Categories']}
+                                {'name': 'French', '_internal_id': 123, '_node_labels': ['Categories']}
         """
         #TODO: test order_by
         #TODO: test scenarios that are affected by the DISTINCT ; eg: 2 siblings that share the same 2 parent,
@@ -1861,8 +1892,8 @@ class GraphAccess(InterGraph):
         :param include_start_node: [OPTIONAL] If True, include the start node as well in the returned result
 
         :return:                A (possibly empty) list of dict's, with the properties of all the located nodes,
-                                    plus the 2 special keys "internal_id" and "_node_labels".
-                                    EXAMPLE: [ {'color': 'red', 'internal_id': 123, '_node_labels': ['Car']} ]
+                                    plus the 2 special keys "_internal_id" and "_node_labels".
+                                    EXAMPLE: [ {'color': 'red', '_internal_id': 123, '_node_labels': ['Car']} ]
         """
         CypherUtils.assert_valid_internal_id(start_id)
 
@@ -1895,14 +1926,14 @@ class GraphAccess(InterGraph):
             MATCH  p=(s)-[{cypher_rel_str}*1..{max_hops}]-(e)
             WHERE id(s) = $start_id
             {path_clause}
-            RETURN DISTINCT e, id(e) AS internal_id, labels(e) AS _node_labels
+            RETURN DISTINCT e, id(e) AS _internal_id, labels(e) AS _node_labels
         '''
 
         if include_start_node:
             q += '''
                 UNION MATCH (e)
                 WHERE id(e) = $start_id
-                RETURN DISTINCT e, id(e) AS internal_id, labels(e) AS _node_labels
+                RETURN DISTINCT e, id(e) AS _internal_id, labels(e) AS _node_labels
                 '''
 
         data_dict={"start_id": start_id}
@@ -2156,7 +2187,7 @@ class GraphAccess(InterGraph):
         :param line_number_name:
         :param link_to_node:    (OPTIONAL) If provided, all the newly-created nodes
                                     get linked to the specified existing node.
-                                    Example: {"internal_id": 123, "name": "employed_by", "dir": "out"}
+                                    Example: {"_internal_id": 123, "name": "employed_by", "dir": "out"}
 
         :return:        A dictionary of statistics about the import
         """
@@ -2187,7 +2218,7 @@ class GraphAccess(InterGraph):
                 link = f"MERGE (n)<-[:{link_to_node['name']}]-(l)"
 
             q = f'''MATCH (l:CLASS)
-                    WHERE id(l) = {link_to_node["internal_id"]}
+                    WHERE id(l) = {link_to_node["_internal_id"]}
                     WITH l
                     {q}
                     {link}
@@ -2415,7 +2446,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def create_nodes_from_python_data(self, python_data, root_labels: Union[str, List[str]], level=1) -> List[int]:
+    def create_nodes_from_python_data(self, python_data, root_labels: Union[str, List[str]], level=1) -> List[int|str]:
         """
         Recursive function to add data from a JSON structure to the database, to create a tree:
         either a single node, or a root node with children.
@@ -2423,14 +2454,14 @@ class GraphAccess(InterGraph):
 
         If the data is a literal, first turn it into a dictionary using a key named "value".
 
-        Return the Neo4j ID's of the root node(s)
+        Return the internal database ID's of the root node(s)
 
         :param python_data: Python data to import.
                                 The data can be a literal, or list, or dictionary
                                 - and lists/dictionaries may be nested
         :param root_labels: String, or list of strings, to be used as Neo4j labels for the root node(s)
         :param level:       Recursion level (also used for debugging, to make the indentation more readable)
-        :return:            List of integer Neo4j internal ID's (possibly empty), of the root node(s) created
+        :return:            List (possibly empty) of internal database ID's of the root node(s) created
         """
         indent_str = self.indent_chooser(level)
         self.debug_print(f"{indent_str}{level}. ~~~~~:")
@@ -2495,21 +2526,21 @@ class GraphAccess(InterGraph):
 
         # Loop over all the dictionary entries
         for k, v in d.items():
-            self.debug_trim_print(f"{indent_str}*** KEY-> VALUE: {k} -> {v}")
+            #self.debug_trim_print(f"{indent_str}*** KEY-> VALUE: {k} -> {v}")
 
             if self.is_literal(v):
                 node_properties[k] = v      # Add the key/value to the running list of properties of the new node
                 if self.debug:
                     print(f"{indent_str}The value (`{v}`) is a literal of type {type(v)}. Node properties so far: {node_properties}")
-                else:
-                    print(f"{indent_str}The value (`{self.debug_trim(v)}`) is a literal of type {type(v)}")      # Concise version
+                #else:
+                    #print(f"{indent_str}The value (`{self.debug_trim(v)}`) is a literal of type {type(v)}")      # Concise version
 
             elif type(v) == dict:
                 self.debug_print(f"{indent_str}Processing a dictionary (with {len(v)} keys), using a recursive call:")
                 # Recursive call
                 new_node_id_list = self.create_nodes_from_python_data(python_data=v, root_labels=k, level=level + 1)
                 if len(new_node_id_list) > 1:
-                    raise Exception("Internal error: processing a dictionary is returning more than 1 root node")
+                    raise Exception("dict_importer() - Internal error: processing a dictionary is returning more than 1 root node")
                 elif len(new_node_id_list) == 1:
                     new_node_id = new_node_id_list[0]
                     children_info.append( {"internal_id": new_node_id, "rel_name": k} )  # Append dict entry to the running list
@@ -2524,7 +2555,8 @@ class GraphAccess(InterGraph):
             # Note: if v is None, no action is taken.  Dictionary entries with values of None are disregarded
 
 
-        self.debug_print(f"{indent_str}dict_importer assembled node_properties: {node_properties} | children_info: {children_info}")
+        self.debug_print(f"{indent_str}dict_importer assembled node_properties: {node_properties} "
+                         f"| children_info: {children_info}")
         return self.create_node_with_links(labels=labels, properties=node_properties, links=children_info)
 
 
@@ -2698,7 +2730,7 @@ class GraphAccess(InterGraph):
         """
         Tabular display of the requested fields from the given list of nodes data,
         typically as returned from get_nodes()
-        or from the queries such as "MATCH (x:Person) RETURN x, id(x) AS internal_id"
+        or from the queries such as "MATCH (x:Person) RETURN x, id(x) AS _internal_id"
 
         Node labels and their internal ID's are included in the table *if* they are part of the passed data
 
@@ -2707,10 +2739,10 @@ class GraphAccess(InterGraph):
 
                                 {"field_1": 3, "field_2": "hello"}                          # Simple dict of node properties
                                 {"field_1": 3, "field_2": "hello",
-                                    "internal_id": 123, "_node_labels": ["Car", "Vehicle"]}  # Optionally include "internal_id" and/or "_node_labels"
+                                    "_internal_id": 123, "_node_labels": ["Car", "Vehicle"]}  # Optionally include "_internal_id" and/or "_node_labels"
                                 { "n":  {"field_1": 3, "field_2": "hello"} }                # Outer dict with dummy name
-                                { "internal_id": 123, "_node_labels": ["Car", "Vehicle"] ,
-                                        "n":  {"field_1": 3, "field_2": "hello"} }          # Optionally include "internal_id" and/or "_node_labels" in outer list
+                                { "_internal_id": 123, "_node_labels": ["Car", "Vehicle"] ,
+                                        "n":  {"field_1": 3, "field_2": "hello"} }          # Optionally include "_internal_id" and/or "_node_labels" in outer list
 
 
         :param fields:      A string, or list/tuple of strings, with the name(s) of the desired field(s) to include.
@@ -2722,8 +2754,8 @@ class GraphAccess(InterGraph):
         :return:            If the list of node is empty, None is returned;
                                 otherwise, a Panda's DataFrame with a tabular view of the specified fields (properties),
                                 with columns in the following order: "_node_labels" (if present), all the fields in the order of
-                                the `fields` list, "internal_id" (if present)
-                                Note: "internal_id" might not show up at the far right if `fields` is None, and different records
+                                the `fields` list, "_internal_id" (if present)
+                                Note: "_internal_id" might not show up at the far right if `fields` is None, and different records
                                       have variable field lists
         """
         if (n_nodes := len(node_list)) == 0:
@@ -2752,9 +2784,9 @@ class GraphAccess(InterGraph):
                 d = node
                 outer = d
 
-            #  Include "_node_labels" and/or "internal_id", if present
-            if "internal_id" in outer:
-                d_simple["internal_id"] = outer["internal_id"]  # Placed first; later will be moved to last column
+            #  Include "_node_labels" and/or "_internal_id", if present
+            if "_internal_id" in outer:
+                d_simple["_internal_id"] = outer["_internal_id"]  # Placed first; later will be moved to last column
             if "_node_labels" in outer:
                 d_simple["_node_labels"] = outer["_node_labels"]
 
@@ -2764,9 +2796,9 @@ class GraphAccess(InterGraph):
                 for f in fields:
                     d_simple[f] = d.get(f)
             else:
-                # Copy over ALL fields, except "_node_labels" and "internal_id" (which are handled separately)
+                # Copy over ALL fields, except "_node_labels" and "_internal_id" (which are handled separately)
                  for k, v in d.items():
-                    if (k != "_node_labels") and (k != "internal_id"):
+                    if (k != "_node_labels") and (k != "_internal_id"):
                         d_simple[k] = v
 
             #print(d_simple)
@@ -2775,11 +2807,11 @@ class GraphAccess(InterGraph):
 
         df = pd.DataFrame(row_list)   # Turn a list of dict's into a Pandas dataframe
 
-        # Re-oder the columns, to place "internal_id" (if present) last
-        if ("internal_id" in df.columns) and (df.columns[0] == "internal_id"):
-            col_data = df["internal_id"]          # save the "internal_id" column
-            del df["internal_id"]                 # remove it from the DataFrame
-            df["internal_id"] = col_data          # reinsert it as the last column
+        # Re-oder the columns, to place "_internal_id" (if present) last
+        if ("_internal_id" in df.columns) and (df.columns[0] == "_internal_id"):
+            col_data = df["_internal_id"]          # save the "_internal_id" column
+            del df["_internal_id"]                 # remove it from the DataFrame
+            df["_internal_id"] = col_data          # reinsert it as the last column
 
         return df
 
@@ -2881,31 +2913,31 @@ class GraphAccess(InterGraph):
         """
         Sanitize and standardize the given recordset, typically as returned by a call to query(),
         obtained from a Cypher query that returned a group of nodes (using the dummy name "n"),
-        and optionally also the internal database ID (returned as "internal_id").
+        and optionally also the internal database ID (returned as "_internal_id").
 
         The sanitizing is done by transforming any database-specific date and datetime format to suitable python counterparts.
         The time parts get dropped, and the date is returned in the format yyyy_mm_dd
 
-        If applicable, insert into the records the values of the internal database ID (using the key "internal_id"),
+        If applicable, insert into the records the values of the internal database ID (using the key "_internal_id"),
         and/or of the node labels (using the key "_node_labels")
 
         EXAMPLES of queries that generate recordsets in the expected formats, when passed to query():
                 "MATCH (n) RETURN n"
-                "MATCH (n) RETURN n, id(n) AS internal_id"
+                "MATCH (n) RETURN n, id(n) AS _internal_id"
 
-        :param recordset:   A list of dict's that contain the key "n" and optionally the key "internal_id".
-                                EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "internal_id": 88, "_node_labels": ["Car", "Vehicle"]},
-                                           {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "internal_id": 4},
-                                           {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "internal_id": 53},
+        :param recordset:   A list of dict's that contain the key "n" and optionally the key "_internal_id".
+                                EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]},
+                                           {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "_internal_id": 4},
+                                           {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "_internal_id": 53},
                                          ]
         :param dummy_name:  [OPTIONAL] If not present, a flattened data structure is assumed - and this function
                                 will just sanitize the date/datetime fields
 
         :return:            A list of dict's that contain all the node properties - sanitized as needed - and,
-                                optionally, an extra key named "internal_id"
-                                EXAMPLE:  [ {"field1": 1, "field1": "x", "internal_id": 88, "_node_labels": ["Car", "Vehicle"]},
-                                            {"PatientID": 123, "DOB": "2000/01/31", "internal_id": 4},
-                                            {"timestamp": 123, "DOB": "2003/07/15", "internal_id": 53}
+                                optionally, an extra key named "_internal_id"
+                                EXAMPLE:  [ {"field1": 1, "field1": "x", "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]},
+                                            {"PatientID": 123, "DOB": "2000/01/31", "_internal_id": 4},
+                                            {"timestamp": 123, "DOB": "2003/07/15", "_internal_id": 53}
                                           ]
         """
         # TODO: perhaps add a flag to query(), to automatically invoke this function at the end;
@@ -2921,8 +2953,8 @@ class GraphAccess(InterGraph):
             # Convert any DateTime or Date values to strings; the time part is dropped
             data = self.sanitize_date_times(data, drop_time=True)   # TODO: make the time dropping optional
 
-            if "internal_id" in record:
-                data["internal_id"] = record["internal_id"]     # Integrate the internal database ID, if provided, into the record
+            if "_internal_id" in record:
+                data["_internal_id"] = record["_internal_id"]     # Integrate the internal database ID, if provided, into the record
 
             if "_node_labels" in record:
                 data["_node_labels"] = record["_node_labels"]     # Integrate the node labels (a list of strings), if provided, into the record

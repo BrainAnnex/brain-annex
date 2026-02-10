@@ -175,7 +175,7 @@ class Collections:
                                      links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
-                                    ],
+                                            ],
                                      new_uri=new_uri
                                      )
         return new_uri
@@ -503,7 +503,7 @@ class Collections:
                                      links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
-                                    ],
+                                            ],
                                      new_uri=new_uri
                                      )
         return new_uri
@@ -620,7 +620,7 @@ class Collections:
                                      links=[{"internal_id": collection_id,
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": new_pos}}
-                                    ],
+                                            ],
                                      new_uri=new_uri
                                      )
         return new_uri

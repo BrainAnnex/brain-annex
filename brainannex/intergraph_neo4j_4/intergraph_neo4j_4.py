@@ -338,7 +338,7 @@ class InterGraph:
                     "MATCH (n1)-[r]->(n2) RETURN r"
 
         For example, useful in scenarios where nodes were returned,
-        and their internal database IDs (using the key "internal_id")
+        and their internal database IDs (using the key "_internal_id")
         and/or node labels (using the key "_node_labels") are desired -
         in addition to all the properties and their values.
 
@@ -369,20 +369,20 @@ class InterGraph:
                                 were returned in the Cypher query.
 
                         EXAMPLE with flatten=True for a query returning nodes "MATCH n RETURN n":
-                                [   {'year': 2023, 'make': 'Ford', 'internal_id': 123, '_node_labels': ['Motor Vehicle']},
-                                    {'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}
+                                [   {'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']},
+                                    {'year': 2013, 'make': 'Toyota', '_internal_id': 4, '_node_labels': ['Motor Vehicle']}
                                 ]
                         EXAMPLE with flatten=False for that same query returning nodes "MATCH n RETURN n":
-                                [   [{'year': 2023, 'make': 'Ford', 'internal_id': 123, '_node_labels': ['Motor Vehicle']}],
+                                [   [{'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']}],
                                     [{'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}]
                                 ]
 
                         EXAMPLE of *individual items* - for a returned NODE
-                            {'gender': 'M', 'age': 20, 'internal_id': 123, '_node_labels': ['patient']}
+                            {'gender': 'M', 'age': 20, '_internal_id': 123, '_node_labels': ['patient']}
 
                         EXAMPLE of *individual items* - for a returned RELATIONSHIP (note that 'neo4j_type' is the link name,
                             and that any properties of the relationships, such as 'price', appear as key/values in the dict)
-                            {'price': 7500, 'internal_id': 2,
+                            {'price': 7500, '_internal_id': 2,
                              'neo4j_start_node': <Node id=11 labels=frozenset() properties={}>,
                              'neo4j_end_node': <Node id=14 labels=frozenset() properties={}>,
                              'neo4j_type': 'bought_by'}]
@@ -436,11 +436,11 @@ class InterGraph:
                     neo4j_properties = dict(item.items())   # EXAMPLE: {'gender': 'M', 'age': 99}
 
                     if isinstance(item, neo4j.graph.Node):
-                        neo4j_properties["internal_id"] = item.id               # Example: 227
+                        neo4j_properties["_internal_id"] = item.id               # Example: 227
                         neo4j_properties["_node_labels"] = list(item.labels)    # Example: ['person', 'client']
 
                     elif isinstance(item, neo4j.graph.Relationship):
-                        neo4j_properties["internal_id"] = item.id               # Example: 227
+                        neo4j_properties["_internal_id"] = item.id               # Example: 227
                         neo4j_properties["neo4j_start_node"] = item.start_node  # A neo4j.graph.Node object with "id", "labels" and "properties"
                         neo4j_properties["neo4j_end_node"] = item.end_node      # A neo4j.graph.Node object with "id", "labels" and "properties"
                         #   Example: <Node id=118 labels=frozenset({'car'}) properties={'color': 'white'}>
@@ -474,12 +474,12 @@ class InterGraph:
         If the query returns any values, they are made available as  list, as the value of the key 'returned_data'.
 
         Note: if the query creates nodes and one wishes to obtain their internal database ID's,
-              one can include Cypher code such as "RETURN id(n) AS internal_id" (where n is the dummy name of the newly-created node)
+              one can include Cypher code such as "RETURN id(n) AS _internal_id" (where n is the dummy name of the newly-created node)
 
-        EXAMPLE:  result = update_query("CREATE(n :CITY {name: 'San Francisco'}) RETURN id(n) AS internal_id")
+        EXAMPLE:  result = update_query("CREATE(n :CITY {name: 'San Francisco'}) RETURN id(n) AS _internal_id")
 
                   result will be {'nodes_created': 1, 'properties_set': 1, 'labels_added': 1,
-                                  'returned_data': [{'internal_id': 123}]
+                                  'returned_data': [{'_internal_id': 123}]
                                  } , assuming 123 is the internal database ID of the newly-created node
 
         :param q:           Any Cypher query, but typically one that doesn't return anything
@@ -491,7 +491,7 @@ class InterGraph:
                                 {'nodes_deleted': 3}    The query resulted in the deletion of 3 nodes
                                 {'properties_set': 2}   The query had the effect of setting 2 properties
                                 {'relationships_created': 1}    One new relationship got created
-                                {'returned_data': [{'internal_id': 123}]}  'returned_data' contains the results of the query,
+                                {'returned_data': [{'_internal_id': 123}]}  'returned_data' contains the results of the query,
                                                                         if it returns anything, as a list of dictionaries
                                                                         - akin to the value returned by query()
                                 {'returned_data': []}  Gets returned by SET QUERIES with no return statement

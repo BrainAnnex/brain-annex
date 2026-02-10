@@ -59,13 +59,13 @@ def test_get_records_by_link(db):
 
     request_data = {"internal_id": book_2, "rel_name": "OWNS", "dir": "IN"}
     result = DataManager.get_records_by_link(request_data)
-    expected = [{"internal_id": person_id, "name": "Julian", "city": "Berkeley", '_node_labels': ['person']}]
+    expected = [{"_internal_id": person_id, "name": "Julian", "city": "Berkeley", '_node_labels': ['person']}]
     assert result == expected
 
     request_data = {"internal_id": person_id, "rel_name": "OWNS", "dir": "OUT"}
     result = DataManager.get_records_by_link(request_data)
-    expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', 'internal_id': book_1, '_node_labels': ['book']} ,
-                {'title': 'Intro to Hilbert Spaces', 'internal_id': book_2, '_node_labels': ['book']}]
+    expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', '_internal_id': book_1, '_node_labels': ['book']} ,
+                {'title': 'Intro to Hilbert Spaces', '_internal_id': book_2, '_node_labels': ['book']}]
     assert compare_recordsets(result, expected)
 
 
@@ -164,6 +164,59 @@ def test_switch_category(db):
 
 
 
+def test_search_for_terms(db):
+    pass    # TODO
+
+def test_search_for_word(db):
+    pass    # TODO
+
+def test_search_for_all_words(db):
+    pass    # TODO
+
+
+
+def test_extract_node_neighborhood(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        DataManager.extract_node_neighborhood(node_internal_id=None, known_neighbors=[])
+
+    # Non-existent node
+    result = DataManager.extract_node_neighborhood(node_internal_id=1, known_neighbors=None)
+    assert result == {'nodes': [], 'edges': []}
+
+    with pytest.raises(Exception):
+        DataManager.extract_node_neighborhood(node_internal_id=1, known_neighbors="not a list!")
+
+    car_node = db.create_node(labels="Car", properties={"color": "white"})
+
+    result = DataManager.extract_node_neighborhood(node_internal_id=car_node, known_neighbors=None)
+    assert result == {'nodes': [], 'edges': []}
+
+    owner_1 = db.create_attached_node(labels="Person", properties={"name": "Julian"},
+                            attached_to=car_node, rel_name="OWNS", rel_dir="OUT")
+
+    # Neighbors of the Car node
+    result = DataManager.extract_node_neighborhood(node_internal_id=car_node, known_neighbors=None)
+    assert result == {'nodes': [{'_node_labels': ['Person'], 'name': 'Julian', '_internal_id': owner_1, 'id': str(owner_1)}],
+                      'edges': [{'name': 'OWNS', 'source': str(owner_1), 'target': str(car_node), 'id': f'edge-{owner_1}--{car_node}'}]}
+
+    result = DataManager.extract_node_neighborhood(node_internal_id=car_node, known_neighbors=[owner_1])
+    assert result == {'nodes': [], 'edges': []}
+
+
+    # Neighbors of the owner_1 node
+    result = DataManager.extract_node_neighborhood(node_internal_id=owner_1, known_neighbors=None)
+    assert result == {'nodes': [{'_node_labels': ['Car'], 'color': 'white', '_internal_id': car_node, 'id': str(car_node)}],
+                      'edges': [{'name': 'OWNS', 'source': str(owner_1), 'target': str(car_node), 'id': f'edge-{owner_1}--{car_node}'}]}
+
+    result = DataManager.extract_node_neighborhood(node_internal_id=owner_1, known_neighbors=[car_node])
+    assert result == {'nodes': [], 'edges': []}
+
+    #TODO: more tests
+
+
+
 def test_get_filtered(db):
     db.empty_dbase()
 
@@ -173,15 +226,15 @@ def test_get_filtered(db):
 
     # No filtration
     assert DataManager.get_filtered({}) == (
-                                            [{'gender': 'F', 'age': 22, 'internal_id': internal_id, '_node_labels': ["Test Label"]}]
+                                            [{'gender': 'F', 'age': 22, '_internal_id': internal_id, '_node_labels': ["Test Label"]}]
                                             , 1
                                            )
     # Filtration by labels
     assert DataManager.get_filtered({"label": "Test Label"}) == \
-           ( [{'gender': 'F', 'age': 22, 'internal_id': internal_id, '_node_labels': ["Test Label"]}] , 1 )
+           ( [{'gender': 'F', 'age': 22, '_internal_id': internal_id, '_node_labels': ["Test Label"]}] , 1 )
     assert DataManager.get_filtered({"label": "WRONG_Label"}) == ( [] , 0 )
     assert DataManager.get_filtered({"key_name": "age", "key_value": 22}) == \
-           ( [{'gender': 'F', 'age': 22, 'internal_id': internal_id, '_node_labels': ["Test Label"]}] , 1 )
+           ( [{'gender': 'F', 'age': 22, '_internal_id': internal_id, '_node_labels': ["Test Label"]}] , 1 )
     assert DataManager.get_filtered({"key_name": "age", "key_value": 99}) == ( [] , 0 )
     assert DataManager.get_filtered({"label": "WRONG_Label", "key_name": "age", "key_value": 22}) == ( [] , 0 )
 

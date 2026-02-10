@@ -533,7 +533,7 @@
     <!--  To add a new Subcategory (TODO: turn into a Vue component) -->
     <div style='clear: left;'></div> {# To clear any Content Item #}
 
-    <div class='form-box' style="float:right">
+    <div class='form-box' style="float:right; margin-top:10px; padding-top:10px">
         <span class='title'>CREATE A NEW SUBCATEGORY for &ldquo;{{category_name}}&rdquo;</span><br><br>
 
         <input type='hidden' name='parentID' value={{category_uri}}>
@@ -699,7 +699,7 @@ new Vue({
                         // EXAMPLE: [{"uri":"709","name":"English"},{"uri":"708","name":"Italian"},{"uri":"514","name":"French"}]
 
         siblings_categories: {{siblings_categories | tojson}},
-                        // EXAMPLE: [{'name': 'French', 'uri': '514', 'schema_code': 'cat', 'internal_id': 522}]
+                        // EXAMPLE: [{'name': 'French', 'uri': '514', 'schema_code': 'cat', '_internal_id': 522}]
 
         all_categories: {{all_categories | tojson}},
                         // EXAMPLE: [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]

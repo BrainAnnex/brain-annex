@@ -42,18 +42,22 @@ from app_libraries.initialize import InitializeBrainAnnex
 #                                                                               #
 #################################################################################
 
-def extract_par(name: str, d, display=True) -> str:
+def extract_par(name :str, d, display=True) -> str:
     """
-    Extract the parameter with the given name from a dictionary of parameters.
+    Extract the parameter with the given name,
+    from an object containing the parameters and their values.
     If not found, an Exception is raised
 
     :param name:    Name of the config parameter of interest.  EXAMPLE: "PORT_NUMBER"
-    :param d:       Object of type "configparser.SectionProxy" .  Can be treated as a dict
+    :param d:       Object of type "configparser.SectionProxy" ;
+                        can be treated as a python dict
     :param display: Flag indicating whether to print the parameter
-    :return:
+    :return:        A string with the value of the requested parameter
+                        (note: this will always be a string, even for parameter values such as 80 or True)
     """
     if name not in d:
         raise Exception(f"The configuration file needs a line with a value for {name}")
+
     value = d[name]
     if display:
         print(f"{name}: {value}")
@@ -61,12 +65,14 @@ def extract_par(name: str, d, display=True) -> str:
         print(f"{name}: *********")
 
     return value
-#########################################
+#################################################################################
+
 
 config = ConfigParser()
 
-# Attempt to import parameters from the default config file first, then from 'config.ini'
-# (possibly overwriting some or all values from the default config file with those from 'config.ini', which takes priority)
+# Attempt to import parameters from the default config file first, then from 'config.ini' -
+# possibly overwriting some or all values from the default config file
+# with those from 'config.ini', which takes priority
 found_files = config.read(['config.defaults.ini', 'config.ini'])
 #print("found_files: ", found_files)    # This will be a list of the names of the config files that were found
 
@@ -125,9 +131,9 @@ assert DEPLOYMENT == "FLASK" or DEPLOYMENT == "EXTERNAL", \
 
 
 
-#########################################
-#        MAIN PROGRAM EXECUTION         #
-#########################################
+##############################################
+#           MAIN PROGRAM EXECUTION           #
+##############################################
 
 ### INITIALIZATION of various static classes that need the database object
 #   (to avoid multiple dbase connections)
@@ -158,15 +164,25 @@ app = Flask(__name__)   # The Flask object (exposed, at the top level of this mo
 
 ### Save in the "app" object various module-specific data, to propagate to those modules
 app.config['BRANDING'] = extract_par("BRANDING", SETTINGS)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER                 # A temporary folder for file uploads
-# Parameters for Continuous Data Ingestion)
+index_pdf_files = extract_par("INDEX_PDF_FILES", SETTINGS)
+if index_pdf_files.lower() == "true":
+    app.config['INDEX_PDF_FILES'] = True
+elif index_pdf_files.lower() == "false":
+    app.config['INDEX_PDF_FILES'] = False
+else:
+    raise Exception(f"The only valid values for the "
+                    f"configuration parameter `INDEX_PDF_FILES` are True or False ; the value you provided was: `{index_pdf_files}`")
+
+
+
+# TODO: add the final slash to all folders, if not already present
+
+app.config['MEDIA_FOLDER'] = MEDIA_FOLDER
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER    # A temporary folder for file uploads.  EXAMPLE: "/tmp/"
+# Parameters for Continuous Data Ingestion
 app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
 app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
-# Parameters for special folders
-app.config['MEDIA_FOLDER'] = MEDIA_FOLDER       # Expected to end with a "/"   TODO: add the final slash here, if not already present
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER     # EXAMPLE: "/tmp/"
 
-#app.config['site_pages'] = site_pages
 
 
 
@@ -180,14 +196,11 @@ Navigation.setup(app)
 PagesRouting.setup(app)
 
 # The BrainAnnex-provided web API endpoints
-ApiRouting.MEDIA_FOLDER = MEDIA_FOLDER      # TODO: phase out in favor of the new app.config['MEDIA_FOLDER']
-ApiRouting.UPLOAD_FOLDER = UPLOAD_FOLDER    # TODO: phase out in favor of the new app.config['UPLOAD_FOLDER']
 ApiRouting.setup(app)
 
 # Examples of generic pages and web API
 SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
 SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
-
 
 
 

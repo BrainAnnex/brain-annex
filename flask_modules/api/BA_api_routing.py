@@ -55,10 +55,7 @@ class ApiRouting:
     static_folder = "static"        # Relative to this module's location
     #static_url_path = "/assets"    # Not used by this module
     config_pars = {}                # Dict with all the app configuration parameters
-
-
-    MEDIA_FOLDER = None             # Location where the media for Content Items is stored
-    UPLOAD_FOLDER = None            # Temporary location for uploads
+                                    # TODO: Ditch, and replace cls.config_pars['name'] with current_app.config['name']
 
     debug = False                   # Flag indicating whether a debug mode is to be used by all methods of this class
                                     #       (currently, in very limited use)
@@ -119,7 +116,6 @@ class ApiRouting:
         for example arising from a request lacking mimetype indicates "application/json",
         or a JSON string that isn't parsable
 
-        :param api_name:    String to include in case of errors
         :return:            The python data decoded from the JSON string that was passed in the POST body
         """
         # Extract and parse the JSON-encoded POST body
@@ -994,12 +990,14 @@ class ApiRouting:
                             together with an error message
             """
             #TODO: let the Documents plugin handle this
+
+            COVERS_FOLDER = "_covers/"  # TODO: for now, this must be matched to documents.py
             try:
                 # Obtain the name of the folder for the document file;
                 # it includes the final "/"
                 folder, basename, _ = MediaManager.lookup_media_file(uri, class_name="Document")
                 #print(folder, "\n", basename, "\n", suffix)
-                cover_folder = folder + "covers/"       # Subfolder of the document folder
+                cover_folder = folder + COVERS_FOLDER       # Subfolder of the document folder
                 filename = f"{basename}.jpg"   # Including the suffix.  EXAMPLE: "my_document_title.jpg"
                 # TODO: make allowance for files that might not be .jpg (or perhaps covert them to JPG during upload?)
                 content = MediaManager.get_from_binary_file(path=cover_folder, filename=filename)
@@ -1116,7 +1114,7 @@ class ApiRouting:
                 rel_name                The name of the relationship to follow across one hop
                 dir                     Must be either "IN" or "OUT"
             """
-            # TODO: provide flexibility for the max number returned (currenly hardwired)
+            # TODO: provide flexibility for the max number returned (currently hardwired)
             # Extract the POST values
             post_data = request.form
             # EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
@@ -1174,7 +1172,7 @@ class ApiRouting:
                 The response body will be something like:
                     {
                       "payload": {
-                        "internal_id": 1234,
+                        "_internal_id": 1234,
                         "uri": "q-88"
                       },
                       "status": "ok"
@@ -1207,7 +1205,7 @@ class ApiRouting:
                 payload = DataManager.create_data_node(class_name=class_name,
                                                        item_data=pars_dict)
                 # It returns the internal database ID and the URI of the newly-created Data Node
-                # EXAMPLE: {"internal_id": 123, "uri": "rs-8"}
+                # EXAMPLE: {"_internal_id": 123, "uri": "rs-8"}
 
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
@@ -2140,7 +2138,7 @@ class ApiRouting:
 
             RETURNED JSON PAYLOAD:
                 recordset:   A list of dicts with the filtered data; each dict contains the data for a node,
-                                including a field called "internal_id" that has the internal database ID,
+                                including a field called "_internal_id" that has the internal database ID,
                                 and a field called "_node_labels" with a list of the node's label names
                 total_count: The total number of nodes in the database with the given label - NOT considering the remainder of the filter
                                 if no label was provided, None
@@ -2319,7 +2317,8 @@ class ApiRouting:
                 json    (REQUIRED) A JSON-encoded dict:
                             "node_internal_id"      The internal database ID (int or str)
                                                         of the node whose neighbors we want to explore
-                            "known_neighbors:       (Possibly empty) list of internal database ID nodes to exclude
+                            "known_neighbors":      (Possibly empty) list of internal database ID nodes to exclude
+                            "max_neighbors":        An optional bound on the number of neighbors to locate
 
             ~~~ EXAMPLE ~~~
                 http://localhost:5000/BA/api/extract-node-neighborhood
@@ -2334,7 +2333,7 @@ class ApiRouting:
                                     "_node_labels": ["Car", "Vehicle"],
                                     "date_created": "2025/06/23",
                                     "id": 23487,
-                                    "internal_id": 23487,
+                                    "_internal_id": 23487,
                                     "brand": "Toyota",
                                     "color": white
                                 }
@@ -2364,7 +2363,7 @@ class ApiRouting:
 
 
             print("In extract-node-neighborhood() -  request_parameters: ", request_parameters)
-            # EXAMPLE:  {"node_internal_id": 853, "known_neighbors": [13, 1967], "max_neighbors": 2}}
+            # EXAMPLE:  {"node_internal_id": '853', "known_neighbors": ['13', '197'], "max_neighbors": 2}}
 
             if type(request_parameters) != dict:
                 err_details = f"/extract-node-neighborhood : the passed JSON value should be a dictionary; " \
@@ -2578,7 +2577,7 @@ class ApiRouting:
             # Move the uploaded file from its temp location to the appropriate media folder (depending on class_name)
             # TODO: let upload_helper (optionally) handle it
         
-            src_fullname = cls.UPLOAD_FOLDER + tmp_filename_for_upload
+            src_fullname = current_app.config['UPLOAD_FOLDER'] + tmp_filename_for_upload        # cls.UPLOAD_FOLDER
 
             if not post_data.get("upload_folder"):    # If not explicitly passed (EXAMPLE: "documents/Ebooks & Articles")
                 dest_folder = MediaManager.default_file_path(class_name=class_name)
@@ -2660,8 +2659,9 @@ class ApiRouting:
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Document":    # TODO: move to plugin_support.py
                     Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
-                                                          upload_folder=post_data.get("upload_folder"))
-
+                                                          upload_folder=post_data.get("upload_folder"),
+                                                          index_pdf=current_app.config['INDEX_PDF_FILES'])
+                                                          # 'INDEX_PDF_FILES' setting is defined in main file
                 response = ""
 
             except Exception as ex:

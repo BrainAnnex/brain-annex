@@ -536,7 +536,7 @@ class CypherUtils:
         """
         assert cls.valid_internal_id(internal_id), \
             f"assert_valid_internal_id(): the passed value ({internal_id}) is not a valid internal graph database ID; " \
-            f"a string or non-negative integer expected"
+            f"a string or non-negative integer was expected"
 
 
 

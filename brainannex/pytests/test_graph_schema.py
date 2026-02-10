@@ -1270,7 +1270,7 @@ def test_get_nodes_by_filter(db):
 
     assert GraphSchema.get_nodes_by_filter() == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    assert GraphSchema.get_nodes_by_filter(include_id=True) == ( [{"color": "yellow", "year": 1999, "internal_id": internal_id}] , 1 )
+    assert GraphSchema.get_nodes_by_filter(include_id=True) == ( [{"color": "yellow", "year": 1999, "_internal_id": internal_id}] , 1 )
 
     assert GraphSchema.get_nodes_by_filter(include_labels=True) == ( [{"color": "yellow", "year": 1999, "_node_labels": ["Car"]}] , 1 )
 
@@ -1582,10 +1582,10 @@ def test_get_all_data_nodes_of_class(db):
     db_id_car1 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Car")
-    assert result == [{'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, '_node_labels': ['Car']}]
+    assert result == [{'color': 'white', 'make': 'Toyota', '_internal_id': db_id_car1, '_node_labels': ['Car']}]
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Car", hide_schema=False)
-    assert result == [{'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota', 'internal_id': db_id_car1, '_node_labels': ['Car']}]
+    assert result == [{'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota', '_internal_id': db_id_car1, '_node_labels': ['Car']}]
 
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Boat")
@@ -1596,15 +1596,15 @@ def test_get_all_data_nodes_of_class(db):
     db_id_boat1 = GraphSchema.create_data_node(class_name="Boat", properties={"make": "C&C", "type": "sloop"})
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Boat")
-    assert result == [{'make': 'C&C', 'type': 'sloop', 'internal_id': db_id_boat1, '_node_labels': ['Boat']}]
+    assert result == [{'make': 'C&C', 'type': 'sloop', '_internal_id': db_id_boat1, '_node_labels': ['Boat']}]
 
     # Create a data node with uri field
     db_id_car2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Fiat", "color": "blue"}, new_uri="cincilla")
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Car")
 
-    expected = [{'make': 'Toyota', 'color': 'white', 'internal_id': db_id_car1, '_node_labels': ['Car']},
-                {'make': 'Fiat', 'color': 'blue', 'internal_id': db_id_car2, '_node_labels': ['Car'], 'uri': 'cincilla'}
+    expected = [{'make': 'Toyota', 'color': 'white', '_internal_id': db_id_car1, '_node_labels': ['Car']},
+                {'make': 'Fiat', 'color': 'blue', '_internal_id': db_id_car2, '_node_labels': ['Car'], 'uri': 'cincilla'}
                ]
 
     assert compare_recordsets(result, expected)
@@ -1822,7 +1822,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]   # No other properties were set
+    assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]   # No other properties were set
 
 
     with pytest.raises(Exception):
@@ -1846,7 +1846,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]   # No other properties were set
+    assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]   # No other properties were set
 
 
     # Successfully adding a 3rd data point
@@ -1865,7 +1865,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'white', '_CLASS': "Car"}]]   # This time the properties got set
+    assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'white', '_CLASS': "Car"}]]   # This time the properties got set
 
 
     # Again expand the allowed class properties
@@ -1892,7 +1892,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'red', '_CLASS': "Car"}]]   # The "color" got set, while the "make" got dropped
+    assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'red', '_CLASS': "Car"}]]   # The "color" got set, while the "make" got dropped
 
 
     # Successfully adding a 5th data point
@@ -1910,7 +1910,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'blue', 'year': 2000, '_CLASS': "Car"}]]
+    assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'blue', 'year': 2000, '_CLASS': "Car"}]]
     # The "color" and "year" got set, while the "make" got dropped
 
 
@@ -1929,7 +1929,7 @@ def test_create_data_node_3(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'green', 'year': 2022, '_CLASS': "Car"}]]
+    assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'green', 'year': 2022, '_CLASS': "Car"}]]
     # All properties got set
 
 
@@ -1971,7 +1971,7 @@ def test_create_data_node_4(db):
     result_internal_id = GraphSchema.create_data_node(class_name="result",
                                                       properties={"biomarker": "glucose", "value": 99},
                                                       links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
-                                                      new_uri= "RESULT-1")
+                                                      new_uri="RESULT-1")
     q = '''
         MATCH 
         (p :patient {name: "Jill", age: 22, balance: 145, `_CLASS`:"patient"})
@@ -2017,10 +2017,10 @@ def test_create_data_node_4(db):
     patient_internal_id_2 = GraphSchema.create_data_node(class_name="patient",
                                                          properties={"name": "Jack", "age": 99, "balance": 8000},
                                                          links=[{"internal_id": doctor_internal_id,
-                                                     "rel_name": "IS_ATTENDED_BY",
-                                                     "rel_dir": "OUT",
-                                                     "rel_attrs": {"since": 1999}
-                                                    }]
+                                                                 "rel_name": "IS_ATTENDED_BY",
+                                                                 "rel_dir": "OUT",
+                                                                 "rel_attrs": {"since": 1999}
+                                                                 }]
                                                          )
 
     q = '''
@@ -2038,9 +2038,9 @@ def test_create_data_node_4(db):
     with pytest.raises(Exception):
         GraphSchema.create_data_node(class_name="patient",
                                      properties={"name": "Spencer", "age": 55, "balance": 1200},
-                                     links=[{"internal_id": -1,             # No such node exists
-                                                     "rel_name": "IS_ATTENDED_BY"
-                                                    }]
+                                     links=[{"internal_id": -1,  # No such node exists
+                                             "rel_name": "IS_ATTENDED_BY"
+                                             }]
                                      )
 
     with pytest.raises(Exception):
@@ -2065,8 +2065,8 @@ def test_create_data_node_4(db):
         GraphSchema.create_data_node(class_name="patient",
                                      properties={"name": "Spencer", "age": 55, "balance": 1200},
                                      links=[{"internal_id": doctor_internal_id,
-                                                     "rel_name": "IS_ATTENDED_BY",
-                                                     "unexpected_key": 666}]  # Unexpected key
+                                             "rel_name": "IS_ATTENDED_BY",
+                                             "unexpected_key": 666}]  # Unexpected key
                                      )
 
     assert GraphSchema.count_data_nodes_of_class("patient") == 2      # The 3rd patient node didn't get created by any of the failed calls
@@ -2203,7 +2203,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
+    assert result == [[{'color': 'white', '_internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     with pytest.raises(Exception):
@@ -2225,7 +2225,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'white', 'internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]   # Same as before
+    assert result == [[{'color': 'white', '_internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]   # Same as before
 
 
     # Successfully adding a new (2nd) data point
@@ -2242,7 +2242,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
+    assert result == [[{'color': 'red', '_internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     # Again expand the allowed class properties
@@ -2266,7 +2266,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'blue', 'year': 2023, 'internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
+    assert result == [[{'color': 'blue', 'year': 2023, '_internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     # Successfully adding a 4th data point
@@ -2283,7 +2283,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'blue', 'year': 2000, 'internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
+    assert result == [[{'color': 'blue', 'year': 2000, '_internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
     # We can have 2 red blue because they differ in the other attribute (i.e. the year)
 
 
@@ -2315,7 +2315,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'year': 1999, 'internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
+    assert result == [[{'color': 'red', 'year': 1999, '_internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     # Attempting to re-add the "red, 1999" car will have no effect...
@@ -2340,7 +2340,7 @@ def test_add_data_node_merge(db):
     '''
     result = db.query_extended(q)
     assert len(result) == 1
-    assert result == [[{'color': 'red', 'year': 1999, 'make': 'Toyota', 'internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
+    assert result == [[{'color': 'red', 'year': 1999, 'make': 'Toyota', '_internal_id': new_datanode_id, '_node_labels': ['Car'], '_CLASS': "Car"}]]
 
 
     # Now, set up an irregular scenario where there's a database node that will match the attributes and labels

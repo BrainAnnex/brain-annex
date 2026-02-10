@@ -197,13 +197,13 @@ def test_query_extended(db):
     # Create and return 1st node
     q = "CREATE (n:car {make:'Toyota', color:'white'}) RETURN n"
     result = db.query_extended(q, flatten=True)
-    white_car_id = result[0]['internal_id']
+    white_car_id = result[0]['_internal_id']
     assert type(white_car_id) == int
-    assert result == [{'color': 'white', 'make': 'Toyota', '_node_labels': ['car'], 'internal_id': white_car_id}]
+    assert result == [{'color': 'white', 'make': 'Toyota', '_node_labels': ['car'], '_internal_id': white_car_id}]
 
     q = "MATCH (x) RETURN x"
     result = db.query_extended(q, flatten=True)
-    assert result == [{'color': 'white', 'make': 'Toyota', '_node_labels': ['car'], 'internal_id': white_car_id}]
+    assert result == [{'color': 'white', 'make': 'Toyota', '_node_labels': ['car'], '_internal_id': white_car_id}]
 
     # Create and return 2 more nodes at once
     q = '''CREATE (b:boat {number_masts: 2, year:2003}),
@@ -213,36 +213,36 @@ def test_query_extended(db):
     result = db.query_extended(q, flatten=True)
     for node_dict in result:
         if node_dict['_node_labels'] == ['boat']:
-            boat_id = node_dict['internal_id']
+            boat_id = node_dict['_internal_id']
         else:
-            blue_car_id = node_dict['internal_id']
+            blue_car_id = node_dict['_internal_id']
 
-    assert result == [{'number_masts': 2, 'year': 2003, '_node_labels': ['boat'], 'internal_id': boat_id},
-                      {'color': 'blue', '_node_labels': ['car'], 'internal_id': blue_car_id}]
+    assert result == [{'number_masts': 2, 'year': 2003, '_node_labels': ['boat'], '_internal_id': boat_id},
+                      {'color': 'blue', '_node_labels': ['car'], '_internal_id': blue_car_id}]
 
     # Retrieve all 3 nodes at once
     q = "MATCH (x) RETURN x"
     result = db.query_extended(q, flatten=True)
-    expected = [{'color': 'white', 'make': 'Toyota', '_node_labels': ['car'], 'internal_id': white_car_id},
-                {'number_masts': 2, 'year': 2003, '_node_labels': ['boat'], 'internal_id': boat_id},
-                {'color': 'blue', '_node_labels': ['car'], 'internal_id': blue_car_id}]
+    expected = [{'color': 'white', 'make': 'Toyota', '_node_labels': ['car'], '_internal_id': white_car_id},
+                {'number_masts': 2, 'year': 2003, '_node_labels': ['boat'], '_internal_id': boat_id},
+                {'color': 'blue', '_node_labels': ['car'], '_internal_id': blue_car_id}]
     assert compare_recordsets(result, expected)
 
     q = "MATCH (b:boat), (c:car) RETURN b, c"
     result = db.query_extended(q, flatten=True)
-    expected = [{'number_masts': 2, 'year': 2003, 'internal_id': boat_id, '_node_labels': ['boat']},
-                {'color': 'white', 'make': 'Toyota', 'internal_id': white_car_id, '_node_labels': ['car']},
-                {'number_masts': 2, 'year': 2003, 'internal_id': boat_id, '_node_labels': ['boat']},
-                {'color': 'blue', 'internal_id': blue_car_id, '_node_labels': ['car']}]
+    expected = [{'number_masts': 2, 'year': 2003, '_internal_id': boat_id, '_node_labels': ['boat']},
+                {'color': 'white', 'make': 'Toyota', '_internal_id': white_car_id, '_node_labels': ['car']},
+                {'number_masts': 2, 'year': 2003, '_internal_id': boat_id, '_node_labels': ['boat']},
+                {'color': 'blue', '_internal_id': blue_car_id, '_node_labels': ['car']}]
     assert compare_recordsets(result, expected)
 
     result = db.query_extended(q, flatten=False)    # Same as above, but without flattening
     assert len(result) == 2
-    expected_0 = [{'number_masts': 2, 'year': 2003, 'internal_id': boat_id, '_node_labels': ['boat']},
-                  {'color': 'white', 'make': 'Toyota', 'internal_id': white_car_id, '_node_labels': ['car']}
+    expected_0 = [{'number_masts': 2, 'year': 2003, '_internal_id': boat_id, '_node_labels': ['boat']},
+                  {'color': 'white', 'make': 'Toyota', '_internal_id': white_car_id, '_node_labels': ['car']}
                  ]
-    expected_1 = [{'number_masts': 2, 'year': 2003, 'internal_id': boat_id, '_node_labels': ['boat']},
-                  {'color': 'blue', 'internal_id': blue_car_id, '_node_labels': ['car']}
+    expected_1 = [{'number_masts': 2, 'year': 2003, '_internal_id': boat_id, '_node_labels': ['boat']},
+                  {'color': 'blue', '_internal_id': blue_car_id, '_node_labels': ['car']}
                  ]
 
     if compare_recordsets(result[0], expected_0):           # If the list elements at the top level are in the same order
@@ -259,18 +259,18 @@ def test_query_extended(db):
         '''
     result = db.query_extended(q, flatten=True)
     # EXAMPLE of result:
-    #   [{'price': 7500, 'internal_id': 1, 'neo4j_start_node': <Node id=11 labels=frozenset() properties={}>, 'neo4j_end_node': <Node id=14 labels=frozenset() properties={}>, 'neo4j_type': 'bought_by'}]
+    #   [{'price': 7500, '_internal_id': 1, 'neo4j_start_node': <Node id=11 labels=frozenset() properties={}>, 'neo4j_end_node': <Node id=14 labels=frozenset() properties={}>, 'neo4j_type': 'bought_by'}]
 
     # Side tour to get the Neo4j id of the "person" name created in the process
     look_up_person = "MATCH (p:person {name:'Julian'}) RETURN p"
     person_result = db.query_extended(look_up_person, flatten=True)
-    person_id = person_result[0]['internal_id']
+    person_id = person_result[0]['_internal_id']
 
     assert len(result) == 1
     rel_data = result[0]
     assert rel_data['neo4j_type'] == 'bought_by'
     assert rel_data['price'] == 7500
-    assert type(rel_data['internal_id']) == int
+    assert type(rel_data['_internal_id']) == int
     assert rel_data['neo4j_start_node'].id == white_car_id
     assert rel_data['neo4j_end_node'].id == person_id
 
@@ -284,13 +284,13 @@ def test_query_extended(db):
 
     for item in result:
         if item.get('color') == 'white':    # It's the car node
-            assert item == {'color': 'white', 'make': 'Toyota', 'internal_id': white_car_id, '_node_labels': ['car']}
+            assert item == {'color': 'white', 'make': 'Toyota', '_internal_id': white_car_id, '_node_labels': ['car']}
         elif item.get('name') == 'Julian':     # It's the person node
-            assert item == {'name': 'Julian', 'internal_id': person_id, '_node_labels': ['person']}
+            assert item == {'name': 'Julian', '_internal_id': person_id, '_node_labels': ['person']}
         else:                                   # It's the relationship
             assert item['neo4j_type'] == 'bought_by'
             assert item['price'] == 7500
-            assert type(item['internal_id']) == int
+            assert type(item['_internal_id']) == int
             assert item['neo4j_start_node'].id == white_car_id
             assert item['neo4j_end_node'].id == person_id
 
