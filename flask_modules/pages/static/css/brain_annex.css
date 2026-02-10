@@ -58,10 +58,11 @@ span.form-comment {
 
 div.form-box {
     border:1px solid #CCC;
-    margin-top:10px;
+    margin-top:0;
     margin-right:5px;
     padding:10px;
-    background-color:white;
+    padding-top:0;
+    background-color:#f9f9f9;
 }
 
 div.form-box span.title {

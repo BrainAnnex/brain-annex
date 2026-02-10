@@ -85,7 +85,7 @@
 
 <br><br><br>
 
-<h2>Search Database Nodes</h2>
+
 
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENTS : the ROOT of the components below -->
@@ -93,10 +93,8 @@
 
 
 
-
-
 <div class='form-box'>
-    <span class='title'>SELECT THE CRITERIA</span><br><br>
+    <h2 style="color:brown; margin-top:8px">Search Database Nodes</h2>
 
     <table border='0' cellspacing='5' cellpadding='0'>
         <!--
@@ -109,7 +107,7 @@
 
             <td>
                 <select v-model="label" @change='lookup_fields'>
-                    <option disabled value=''>[Choose a label]</option>
+                    <option value=''>[Any label]</option>
                        <option v-for="label in {{all_labels}}" v-bind:value="label">
                        [[label]]
                        </option>
@@ -119,7 +117,13 @@
 
         </tr>
 
+
         <tr>
+            <td>&nbsp;</td>
+        </tr>
+
+
+        <tr v-if="label">
             <td style="border-left: 2px solid green; padding-left: 3px;">Key Names</td>
             <td style="padding-top: 10px">
                 <!-- SELECTED: [[selected_fields]]  /  [[key_name]]<br> -->
@@ -132,14 +136,20 @@
                 <span class="form-comment" style="display: block; text-align: right">If more than 1 selected from menu, an implicit OR</span>
             </td>
         </tr>
+        <tr v-else>
+            <td colspan="2" style="border-left: 2px solid green; padding-left: 3px; font-style: italic; color:rgb(149, 148, 148)">
+                To get a pulldown menu of key (field) names, select a label first
+            </td>
+        </tr>
 
-        <!-- Maybe turn this row into part of an optional "advanced" mode -->
+
+        <!-- A manual-entry alternative to the pulldown multiselect menu in the previous row -->
         <tr>
-            <td style="border-left: 2px solid green; padding-left: 3px; color: #555; font-size:12px">
+            <td style="border-left: 2px solid green; padding-left: 3px; color: #444; font-size:11px">
                 Additional Key Name
             </td>
             <td>
-                <input type="text" size="50" v-model="key_name">
+                <input type="text" size="45" v-model="key_name">
                 <span class="form-comment">Type in just 1 name</span>
             </td>
         </tr>
@@ -147,18 +157,24 @@
 
         <tr>
             <td style="border-left: 2px solid green; padding-left: 3px;">Key Value</td>
-            <td style="padding-top:20px"><input type="text" size="50" v-model="key_value">
+            <td style="padding-top:20px"><input type="text" size="45" v-model="key_value">
             <span class="form-comment">If text, implicit "Contains" (sub-string)</span>
             <input type="checkbox"  v-model="case_sensitive" style="margin-left:15px">Match Case?
             </td>
         </tr>
+
         <tr>
-            <td>ORDER BY</td><td><input type="text" size="50" v-model="order_by">
+            <td>&nbsp;</td>
+        </tr>
+
+
+        <tr>
+            <td>ORDER BY</td><td><input type="text" size="45" v-model="order_by">
             <span class="form-comment">Comma-separated values, each optionally followed by DESC</span>
             </td>
         </tr>
         <tr>
-            <td style="color:#555; font-size:12px">SKIP</td><td><input type="text" size="2" v-model="skip"></td>
+            <td style="color:#444; font-size:12px">SKIP</td><td><input type="text" size="2" v-model="skip"></td>
         </tr>
         <tr>
             <td style="font-weight: bold">LIMIT</td><td><input type="text" size="2" v-model="limit"></td>
@@ -235,7 +251,7 @@ new Vue({
     data: {     // Global data for the whole page (Vue root element).  This is the handover of data from Flask to Vue
 
         class_name: "",             // TODO: Not currently used
-        label: "",
+        label: "",                  // The currently-selected label
         key_name: "",
         key_value: "",
         case_sensitive: false,      // Applicable to text-based searches
@@ -270,6 +286,11 @@ new Vue({
            typically associated with nodes that have that dbase label
          */
         {
+            if (! this.label)  {
+                this.selected_fields = [];      // Reset any fields from the multiselect pulldown menu
+                return;     // This corresponds to the pulldown menu being changed to "Any label"
+            }
+
             const url_server_api = `/BA/api/field-names-by-class/${this.label}`;
 
             console.log(`Graph-database label chosen: "${this.label}"`);
