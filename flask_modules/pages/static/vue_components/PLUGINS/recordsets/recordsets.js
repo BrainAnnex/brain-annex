@@ -18,7 +18,9 @@ Vue.component('vue-plugin-rs',
                                             uri: "rs-7",
 
                                             caption: "Expressions",
-                                            fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields
+                                            fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields;
+                                                                            //      this might be blank or missing
+                                                                            //      TODO: rename to something like `fields_to_show` (but avoid collision with local names)
                                             filter_label: "Restaurants",
                                             caption: "Berkeley locations",
                                             n_group: 10,
@@ -131,7 +133,8 @@ Vue.component('vue-plugin-rs',
                             </th>
                         </tr>
 
-                        <!-- Row for entry of a new data record, if in editing mode  -->
+
+                        <!-- ROW FOR ENTRY OF A NEW DATA RECORD, if in editing mode  -->
                         <tr v-if="editing_mode">
                             <td v-for="field_name in headers_to_include">
                                 <input v-model="new_record[field_name]">
@@ -141,7 +144,7 @@ Vue.component('vue-plugin-rs',
                                      so that the new_record object is not empty
                                   -->
                                 <button @click="save_new_record"
-                                        v-bind:disabled="Object.keys(new_record).length === 0"
+                                        v-bind:disabled="hide_new_record_button()"
                                 >
                                     SAVE
                                 </button>
@@ -321,6 +324,16 @@ Vue.component('vue-plugin-rs',
 
         // ------------------------------   DATA   ------------------------------
         data: function() {
+
+            // Prepare an object used for the entry of new records,
+            // with an auto-fill value containing the recordsets' filter clause, if present
+            // EXAMPLE : {"grammar": "noun"}
+            const prefilled_new_record = {};
+
+            if ((this.item_data.clause_key !== null)  &&  (this.item_data.clause_key !== undefined))
+                prefilled_new_record[this.item_data.clause_key] = this.item_data.clause_value;
+
+
             return {
                 headers: [],            // EXAMPLE:  ["quote", "attribution", "notes"]
 
@@ -339,7 +352,8 @@ Vue.component('vue-plugin-rs',
                 size_choices: [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,75,100,125,150,200,250,300,400,500], // Options for pull-down menu
 
                 fields_to_show: [],             // Array of chosen field names.
-                                                // Note: kept separate from the field in object "this.current_metadata", in order to be reactive
+                                                // Note: kept separate from the field in the object "this.current_metadata",
+                                                //       in order to be reactive
                                                 //       when changed by the multiselect menu
                 fields_to_show_pre_edit: [],    // Array of chosen field names; a backup copy, in case edit is cancelled
 
@@ -351,11 +365,12 @@ Vue.component('vue-plugin-rs',
 
                 recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
 
-                /* This object - with the metadata of the recordset - contains the values bound to the editing fields,
-                      initially cloned from the prop data;
+                /* This `current_metadata` object - with the metadata of the recordset - contains the values bound
+                      to the editing fields in the UI, initially cloned from the prop data;
                       it'll change in the course of the edit-in-progress.
                       EXAMPLE: {class_name: "Recordset", class_handler: "recordsets", pos: 12, uri: "rs-4",
                                 caption: "Verbs", filter_label: "French Vocabulary", n_group: 5}
+                      NOTE:  the property `fields_to_show` is managed separately
 
                  */
                 current_metadata: Object.assign({}, this.item_data),    // Initially clone from the original data passed to this component
@@ -372,9 +387,10 @@ Vue.component('vue-plugin-rs',
                 record_latest: null,
 
 
-                new_record: {},         // Used for the addition of new record; note that it's valid
-                                        // to do a Vue <<input v-models="obj[key]"> to non-existing keys of an object;
-                                        // Vue will automatically add the key/value pairs as they get entered in the form
+                // Used for the addition of new record; note that it's valid
+                // to do a Vue <input v-models="obj[key]"> to non-existing keys of an object;
+                // Vue will automatically add the key/value pairs as they get entered in the form
+                new_record: prefilled_new_record,
 
 
                 waiting: false,         // Whether any server request is still pending
@@ -409,11 +425,20 @@ Vue.component('vue-plugin-rs',
         beforeMount()
         {
             //console.log("~~~~~~~~~ In beforeMount()");
-            this.current_metadata.fields_array = this.string_to_array(this.item_data.fields);       // TODO: phase out
-            this.pre_edit_metadata.fields_array = this.string_to_array(this.item_data.fields);      // TODO: phase out
 
-            this.fields_to_show = this.string_to_array(this.item_data.fields);
-            this.fields_to_show_pre_edit = this.string_to_array(this.item_data.fields);     // A backup copy, in case edit is cancelled
+            let fields_array;
+
+            // Note that item_data.fields may be missing
+            if (this.item_data.fields === null || this.item_data.fields === undefined)
+                fields_array = [];
+            else
+                fields_array = this.string_to_array(this.item_data.fields);
+
+            this.fields_to_show = fields_array;
+            this.fields_to_show_pre_edit = Object.values(fields_array);     // Clone of array, to store a backup copy, in case edit is cancelled
+
+            this.current_metadata.fields_array =  Object.values(fields_array);       // TODO: phase out?
+            this.pre_edit_metadata.fields_array = Object.values(fields_array);       // TODO: phase out?
         },
 
 
@@ -440,7 +465,7 @@ Vue.component('vue-plugin-rs',
 
             headers_to_include()
             {
-                if (this.fields_to_show.length > 0)     // If any headers are specified
+                if (this.fields_to_show.length > 0)     // If any headers were specified
                     return this.fields_to_show;         //      then just return them
 
                 return this.headers;        // Otherwise, use ALL the headers
@@ -454,11 +479,35 @@ Vue.component('vue-plugin-rs',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
-            string_to_array(s)
-            // Generate an array of headers to use for the tabular listings
+            /**
+             *  Return true if the Add button for a new record ought to be hidden
+             *  (to prevent the use from accidentally entering a new record
+             *   that is completely blank, or just includes pre-filled values);
+             *  return false if ok to show
+             */
+            hide_new_record_button()
             {
-                //console.log(`string_to_array`);
-                //console.log(s);
+                // Count the number of non-blank fields in the record with data entered in them
+                // (filled in by the user as part of the new-record edit)
+                const count_filled_fields = Object.values(this.new_record)
+                                                  .filter(v => (typeof v === "string" && v.trim() !== ""))
+                                                  .length;
+
+                if (this.current_metadata.clause_key === null || this.current_metadata.clause_key=== undefined)
+                    return (count_filled_fields == 0)   // Nothing has been entered yet
+
+                return (count_filled_fields <= 1)       // Only a pre-filled value has been entered so far
+            },
+
+
+
+            /**
+             *  Generate an array of headers to use for the tabular listings,
+             *  from a string of comma-separated field names
+             */
+            string_to_array(s)
+            {
+                //console.log(`string_to_array() called on argument: ${s}`);
 
                 const fields = s;    // String of comma-separated field names.  EXAMPLE: "French, English, notes"
 
@@ -655,12 +704,12 @@ Vue.component('vue-plugin-rs',
                     this.status_message = `Operation completed`;
 
                     // Update the item in the recordset array that corresponds to the current record
-                    var internal_id = this.record_latest.internal_id;
+                    var internal_id = this.record_latest._internal_id;
 
                     const recordset_length = this.recordset.length;
 
                     for (var i = 0; i < recordset_length; i++) {
-                        if (this.recordset[i].internal_id == internal_id)  {
+                        if (this.recordset[i]._internal_id == internal_id)  {
                             //console.log("    record to update was located in recordset at position: ", i);
                             break;
                         }
