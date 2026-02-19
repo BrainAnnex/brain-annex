@@ -2263,7 +2263,7 @@ def test_valid_schema_uri(db):
 def test_get_cached_class_data(db):
     db.empty_dbase()
 
-    car_class_uri, _ = GraphSchema.create_class_with_properties("Cars", ["A", "B"], strict=False)
+    car_class_uri = GraphSchema.create_class_with_properties("Cars", ["A", "B"], strict=False)
     schema_cache = SchemaCache()
 
     # Test "class_attributes" option
@@ -2286,7 +2286,7 @@ def test_get_cached_class_data(db):
 
 
     # Add a related 2nd Class
-    vehicle_class_uri, _ = GraphSchema.create_class_with_properties("Vehicles", ["C", "D", "E"], strict=True)
+    vehicle_class_uri = GraphSchema.create_class_with_properties("Vehicles", ["C", "D", "E"], strict=True)
 
     GraphSchema.create_class_relationship(from_class="Cars", to_class="Vehicles", rel_name="type of")
 

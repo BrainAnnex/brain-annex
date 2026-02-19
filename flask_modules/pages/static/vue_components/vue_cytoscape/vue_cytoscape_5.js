@@ -1189,17 +1189,18 @@ Vue.component('vue-cytoscape-5',
             map_labels_to_caption_field(labels, node_id)
             /*  Given the labels of a node (an array of strings),
                 return the name of the field to use for the node caption,
-                based on what was specified in the "caption_mapping" value from the "graph_data" prop.
+                based (if available) on what was specified in the "caption_mapping" value
+                from the "graph_data" prop.
                 In case of multiple labels, try them sequentially, until a mapping is found.
 
                 If no mapping information is present for any of the labels,
-                or if invoked with an undefined value,
+                or if `labels` contains an undefined value,
                 try to use any of some common field names, such as "name", "title", etc.
                 - or, failing that, use the field name "id" by default
 
                 :param labels:  An array of strings
-                :param node_id: An integer or string with the node id
-                :return:        String
+                :param node_id: A string with the node id
+                :return:        String, with the name of the field to use for the node captions
              */
             {
                 // The default value, in case no mapping info found for any of the labels
@@ -1213,6 +1214,7 @@ Vue.component('vue-cytoscape-5',
                     //console.log(this.graph_data.caption_mapping);
 
                     for (single_label of labels) {
+                        // Consider each label in turn
                         console.log(`Searching for default caption for label "${single_label}"`);
                         if (single_label in this.caption_mapping)  {
                             const caption_field_name = this.caption_mapping[single_label];
@@ -1232,13 +1234,14 @@ Vue.component('vue-cytoscape-5',
                     return default_caption_field_name;
                 }
 
-                const node = this.nodes[node_index];    // An object; among its keys will be the node field (property) names
+                const node = this.nodes[node_index];    // An object; among its keys will be the node's field (property) names
 
 
                 const common_field_names = ["name", "Name", "title", "Title", "caption", "Caption", "model", "brand"];
 
                 for (let field_name of common_field_names) {
-                    if (field_name in node)  {
+                    // Consider in turn each of our standard common field names
+                    if (field_name in node)  {  // Found a match!
                         if (labels.length == 1)  {
                             // If there's just 1 label, associate it with this assumed field name, for future reference
                             let single_label = labels[0];
@@ -1256,14 +1259,14 @@ Vue.component('vue-cytoscape-5',
 
 
 
+            /**  Parse the arrays of node and edge data,
+             *   do some validation,
+             *   and set the variables this.edge_names and this.label_names,
+             *   as well as auto-assign default colors as needed
+             */
             extract_names()
-            /*  Parse the arrays of node and edge data,
-                do some validation,
-                and set the variables this.edge_names and this.label_names,
-                as well as auto-assign default colors as needed
-            */
             {
-                console.log(`Entering extract_names()`);
+                //console.log(`Entering extract_names()`);
 
                 // Reset the arrays of edge and label names
                 this.edge_names = [];
