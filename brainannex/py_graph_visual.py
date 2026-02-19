@@ -20,7 +20,8 @@ class DisplayNetwork:
         the given File Handler
 
         :param file_handler:A file handler, for example as returned by calls to open()
-        :param text:        String to write to the file managed by the above file handler
+        :param text:        String (simple text or HTML code) to write
+                                to the file managed by the above file handler
         :return:            None
         """
         file_handler.write(text)
@@ -130,7 +131,7 @@ class DisplayNetwork:
 
     @classmethod
     def export_plot(cls, graph_data :dict, graphic_component :str,
-                    filename :str, caption="Interactive network plot",
+                    filename :str, caption="<h1>Interactive network plot</h1>",
                     vue_comps_dir="https://life123.science/libraries/vue_components/") -> None:
         """
         Send to the given file the HTML data to create a Vue-based display of a network.
@@ -174,8 +175,8 @@ class DisplayNetwork:
                                         (Note: this file will automatically include an internal reference to the JavaScript
                                         file specified in `graphic_component`)
 
-        :param caption:             [OPTIONAL] String displayed at the top of the HTML file.
-                                        By default, "Interactive network plot"
+        :param caption:             [OPTIONAL] String (plain text or HTML) displayed at the top of the HTML file.
+                                        By default, a prominent "Interactive network plot"
 
         :param vue_comps_dir:       [OPTIONAL] The full name of the directory where the Vue components reside.
                                         A final "/" in the name is optional.
@@ -231,9 +232,10 @@ class DisplayNetwork:
         component_file_js = f"{vue_comps_dir}{graphic_component}.js"
         component_file_css = f"{vue_comps_dir}{graphic_component}.css"
 
+        # By convention, Vue components use hyphens instead of underscores in their name
         vue_component_name = graphic_component.replace("_", "-")    # Replace each instance of "_" (if any) with "-"
 
-        html = cls._html_header(component_file_css) + cls._html_body_start(caption=f"<h1>{caption}</h1>") + \
+        html = cls._html_header(component_file_css) + cls._html_body_start(caption=caption) + \
                cls._html_vue_container(vue_component=vue_component_name, vue_count=1,
                                        component_file=component_file_js, graph_data=graph_data)
 
