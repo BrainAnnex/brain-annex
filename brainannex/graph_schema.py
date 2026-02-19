@@ -67,10 +67,10 @@ class GraphSchema:
     IMPLEMENTATION DETAILS
 
         - Every node used by this class, as well as the data nodes it manages,
-          contains has a unique attribute "uri" (formerly "schema_id" and "item_id", respectively);
-          note that this is actually a "token", i.e. a part of a URI - not a full URI.
-          The uri's of schema nodes have the form "schema-n", where n is a unique number.
-          Data nodes can have any unique uri's, with optional prefixes and suffixes chosen by the higher layers.
+          contains has a unique attribute "entity_id" (formerly called "uri").
+
+          The entity_id's of schema nodes have the form "schema-n", where n is a unique number.
+          Data nodes can have any unique entity_id's, with optional prefixes and suffixes chosen by the higher layers.
           The Schema layer manages the auto-increments for any desired set of namespaces (and itself makes use
           of the "schema_node" namespace)
 
@@ -212,7 +212,7 @@ class GraphSchema:
         provided that the name isn't already in use for another Class.
 
         Return a pair with internal database ID,
-        and the auto-incremented uri, assigned to the new Class.
+        and the auto-incremented entity ID, assigned to the new Class.
         Raise an Exception if a class by that name already exists.
 
         NOTE: if you want to add Properties at the same time that you create a new Class,
@@ -231,16 +231,16 @@ class GraphSchema:
                                 By default, False
         :param create_index:[OPTIONAL] 
 
-        :return:            A pair of values with the internal database ID and the unique `uri`
+        :return:            A pair of values with the internal database ID and the unique `entity_id`
                                 assigned to the node just created, if it was created;
                                 an Exception is raised if a Class by that name already exists
         """
         #TODO: offer the option to link to an existing Class, like create_class_with_properties() does
         #       link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
         #TODO: maybe an option to add multiple Classes of the same type at once???
-        #TODO: maybe stop returning the uri ?
-        #TODO: add a constraint for `uri` of `SCHEMA` nodes, if not already present :
-        #      CREATE CONSTRAINT unique_schema_uri ON (n:SCHEMA) ASSERT n.uri IS UNIQUE
+        #TODO: maybe stop returning the entity_id ?
+        #TODO: add a constraint for `entity_id` of `SCHEMA` nodes, if not already present :
+        #      CREATE CONSTRAINT unique_schema_entity_id ON (n:SCHEMA) ASSERT n.entity_id IS UNIQUE
 
         name = name.strip()     # Strip any leading/trailing whitespace at the ends
         assert name != "", \
@@ -321,18 +321,18 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_uri_by_internal_id(cls, internal_class_id: int) -> int:
+    def get_class_uri_by_internal_id(cls, internal_class_id :int|str) -> int:
         """
         Returns the Schema uri of the Class with the given internal database ID.
 
         :param internal_class_id:
-        :return:            The Schema ID of the specified Class; raise an Exception if not found
+        :return:            The Schema URI of the specified Class
         """
 
         result = cls.db.get_nodes(internal_class_id, single_cell="uri")
 
         if result is None:
-            raise Exception(f"GraphSchema.get_class_id_by_neo_id(): no Class with internal id {internal_class_id} found")
+            raise Exception(f"GraphSchema.get_class_uri_by_internal_id(): no Class with internal id {internal_class_id} found")
 
         return result
 
@@ -1351,7 +1351,7 @@ class GraphSchema:
 
     @classmethod
     def create_class_with_properties(cls, name :str, properties :[str], code=None, handler=None, strict=False,
-                                     class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> (int|str, str):
+                                     class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> int|str:
         """
         Create a new Class node, with the specified name, and also create the specified Properties nodes,
         and link them together with "HAS_PROPERTY" relationships.
@@ -1383,8 +1383,7 @@ class GraphSchema:
         :param link_name:       [OPTIONAL] Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
         :param link_dir:        [OPTIONAL] Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
-        :return:                If successful, the pair (internal database ID, string "schema_uri" assigned to the new Class);
-                                otherwise, raise an Exception
+        :return:                The internal database ID assigned to the new Class
         """
         # TODO: phase out the argument "code" in favor of the new (not-yet-used) "handler"
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
@@ -1408,10 +1407,10 @@ class GraphSchema:
 
 
         # Create the new Class
-        new_class_int_id , new_class_uri = cls.create_class(name, code=code, handler=handler, strict=strict)
-        cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Schema ID: '{new_class_uri}')")
+        new_class_db_id , _ = cls.create_class(name, code=code, handler=handler, strict=strict)
+        cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Internal database ID: {new_class_db_id})")
 
-        number_properties_added = cls.add_properties_to_class(class_node=new_class_int_id, property_list = properties)
+        number_properties_added = cls.add_properties_to_class(class_node=new_class_db_id, property_list = properties)
         if number_properties_added != len(properties):
             raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {properties}")
 
@@ -1422,13 +1421,13 @@ class GraphSchema:
             # Create a relationship between the newly-created Class and an existing Class whose name is given by class_to_link_to
             try:
                 if link_dir == "OUT":
-                    cls.create_class_relationship(from_class=new_class_int_id, to_class=class_to_link_to, rel_name=link_name)
+                    cls.create_class_relationship(from_class=new_class_db_id, to_class=class_to_link_to, rel_name=link_name)
                 else:
-                    cls.create_class_relationship(from_class=class_to_link_to, to_class=new_class_int_id, rel_name=link_name)
+                    cls.create_class_relationship(from_class=class_to_link_to, to_class=new_class_db_id, rel_name=link_name)
             except Exception as ex:
                 raise Exception(f"New Class ({name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
-        return new_class_int_id, new_class_uri
+        return new_class_db_id
 
 
 

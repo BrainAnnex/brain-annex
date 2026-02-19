@@ -31,9 +31,9 @@ class Timer:
 
 
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
-            db_id, _ = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="timer", handler="timer",
-                                                                properties=["ringtone"],
-                                                                class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
+            db_id = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="timer", handler="timer",
+                                                             properties=["ringtone"],
+                                                             class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 
             # Set data types for some Properties
             GraphSchema.set_property_attribute(class_name=cls.SCHEMA_CLASS_NAME, prop_name="ringtone",

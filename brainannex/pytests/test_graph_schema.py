@@ -22,13 +22,13 @@ def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY (both originating from "patient"
 
-    patient_id, _  = GraphSchema.create_class_with_properties(name="patient",
+    patient_id  = GraphSchema.create_class_with_properties(name="patient",
                                                               properties=["name", "age", "balance"], strict=True)
 
-    result_id, _  = GraphSchema.create_class_with_properties(name="result",
+    result_id  = GraphSchema.create_class_with_properties(name="result",
                                                              properties=["biomarker", "value"], strict=False)
 
-    doctor_id, _  = GraphSchema.create_class_with_properties(name="doctor",
+    doctor_id  = GraphSchema.create_class_with_properties(name="doctor",
                                                              properties=["name", "specialty"], strict=False)
 
     GraphSchema.create_class_relationship(from_class="patient", to_class="result", rel_name="HAS_RESULT")
@@ -41,15 +41,13 @@ def create_sample_schema_1():
 def create_sample_schema_2():
     # Class "quotes" with relationship named "in_category" to Class "Category";
     # each Class has some properties
-    _, sch_1 = GraphSchema.create_class_with_properties(name="quotes",
-                                                        properties=["quote", "attribution", "verified"])
 
-    _, sch_2 = GraphSchema.create_class_with_properties(name="Category",
-                                                        properties=["name", "remarks"])
+    GraphSchema.create_class_with_properties(name="quotes", properties=["quote", "attribution", "verified"])
+
+    GraphSchema.create_class_with_properties(name="Category", properties=["name", "remarks"])
 
     GraphSchema.create_class_relationship(from_class="quotes", to_class="Category", rel_name="in_category")
 
-    return {"quotes": sch_1, "category": "sch_2"}
 
 
 
@@ -231,7 +229,7 @@ def test_rename_class(db):
     with pytest.raises(Exception):
         GraphSchema.rename_class(old_name="Car", new_name="Vehicle")  # Doesn't exist
 
-    internal_id, _ = GraphSchema.create_class_with_properties("Car", strict=True,
+    internal_id = GraphSchema.create_class_with_properties("Car", strict=True,
                                                               properties=["color"])
 
     result = GraphSchema.rename_class(old_name="Car", new_name="Vehicle")
@@ -806,7 +804,8 @@ def test_is_property_allowed(db):
     assert not GraphSchema.is_property_allowed(property_name="cost", class_name="I_dont_exist")
 
     GraphSchema.create_class_with_properties("My Lax class", ["A", "B"], strict=False)
-    _, strict_uri = GraphSchema.create_class_with_properties("My Strict class", ["X", "Y"], strict=True)
+    strict_internal_id = GraphSchema.create_class_with_properties("My Strict class", ["X", "Y"], strict=True)
+    strict_uri = GraphSchema.get_class_uri_by_internal_id(strict_internal_id)
 
     assert GraphSchema.is_property_allowed(property_name="A", class_name="My Lax class")
     assert GraphSchema.is_property_allowed(property_name="B", class_name="My Lax class")
@@ -821,21 +820,24 @@ def test_is_property_allowed(db):
     assert GraphSchema.is_property_allowed(property_name="some other field", class_name="My Strict class")
 
 
-    _ , german_uri = GraphSchema.create_class_with_properties("German Vocabulary", ["German"], strict=True)
+    german_internal_id = GraphSchema.create_class_with_properties("German Vocabulary", ["German"], strict=True)
+    german_uri = GraphSchema.get_class_uri_by_internal_id(german_internal_id)
     assert GraphSchema.is_property_allowed(property_name="German", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
 
     # "notes" and "English" are Properties of the more general "Foreign Vocabulary" Class,
     # of which "German Vocabulary" is an instance
-    _ , foreign_uri = GraphSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"], strict=True)
+    foreign_internal_id = GraphSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"], strict=True)
+    foreign_uri = GraphSchema.get_class_uri_by_internal_id(foreign_internal_id)
     GraphSchema.create_class_relationship(from_class="German Vocabulary", to_class="Foreign Vocabulary", rel_name="INSTANCE_OF")
 
     assert GraphSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")
 
-    _ , content_uri = GraphSchema.create_class_with_properties("Content Item", ["uri"], strict=True)
+    content_internal_id = GraphSchema.create_class_with_properties("Content Item", ["uri"], strict=True)
+    content_uri = GraphSchema.get_class_uri_by_internal_id(content_internal_id)
     GraphSchema.create_class_relationship(from_class="Foreign Vocabulary", to_class="Content Item", rel_name="INSTANCE_OF")
 
     assert GraphSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")   # "uri" is now available thru ancestry
@@ -875,8 +877,9 @@ def test_is_property_allowed(db):
 def test_allowable_props(db):
     db.empty_dbase()
 
-    lax_int_uri, lax_schema_uri = GraphSchema.create_class_with_properties("My Lax class", ["A", "B"], strict=False)
-    strict_int_uri, strict_schema_uri = GraphSchema.create_class_with_properties("My Strict class", ["A", "B"], strict=True)
+    lax_int_uri = GraphSchema.create_class_with_properties("My Lax class", ["A", "B"], strict=False)
+
+    strict_int_uri = GraphSchema.create_class_with_properties("My Strict class", ["A", "B"], strict=True)
 
 
     d = GraphSchema.allowable_props(class_internal_id=lax_int_uri,
