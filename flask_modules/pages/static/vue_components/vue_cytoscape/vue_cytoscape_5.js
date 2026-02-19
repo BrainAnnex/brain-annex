@@ -132,7 +132,7 @@ Vue.component('vue-cytoscape-5',
 
                     <!-- Show an info box about a label, with default color, caption, etc -->
                     <div v-if="show_label_box" class="label-box">
-
+                        <span style="font-weight:bold">LABEL</span><br>
                         <div class="label-to-inspect"
                              v-bind:style="{'background-color': color_mapping[label_to_inspect]}"
                         >
@@ -155,6 +155,12 @@ Vue.component('vue-cytoscape-5',
                         <br><br>
                         <i>Shape:</i> circle<br>
                         <i>Size:</i> medium<br>
+                        <button @click="hide_nodes_by_label(label_to_inspect)"
+                            style="background-color:rgb(191, 47, 47); color:white"
+                            v-bind:title="'Hide all nodes with label \`' + label_to_inspect + '\`'"
+                        >
+                            Hide all
+                        </button>
                     </div>
 
 
@@ -191,7 +197,7 @@ Vue.component('vue-cytoscape-5',
 
                     <br><br><br><br>
                     <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">
-                        vue-cytoscape-5 , rev. 3
+                        vue-cytoscape-5 , rev. 4
                     </span>
                 </div>      <!-- End of side box -->
 
@@ -875,8 +881,10 @@ Vue.component('vue-cytoscape-5',
 
 
 
+            /**
+             *  Hide from the graph a single node (1 node wrapped in a Collection)
+             */
             hide_node(node_collection)
-            // Hide a single node (1 node wrapped in a Collection)
             {
                 const node_id = node_collection.data().id;
                 console.log(`In hide_node().  Hiding node with id: ${node_id}`);
@@ -885,25 +893,58 @@ Vue.component('vue-cytoscape-5',
                 // Remove the node from the Cytoscape graph (which automatically takes care of hiding its links)
                 node_collection.remove();
 
+                // Read into Vue variables the node and edge data of the modified Cytoscape object
                 this.sync_vue_data_from_cytoscape();
             },
 
 
 
-            hide_node_by_id(node_id)
-            /*
-                Hide a single node, specified by its ID
-
-                :param node_id: A string (always a string!) with the Cytoscape ID of a node
+            /**
+             *  Hide from the graph all the nodes that contain the given label
+             *
+             * @param {string} label_name    - The name of the node label of interest
              */
+            hide_nodes_by_label(label_name)
+            {
+                console.log(`In hide_nodes_by_label().  Hiding all node with label: ${label_name}`);
+
+                // Put together a Cytoscape Collection of nodes that contain the desired label
+                // within their property `_node_labels` (which contains arrays of strings)
+                const matches = this.$options.cy_object.nodes()
+                                .filter(node =>
+                                        node.data('_node_labels')?.includes(label_name)
+                                );  // Note: the "?" is JavaScript’s optional chaining operator
+
+                const ids = matches.map(node => node.id());     // Array such as ["id-1", "id-2"]
+                console.log(`Identified nodes to hide; their IDs are: ${ids.join(', ')}`);
+                
+                // Remove from the graph all the identified nodes
+                matches.remove();
+
+                // Hide the label-info box
+                this.show_label_box = false;
+
+                // Read into Vue variables the node and edge data of the modified Cytoscape object
+                this.sync_vue_data_from_cytoscape();
+            },
+
+
+
+            /**
+             *  Hide a single node, specified by its ID
+             *
+             * @param {string} node_id    - A string (always a string!) with the Cytoscape ID of a node
+             */
+            hide_node_by_id(node_id)
             {
                 console.log(`In hide_node_by_id().  Searching for node with id: ${node_id}`);
 
+                // Extract the Cytoscape node object
                 const node = this.$options.cy_object.getElementById(node_id);
 
                 const id_check = node.data().id;    // Just for double-check.  TODO: perhaps zap later
                 if (node_id != id_check)  {
-                    alert("ID mismatch in hide_node_by_id!  No action taken");
+                    alert("ID mismatch in hide_node_by_id()!  No action taken");
                     return;
                 }
 
@@ -921,23 +962,25 @@ Vue.component('vue-cytoscape-5',
             {
                 console.log(`In hide_node_and_orphans().  Searching for node with id: ${node_id}`);
 
+                // Extract the Cytoscape node object
                 const node = this.$options.cy_object.getElementById(node_id);
 
                 // Get neighboring nodes (immediate neighbors)
                 const neighbor_nodes = node.neighborhood().nodes();     // Filter for nodes only
                 console.log("Neighbor nodes:");
-                console.log({ ...neighbor_nodes }); // Log a snapshot
+                console.log({ ...neighbor_nodes });     // Log a snapshot
 
                 // Identify which neighbors would become orphans
                 const orphan_nodes = neighbor_nodes.filter(
                                                             n => n.connectedEdges().length === 1
                                                           );
                 console.log("Orphan nodes:");
-                console.log({ ...orphan_nodes }); // Log a snapshot
+                console.log({ ...orphan_nodes });       // Log a snapshot
 
                 // Remove node + orphans in one operation
                 node.union(orphan_nodes).remove();
 
+                // Read into Vue variables the node and edge data of the modified Cytoscape object
                 this.sync_vue_data_from_cytoscape();
             },
 
@@ -949,6 +992,7 @@ Vue.component('vue-cytoscape-5',
             {
                 console.log(`In hide_and_bridge_gap().  Searching for node with id: ${node_id}`);
 
+                // Extract the Cytoscape node object
                 const node = this.$options.cy_object.getElementById(node_id);
 
                 const neighbors = node.neighborhood().nodes();
@@ -990,13 +1034,14 @@ Vue.component('vue-cytoscape-5',
                     node.remove();
                 }
 
+                // Read into Vue variables the node and edge data of the modified Cytoscape object
                 this.sync_vue_data_from_cytoscape();
             },
 
 
 
             sync_vue_data_from_cytoscape()
-            // Read in node and edge data from the Cytoscape object
+            // Read into Vue variables the node and edge data of the modified Cytoscape object
             {
                 const remaining_nodes = this.$options.cy_object.nodes().map(n => ({ ...n.data() }));
                 // Note: { ...n.data() }  invokes all getters, copies values, and produces a static snapshot
@@ -1144,17 +1189,18 @@ Vue.component('vue-cytoscape-5',
             map_labels_to_caption_field(labels, node_id)
             /*  Given the labels of a node (an array of strings),
                 return the name of the field to use for the node caption,
-                based on what was specified in the "caption_mapping" value from the "graph_data" prop.
+                based (if available) on what was specified in the "caption_mapping" value
+                from the "graph_data" prop.
                 In case of multiple labels, try them sequentially, until a mapping is found.
 
                 If no mapping information is present for any of the labels,
-                or if invoked with an undefined value,
+                or if `labels` contains an undefined value,
                 try to use any of some common field names, such as "name", "title", etc.
                 - or, failing that, use the field name "id" by default
 
                 :param labels:  An array of strings
-                :param node_id: An integer or string with the node id
-                :return:        String
+                :param node_id: A string with the node id
+                :return:        String, with the name of the field to use for the node captions
              */
             {
                 // The default value, in case no mapping info found for any of the labels
@@ -1168,6 +1214,7 @@ Vue.component('vue-cytoscape-5',
                     //console.log(this.graph_data.caption_mapping);
 
                     for (single_label of labels) {
+                        // Consider each label in turn
                         console.log(`Searching for default caption for label "${single_label}"`);
                         if (single_label in this.caption_mapping)  {
                             const caption_field_name = this.caption_mapping[single_label];
@@ -1187,13 +1234,14 @@ Vue.component('vue-cytoscape-5',
                     return default_caption_field_name;
                 }
 
-                const node = this.nodes[node_index];    // An object; among its keys will be the node field (property) names
+                const node = this.nodes[node_index];    // An object; among its keys will be the node's field (property) names
 
 
                 const common_field_names = ["name", "Name", "title", "Title", "caption", "Caption", "model", "brand"];
 
                 for (let field_name of common_field_names) {
-                    if (field_name in node)  {
+                    // Consider in turn each of our standard common field names
+                    if (field_name in node)  {  // Found a match!
                         if (labels.length == 1)  {
                             // If there's just 1 label, associate it with this assumed field name, for future reference
                             let single_label = labels[0];
@@ -1211,14 +1259,14 @@ Vue.component('vue-cytoscape-5',
 
 
 
+            /**  Parse the arrays of node and edge data,
+             *   do some validation,
+             *   and set the variables this.edge_names and this.label_names,
+             *   as well as auto-assign default colors as needed
+             */
             extract_names()
-            /*  Parse the arrays of node and edge data,
-                do some validation,
-                and set the variables this.edge_names and this.label_names,
-                as well as auto-assign default colors as needed
-            */
             {
-                console.log(`Entering extract_names()`);
+                //console.log(`Entering extract_names()`);
 
                 // Reset the arrays of edge and label names
                 this.edge_names = [];
