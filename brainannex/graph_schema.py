@@ -477,28 +477,27 @@ class GraphSchema:
 
         cls.assert_valid_class_name(new_name)
 
+        # Rename the Class node
         q = '''
             MATCH (c :CLASS {name: $old_name})
             SET c.name = $new_name
             '''
-
         data_binding = {"old_name": old_name, "new_name": new_name}
         #cls.db.debug_query_print(q, data_binding)
-
         result = cls.db.update_query(q, data_binding=data_binding)
         #print(result)
         assert result.get("properties_set") == 1, \
-            f"rename_class(): failed to rename Class `{old_name}`. Maybe it doesn't exist?  No change made to Data Nodes."
+            f"rename_class(): failed to rename Class `{old_name}`. Maybe it doesn't exist?  " \
+            f"No change made to Data Nodes."
 
 
-        # Change the `_CLASS` property value, and the label, on all the Data Notes for this Class
+        # Update the `_CLASS` property value, and the label, on all the Data Notes of this Class
         q = f'''
             MATCH (dn) 
             WHERE dn.`_CLASS` = $old_name
             SET dn.`_CLASS` = $new_name, dn:`{new_name}`
             REMOVE dn:`{old_name}`
             '''
-
         data_binding = {"old_name": old_name, "new_name": new_name}
         #cls.db.debug_query_print(q, data_binding)
         result = cls.db.update_query(q, data_binding=data_binding)
@@ -512,13 +511,13 @@ class GraphSchema:
         """
         Delete the given Class AND all its attached Properties.
         If safe_delete is True (highly recommended), then delete ONLY if there are no data nodes of that Class
-        (i.e., linked to it by way of "SCHEMA" relationships.)
+        (i.e., linked to it by way of "_CLASS" relationships)
 
         :param name:        Name of the Class to delete
-        :param safe_delete: Flag indicating whether the deletion is to be restricted to
-                            situations where no data node would be left "orphaned".
-                            CAUTION: if safe_delete is False,
-                                     then data nodes may be left without a Schema
+        :param safe_delete: Flag indicating whether the deletion is to be done
+                                only when no data node would be left "orphaned".
+                                CAUTION: if `safe_delete` is False,
+                                         then Data Nodes may be left without a Schema
         :return:            None.  In case of no node deletion, an Exception is raised
         """
         # TODO: maybe eliminate the dangerous safe_delete=False option!
@@ -567,7 +566,8 @@ class GraphSchema:
         If no Class by that name exists, an Exception is raised
 
         :param name:    The name of a Schema Class node
-        :return:        True if the Class is "strict" or False if not (i.e., if it's "lax")
+        :return:        True if the Class is "strict",
+                            or False if not (i.e., if it's "lax")
         """
         q = '''
             MATCH (c :CLASS {name: $name})
@@ -590,8 +590,10 @@ class GraphSchema:
         or False otherwise (or if the information is missing)
 
         :param internal_id: The internal database ID of a Schema Class node
-        :return:            True if the Class is "strict" or False if not (i.e., if it's "lax")
+        :return:            True if the Class is "strict",
+                                or False if not (i.e., if it's "lax")
         """
+        # TODO: merge with is_strict_class()
         class_attrs = cls.get_class_attributes(internal_id)
 
         return class_attrs.get('strict', False)    # True if a "Strict" Class
@@ -2527,8 +2529,8 @@ class GraphSchema:
         :param class_name:  Name of the Data Node's Class
         :param entity_id:   A string to uniquely identify a Data Node of the above Class
 
-        :return:        The internal database ID of the specified Data Node;
-                            if none (or more than one) found, an Exception is raised
+        :return:            The internal database ID of the requested Data Node;
+                                if none (or more than one) found, an Exception is raised
         """
         #TODO: merge with get_data_node_id()
 
