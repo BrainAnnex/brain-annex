@@ -120,7 +120,7 @@ class Categories:
         :param category_uri:    A string identifying the desired Category
         :return:                True if the given ID corresponds to the ROOT Category, or False otherwise
         """
-        assert GraphSchema.is_valid_uri(category_uri), \
+        assert GraphSchema.is_valid_entity_id(category_uri), \
             "is_root_category(): the argument `category_uri` is not a valid URI string"
 
         category_properties = cls.get_category_info(category_uri)
@@ -404,11 +404,11 @@ class Categories:
         #new_uri = GraphSchema.reserve_next_uri(namespace="Category", prefix="cat-")
         #new_uri = "cat-root"   # use a special URI
         new_uri = "1"           # For historical reasons.  TODO: phase out (also change default page for '/pages/viewer')
-        GraphSchema.reserve_next_uri()      # To make sure that the "1" value won't be available anymore
+        GraphSchema.reserve_next_entity_id()      # To make sure that the "1" value won't be available anymore
 
         internal_id = GraphSchema.create_data_node(class_name="Category", extra_labels ="BA",
                                                    properties = data_dict,
-                                                   new_uri=new_uri)         # TODO: maybe drop the "BA" extra label
+                                                   new_entity_id=new_uri)         # TODO: maybe drop the "BA" extra label
         return (internal_id, new_uri)
 
 
@@ -438,7 +438,7 @@ class Categories:
             assert category_uri is not None, \
                         "add_subcategory(): key `category_uri` in argument `data_dict` is missing"
 
-        assert GraphSchema.is_valid_uri(category_uri), \
+        assert GraphSchema.is_valid_entity_id(category_uri), \
                     f"add_subcategory(): invalid category uri ({category_uri})"
 
         subcategory_name = data_dict.get("subcategory_name")
@@ -456,13 +456,13 @@ class Categories:
 
         parent_category_internal_id = GraphSchema.get_data_node_id(key_value=category_uri, key_name="uri")
 
-        new_uri = GraphSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
+        new_uri = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
 
         GraphSchema.create_data_node(class_name="Category", extra_labels ="BA",
                                      properties = data_dict,
                                      links= [{"internal_id": parent_category_internal_id,
                                              "rel_name": "BA_subcategory_of"}],
-                                     new_uri=new_uri)
+                                     new_entity_id=new_uri)
 
         return new_uri
 
@@ -727,7 +727,7 @@ class Categories:
         # TODO: expand to cover all the data needs of BA_pages_routing.py
         # TODO: maybe move to DataManager layer
 
-        category_internal_id = GraphSchema.get_data_node_internal_id(uri = category_uri)
+        category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id= category_uri)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 
         return siblings_categories
@@ -1019,12 +1019,13 @@ class Categories:
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
-            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)    # Returns a string
+            new_uri = GraphSchema.reserve_next_entity_id(namespace=namespace)    # Returns a string
 
 
-        new_uri = Collections.add_to_collection_at_beginning(collection_uri=category_uri, membership_rel_name="BA_in_category",
+        new_uri = Collections.add_to_collection_at_beginning(collection_entity_id=category_uri, collection_class=item_class_name,
+                                                             membership_rel_name="BA_in_category",
                                                              item_class_name=item_class_name, item_properties=item_properties,
-                                                             new_uri=new_uri)
+                                                             new_entity_id=new_uri)
         return new_uri
 
 
@@ -1069,11 +1070,11 @@ class Categories:
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
-            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)    # Returns a string
+            new_uri = GraphSchema.reserve_next_entity_id(namespace=namespace)    # Returns a string
 
 
         GraphSchema.create_data_node(class_name=item_class_name, properties=item_properties,
-                                     extra_labels="BA", new_uri=new_uri,
+                                     extra_labels="BA", new_entity_id=new_uri,
                                      silently_drop=True)
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
         #       NOT with the Content Item node ;
@@ -1121,17 +1122,17 @@ class Categories:
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
-            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)    # Returns a string
+            new_uri = GraphSchema.reserve_next_entity_id(namespace=namespace)    # Returns a string
 
 
         # TODO: solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in add_content_at_end()
-        new_uri = Collections.add_to_collection_after_element(collection_uri=category_uri, collection_class="Category",
+        new_uri = Collections.add_to_collection_after_element(collection_entity_id=category_uri, collection_class="Category",
                                                               membership_rel_name="BA_in_category",
                                                               item_class_name=item_class_name, item_properties=item_properties,
                                                               insert_after_uri=insert_after_uri, insert_after_class=insert_after_class,
-                                                              new_uri=new_uri)
+                                                              new_entity_id=new_uri)
         return new_uri
 
 
@@ -1350,8 +1351,8 @@ class Categories:
                                     Use n=0 to indicate "move before anything else"
         :return:
         """
-        assert GraphSchema.is_valid_uri(category_uri), "ERROR: argument 'category_uri' is invalid"
-        assert GraphSchema.is_valid_uri(uri), "ERROR: argument 'uri' is not a valid string"
+        assert GraphSchema.is_valid_entity_id(category_uri), "ERROR: argument 'category_uri' is invalid"
+        assert GraphSchema.is_valid_entity_id(uri), "ERROR: argument 'uri' is not a valid string"
         assert type(move_after_n) == int, "ERROR: argument 'move_after_n' is not an integer"
         assert move_after_n >= 0, "ERROR: argument 'move_after_n' cannot be negative"
 
@@ -1439,7 +1440,7 @@ class Categories:
 
         :return:            The number of repositionings performed
         """
-        assert GraphSchema.is_valid_uri(category_uri), "ERROR: argument 'category_uri' is not a valid string"
+        assert GraphSchema.is_valid_entity_id(category_uri), "ERROR: argument 'category_uri' is not a valid string"
         assert type(n_to_skip) == int, "ERROR: argument 'n_to_skip' is not an integer"
         assert type(pos_shift) == int, "ERROR: argument 'pos_shift' is not an integer"
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"

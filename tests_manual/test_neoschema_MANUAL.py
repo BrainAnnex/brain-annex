@@ -29,7 +29,7 @@ def test_create_class_relationship(db):
 
 
 def test_get_class_relationships(db):
-    schema_id = GraphSchema.get_class_uri("Restaurants")
+    schema_id = GraphSchema.get_class_entity_id("Restaurants")
     print("schema_id is: ", schema_id)
 
     result = GraphSchema.get_class_relationships(schema_id)
@@ -65,7 +65,7 @@ def test_get_class_properties(db):
 
 
 def test_add_properties_to_class(db):
-    result = GraphSchema.add_properties_to_class(class_uri=1, property_list=["Gender", "German"])
+    result = GraphSchema.add_properties_to_class(class_uri=1, properties=["Gender", "German"])
     assert result == 2
 
     """
@@ -132,9 +132,9 @@ def test_initialize_schema(db):
     _ , Profl_class_id = GraphSchema.create_class("Profl Connections")
     print(Profl_class_id)
 
-    GraphSchema.add_properties_to_class(class_uri= German_class_id, property_list=["German", "English", "Notes"])
+    GraphSchema.add_properties_to_class(class_uri= German_class_id, properties=["German", "English", "Notes"])
 
-    GraphSchema.add_properties_to_class(class_uri= Profl_class_id, property_list=["name", "role", "location", "notes"])
+    GraphSchema.add_properties_to_class(class_uri= Profl_class_id, properties=["name", "role", "location", "notes"])
 
     q = '''
         MATCH (c:CLASS {schema_id:1})
@@ -191,32 +191,32 @@ def test_next_available_id(db):
     db.empty_dbase()    # Completely clear the database
 
     # Try on empty database
-    assert GraphSchema._next_available_schema_uri() == 1
+    assert GraphSchema._next_available_schema_entity_id() == 1
 
     db.create_node("CLASS", {"schema_id": 1})
-    assert GraphSchema._next_available_schema_uri() == 2
+    assert GraphSchema._next_available_schema_entity_id() == 2
 
     db.create_node("CLASS", {"schema_id": 2})
-    assert GraphSchema._next_available_schema_uri() == 3
+    assert GraphSchema._next_available_schema_entity_id() == 3
 
     db.create_node("PROPERTY", {"schema_id": 3})
-    assert GraphSchema._next_available_schema_uri() == 4
+    assert GraphSchema._next_available_schema_entity_id() == 4
 
     db.create_node("some_other_label", {"schema_id": 12345})
-    assert GraphSchema._next_available_schema_uri() == 4      # Unaffected by other labels
+    assert GraphSchema._next_available_schema_entity_id() == 4      # Unaffected by other labels
 
     db.create_node("CLASS", {"schema_id": 100})
-    assert GraphSchema._next_available_schema_uri() == 101
+    assert GraphSchema._next_available_schema_entity_id() == 101
 
     db.create_node("PROPERTY", {"schema_id": 665})
-    assert GraphSchema._next_available_schema_uri() == 666
+    assert GraphSchema._next_available_schema_entity_id() == 666
 
     #print(GraphSchema.next_available_schema_id())
 
 
 
 def test_next_available_datapoint_id(db):
-    print(GraphSchema.reserve_next_uri())
+    print(GraphSchema.reserve_next_entity_id())
 
 
 
@@ -290,11 +290,11 @@ def test_add_data_point(db):
 def test_add_existing_data_point(db):
 
     neo_id = db.create_node("BA", {"note": "TO DELETE!"})
-    new_uri = GraphSchema.register_existing_data_node(schema_uri=19, existing_neo_id=neo_id)
+    new_uri = GraphSchema.register_existing_data_node(schema_entity_id=19, existing_internal_id=neo_id)
     print("new_uri: ", new_uri)
 
     neo_id = db.create_node("BA", {"formula": "NH3"})
-    new_uri = GraphSchema.register_existing_data_node(class_name="Chemicals", existing_neo_id=neo_id)
+    new_uri = GraphSchema.register_existing_data_node(class_name="Chemicals", existing_internal_id=neo_id)
     print("new_uri: ", new_uri)
 
 

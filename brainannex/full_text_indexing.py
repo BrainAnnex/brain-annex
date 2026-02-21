@@ -309,10 +309,10 @@ class FullTextIndexing:
         if GraphSchema.class_name_exists(content_item_class_name):
             content_item_class_id = GraphSchema.get_class_internal_id(class_name=content_item_class_name)
         else:
-            content_item_class_id, _ = GraphSchema.create_class(name=content_item_class_name, strict=False)
+            content_item_class_id = GraphSchema.create_class(name=content_item_class_name, strict=False)
 
 
-        indexer_class_id, _ = GraphSchema.create_class(name="Indexer", strict=True)
+        indexer_class_id = GraphSchema.create_class(name="Indexer", strict=True)
 
         GraphSchema.create_class_with_properties(name="Word", strict=True,
                                                  properties=["name"],

@@ -371,7 +371,7 @@ class DataManager:
 
         # Locate the internal ID of the Class node
         class_internal_id = GraphSchema.get_class_internal_id(class_name.strip())
-        number_prop_added = GraphSchema.add_properties_to_class(class_node= class_internal_id, property_list = [prop_name])
+        number_prop_added = GraphSchema.add_properties_to_class(class_node= class_internal_id, properties= [prop_name])
         if number_prop_added != 1:
             raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}` (internal ID {class_internal_id})")
 
@@ -776,10 +776,10 @@ class DataManager:
         """
         # TODO: more Schema enforcement
         # TODO: make the generation of the URI optional
-        new_uri = GraphSchema.generate_uri(class_name)
+        new_uri = GraphSchema.generate_entity_id(class_name)
         #print(f"create_new_content_item() - New item will be assigned URI: '{new_uri}'")
 
-        internal_id = GraphSchema.create_data_node(class_name=class_name, properties=item_data, new_uri=new_uri)
+        internal_id = GraphSchema.create_data_node(class_name=class_name, properties=item_data, new_entity_id=new_uri)
 
         return {"_internal_id": internal_id, "uri": new_uri}
 
@@ -819,10 +819,10 @@ class DataManager:
         if len(namespace_links) == 1:
             namespace = namespace_links[0]
             print(f"    Using namespace '{namespace}'")
-            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)
+            new_uri = GraphSchema.reserve_next_entity_id(namespace=namespace)
         else:
             print(f"    Using default namespace")
-            new_uri = GraphSchema.reserve_next_uri()
+            new_uri = GraphSchema.reserve_next_entity_id()
         # TODO: --- end of portion to replace
 
         #print(f"add_new_content_item_to_category() - New item will be assigned URI: '{new_uri}'")
@@ -940,7 +940,7 @@ class DataManager:
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_uri = GraphSchema.reserve_next_uri()      # TODO: switch to using specific namespaces
+        new_uri = GraphSchema.reserve_next_entity_id()      # TODO: switch to using specific namespaces
         #print(f"New item will be assigned URI: '{new_uri}'")
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations

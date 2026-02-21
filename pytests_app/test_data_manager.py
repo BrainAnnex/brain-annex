@@ -128,7 +128,7 @@ def test_switch_category(db):
     GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
     all_photo_uris = []
     for i in range(4):
-        photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+        photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
         all_photo_uris.append(photo_uri)
         Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
                                       item_properties={"caption": "photo_"+str(i+1)}, new_uri=photo_uri)
@@ -146,7 +146,7 @@ def test_switch_category(db):
 
 
     # Separately, add a new photo to the "Greece" Category
-    photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     Categories.add_content_at_end(category_uri=greece_uri, item_class_name="Photo",
                                   item_properties={"caption": "photo_extra"}, new_uri=photo_uri)
 

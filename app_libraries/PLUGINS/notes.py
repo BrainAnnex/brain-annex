@@ -10,7 +10,6 @@ class Notes:
     
     SCHEMA_CLASS_NAME = "Note"
 
-    SCHEMA_CLASS_NAME = "Note"
 
 
     @classmethod
@@ -54,7 +53,7 @@ class Notes:
         #print(f"***** DELETING INDEXING for item {uri}")
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
-        content_id = GraphSchema.get_data_node_internal_id(uri=uri)
+        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
         FullTextIndexing.remove_indexing(content_id)
 
 
@@ -158,7 +157,7 @@ class Notes:
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-        content_id = GraphSchema.get_data_node_internal_id(uri=uri)
+        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
         n_words = len(unique_words)
         print(f"new_content_item_successful(): CREATING INDEXING for item `{uri}`. "
               f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")
@@ -181,7 +180,7 @@ class Notes:
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-        content_id = GraphSchema.get_data_node_internal_id(uri=uri)
+        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
         n_words = len(unique_words)
         print(f"update_content_item_successful(): UPDATING INDEXING for item `{uri}`. "
               f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")

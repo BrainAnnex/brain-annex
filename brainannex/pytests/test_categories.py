@@ -249,8 +249,8 @@ def test_get_sibling_categories(db):
     french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
     italian_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "Italian"})
 
-    french_internal_id = GraphSchema.get_data_node_internal_id(uri = french_uri)
-    italian_internal_id = GraphSchema.get_data_node_internal_id(uri = italian_uri)
+    french_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id= french_uri)
+    italian_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id= italian_uri)
 
     result = Categories.get_sibling_categories(french_internal_id)
     assert len(result) == 1
@@ -435,7 +435,7 @@ def test_link_content_at_end(db):
 
     # Create a new Data Node
     GraphSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
-                                 new_uri="i-100")
+                                 new_entity_id="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
@@ -464,7 +464,7 @@ def test_add_content_at_end(db):
 
 
 def test_add_content_after_element(db):
-    _, root_uri = initialize_categories(db)
+    _, root_entity_id = initialize_categories(db)
 
     # Introduce a new test Class, "Image"
     GraphSchema.create_class_with_properties(name="Image",
@@ -473,12 +473,12 @@ def test_add_content_after_element(db):
                                           rel_name="BA_in_category")
 
     # Create a new Data Node (of class "Image"), positioned at the end (bottom) of the Root Category Page
-    Categories.add_content_at_end(category_uri=root_uri,
+    Categories.add_content_at_end(category_uri=root_entity_id,
                                   item_class_name="Image", item_properties={"caption": "USA"},
                                   new_uri="i-USA")
 
     q = f'''
-        MATCH (c:Category {{uri: "{root_uri}"}})<-[r:BA_in_category]-(ci)
+        MATCH (c:Category {{uri: "{root_entity_id}"}})<-[r:BA_in_category]-(ci)
         RETURN r.pos AS pos, ci.uri AS uri
         ORDER BY pos
         '''
@@ -487,16 +487,16 @@ def test_add_content_after_element(db):
 
     # Create a new Data Node (of class "Image"), positioned after the previously-added "USA" Image on the Root Category Page
     # Note: this corresponds to an "add at the end"
-    Categories.add_content_after_element(category_uri=root_uri,
-                                  item_class_name="Image", item_properties={"caption": "Brazil"},
-                                  insert_after_uri="i-USA", insert_after_class="Image",
-                                  new_uri="i-Brazil")
+    Categories.add_content_after_element(category_uri=root_entity_id,
+                                         item_class_name="Image", item_properties={"caption": "Brazil"},
+                                         insert_after_uri="i-USA", insert_after_class="Image",
+                                         new_uri="i-Brazil")
 
     result = db.query(q, single_column="uri")
     assert result == ["i-USA", "i-Brazil"]
 
     # Create a new Data Node (of class "Image"), positioned after the initially-added "USA" Image on the Root Category Page
-    Categories.add_content_after_element(category_uri=root_uri,
+    Categories.add_content_after_element(category_uri=root_entity_id,
                                   item_class_name="Image", item_properties={"caption": "Mexico"},
                                   insert_after_uri="i-USA", insert_after_class="Image",
                                   new_uri="i-Mexico")
@@ -512,7 +512,7 @@ def test_add_content_after_element(db):
                                           rel_name="BA_in_category")
 
     # Create a new Data Node (of class "Header"), positioned after the "Mexico" Image on the Root Category Page
-    Categories.add_content_after_element(category_uri=root_uri,
+    Categories.add_content_after_element(category_uri=root_entity_id,
                                   item_class_name="Header", item_properties={"text": "South America"},
                                   insert_after_uri="i-Mexico", insert_after_class="Image",
                                   new_uri="i-Header-1")
@@ -522,7 +522,7 @@ def test_add_content_after_element(db):
 
 
     # Create a new Data Node (of class "Image"), positioned after the Header item on the Root Category Page
-    Categories.add_content_after_element(category_uri=root_uri,
+    Categories.add_content_after_element(category_uri=root_entity_id,
                                   item_class_name="Image", item_properties={"caption": "Guyana"},
                                   insert_after_uri="i-Header-1", insert_after_class="Header",
                                   new_uri="i-Guyana")
@@ -532,7 +532,7 @@ def test_add_content_after_element(db):
 
 
     # Create a new Data Node (of class "Image"), positioned after the Header item on the Root Category Page
-    Categories.add_content_after_element(category_uri=root_uri,
+    Categories.add_content_after_element(category_uri=root_entity_id,
                                   item_class_name="Image", item_properties={"caption": "Venezuela"},
                                   insert_after_uri="i-Header-1", insert_after_class="Header",
                                   new_uri="i-Venezuela")
@@ -543,7 +543,7 @@ def test_add_content_after_element(db):
 
     # Create a new Data Node (of class "Image"), positioned after the Header item on the Root Category Page
     # Note: this will force a re-numbering of the pos values
-    Categories.add_content_after_element(category_uri=root_uri,
+    Categories.add_content_after_element(category_uri=root_entity_id,
                                   item_class_name="Image", item_properties={"caption": "Colombia"},
                                   insert_after_uri="i-Header-1", insert_after_class="Header",
                                   new_uri="i-Colombia")
@@ -563,7 +563,7 @@ def test_detach_from_category(db):
 
     # Create a new Data Node
     GraphSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
-                                 new_uri="i-100")
+                                 new_entity_id="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 

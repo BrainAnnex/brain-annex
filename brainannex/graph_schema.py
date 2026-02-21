@@ -206,7 +206,7 @@ class GraphSchema:
 
 
     @classmethod
-    def create_class(cls, name :str, code=None, handler=None, strict=False, no_datanodes=False, create_index=True) -> (int|str, str):
+    def create_class(cls, name :str, code=None, handler=None, strict=False, no_datanodes=False, create_index=True) -> int|str:
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -231,14 +231,12 @@ class GraphSchema:
                                 By default, False
         :param create_index:[OPTIONAL] 
 
-        :return:            A pair of values with the internal database ID and the unique `entity_id`
-                                assigned to the node just created, if it was created;
+        :return:            The internal database ID of the node just created, if it was created;
                                 an Exception is raised if a Class by that name already exists
         """
         #TODO: offer the option to link to an existing Class, like create_class_with_properties() does
         #       link_to=None, link_name="INSTANCE_OF", link_dir="OUT"
         #TODO: maybe an option to add multiple Classes of the same type at once???
-        #TODO: maybe stop returning the entity_id ?
         #TODO: add a constraint for `entity_id` of `SCHEMA` nodes, if not already present :
         #      CREATE CONSTRAINT unique_schema_entity_id ON (n:SCHEMA) ASSERT n.entity_id IS UNIQUE
 
@@ -249,7 +247,7 @@ class GraphSchema:
         if cls.class_name_exists(name):
             raise Exception(f"GraphSchema.create_class(): A class named `{name}` ALREADY exists")
 
-        schema_uri = cls._next_available_schema_uri()    # A schema-wide uri, also used for other types of Schema nodes
+        schema_uri = cls._next_available_schema_entity_id()    # A schema-wide uri, also used for other types of Schema nodes
 
         attributes = {"name": name, "uri": schema_uri, "strict": strict}
         if code:
@@ -268,7 +266,7 @@ class GraphSchema:
             # Create an index and constraint for the pair (label=name, properties="uri")
             cls.db.create_constraint(label=name, key="uri")
 
-        return (internal_id, schema_uri)
+        return internal_id
 
 
 
@@ -298,73 +296,67 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_uri(cls, class_name :str) -> str:
+    def get_class_entity_id(cls, class_name=None, internal_id=None) -> str:
         """
-        Returns the Schema uri of the Class with the given name;
+        Returns the Entity ID of the Class with the given name or internal database ID
+        (at most one may be passed);
         raise an Exception if not found
 
         :param class_name:  The name of the desired class
-        :return:            The Schema uri of the specified Class
+        :param internal_id: The internal database ID of the desired class
+        :return:            The Entity ID of the above Class
         """
-        #TODO: maybe raise an Exception if more than one is found
+        assert class_name is None or internal_id is None, \
+            "get_class_entity_id(): only one of the arguments may be passed"
 
-        cls.assert_valid_class_name(class_name)
+        if class_name is not None:
+            #TODO: maybe raise an Exception if more than one is found
+            cls.assert_valid_class_name(class_name)
 
-        match = cls.db.match(labels="CLASS", key_name="name", key_value=class_name)
-        result = cls.db.get_nodes(match, single_cell="uri")
+            match = cls.db.match(labels="CLASS", key_name="name", key_value=class_name)
+            result = cls.db.get_nodes(match, single_cell="uri")
+
+            if result is None:
+                raise Exception(f"get_class_entity_id(): no Schema Class named '{class_name}' found")
+
+            return result
+
+
+        result = cls.db.get_nodes(internal_id, single_cell="uri")
 
         if result is None:
-            raise Exception(f"No Schema Class named '{class_name}' was found")
+            raise Exception(f"get_class_entity_id(): no Class with internal id {internal_id} found")
 
         return result
 
 
 
     @classmethod
-    def get_class_uri_by_internal_id(cls, internal_class_id :int|str) -> int:
-        """
-        Returns the Schema uri of the Class with the given internal database ID.
-
-        :param internal_class_id:
-        :return:            The Schema URI of the specified Class
-        """
-
-        result = cls.db.get_nodes(internal_class_id, single_cell="uri")
-
-        if result is None:
-            raise Exception(f"GraphSchema.get_class_uri_by_internal_id(): no Class with internal id {internal_class_id} found")
-
-        return result
-
-
-
-    @classmethod
-    def class_neo_id_exists(cls, neo_id: int) -> bool:
-        """
-        Return True if a Class by the given internal database ID already exists, or False otherwise
-
-        :param neo_id:  Integer with internal database ID
-        :return:        A boolean indicating whether the specified Class exists
-        """
-        cls.db.assert_valid_internal_id(neo_id)
-
-        return cls.db.exists_by_internal_id(neo_id)
-
-
-
-    @classmethod
-    def class_uri_exists(cls, schema_uri :str) -> bool:
+    def class_entity_id_exists(cls, entity_id :str) -> bool:
         """
         Return True if a Class by the given uri already exists, or False otherwise
 
-        :param schema_uri:  The uri of the Class node of interest
+        :param entity_id:   The alleged entity id of the Class node of interest
         :return:            True if the Class already exists, or False otherwise
         """
-        assert cls.is_valid_schema_uri(schema_uri), \
+        assert cls.is_valid_schema_entity_id(entity_id), \
             f"GraphSchema.class_uri_exists(): argument `schema_uri` " \
             f"must be a string of the form 'schema-n' for some integer n)"
 
-        return cls.db.exists_by_key(labels="CLASS", key_name="uri", key_value=schema_uri)
+        return cls.db.exists_by_key(labels="CLASS", key_name="uri", key_value=entity_id)
+
+
+    @classmethod
+    def class_internal_id_exists(cls, internal_id: int) -> bool:
+        """
+        Return True if a Class by the given internal database ID already exists, or False otherwise
+
+        :param internal_id:  Integer with internal database ID
+        :return:        A boolean indicating whether the specified Class exists
+        """
+        cls.db.assert_valid_internal_id(internal_id)
+
+        return cls.db.exists_by_internal_id(internal_id)
 
 
     @classmethod
@@ -382,27 +374,26 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_name_by_schema_uri(cls, schema_uri :str) -> str:
+    def get_class_name_by_schema_entity_id(cls, entity_id :str) -> str:
         """
         Returns the name of the class with the given Schema URI;
         raise an Exception if not found
 
-        :param schema_uri:  A string uniquely identifying the desired Class
+        :param entity_id:   A string uniquely identifying the desired Class
         :return:            The name of the Class with the given Schema uri
         """
         # TODO: maybe phase out?
-        assert cls.is_valid_schema_uri(schema_uri), \
+        assert cls.is_valid_schema_entity_id(entity_id), \
             "get_class_name_by_schema_uri(): The schema uri MUST be a string " \
             "of the form 'schema-n' for some integer n"
 
-        match = cls.db.match(labels="CLASS", key_name="uri", key_value=schema_uri)
+        match = cls.db.match(labels="CLASS", key_name="uri", key_value=entity_id)
         result = cls.db.get_nodes(match, single_cell="name")
 
         if not result :
-            raise Exception(f"No Schema Class with uri '{schema_uri}' found")
+            raise Exception(f"No Schema Class with uri '{entity_id}' found")
 
         return result
-
 
 
     @classmethod
@@ -428,43 +419,43 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_attributes(cls, class_internal_id: int) -> dict:
+    def get_class_attributes(cls, internal_id: int|str) -> dict:
         """
         Returns all the attributes (incl. the name) of the Class node with the given internal database ID,
         or raise an Exception if the Class is not found.
         If no "name" attribute is found, an Exception is raised.
 
-        :param class_internal_id:   An integer with the Neo4j ID of the desired class
-        :return:                    A dictionary of attributed of the class with the given Schema ID;
-                                        an Exception is raised if not found
-                                        EXAMPLE:  {'name': 'MY CLASS', 'uri': '123', 'strict': False}
+        :param internal_id:     The internal database ID of the desired class
+        :return:                A dictionary of attributed of the class with the given Schema ID;
+                                    an Exception is raised if not found
+                                    EXAMPLE:  {'name': 'MY CLASS', 'uri': '123', 'strict': False}
         """
         #cls.db.assert_valid_internal_id(class_internal_id)
 
-        match = cls.db.match(labels="CLASS", internal_id=class_internal_id)
+        match = cls.db.match(labels="CLASS", internal_id=internal_id)
         result = cls.db.get_nodes(match, single_row=True)
 
         if result is None :
-            raise Exception(f"GraphSchema.get_class_attributes(): no Class with an internal database ID of {class_internal_id} found")
+            raise Exception(f"GraphSchema.get_class_attributes(): no Class with an internal database ID of {internal_id} found")
 
         if "name" not in result:
             raise Exception(f"get_class_attributes(): the expected attribute `name` wasn't found"
-                            f" among the attributes of the Class node {class_internal_id}")
+                            f" among the attributes of the Class node {internal_id}")
 
         return result
 
 
 
     @classmethod
-    def get_all_classes(cls, only_names=True) -> [str]:
+    def get_all_classes(cls) -> [str]:
         """
-        Fetch and return a list of all the existing Schema classes - either just their names (sorted alphabetically)
-        (TODO: or a fuller listing - not yet implemented)
-
-        TODO: disregard capitalization in sorting
+        Fetch and return a list of all the existing Schema classes names (sorted alphabetically)
 
         :return:    A list of all the existing Class names
         """
+        #(TODO: or a fuller listing - not yet implemented)
+        #TODO: disregard capitalization in sorting
+
         match = cls.db.match(labels="CLASS")
         return cls.db.get_single_field(match=match, field_name="name", order_by="name")
 
@@ -517,7 +508,7 @@ class GraphSchema:
 
 
     @classmethod
-    def delete_class(cls, name: str, safe_delete=True) -> None:
+    def delete_class(cls, name :str, safe_delete=True) -> None:
         """
         Delete the given Class AND all its attached Properties.
         If safe_delete is True (highly recommended), then delete ONLY if there are no data nodes of that Class
@@ -593,35 +584,35 @@ class GraphSchema:
 
 
     @classmethod
-    def is_strict_class_fast(cls, class_internal_id: int) -> bool:
+    def is_strict_class_fast(cls, internal_id :int|str) -> bool:
         """
         Return True if the given Class is of "Strict" type,
         or False otherwise (or if the information is missing)
 
-        :param class_internal_id:   The internal ID of a Schema Class node
-        :return:                    True if the Class is "strict" or False if not (i.e., if it's "lax")
+        :param internal_id: The internal database ID of a Schema Class node
+        :return:            True if the Class is "strict" or False if not (i.e., if it's "lax")
         """
-        class_attrs = cls.get_class_attributes(class_internal_id)
+        class_attrs = cls.get_class_attributes(internal_id)
 
         return class_attrs.get('strict', False)    # True if a "Strict" Class
 
 
 
     @classmethod
-    def allows_data_nodes(cls, class_name = None, class_internal_id = None) -> bool:
+    def allows_data_nodes(cls, class_name = None, internal_id = None) -> bool:
         """
         Determine if the given Class allows data nodes directly linked to it
 
-        :param class_name:      Name of the Class
-        :param class_internal_id :(OPTIONAL) Alternate way to specify the class; if both specified, this one prevails
-        :return:                True if allowed, or False if not
-                                    If the Class doesn't exist, raise an Exception
+        :param class_name:  Name of the Class
+        :param internal_id: [OPTIONAL] Alternate way to specify the class; if both specified, this one prevails
+        :return:            True if allowed, or False if not;
+                                if the Class doesn't exist, raise an Exception
         """
-        if class_internal_id is None:    # Note: class_neo_id might legitimately be zero
-            class_internal_id = cls.get_class_internal_id(class_name)
+        if internal_id is None:    # Note: class_neo_id might legitimately be zero
+            internal_id = cls.get_class_internal_id(class_name)
 
 
-        class_node_dict = cls.db.get_nodes(match=class_internal_id, single_row=True)
+        class_node_dict = cls.db.get_nodes(match=internal_id, single_row=True)
 
 
         if class_node_dict is None:
@@ -727,7 +718,7 @@ class GraphSchema:
             '''
 
         if use_link_node:
-            new_link_uri = cls.reserve_next_uri(namespace="schema_node")     # For the "LINK" node about to get created
+            new_link_uri = cls.reserve_next_entity_id(namespace="schema_node")     # For the "LINK" node about to get created
             q += f'''MERGE (from)-[:`{rel_name}`]->
                     (l:LINK {{uri: $link_uri}})
                     -[:`{rel_name}`]->(to) \n'''
@@ -737,7 +728,7 @@ class GraphSchema:
             if link_properties:
                 index = 1
                 for prop in link_properties:
-                    new_property_uri = cls.reserve_next_uri(namespace="schema_node")     # For the "PROPERTY" node about to get created
+                    new_property_uri = cls.reserve_next_entity_id(namespace="schema_node")     # For the "PROPERTY" node about to get created
                     q += f'''
                         MERGE (l)
                         -[:HAS_PROPERTY {{index: {index}}}]->
@@ -1196,10 +1187,10 @@ class GraphSchema:
                     => ['quote', 'attribution', 'notes']
 
             GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=False)
-                    => ['quote', 'attribution', 'notes', 'uri']
+                    => ['quote', 'attribution', 'notes', 'entity_id']
 
             GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, sort_by_path_len="DESC", exclude_system=False)
-                    => ['uri', 'quote', 'attribution', 'notes']
+                    => ['entity_id', 'quote', 'attribution', 'notes']
 
             GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                     => ['quote', 'attribution', 'notes']
@@ -1266,7 +1257,7 @@ class GraphSchema:
 
 
     @classmethod
-    def add_properties_to_class(cls, class_node = None, class_uri = None, property_list = None) -> int:
+    def add_properties_to_class(cls, class_node :int|str, properties = None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
         The properties are given an inherent order (an attribute named "index", starting at 1),
@@ -1276,39 +1267,31 @@ class GraphSchema:
         NOTE: if the Class doesn't already exist, use create_class_with_properties() instead;
               attempting to add properties to an non-existing Class will result in an Exception
 
-        :param class_node:      An integer with the internal database ID of an existing Class node,
-                                    or a string with its name
-        :param class_uri:       (OPTIONAL) String with the schema_uri of the Class to which attach the given Properties
-                                TODO: remove
-
-        :param property_list:   A list of strings with the names of the properties, in the desired order.
-                                    Whitespace in any of the names gets stripped out.
-                                    If any name is a blank string, an Exception is raised
-                                    If the list is empty, an Exception is raised
-        :return:                The number of Properties added
+        :param class_node:  An integer with the internal database ID of an existing Class node,
+                                or a string with its name
+        :param properties:  A list of strings with the names of the properties, in the desired order.
+                                Whitespace in any of the names gets stripped out.
+                                If any name is a blank string, an Exception is raised
+                                If the list is empty, an Exception is raised
+        :return:            The number of Properties added
         """
-        #TODO: rename "property_list" to "properties"; also allow a single string
+        #TODO: allow a single string for "properties"
         #TODO: Offer a way to change the order of the Properties,
         #      maybe by first deleting all Properties and then re-adding them
 
-        assert (class_node is not None) or (class_uri is not None), \
-            "add_properties_to_class(): class_internal_id and class_id cannot both be None"
+        assert class_node is not None, \
+            "add_properties_to_class(): class_node cannot be None"
 
-        if class_node is not None and class_uri is None:
-            if type(class_node) == int:
-                class_uri = cls.get_class_uri_by_internal_id(class_node)
-            else:
-                class_uri = cls.get_class_uri(class_node)       # class_node is taken to be the Class name
+        if type(class_node) == int:
+            class_uri = cls.get_class_entity_id(internal_id=class_node)
+        else:
+            class_uri = cls.get_class_entity_id(class_node)       # class_node is taken to be the Class name
 
-        assert type(class_uri) == str,\
-            f"add_properties_to_class(): Argument `class_uri` must be a string; value passed was {class_uri}"
-        assert type(property_list) == list, \
+        assert type(properties) == list, \
             "add_properties_to_class(): Argument `property_list` in add_properties_to_class() must be a list"
-        assert cls.class_uri_exists(class_uri), \
-            f"add_properties_to_class(): No Class with ID {class_uri} found in the Schema"
 
 
-        clean_property_list = [prop.strip() for prop in property_list]
+        clean_property_list = [prop.strip() for prop in properties]
         for prop_name in clean_property_list:
             assert prop_name != "", "add_properties_to_class(): Unacceptable Property name, either empty or blank"
             assert type(prop_name) == str, "add_properties_to_class(): Unacceptable non-string Property name"
@@ -1329,7 +1312,7 @@ class GraphSchema:
         number_properties_nodes_created = 0
 
         for property_name in clean_property_list:
-            new_schema_uri = cls._next_available_schema_uri()
+            new_schema_uri = cls._next_available_schema_entity_id()
             q = f'''
                 MATCH (c: `CLASS` {{ uri: '{class_uri}' }})
                 MERGE (c)-[:HAS_PROPERTY {{ index: {new_index} }}]
@@ -1407,10 +1390,10 @@ class GraphSchema:
 
 
         # Create the new Class
-        new_class_db_id , _ = cls.create_class(name, code=code, handler=handler, strict=strict)
+        new_class_db_id = cls.create_class(name, code=code, handler=handler, strict=strict)
         cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Internal database ID: {new_class_db_id})")
 
-        number_properties_added = cls.add_properties_to_class(class_node=new_class_db_id, property_list = properties)
+        number_properties_added = cls.add_properties_to_class(class_node=new_class_db_id, properties= properties)
         if number_properties_added != len(properties):
             raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {properties}")
 
@@ -1436,7 +1419,7 @@ class GraphSchema:
         """
         Set an attribute on an existing "PROPERTY" node of the specified Class
 
-        EXAMPLES:   set_property_attribute(class_name="Content Item", prop_name="uri",
+        EXAMPLES:   set_property_attribute(class_name="Content Item", prop_name="entity_id",
                                            attribute_name="system", attribute_value=True)
 
                     set_property_attribute(class_name="User", prop_name="admin",
@@ -1728,24 +1711,6 @@ class GraphSchema:
 
 
 
-    @classmethod
-    def get_schema_uri(cls, schema_code :str) -> str:
-        """
-        Get the Schema URI most directly associated to the given Schema Code
-
-        :return:    A string with the Schema uri (or "" if not present)
-        """
-        #TODO: obsolete
-
-        match = cls.db.match(labels="CLASS", key_name="code", key_value=schema_code)
-        result = cls.db.get_nodes(match, single_cell="uri")
-
-        if result is None:
-            return ""
-
-        return result
-
-
 
 
 
@@ -1764,7 +1729,7 @@ class GraphSchema:
         Helper function to prepare two clause to be used in forming a Cypher query.
 
         :param node_id:     Either an internal database ID (int or str), or a primary key value
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "entity_id".
                                 Alternatively, leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :param method:      [OPTIONAL] Name of the calling function; used only in case of error messages
@@ -1952,7 +1917,7 @@ class GraphSchema:
         :param search: Either an internal database ID (int or str),
                         OR a dictionary with the keys
                                 "class_name"
-                                "key_name" (default value "uri")
+                                "key_name" (default value "entity_id")
                                 "key_value"
 
                         EXAMPLES:   123
@@ -2037,7 +2002,7 @@ class GraphSchema:
                         data_node_exists(node_id="i-123", id_key="entity_id", class_name="Image")
 
         :param node_id:     Either an internal database ID (int or str), or a primary key value
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri" or "entity_id".
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "entity_id" or "entity_id".
                                 Alternatively, leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :return:            True if the specified Data Node exists, or False otherwise
@@ -2077,7 +2042,7 @@ class GraphSchema:
 
                             EXAMPLES:   123
                                         "f425-a84d"
-                                        ("uri", "h-88")
+                                        ("entity_id", "h-88")
                                         ("root", True)
         :param class_name:
         :param hide_schema:
@@ -2132,7 +2097,7 @@ class GraphSchema:
         :param search: Either an internal database ID (int or str),
                         OR a dictionary with the keys
                                 "class_name"
-                                "key_name" (default value "uri")
+                                "key_name" (default value "entity_id")
                                 "key_value"
 
                         EXAMPLES:   123
@@ -2269,7 +2234,7 @@ class GraphSchema:
         If opting to search by primary key, and more than 1 match comes up, an Exception is raised.
 
         :param node_id:     Either an internal database ID (int or str), or a primary key value
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri".
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "entity_id".
                                 Alternatively, leave blank to use the internal database ID
         :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
         :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS` is omitted
@@ -2324,7 +2289,7 @@ class GraphSchema:
         NOTE: No database operation is actually performed.
 
         :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
-        :param id_type: For example, "uri";
+        :param id_type: For example, "entity_id";
                             if not specified, the node ID is assumed to be the internal database ID's
         :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
         :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
@@ -2554,35 +2519,33 @@ class GraphSchema:
 
 
     @classmethod
-    def get_data_node_internal_id(cls, uri :str, label=None) -> int:
+    def get_data_node_internal_id(cls, class_name :str, entity_id :str) -> int:
         """
         Returns the internal database ID of the given Data Node,
-        specified by the value of its uri attribute
-        (and optionally by a label)
+        specified by its Class and Entity ID
 
-        :param uri:     A string to identify a Data Node by the value of its "uri" attribute
-        :param label:   String to require the Data Node to have (redundant,
-                            since "uri" already uniquely specifies a Data Node - but
-                            could be used for speed or data integrity)
+        :param class_name:  Name of the Data Node's Class
+        :param entity_id:   A string to uniquely identify a Data Node of the above Class
 
         :return:        The internal database ID of the specified Data Node;
                             if none (or more than one) found, an Exception is raised
         """
         #TODO: merge with get_data_node_id()
 
-        match = cls.db.match(key_name="uri", key_value=uri, labels=label)
+        #TODO: Should search for _CLASS, rather than by label
+        match = cls.db.match(key_name="uri", key_value=entity_id, labels=class_name)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
-        if label:
+        if class_name:
             assert result, f"GraphSchema.get_data_node_internal_id(): " \
-                           f"no Data Node with the given uri ('{uri}') and label ('{label}') was found"
+                           f"no Data Node with the given entity_id ('{entity_id}') and class_name ('{class_name}') was found"
         else:
             assert result, f"GraphSchema.get_data_node_internal_id(): " \
-                           f"no Data Node with the given uri ('{uri}') was found"
+                           f"no Data Node with the given entity_id ('{entity_id}') was found"
 
         if len(result) > 1:
             raise Exception(f"GraphSchema.get_data_node_internal_id(): more than 1 Data Node "
-                            f"with the given uri ('{uri}') was found ({len(result)} were found)")
+                            f"with the given entity_id ('{entity_id}') was found ({len(result)} were found)")
 
         return result[0]["_internal_id"]
 
@@ -2715,7 +2678,7 @@ class GraphSchema:
         :param node2_id:    A unique value to identify the 1st data node:
                                 either an internal database ID or a primary key value
         :param link_name:   The name of the link (relationship) to look for
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "entity_id".
                                 Leave blank to use the internal database ID
 
         :return:            True if the specified Data Node link, or False otherwise
@@ -2761,7 +2724,7 @@ class GraphSchema:
         :param node2_id:   A unique value to identify the 1st data node:
                                 either an internal database ID or a primary key value
         :param link_name:   The name of the link (relationship) to look for
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "uri".
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "entity_id".
                                 Leave blank to use the internal database ID
         :param include_internal_id: [OPTIONAL] If True, then the internal database ID of the relationships is also
                                         included in the dict's, using the key "_internal_id"
@@ -2941,10 +2904,10 @@ class GraphSchema:
     def class_of_data_node(cls, node_id, id_key=None, labels=None) -> str:
         """
         Return the name of the Class of the given data node: identified
-        either by its internal database ID (default), or by a primary key (such as "uri")
+        either by its internal database ID (default), or by a primary key (such as "entity_id")
 
         :param node_id:     Either an internal database ID or a primary key value
-        :param id_key:      OPTIONAL - name of a primary key used to identify the data node; for example, "uri".
+        :param id_key:      OPTIONAL - name of a primary key used to identify the data node; for example, "entity_id".
                                 Leave blank to use the internal database ID
         :param labels:      Optional string, or list/tuple of strings, with internal database labels
 
@@ -3029,14 +2992,14 @@ class GraphSchema:
     @classmethod
     def data_nodes_of_class(cls, class_name :str, return_option="uri") -> Union[List[str], List[int]]:
         """
-        Return the uri's, or alternatively the internal database ID's,
+        Return the entity_id's, or alternatively the internal database ID's,
         of all the Data Nodes of the given schema Class.
 
         See also: get_all_data_nodes_of_class()
 
         :param class_name:      Name of a Schema Class
-        :param return_option:   Either "uri" or "_internal_id"
-        :return:                Return the uri's or internal database ID's
+        :param return_option:   Either "entity_id" or "_internal_id"
+        :return:                Return the entity_id's or internal database ID's
                                         of all the Data Nodes of the given Class
         """
         # TODO: offer the option of returning some or all of the fields
@@ -3122,7 +3085,7 @@ class GraphSchema:
         :param class_name:  String with the name of the Class of the given data node
         :param node_id:     Either an internal database ID or a primary key value
         :param link_name:   A string with the name of the link(s) to follow
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "uri";
+        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "entity_id";
                                 use None to refer to the internal database ID
         :param properties:  [OPTIONAL] String, or list/tuple of strings, with the name(s)
                                 of the properties to return on the found nodes;
@@ -3221,7 +3184,7 @@ class GraphSchema:
 
     @classmethod
     def create_data_node(cls, class_name :str, properties=None, extra_labels=None,
-                         new_uri=None, silently_drop=False, links=None) -> int|str:
+                         new_entity_id=None, silently_drop=False, links=None) -> int | str:
         """
         Create a new data node, of the specified Class,
         with the given optional properties, and optional extra label(s),
@@ -3237,10 +3200,10 @@ class GraphSchema:
                  if that should be prevented, use add_data_node_merge() instead,
                  or utilize unique indices in the database
 
-        URI optional field: The new data node, if successfully created, will optionally be assigned an additional field named `uri`
-            with the value passed by `new_uri`.
+        URI optional field: The new data node, if successfully created, will optionally be assigned an additional field named `entity_id`
+            with the value passed by `new_entity_id`.
             The responsibility for picking a URI belongs to the calling function,
-            which will typically make use of a namespace, and make use of reserve_next_uri()
+            which will typically make use of a namespace, and make use of reserve_next_entity_id()
 
         ALTERNATIVES:
             - If creating multiple data nodes at once, consider using import_pandas_nodes()
@@ -3257,7 +3220,7 @@ class GraphSchema:
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
-        :param new_uri:     [OPTIONAL]  If a string is passed as `new_uri`, then a field (node property) called "uri"
+        :param new_entity_id:     [OPTIONAL]  If a string is passed as `new_entity_id`, then a field (node property) called "entity_id"
                                 is set to that value
         :param silently_drop: [OPTIONAL] If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
@@ -3298,7 +3261,7 @@ class GraphSchema:
 
 
         # Make sure that the specified Class accepts Data Nodes
-        assert cls.allows_data_nodes(class_internal_id=class_internal_id),\
+        assert cls.allows_data_nodes(internal_id=class_internal_id),\
             f"GraphSchema.create_data_node(): addition of data nodes to Class `{class_name}` is not allowed by the Schema"
 
 
@@ -3311,17 +3274,17 @@ class GraphSchema:
         labels = cls._prepare_data_node_labels(class_name=class_name, extra_labels=extra_labels)
 
 
-        # In addition to the passed properties for the new node, data nodes may contain a special attribute: "uri";
-        # if a value for `new_uri` was provided, expand `properties_to_set` accordingly
-        if new_uri is not None:
-            assert type(new_uri) == str, \
-                "create_data_node(): argument `new_uri`, if provided, must be a string"
+        # In addition to the passed properties for the new node, data nodes may contain a special attribute: "entity_id";
+        # if a value for `new_entity_id` was provided, expand `properties_to_set` accordingly
+        if new_entity_id is not None:
+            assert type(new_entity_id) == str, \
+                "create_data_node(): argument `new_entity_id`, if provided, must be a string"
 
-            #print("URI assigned to new data node: ", new_uri)
-            properties_to_set["uri"] = new_uri                   # Expand the dictionary
+            #print("URI assigned to new data node: ", new_entity_id)
+            properties_to_set["uri"] = new_entity_id                   # Expand the dictionary
 
             # EXAMPLE of properties_to_set at this stage:
-            #       {"make": "Toyota", "color": "white", "uri": "car-123"}
+            #       {"make": "Toyota", "color": "white", "entity_id": "car-123"}
             #       where "car-123" is the passed URI
 
 
@@ -3356,7 +3319,7 @@ class GraphSchema:
     @classmethod
     def _create_data_node_helper(cls, class_name :str,
                                  labels=None, properties_to_set=None,
-                                 uri_namespace=None, primary_key=None, duplicate_option=None) -> Union[int, None]:
+                                 entity_id_namespace=None, primary_key=None, duplicate_option=None) -> Union[int, None]:
         """
         Helper function, to create a new data node (or merge into an existing one), of the type indicated by specified Class,
         with the given label(s) and properties.
@@ -3370,8 +3333,8 @@ class GraphSchema:
                                         (note: the Class name should be among the labels to assign)
         :param properties_to_set:   [OPTIONAL] Dictionary with the properties of the new data node.
                                         EXAMPLE: {"make": "Toyota", "color": "white"}
-        :param uri_namespace:       [OPTIONAL] String with a namespace to use to auto-assign a uri value on the new data node;
-                                        if not passed, no uri value gets set on the new node
+        :param entity_id_namespace:       [OPTIONAL] String with a namespace to use to auto-assign a entity_id value on the new data node;
+                                        if not passed, no entity_id value gets set on the new node
         :param primary_key:         [OPTIONAL] Name of a field that is to be regarded as a primary key
         :param duplicate_option:    Only applicable if primary_key is specified;
                                         if provided, must be "merge" or "replace"
@@ -3379,9 +3342,9 @@ class GraphSchema:
         :return:                    If a new Data node gets created, return its internal database ID;
                                         otherwise (in case of a duplicate node already present) return None
         """
-        if uri_namespace:
-            new_uri = cls.reserve_next_uri(namespace=uri_namespace)
-            properties_to_set["uri"] = new_uri          # Expand the dictionary, to include the "uri" field
+        if entity_id_namespace:
+            new_uri = cls.reserve_next_entity_id(namespace=entity_id_namespace)
+            properties_to_set["uri"] = new_uri          # Expand the dictionary, to include the "entity_id" field
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
         #   to define the new node to be created
@@ -3467,7 +3430,7 @@ class GraphSchema:
         class_internal_id = cls.get_class_internal_id(class_name)
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
+        if not cls.allows_data_nodes(internal_id=class_internal_id):
             raise Exception(f"GraphSchema.add_data_node_merge(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -3523,7 +3486,7 @@ class GraphSchema:
         class_internal_id = cls.get_class_internal_id(class_name)
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
+        if not cls.allows_data_nodes(internal_id=class_internal_id):
             raise Exception(f"GraphSchema.add_data_column_merge(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -3662,7 +3625,7 @@ class GraphSchema:
         :param node_id:     [OPTIONAL] Either an internal database ID or a key value,
                                 depending on the value of `id_key`
         :param id_key:      [OPTIONAL] Name of a key used to identify the data node(s) with the `node_id` value;
-                                for example, "uri".
+                                for example, "entity_id".
                                 If blank, then the `node_id` is taken to be the internal database ID
         :param class_name:  [OPTIONAL] The name of a Schema Class
         :return:            The number of Data Nodes that were actually deleted (possibly zero)
@@ -3684,45 +3647,45 @@ class GraphSchema:
 
 
     @classmethod
-    def register_existing_data_node(cls, class_name="", schema_uri=None,
-                                    existing_neo_id=None, new_uri=None) -> int:
+    def register_existing_data_node(cls, class_name="", schema_entity_id=None,
+                                    existing_internal_id=None, new_entity_id=None) -> int:
         """
         Register (declare to the Schema) an existing data node with the Schema Class specified by its name or ID.
-        An uri is generated for the data node and stored on it.
-        Return the newly-assigned uri
+        An entity_id is generated for the data node and stored on it.
+        Return the newly-assigned entity_id
 
         EXAMPLES:   register_existing_data_node(class_name="Chemicals", existing_neo_id=123)
-                    register_existing_data_node(schema_uri="schema-19", existing_neo_id=456)
+                    register_existing_data_node(schema_entity_id="schema-19", existing_neo_id=456)
 
         TODO: verify the all the passed attributes are indeed properties of the class (if the schema is Strict)
         TODO: verify that required attributes are present
         TODO: invoke special plugin-code, if applicable
 
         :param class_name:      The name of the Class that this new data node is an instance of
-        :param schema_uri:      Alternate way to specify the Class; if both present, class_name prevails
+        :param schema_entity_id:      Alternate way to specify the Class; if both present, class_name prevails
 
-        :param existing_neo_id: Internal ID to identify the node to register with the above Class.
+        :param existing_internal_id: Internal ID to identify the node to register with the above Class.
                                 TODO: expand to use the match() structure
-        :param new_uri:     OPTIONAL. Normally, the Item ID is auto-generated,
+        :param new_entity_id:     OPTIONAL. Normally, the Item ID is auto-generated,
                                 but it can also be provided (Note: MUST be unique)
 
-        :return:                If successful, an integer with the auto-increment "uri" value of the node just created;
+        :return:                If successful, an integer with the auto-increment "entity_id" value of the node just created;
                                 otherwise, an Exception is raised
         """
-        if not existing_neo_id:
+        if not existing_internal_id:
             raise Exception("register_existing_data_node() - Missing argument: `existing_neo_id`")
 
-        assert type(existing_neo_id) == int, \
+        assert type(existing_internal_id) == int, \
             "register_existing_data_node(): The argument `existing_neo_id` MUST be an integer"  # TODO: use validity checker
 
-        # Make sure that at least either class_name or schema_uri is present
-        if (not class_name) and (not schema_uri):
-            raise Exception("Must specify at least either the 'class_name' or the 'schema_uri'")
+        # Make sure that at least either class_name or schema_entity_id is present
+        if (not class_name) and (not schema_entity_id):
+            raise Exception("Must specify at least either the 'class_name' or the 'schema_entity_id'")
 
         if not class_name:
-            class_name = cls.get_class_name_by_schema_uri(schema_uri)      # Derive the Class name from its ID
+            class_name = cls.get_class_name_by_schema_entity_id(schema_entity_id)      # Derive the Class name from its ID
             if not class_name:
-                raise Exception(f"Unable to locate a Class with schema ID {schema_uri}")
+                raise Exception(f"Unable to locate a Class with schema ID {schema_entity_id}")
 
         if not cls.allows_data_nodes(class_name=class_name):
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")
@@ -3731,23 +3694,23 @@ class GraphSchema:
         # Verify that the data node doesn't already have a SCHEMA relationship
         q = f'''
             MATCH (n) 
-            WHERE id(n)={existing_neo_id} AND n.`_CLASS` IS NOT NULL
+            WHERE id(n)={existing_internal_id} AND n.`_CLASS` IS NOT NULL
             RETURN count(n) AS number_found
             '''
         number_found = cls.db.query(q, single_cell="number_found")
         if number_found:
             raise Exception(f"The given data node ALREADY has a SCHEMA relationship")
 
-        if not new_uri:
-            new_uri = cls.reserve_next_uri()     # Generate, if not already provided
+        if not new_entity_id:
+            new_entity_id = cls.reserve_next_entity_id()     # Generate, if not already provided
 
-        #cls.debug_print("register_existing_data_node(). New uri to be assigned to the data node: ", new_uri)
+        #cls.debug_print("register_existing_data_node(). New entity_id to be assigned to the data node: ", new_entity_id)
 
-        data_binding = {"class_name": class_name, "new_uri": new_uri, "existing_neo_id": existing_neo_id}
+        data_binding = {"class_name": class_name, "new_uri": new_entity_id, "existing_neo_id": existing_internal_id}
 
         # EXAMPLE of data_binding at this stage:
-        #       {'class_name': 'Chemicals', 'new_uri': 888, 'existing_neo_id': 123, 'schema_code': 'r'}
-        #       where 888 is the next auto-assigned uri
+        #       {'class_name': 'Chemicals', 'new_entity_id': 888, 'existing_neo_id': 123, 'schema_code': 'r'}
+        #       where 888 is the next auto-assigned entity_id
 
         # Link the existing data node, with a "SCHEMA" relationship, to its Class node, and also set some properties on the data node
         q = f'''
@@ -3763,7 +3726,7 @@ class GraphSchema:
         if number_new_rels != 1:
             raise Exception("Failed to created the new relationship (`SCHEMA`)")
 
-        return new_uri
+        return new_entity_id
 
 
 
@@ -3845,7 +3808,7 @@ class GraphSchema:
                             IMPORTANT: it MUST be allowed by the Schema
         :param rel_props:TODO: not currently used.  Unclear what multiple calls would do in this case
 
-        :param id_type: OPTIONAL - name of a primary key used to identify the data nodes; for example, "uri".
+        :param id_type: OPTIONAL - name of a primary key used to identify the data nodes; for example, "entity_id".
                             Leave blank to use the internal database ID's instead
 
         :return:            None.  If the specified relationship didn't get created (for example,
@@ -3896,16 +3859,16 @@ class GraphSchema:
         Note: the data nodes are left untouched.
         If the specified relationship didn't get deleted, raise an Exception
 
-        :param from_id:     String with the "uri" value of the data node at which the relationship originates
-        :param to_id:       String with the "uri" value of the data node at which the relationship ends
+        :param from_id:     String with the "entity_id" value of the data node at which the relationship originates
+        :param to_id:       String with the "entity_id" value of the data node at which the relationship ends
         :param rel_name:    The name of the relationship to delete
-        :param id_type:     For now, only "uri" (default) is implemented
+        :param id_type:     For now, only "entity_id" (default) is implemented
         :param labels:      OPTIONAL (generally, redundant).  Labels required to be on both nodes
 
         :return:            None.  If the specified relationship didn't get deleted, raise an Exception
         """
         # TODO: first verify that the relationship is optional in the schema???
-        # TODO: migrate from "uri" values to also offer option or internal database ID's, as done in class_of_data_node()
+        # TODO: migrate from "entity_id" values to also offer option or internal database ID's, as done in class_of_data_node()
 
         assert rel_name != "", f"remove_data_relationship(): no name was provided for the relationship"
 
@@ -3990,7 +3953,7 @@ class GraphSchema:
                                      select=None, drop=None, rename=None,
                                      primary_key=None, duplicate_option="merge",
                                      datetime_cols=None, int_cols=None,
-                                     extra_labels=None, uri_namespace=None,
+                                     extra_labels=None, entity_id_namespace=None,
                                      report_frequency=100) -> [int]:
         """
         OLD VERSION of the much-faster import_pandas_nodes(), largely obsoleted by it!
@@ -4049,15 +4012,15 @@ class GraphSchema:
                                  this argument will cast them to int's, and drop the NaN's)
         :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new Data nodes,
                                 IN ADDITION TO the Class name (which is always used as label)
-        :param uri_namespace:[OPTIONAL] String with a namespace to use to auto-assign uri values on the new Data nodes;
-                                if that namespace hasn't previously been created with create_namespace() or with reserve_next_uri(),
-                                a new one will be created with no prefix nor suffix (i.e. all uri's be numeric strings.)
-                                If not passed, no uri values will get set on the new nodes
+        :param entity_id_namespace:[OPTIONAL] String with a namespace to use to auto-assign entity_id values on the new Data nodes;
+                                if that namespace hasn't previously been created with create_namespace() or with reserve_next_entity_id(),
+                                a new one will be created with no prefix nor suffix (i.e. all entity_id's be numeric strings.)
+                                If not passed, no entity_id values will get set on the new nodes
         :param report_frequency: [OPTIONAL] How often to print the status of the import-in-progress (default 100)
 
         :return:            A list of the internal database ID's of the newly-created Data nodes
         """
-        # TODO: more pytests; in particular for args uri_namespace, drop, rename
+        # TODO: more pytests; in particular for args entity_id_namespace, drop, rename
         # TODO: bring in more elements from the counterpart  NeoAccess.load_pandas()
         # TODO: maybe return a separate list of internal database ID's of any updated node
 
@@ -4085,7 +4048,7 @@ class GraphSchema:
 
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
+        if not cls.allows_data_nodes(internal_id=class_internal_id):
             raise Exception(f"GraphSchema.import_pandas_nodes(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -4169,7 +4132,7 @@ class GraphSchema:
             # Perform the actual import
             new_internal_id = cls._create_data_node_helper(class_name=class_name,
                                                            labels=labels, properties_to_set=d_scrubbed,
-                                                           uri_namespace=uri_namespace,
+                                                           entity_id_namespace=entity_id_namespace,
                                                            primary_key=primary_key, duplicate_option=duplicate_option)
             #print("new_internal_id", new_internal_id)
             if new_internal_id is not None:     # If a new Data node was created
@@ -4269,7 +4232,7 @@ class GraphSchema:
                                                             or previously-created. nodes.
         """
         # TODO: maybe rename `max_batch_size` to `batch_size`
-        # TODO: restore uri_namespace , present in the old version
+        # TODO: restore entity_id_namespace , present in the old version
         # TODO: maybe return a separate list of internal database ID's of any updated node
 
         # Validations
@@ -4302,7 +4265,7 @@ class GraphSchema:
 
 
         # Make sure that the Class accepts Data Nodes
-        if not cls.allows_data_nodes(class_internal_id=class_internal_id):
+        if not cls.allows_data_nodes(internal_id=class_internal_id):
             raise Exception(f"GraphSchema.import_pandas_nodes(): "
                             f"addition of data nodes to Class `{class_name}` is not allowed by the Schema")
 
@@ -5101,7 +5064,7 @@ class GraphSchema:
 
     @classmethod
     def import_triplestore(cls, df :pd.DataFrame, class_node : int | str,
-                           col_names = None, uri_prefix = None,
+                           col_names = None, entity_id_prefix = None,
                            datetime_cols=None, int_cols=None,
                            extra_labels=None,
                            report_frequency=100
@@ -5125,11 +5088,11 @@ class GraphSchema:
             2 	    57 	            3 	  Fall 2024
 
             col_names = {1: "Course Title", 2: "School", 3: "Semester"}
-            uri_prefix = "r-"
+            entity_id_prefix = "r-"
 
             The above will result in the import of a node with the following properties:
 
-                {"uri": "r-57",
+                {"entity_id": "r-57",
                 "Course Title": "Advanced Graph Databases",
                 "School": "New York University",
                 "Semester": "Fall 2024"}
@@ -5140,7 +5103,7 @@ class GraphSchema:
                                     or a string with its name
         :param col_names:       [OPTIONAL] Dict with mapping from values in the "predicate" column of the data frame
                                            and the names of the new nodes' Properties
-        :param uri_prefix:      [OPTIONAL] String to prefix to the values in the "subjec" column
+        :param entity_id_prefix:      [OPTIONAL] String to prefix to the values in the "subjec" column
         :param datetime_cols:   [SEE import_pandas_nodes()]
         :param int_cols:        [SEE import_pandas_nodes()]
         :param extra_labels:    [SEE import_pandas_nodes()]
@@ -5150,9 +5113,9 @@ class GraphSchema:
         """
         # Note: an alternate implementation might use df.groupby(['subject']).head(1)
         #       and then directly import the records, rather than be built atop import_pandas_nodes()
-        if uri_prefix:
+        if entity_id_prefix:
             # Alter the 'subject' column with a prefix
-            df['subject'] = uri_prefix + df['subject'].astype(str)
+            df['subject'] = entity_id_prefix + df['subject'].astype(str)
 
 
         # Transform the triples ("narrow table") into a wide table with all the properties in separate columns
@@ -5166,11 +5129,11 @@ class GraphSchema:
         if col_names:
             df_wide = df_wide.rename(columns=col_names)
 
-        # Rename the "subject" column to be "uri"
+        # Rename the "subject" column to be "entity_id"
         df_wide = df_wide.rename(columns={"subject": "uri"})
 
         # Now that the data frame is transformed, do the actual import
-        return cls.import_pandas_nodes_NO_BATCH(df=df_wide, class_name=class_node, uri_namespace=None,
+        return cls.import_pandas_nodes_NO_BATCH(df=df_wide, class_name=class_node, entity_id_namespace=None,
                                                 datetime_cols=datetime_cols, int_cols=int_cols,
                                                 extra_labels=extra_labels,
                                                 report_frequency=report_frequency)
@@ -5233,7 +5196,7 @@ class GraphSchema:
                 * DIRECTION OF RELATIONSHIP (cannot be specified by Python dict/JSON)
                 * LACK OF "Import Data" node (ought to be automatically created if needed)
                 * LACK OF "BA" (or "DATA"?) labels being set
-                * INABILITY TO LINK TO EXISTING NODES IN DBASE (try using: "uri": some_int  as the only property in nodes to merge)
+                * INABILITY TO LINK TO EXISTING NODES IN DBASE (try using: "entity_id": some_int  as the only property in nodes to merge)
                 * OFFER AN OPTION TO IGNORE BLANK STRINGS IN ATTRIBUTES
                 * INTERCEPT AND BLOCK IMPORTS FROM FILES ALREADY IMPORTED
                 * issue some report about any part of the data that doesn't match the Schema, and got silently dropped
@@ -5282,8 +5245,8 @@ class GraphSchema:
             node_id_list = cls.create_trees_from_list(data, class_name, cache=cache)  # This returns a list of Neo4j ID's
 
             for root_uri in node_id_list:
-                cls.debug_print(f"***Linking import node (uri={metadata_neo_id}) with "
-                                f"data root node (Neo4j ID={root_uri}), thru relationship `imported_data`")
+                cls.debug_print(f"***Linking import node (entity_id={metadata_neo_id}) with "
+                                f"data root node (Internal database ID={root_uri}), thru relationship `imported_data`")
                 # Connect the root of the import to the metadata node
                 cls.add_data_relationship(from_id=metadata_neo_id, to_id=root_uri, rel_name="imported_data")
 
@@ -5638,42 +5601,42 @@ class GraphSchema:
 
 
     @classmethod
-    def is_valid_uri(cls, uri :str) -> bool:
+    def is_valid_entity_id(cls, entity_id :str) -> bool:
         """
-        Check the validity of the passed uri.
-        If the uri belongs to a Schema node, a tighter check can be performed with is_valid_schema_uri()
+        Check the validity of the passed entity_id.
+        If the entity_id belongs to a Schema node, a tighter check can be performed with is_valid_schema_entity_id()
 
-        :param uri: A string with a value that is expected to be a uri of a node
-        :return:    True if the passed uri has a valid value, or False otherwise
+        :param entity_id: A string with a value that is expected to be a entity_id of a node
+        :return:    True if the passed entity_id has a valid value, or False otherwise
         """
         # TODO: also verify that the string isn't just a group of blanks
-        if type(uri) == str and uri != "":
+        if type(entity_id) == str and entity_id != "":
             return True
 
         return False
 
 
     @classmethod
-    def is_valid_schema_uri(cls, schema_uri :str) -> bool:
+    def is_valid_schema_entity_id(cls, schema_entity_id :str) -> bool:
         """
-        Check the validity of the passed Schema uri.
+        Check the validity of the passed Schema entity_id.
         It should be of the form "schema-n" for some integer n
-        To check the validity of the uri of a Data node rather than a Schema node,
-        use is_valid_uri() instead
+        To check the validity of the entity_id of a Data node rather than a Schema node,
+        use is_valid_entity_id() instead
 
-        :param schema_uri:  A string with a value that is expected to be a uri of a Schema node
-        :return:            True if the passed uri has a valid value, or False otherwise
+        :param schema_entity_id:  A string with a value that is expected to be a entity_id of a Schema node
+        :return:            True if the passed entity_id has a valid value, or False otherwise
         """
-        if type(schema_uri) != str:
+        if type(schema_entity_id) != str:
             return False
 
         # Check that the string starts with "schema-"
-        if schema_uri[:7] != "schema-":
+        if schema_entity_id[:7] != "schema-":
             return False
 
         # Check that the portion after "schema-" represents an integer
         try:
-            int(schema_uri[7:])
+            int(schema_entity_id[7:])
         except:
             return False
 
@@ -5682,7 +5645,7 @@ class GraphSchema:
 
 
     @classmethod
-    def assign_uri(cls, internal_id :int|str, namespace="data_node") -> str:
+    def assign_entity_id(cls, internal_id : int|str, namespace="data_node") -> str:
         """
         Given an existing Data Node that lacks a URI value, assign one to it (and save it in the database.)
         If a URI value already exists on the node, an Exception is raised
@@ -5695,9 +5658,9 @@ class GraphSchema:
         #TODO: pytest
 
         assert cls.data_node_exists_EXPERIMENTAL(internal_id), \
-            f"assign_uri(): no Data Node with an internal ID of {internal_id} was found"
+            f"assign_entity_id(): no Data Node with an internal ID of {internal_id} was found"
 
-        new_uri = cls.reserve_next_uri(namespace=namespace)
+        new_uri = cls.reserve_next_entity_id(namespace=namespace)
         q = f'''
             MATCH (n) 
             WHERE id(n) = $internal_id AND n.uri IS NULL
@@ -5710,8 +5673,8 @@ class GraphSchema:
 
         number_properties_set = stats.get("properties_set", 0)
         assert number_properties_set == 1, \
-            f"assign_uri(): unable to set a value for the `uri` property of " \
-            f"the Data Node with an internal ID of {internal_id}  (perhaps it already has a uri?)"
+            f"assign_entity_id(): unable to set a value for the `entity_id` property of " \
+            f"the Data Node with an internal ID of {internal_id}  (perhaps it already has an entity_id?)"
 
         return new_uri
 
@@ -5769,7 +5732,7 @@ class GraphSchema:
 
 
     @classmethod
-    def reserve_next_uri(cls, namespace="data_node", prefix="", suffix="") -> str:
+    def reserve_next_entity_id(cls, namespace="data_node", prefix="", suffix="") -> str:
         """
         Generate and reserve a URI (or fragment thereof, aka "token"),
         using the given namespace and, optionally the given prefix and/or suffix.
@@ -5783,13 +5746,13 @@ class GraphSchema:
         If no prefix or suffix is specified, use the values provided when the namespace
         was first created.
 
-        EXAMPLES:   reserve_next_uri("Document", "doc.", ".new") might produce "doc.3.new"
-                    reserve_next_uri("Image", prefix="i-") might produce "i-123"
+        EXAMPLES:   reserve_next_entity_id("Document", "doc.", ".new") might produce "doc.3.new"
+                    reserve_next_entity_id("Image", prefix="i-") might produce "i-123"
 
         IMPORTANT: Prefixes and suffixes only need to be passed when first creating a new namespace;
                    if they're passed in here, they over-ride their stored counterparts.
 
-        Note that the returned uri is de-facto "permanently reserved" on behalf of the calling function,
+        Note that the returned entity_id is de-facto "permanently reserved" on behalf of the calling function,
         and can't be used by any other competing thread, thus avoid concurrency problems (racing conditions)
 
         :param namespace:   A string used to maintain completely separate groups of auto-increment values;
@@ -5808,14 +5771,14 @@ class GraphSchema:
                                 (starting with 1); it's ready-to-use and "reserved", i.e. could be used
                                 at any future time
         """
-        # TODO: provide a function reserve_next_uri_GROUP()
+        # TODO: provide a function reserve_next_entity_id_GROUP()
 
 
         assert (type(prefix) == str) or (prefix is None), \
-            f"reserve_next_uri(): the argument `prefix` must be a string or None; " \
+            f"reserve_next_entity_id(): the argument `prefix` must be a string or None; " \
             f"value passed was of type {type(prefix)}"
         assert (type(suffix) == str) or (suffix is None), \
-            f"reserve_next_uri(): the argument `suffix` must be a string or None;" \
+            f"reserve_next_entity_id(): the argument `suffix` must be a string or None;" \
             f" value passed was of type {type(suffix)}"
 
         if namespace=="data_node":
@@ -5830,10 +5793,10 @@ class GraphSchema:
             suffix = stored_suffix
 
         # Assemble the URI
-        uri = f"{prefix}{autoincrement_to_use}{suffix}"
-        #print(f"***++ GENERATING NEW URI: `{uri}`")
+        entity_id = f"{prefix}{autoincrement_to_use}{suffix}"
+        #print(f"***++ GENERATING NEW URI: `{entity_id}`")
 
-        return uri
+        return entity_id
 
 
 
@@ -5892,7 +5855,7 @@ class GraphSchema:
 
         # If no Autoincrement node found, raise an Exception
         assert result, \
-            f"reserve_next_uri(): no namespace named '{namespace}' was found.  " \
+            f"reserve_next_entity_id(): no namespace named '{namespace}' was found.  " \
             f"Make sure to first create the namespace with a call to create_namespace()"
 
         # Unpack the dictionary of data from the Autoincrement node
@@ -5912,17 +5875,17 @@ class GraphSchema:
 
 
     @classmethod
-    def _next_available_schema_uri(cls) -> str:
+    def _next_available_schema_entity_id(cls) -> str:
         """
-        Return the next available uri for nodes managed by this class.
-        For unique uri's to use on Data Nodes, use reserve_next_uri() instead
+        Return the next available entity_id for nodes managed by this class.
+        For unique entity_id's to use on Data Nodes, use reserve_next_entity_id() instead
 
         :return:     A string based on unique auto-increment values, used for Schema nodes
         """
         if not cls.namespace_exists("schema_node"):
             cls.create_namespace("schema_node")
 
-        return cls.reserve_next_uri(namespace="schema_node", prefix="schema-")
+        return cls.reserve_next_entity_id(namespace="schema_node", prefix="schema-")
 
 
 
@@ -5974,7 +5937,7 @@ class GraphSchema:
 
 
     @classmethod
-    def generate_uri(cls, class_name :str) -> str:
+    def generate_entity_id(cls, class_name :str) -> str:
         """
         Use, as appropriate for the given Class,
         a specific namespace - or the general data node namespace - to generate a URI
@@ -5989,11 +5952,11 @@ class GraphSchema:
         namespace = cls.lookup_class_namespace(class_name)
 
         if namespace:
-            print(f"generate_uri(): Using namespace '{namespace}'")
-            return cls.reserve_next_uri(namespace=namespace)
+            print(f"generate_entity_id(): Using namespace '{namespace}'")
+            return cls.reserve_next_entity_id(namespace=namespace)
         else:
-            print(f"generate_uri(): Using default datanodes namespace")
-            return cls.reserve_next_uri()
+            print(f"generate_entity_id(): Using default datanodes namespace")
+            return cls.reserve_next_entity_id()
 
 
 
@@ -6087,7 +6050,7 @@ class GraphSchema:
         :param node_id:     [OPTIONAL] Either an internal database ID or a key value,
                                 depending on the value of `id_key`
         :param id_key:      [OPTIONAL] Name of a key used to identify the data node(s) with the `node_id` value;
-                                for example, "uri".
+                                for example, "entity_id".
                                 If blank, then the `node_id` is taken to be the internal database ID
         :param class_name:  [OPTIONAL] The name of a Schema Class
 
@@ -6165,7 +6128,7 @@ class SchemaCache:
         self._schema = {}   # The KEYS are the internal database IDs of the Schema Class nodes;
                             # the VALUES are dicts that contain the following keys:
                             #       1) "class_attributes"
-                            #               EXAMPLE:  {'name': 'MY CLASS', 'schema_uri': '123', 'strict': False}
+                            #               EXAMPLE:  {'name': 'MY CLASS', 'schema_entity_id': '123', 'strict': False}
 
                             #       2) "class_properties"
                             #               EXAMPLE:  ["age", "gender", "weight"]
@@ -6200,7 +6163,7 @@ class SchemaCache:
         If request == "class_attributes":
             return the attributes of the requested Class,
             i.e. a dictionary of all the Class node's attributes
-            EXAMPLE:  {'name': 'MY CLASS', 'schema_uri': '123', 'strict': False}
+            EXAMPLE:  {'name': 'MY CLASS', 'schema_entity_id': '123', 'strict': False}
 
         If request == "class_properties":
             return the properties of the requested Class,
