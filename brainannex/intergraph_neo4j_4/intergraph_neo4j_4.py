@@ -347,10 +347,6 @@ class InterGraph:
             will return a structure such as [ [b1, c1] , [b2, c2] ]  if flatten is False,
             vs.  [b1, c1, b2, c2]  if  flatten is True.  (Note: each b1, c1, etc, is a dictionary.)
 
-        TODO:  Scenario to test:
-            if b1 == b2, would that still be [b1, c1, b1(b2), c2] or [b1, c1, c2] - i.e. would we remove the duplicates?
-            Try running with flatten=True "MATCH (b:boat), (c:car) RETURN b, c" on data like "CREATE (b:boat), (c1:car1), (c2:car2)"
-
         :param q:                   A Cypher query : typically, one returning nodes, relationships or paths
         :param data_binding:        An optional Cypher dictionary
                                     EXAMPLE, assuming that the cypher string contains the substring "$age":
@@ -369,12 +365,14 @@ class InterGraph:
                                 were returned in the Cypher query.
 
                         EXAMPLE with flatten=True for a query returning nodes "MATCH n RETURN n":
-                                [   {'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']},
+                                [
+                                    {'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']},
                                     {'year': 2013, 'make': 'Toyota', '_internal_id': 4, '_node_labels': ['Motor Vehicle']}
                                 ]
                         EXAMPLE with flatten=False for that same query returning nodes "MATCH n RETURN n":
-                                [   [{'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']}],
-                                    [{'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}]
+                                [
+                                    {"n": {'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']}},
+                                    {"n": {'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}}
                                 ]
 
                         EXAMPLE of *individual items* - for a returned NODE
@@ -382,13 +380,18 @@ class InterGraph:
 
                         EXAMPLE of *individual items* - for a returned RELATIONSHIP (note that 'neo4j_type' is the link name,
                             and that any properties of the relationships, such as 'price', appear as key/values in the dict)
-                            {'price': 7500, '_internal_id': 2,
+                            {'price': 7500,
+                             '_internal_id': 2,
                              'neo4j_start_node': <Node id=11 labels=frozenset() properties={}>,
                              'neo4j_end_node': <Node id=14 labels=frozenset() properties={}>,
                              'neo4j_type': 'bought_by'}]
         """
         #TODO: rename neo4j_start_node to start_node, etc
         #TODO: perhaps merge with query()
+        #TODO:  Scenario to test:
+        #       if b1 == b2, would that still be [b1, c1, b1(b2), c2] or [b1, c1, c2] - i.e. would we remove the duplicates?
+        #       Try running with flatten=True "MATCH (b:boat), (c:car) RETURN b, c" on data like "CREATE (b:boat), (c1:car1), (c2:car2)"
+        #TODO: test on queries that return paths - the line  dict(item.items())  may fail on records that contain relationship names
 
         if self.debug or self.block_query_execution:
             self.debug_query_print(q, data_binding, method="query_extended")

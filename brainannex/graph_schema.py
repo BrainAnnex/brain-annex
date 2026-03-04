@@ -14,7 +14,7 @@ import numpy as np
 class GraphSchema:
     """
     Note: Formerly named NeoSchema;
-          major implementation changes were introduced in version 5 Release Candidates 2 and 6
+          major implementation changes were introduced in version 5, Release Candidates 2, 6 and 8
 
     A layer above the class GraphAccess (or, in principle, another library providing a compatible interface),
     to provide an optional schema to the underlying database.
@@ -66,11 +66,26 @@ class GraphSchema:
 
     IMPLEMENTATION DETAILS
 
+        [SEE ALSO:  https://brainannex.org/docs/neoschema-user-guide.htm ]
+
+        - Nodes that elect to utilize this Schema layer will have an attribute called "_CLASS"
+            set to the name of their Class.
+            EXAMPLE: database node with metadata about an image might have a "_CLASS = 'Image'" attribute,
+                     assuming there is a Schema node for Class 'Image'
+
         - Every node used by this class, as well as the data nodes it manages,
-          contains has a unique attribute "entity_id" (formerly called "uri").
+            contains has a unique attribute "_entity_id" (currently called "uri", but soon to be changed)
 
           The entity_id's of schema nodes have the form "schema-n", where n is a unique number.
-          Data nodes can have any unique entity_id's, with optional prefixes and suffixes chosen by the higher layers.
+
+        - Entity ID values are unique WITHIN a particular Class.
+            FOR EXAMPLE, a Data Node of Class "Image" may have an entity_id such as "poster-123";
+            it's possible to use that same entity_id for a Data Note of, say, class "Document".
+
+        - The pair (Class Name, Entity ID) may be used as the basis to create a DOI or other URI,
+            i.e. a universal, unique identifier
+
+        - Data nodes may elect to have entity_id's, with optional prefixes and suffixes chosen by the higher layers.
           The Schema layer manages the auto-increments for any desired set of namespaces (and itself makes use
           of the "schema_node" namespace)
 
@@ -78,8 +93,9 @@ class GraphSchema:
           We also avoid calling them "label", as done in RDFS, because in Labeled Graph Databases
           like Neo4j, the term "label" has a very specific meaning, and is pervasively used.
 
-        - For convenience, data nodes contain a label equal to their Class name
-
+        - For convenience and efficiency, nodes contain a label equal to their Class name
+            EXAMPLE: database node with metadata about an image that has a "_CLASS = 'Image'" attribute,
+                     will also have an `Image` label (possibly in addition to other labels unrelated to the Schema)
 
     AUTHOR:
         Julian West
@@ -2188,45 +2204,6 @@ class GraphSchema:
         return cls.get_single_data_node(node_id=entity[1], id_key="uri", class_name=entity[0], hide_schema=hide_schema)
 
 
-    @classmethod
-    def search_data_nodes(cls, entity_name :str, key_name :str, key_value, hide_schema=True) -> [dict]:
-        """
-        Return a list of matching nodes
-
-        :param entity_name:
-        :param key_name:
-        :param key_value:
-        :param hide_schema:
-        :return:            A list of dictionaries
-        """
-        # TODO: test
-        # TODO: possibly add a function that only returns a specified single Property, or specified list of Properties
-        # TODO: optionally also return node label
-
-        q = f'''
-            MATCH (dn :`{entity_name}`) 
-            WHERE dn.{key_name} = $key_value
-            RETURN dn
-            '''
-            # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
-
-
-        data_binding = {"key_value": key_value}
-        #cls.db.debug_query_print(q, data_binding, "get_data_node")
-        result = cls.db.query(q, data_binding=data_binding)
-
-        recordset = []
-        for d in result:
-            d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-            if hide_schema and ("_CLASS" in d):
-                del d["_CLASS"]
-
-            recordset.append(d)
-
-        return recordset
-
-
 
     @classmethod
     def get_single_data_node(cls, node_id, id_key=None, class_name=None, hide_schema=True) -> dict | None:
@@ -2308,9 +2285,54 @@ class GraphSchema:
 
 
 
+
+    @classmethod
+    def search_data_nodes(cls, entity_name :str, key_name :str, key_value, hide_schema=True) -> [dict]:
+        """
+        Return a list of matching nodes.
+        This is meant to be a simplified version of get_nodes_by_filter()
+
+        :param entity_name:The name of a Class
+        :param key_name:
+        :param key_value:
+        :param hide_schema:
+        :return:            A list of dictionaries
+        """
+        # TODO: test
+        # TODO: possibly add a feature that only returns a specified single Property, or specified list of Properties
+        # TODO: optionally also return node label
+        # TODO: actually match by Class name, not (just) by label
+        # TODO: make key_name/key_value optional
+
+        q = f'''
+            MATCH (dn :`{entity_name}`) 
+            WHERE dn.{key_name} = $key_value
+            RETURN dn
+            '''     # AND dn._CLASS = '{entity_name}'
+            # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
+
+
+        data_binding = {"key_value": key_value}
+        #cls.db.debug_query_print(q, data_binding, "get_data_node")
+        result = cls.db.query(q, data_binding=data_binding)
+
+        recordset = []
+        for row in result:
+            record = row["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+            if hide_schema and ("_CLASS" in record):
+                del record["_CLASS"]
+
+            recordset.append(record)    # TODO: maybe not necessary if we're doing deletion in place
+
+        return recordset
+
+
+
     @classmethod
     def get_nodes_by_filter(cls, class_name=None, labels=None,
-                            key_names=None, key_value=None, string_match=None, case_sensitive=True,
+                            key_names=None, key_value=None,
+                            string_match=None, case_sensitive=True,
                             include_id=False, include_labels=False,
                             order_by=None, sort_ignore_case=None,
                             skip=None, limit=100) -> ([dict], int):
@@ -2321,7 +2343,7 @@ class GraphSchema:
         :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
         :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
         :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
-                                An implicit OR is used if there's more than one
+                                An implicit *OR* is used if more than one is given
         :param key_value:   [OPTIONAL] Only applicable if arg `key_names` is present: match nodes with the
                                 specified key name/value (for each key, with an implicit OR, if there's more than 1).
                                 If key_value is a string, the match is case-sensitive;
@@ -2334,24 +2356,31 @@ class GraphSchema:
                                 with the internal database ID value; by default, False
         :param include_labels:  [OPTIONAL] If True, also return an extra field named "_node_labels",
                                 with a list of the node labels; by default, False
-        :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive instructions.
+        :param order_by:    [OPTIONAL] A string with comma-separated, case IN-sensitive field names,
+                                optionally followed by the keyword DESC.
                                 EXAMPLE:  "John DESC, Alice, Bob DESC, Carol"
                                 Note: nodes lacking the order-by fields, will appear at the end of the
                                       returned sorted list when sorting in ascending order, or at the start
                                       when in descending order
         :param sort_ignore_case: [OPTIONAL] List of names of string-valued fields, for which sorting
-                                should ignore the case of the sorted values.  MUST be string-valued fields,
+                                should ignore the case.  MUST be string-valued fields,
                                 or an Exception will result
-        :param skip:        [OPTIONAL] An integer
+        :param skip:        [OPTIONAL] An integer specifying how many records to skip over;
+                                this is only meaningful if `order_by` is specified
         :param limit:       [OPTIONAL] An integer specifying the max number of items to return
 
         :return:            A pair with two elements:
                                 1. A (possibly-empty) list of dictionaries; each dict contains all the properties of a node
-                                    Notes: The internal database ID is *not* included.
-                                       The `_CLASS` special property, if present, will be included.
-                                       Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
-                                2.  What the number of nodes would be in the absence of limit/skip value
+                                    Notes:
+                                        The internal database ID is *not* included, unless the argument `include_id` is True,
+                                        in which case the extra property `_internal_id` will be present.
+                                        If the argument `include_labels` is True, an extra property "_node_labels" will be present
+                                        The `_CLASS` special property, if present, will be included.
+                                        Any database "date" or "datetime" values will be converted to dates in the format "YYYY/MM/DD"
+                                2.  What the number of nodes would be in the absence of any limit/skip value
         """
+        #TODO: add argument `hide_schema`
+        #TODO: maybe add argument `single_field` and/or `fields`
         allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
         if string_match:
             assert string_match in allowed_patters, \
@@ -2432,6 +2461,11 @@ class GraphSchema:
                  '''
 
         if order_by:
+            if sort_ignore_case:
+                assert type(sort_ignore_case) == list, \
+                    "get_nodes_by_filter(): argument `sort_ignore_case` must be a LIST of names of string-valued fields " \
+                    "for which sorting should ignore the case"
+
             revised_order_by = cls._process_order_by(s=order_by, dummy_node_name="n", ignore_case=sort_ignore_case)
             q += f"ORDER BY {revised_order_by} \n"
 

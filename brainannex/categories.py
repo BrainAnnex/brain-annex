@@ -919,19 +919,19 @@ class Categories:
 
 
     @classmethod
-    def get_content_items_by_category(cls, uri) -> [{}]:
+    def get_content_items_by_category(cls, entity_id :str) -> [dict]:
         """
         Return the records for all nodes linked
         to the Category node identified by its uri value
 
-        :param uri: A string identifying the desired Category
-        :return:    A list of dictionaries
-                    EXAMPLE:
-                    [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
-                     {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-                     {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
-                     {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'uri': '6965', 'pos': 86, 'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
-                    ]
+        :param entity_id:   A string identifying the desired Category
+        :return:            A list of dictionaries
+                            EXAMPLE:
+                            [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
+                             {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
+                             {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
+                             {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'uri': '6965', 'pos': 86, 'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
+                            ]
         """
 
         # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
@@ -941,14 +941,15 @@ class Categories:
             MATCH (n) -[r :BA_in_category]-> (:Category {uri:$category_id}),
             (cl :CLASS)
             WHERE cl.name = n.`_CLASS`
-            RETURN n, r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code
+            RETURN n, 
+                   r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code, id(n) AS internal_id
             ORDER BY r.pos
             '''
 
         # TODO: class_code is being phased out in favor of the new class_handler
 
-        result = cls.db.query(q, data_binding={"category_id": uri})
-        #cls.db.debug_query_print(q, data_binding={"category_id": uri})
+        result = cls.db.query(q, data_binding={"category_id": entity_id})
+        #cls.db.debug_query_print(q, data_binding={"category_id": entity_id})
 
 
         content_item_list = []
@@ -962,6 +963,7 @@ class Categories:
 
             item_record["pos"] = elem["pos"]                # Inject into the record a positional value
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
+            item_record["internal_id"] = elem["internal_id"]  # Inject into the record the internal node ID
 
             if elem.get("class_handler"):
                 item_record["class_handler"] = elem["class_handler"]    # Inject into the record the handler of its Class (not always present)

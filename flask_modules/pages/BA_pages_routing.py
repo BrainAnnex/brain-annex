@@ -156,7 +156,7 @@ class PagesRouting:
             see_also_links = Categories.get_see_also(category_uri)
             # EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
 
-            # Fetch all the Content Items attached to this Category
+            # Fetch the data for all the Content Items attached to this Category
             content_items = Categories.get_content_items_by_category(category_uri)
             #   List of dictionaries.  EXAMPLE:
             #       [
@@ -201,7 +201,7 @@ class PagesRouting:
             """
             template = "md_file_generator.htm"
 
-            content_items = Categories.get_content_items_by_category(uri=category_uri)
+            content_items = Categories.get_content_items_by_category(entity_id=category_uri)
 
             return render_template(template,
                                    site_data = cls.site_data,

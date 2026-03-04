@@ -25,7 +25,7 @@ Vue.component('vue-content-items',
                             and there will be additional fields such as `insert_after_uri` and `insert_after_class`
                             EXAMPLE: {uri: -2, insert_after_uri: "i-123", "insert_after_class": "Image"}
 
-                            TODO: Maybe rename to item_data
+                            TODO: Rename to item_data
 
             expose_controls:    Flag indicating whether in edit mode
             category_uri:       A string indicating which Category-viewer page is using this component

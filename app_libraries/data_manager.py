@@ -517,15 +517,16 @@ class DataManager:
     @classmethod
     def get_records_by_class(cls, class_name :str, field_name :str, order_by :str) -> []:
         """
-        Return a list of values of a particular field, of all the records of the given Class,
+        Return a list of values of one particular field, of all the records of the given Class,
         optionally sorted by the given field
 
-        :param class_name:
-        :param field_name:
-        :param order_by:
+        :param class_name:  String with the name of the desired Schema Class
+        :param field_name:  Name of the single field to retrieve
+        :param order_by:    Name of the field to sort the results by
         :return:            A list of values
         """
-        # TODO: generalize, and move to GraphSchema
+        # TODO: generalize, and move to GraphSchema.
+        #       Is it really needed, given GraphSchema.get_nodes_by_filter() ?  Maybe just absorb into the latter
         match = cls.db.match(labels=class_name)
         return cls.db.get_single_field(match=match, field_name=field_name, order_by=order_by)
 
@@ -1019,6 +1020,57 @@ class DataManager:
         elif class_name == "Document":
             Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
                                                                                                         #TODO: add arg `upload_folder`
+
+
+
+    @classmethod
+    def directories_stored_in(cls, internal_id=None, limit=100) -> dict:
+        """
+        Extract the directory location of the given Content Item, if specified,
+        as well as the list of all registered directories
+
+        See also get_records_by_class()
+
+        :param internal_id: [OPTIONAL]
+        :param limit:       [OPTIONAL]
+        :return:            The dictionary containing:
+                                1. "location":  the name of the directory of the specified Content Item,
+                                                if applicable (or None if not specified)
+                                2. "all_directories": the sorted list of all directory names
+
+                                EXAMPLE:
+                                 {"location": "documents/Ebooks & Articles/SYSTEMS BIO",
+                                  "all_directories":
+                                        [
+                                            "documents/Ebooks & Articles/SYSTEMS BIO",
+                                            "documents/Ebooks & Articles/math"
+                                        ]
+                                  }
+        """
+        result, _ = GraphSchema.get_nodes_by_filter(class_name="Directory",
+                                                    order_by="name", sort_ignore_case=["name"],
+                                                    limit=limit)
+        #print(result)
+        #TODO: let get_nodes_by_filter() extract the desired single field
+        directory_list = [d.get("name") for d in result]
+        #print(directory_list)
+
+        if internal_id is None:
+            location = None
+        else:
+            result = cls.db.follow_links(match=internal_id,
+                                         rel_name="BA_stored_in", rel_dir="OUT",
+                                         neighbor_labels="Directory")
+            assert len(result) == 1, \
+                f"directories_stored_in(): found {len(result)} results (instead of 1) " \
+                f"for the location of Content Item with internal_id {internal_id}"
+            location = result[0].get("name")
+            assert location is not None, \
+                f"directories_stored_in(): missing name for the location of Content Item with internal_id {internal_id}"
+
+        return {"location": location, "all_directories": directory_list}
+
+
 
 
 

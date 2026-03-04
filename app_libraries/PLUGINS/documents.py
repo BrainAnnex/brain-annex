@@ -151,7 +151,7 @@ class Documents:
 
     @classmethod
     def new_content_item_successful(cls, uri :str, pars :dict,
-                                    mime_type :str, upload_folder :str, index_pdf=True) -> None:
+                                    mime_type :str, upload_folder=None, index_pdf=True) -> None:
         """
         Invoked after a new Content Item of this type (Document) gets successfully added to the database.
         Only text and PDF are currently supported.

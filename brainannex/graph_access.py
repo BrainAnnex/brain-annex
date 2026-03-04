@@ -1637,9 +1637,11 @@ class GraphAccess(InterGraph):
         :param limit:           [OPTIONAL] The max number of neighbors to visit (not in any particular order);
                                     by default 100
 
-        :return:                A list of dictionaries with all the properties of the neighbor nodes.
+        :return:                A (possibly empty) list of dictionaries with all the properties of the neighbor nodes.
                                     If `include_id` is True, then each dict also contains a key named "_internal_id",
                                     with the internal database ID value.
+                                    If `include_labels` is True, then each dict also contains a key named "_node_labels",
+                                    with a list of the node labels.
                                     Any datetime, etc, value in the database are first converted to python strings
         """
         # TODO: add an option to only retrieve SOME of the properties

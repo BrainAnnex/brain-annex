@@ -16,6 +16,7 @@ Vue.component('vue-plugin-rs',
                                             pos: 100,
                                             schema_code: "rs",
                                             uri: "rs-7",
+                                            internal_id: 123,
 
                                             caption: "Expressions",
                                             fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields;
@@ -29,7 +30,7 @@ Vue.component('vue-plugin-rs',
                                             clause_value: "Berkeley"
                                         }
                                       (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
-                            TODO: take "pos" and "class_name" out of item_data !  Start passing internal_id
+                                      TODO: take "pos", "class_name", "class_handler", "schema_code" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)

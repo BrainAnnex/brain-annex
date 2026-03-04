@@ -85,12 +85,14 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
             /*
-                ---------   SERVER CALLS   ---------
+                ------------   SERVER CALLS   ------------
              */
 
-            server_communication_POST()          /* *** "POST" ***  version */
-            /* Initiate request to server
+
+            /**
+             * Initiate request to server
              */
+            server_communication_POST()          /* *** "POST" ***  version */
             {
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
@@ -107,7 +109,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_data,
-                             json_encode_send: false,  /* OR true, as desired */
+                             json_encode_send: true,  /* OR false, as desired */
                              callback_fn: this.finish_server_communication,
                              custom_data: my_var
                             });
@@ -118,9 +120,10 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             },
 
 
-            server_communication_GET()          /*  *** "GET" ***  version */
-            /* Initiate request to server
+            /**
+             * Initiate request to server
              */
+            server_communication_GET()          /*  *** "GET" ***  version */
             {
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
@@ -170,7 +173,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                   //...
+                //...
             },
 
         }  // METHODS
