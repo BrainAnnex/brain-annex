@@ -198,7 +198,7 @@ Vue.component('vue-plugin-d',
                                                 "documents/Ebooks & Articles/math"
                                             ]
                                          */
-                                         
+
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
