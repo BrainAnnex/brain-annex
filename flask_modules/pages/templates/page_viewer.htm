@@ -2,7 +2,8 @@
 {#  General viewer page for a list of Content Items (the list is specified in Flask parameter content_items)
     Vue.js is used for the rendering
 
-    Flask-passed parameters:
+
+    FLASK-PASSED parameters:
 
         site_data           A dict (for details, see BA_pages_routings.py)
         current_page
@@ -41,7 +42,7 @@
                                   "Site Link": ["url", "name", "date", "comments", "rating", "read"]
                                  }
 
-        content_items:  A list of dictionaries with the data for all the Content Items on this page
+        content_items:  A list of dictionaries with the data for each the Content Items on this page
                         EXAMPLE:
                             [{'schema_code': 'i', 'uri': 'i-1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
                              {'schema_code': 'h', 'uri': 'h-23', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
@@ -53,7 +54,7 @@
         upload_directories: A list of folders registered with BrainAnnex
                             EXAMPLE:
                                 ["documents/Ebooks & Articles",
-                                "documents/Ebooks & Articles/Computer Science"]
+                                 "documents/Ebooks & Articles/Computer Science"]
 
     -----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
@@ -668,7 +669,7 @@ new Vue({
                                     //            flask_modules/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
-                                    // Array containing objects with the data for all the Content Items on this page
+                                    // Array of objects with the data for each of the Content Items on this page
                                     // EXAMPLE: [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
                                     //           {pos:50,"uri":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Image"}
                                     //          ]

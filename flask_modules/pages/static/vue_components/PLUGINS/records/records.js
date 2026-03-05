@@ -15,7 +15,8 @@ Vue.component('vue-plugin-r',
 
                         EXAMPLE: {"class_name":"German Vocabulary",
                                   "uri":"52", "pos":10, "schema_code":"r",
-                                  "German":"Tier", "English":"animal"}
+                                  "German":"Tier", "English":"animal",
+                                  "internal_id": 123}}
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The ID of the Category page where this record is displayed (used when creating new records)
@@ -339,11 +340,10 @@ Vue.component('vue-plugin-r',
 
                 // Scrub some data, so that it won't show up in the tabular format
                 delete clone_obj.uri;
+                delete clone_obj.internal_id;
                 delete clone_obj.schema_code;   // TODO: in the process of getting phased out
                 delete clone_obj.class_name;
-                delete clone_obj.insert_after_uri;      // TODO: is this field still present?
-                delete clone_obj.insert_after_class;    // TODO: is this field still present?
-                delete clone_obj.pos;                   // TODO: this might be getting phased out
+                delete clone_obj.pos;          // TODO: this might be getting phased out
 
                 return clone_obj;
             },

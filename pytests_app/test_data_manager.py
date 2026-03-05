@@ -128,7 +128,7 @@ def test_switch_category(db):
     GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
     all_photo_uris = []
     for i in range(4):
-        photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+        photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
         all_photo_uris.append(photo_uri)
         Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
                                       item_properties={"caption": "photo_"+str(i+1)}, new_uri=photo_uri)
@@ -138,7 +138,7 @@ def test_switch_category(db):
     DataManager.switch_category({"items": ['photo-1', 'photo-2'], "from": root_uri, "to": greece_uri})
 
     # Verify that those 2 photos are now linked to the "Greece" Category, at the expected positions
-    result = Categories.get_content_items_by_category(uri=greece_uri)
+    result = Categories.get_content_items_by_category(entity_id=greece_uri)
     expected = [{'caption': 'photo_1', 'uri': 'photo-1', 'pos': 0, 'class_name': 'Photo'},
                 {'caption': 'photo_2', 'uri': 'photo-2', 'pos': Collections.DELTA_POS, 'class_name': 'Photo'}]
 
@@ -146,7 +146,7 @@ def test_switch_category(db):
 
 
     # Separately, add a new photo to the "Greece" Category
-    photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     Categories.add_content_at_end(category_uri=greece_uri, item_class_name="Photo",
                                   item_properties={"caption": "photo_extra"}, new_uri=photo_uri)
 
@@ -155,7 +155,7 @@ def test_switch_category(db):
     DataManager.switch_category({"items": ['photo-3', 'photo-4'], "from": root_uri, "to": greece_uri})
 
     # Verify that those 2 photos are now linked to the "Greece" Category, at the expected positions
-    result = Categories.get_content_items_by_category(uri=greece_uri)
+    result = Categories.get_content_items_by_category(entity_id=greece_uri)
     # Concatenate two dicts
     expected += [{'caption': 'photo_extra', 'uri': 'photo-5', 'pos': 2 * Collections.DELTA_POS, 'class_name': 'Photo'},
                  {'caption': 'photo_3', 'uri': 'photo-3',     'pos': 3 * Collections.DELTA_POS, 'class_name': 'Photo'},

@@ -151,7 +151,7 @@ class Documents:
 
     @classmethod
     def new_content_item_successful(cls, uri :str, pars :dict,
-                                    mime_type :str, upload_folder :str, index_pdf=True) -> None:
+                                    mime_type :str, upload_folder=None, index_pdf=True) -> None:
         """
         Invoked after a new Content Item of this type (Document) gets successfully added to the database.
         Only text and PDF are currently supported.
@@ -214,7 +214,7 @@ class Documents:
 
 
         # Carry out the actual indexing in the database
-        content_id = GraphSchema.get_data_node_internal_id(uri=uri)
+        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
 
         # TODO: this ought to be done in a separate execution thread or process
         FullTextIndexing.new_indexing(internal_id=content_id, unique_words=unique_words)

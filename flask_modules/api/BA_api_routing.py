@@ -116,7 +116,8 @@ class ApiRouting:
         for example arising from a request lacking mimetype indicates "application/json",
         or a JSON string that isn't parsable
 
-        :return:            The python data decoded from the JSON string that was passed in the POST body
+        :return:    The python data decoded from the JSON string that was passed in the POST body;
+                        note that this could be a variety of data types
         """
         # Extract and parse the JSON-encoded POST body
         request_parameters = request.get_json() # This parses the JSON-encoded string in the POST message,
@@ -1128,6 +1129,65 @@ class ApiRouting:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
 
             return jsonify(response)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/directories-stored-in', methods=['POST'])
+        @login_required
+        def directories_stored_in_api():
+            """
+
+            POST VARIABLES:
+                json    (REQUIRED)
+                        EXAMPLE :   {"node_internal_id": 123}
+
+            ~~~ EXAMPLE ~~~
+                http://localhost:5000/BA/api/directories-stored-in
+                using a POST with body:  {"node_internal_id" : 123}
+
+            :return:
+                EXAMPLE: {"location": "documents/Ebooks & Articles/SYSTEMS BIO",   # This value could be null
+                          "all_directories":
+                                [
+                                    "documents/Ebooks & Articles/SYSTEMS BIO",
+                                    "documents/Ebooks & Articles/math"
+                                ]
+                          }
+            """
+            # TODO: use this as a ***MODEL*** of future JSON web api calls
+            # Extract and parse the JSON-encoded POST body
+            try:
+                request_parameters = cls.parse_json_from_request_body()
+            except Exception as ex:
+                err_details = f"/directories-stored-in : Unable to parse JSON request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            #print("In directories_stored_in_api() -  request_parameters: ", request_parameters)
+            # EXAMPLE :   {"node_internal_id": 123}
+
+            # Validate the overall data type of the passed data
+            if type(request_parameters) != dict:
+                err_details = f"/directories-stored-in : the passed JSON value should be a dictionary; " \
+                              f"instead, it's of type {type(request_parameters)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                result = DataManager.directories_stored_in(internal_id = request_parameters.get("node_internal_id")) # A dict
+                response_data = {"status": "ok", "payload": result}                 # Successful termination
+            except Exception as ex:
+                err_details = f"/directories-stored-in : unable to retrieve the requested data.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+
+            #print(f"/directories-stored-in  is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
 
 
 
@@ -2244,14 +2304,13 @@ class ApiRouting:
             the time portion, if present, will get dropped
 
             POST VARIABLES:
-                json    (REQUIRED) A JSON-encoded list of internal database ID's of the data nodes of interest
+                json    (REQUIRED) A JSON-encoded list of internal database ID's
+                                   of the data nodes of interest
 
             :return:    A pair with all the data needed by the Cytoscape graph visualization.
                             The first element in the pair is a list of dicts with the node data;
                             the second  element in the pair is a list of dicts with the edge data
             """
-            # TODO: use this as a ***MODEL*** of future JSON web api calls  (turn some common elements into helper functions)
-
             # Extract and parse the JSON-encoded POST body
             try:
                 #TODO - switch to using:    request_parameters = cls.parse_json_from_request_body()
@@ -2276,6 +2335,7 @@ class ApiRouting:
             #print("In assemble_graph_json() -  pars_list: ", pars_list)
             # EXAMPLE: [34, 2, 412]    The individual list entries are internal database ID's (int or str)
 
+            # Validate the overall data type of the passed data
             if type(pars_list) != list:
                 err_details = f"/assemble-graph : the passed JSON value should be a list (array); " \
                               f"instead, it's of type {type(pars_list)}"
@@ -2362,9 +2422,10 @@ class ApiRouting:
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
 
-            print("In extract-node-neighborhood() -  request_parameters: ", request_parameters)
+            #print("In extract-node-neighborhood() -  request_parameters: ", request_parameters)
             # EXAMPLE:  {"node_internal_id": '853', "known_neighbors": ['13', '197'], "max_neighbors": 2}}
 
+            # Validate the overall data type of the passed data
             if type(request_parameters) != dict:
                 err_details = f"/extract-node-neighborhood : the passed JSON value should be a dictionary; " \
                               f"instead, it's of type {type(request_parameters)}"
@@ -2384,7 +2445,7 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
 
 
-            print(f"/extract-node-neighborhood is returning: `{response_data}`")
+            #print(f"/extract-node-neighborhood  is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 

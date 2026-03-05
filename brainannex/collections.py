@@ -48,12 +48,11 @@ class Collections:
 
 
     @classmethod
-    def add_to_schema(cls) -> (int|str, str):
+    def add_to_schema(cls) -> int|str:
         """
         Create, as needed, a new Schema Class node that represents a "Collection"
 
-        :return:    A pair of values with the internal database ID,
-                        and the unique uri assigned to the node just created;
+        :return:    The internal database ID of the new Class node just created;
                         if nothing was created, return None
         """
         if not GraphSchema.class_name_exists("Collections"):
@@ -121,8 +120,9 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_at_beginning(cls, collection_uri :str, membership_rel_name: str, item_class_name: str, item_properties: dict,
-                                       new_uri=None) -> str:
+    def add_to_collection_at_beginning(cls, collection_entity_id :str, collection_class :str,
+                                       membership_rel_name: str, item_class_name: str, item_properties: dict,
+                                       new_entity_id=None) -> str:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add it at the beginning of the specified Collection, linked by the specified relationship
@@ -138,7 +138,7 @@ class Collections:
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in link_to_collection_at_end()
 
-        assert GraphSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
+        assert GraphSchema.is_valid_entity_id(collection_entity_id), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
@@ -148,7 +148,7 @@ class Collections:
             MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{uri: $collection_id}}) 
             RETURN min(r.pos) AS min_pos
             '''
-        data_binding = {"collection_id": collection_uri}
+        data_binding = {"collection_id": collection_entity_id}
 
         min_pos = cls.db.query(q, data_binding, single_cell="min_pos")  # This will be None if the Collection has no elements
 
@@ -168,7 +168,7 @@ class Collections:
                                             new_uri=new_uri
                                             )
         '''
-        collection_id = GraphSchema.get_data_node_internal_id(uri=collection_uri)
+        collection_id = GraphSchema.get_data_node_internal_id(class_name=collection_class, entity_id=collection_entity_id)
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=data_binding,
                                      extra_labels="BA",
@@ -176,9 +176,9 @@ class Collections:
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
                                             ],
-                                     new_uri=new_uri
+                                     new_entity_id=new_entity_id
                                      )
-        return new_uri
+        return new_entity_id
 
 
 
@@ -451,29 +451,32 @@ class Collections:
 
 
     @classmethod
-    def add_to_collection_at_end(cls, collection_uri :str, membership_rel_name: str, item_class_name: str, item_properties: dict,
-                                 new_uri=None) -> str:
+    def add_to_collection_at_end(cls, collection_entity_id :str, collection_class :str,
+                                 membership_rel_name: str, item_class_name: str, item_properties: dict,
+                                 new_entity_id=None) -> str:
         """
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add it at the end of the specified Collection, linked by the specified relationship
 
-        EXAMPLE:  new_uri = add_to_collection_at_end(collection_id=708, membership_rel_name="BA_in_category",
-                                                     item_class_name="Header", item_properties={"text": "New Caption, at the end"}
+        EXAMPLE:  new_entity_id = add_to_collection_at_end(collection_id=708, collection_class="Category",
+                                                           membership_rel_name="BA_in_category",
+                                                           item_class_name="Header", item_properties={"text": "New Caption, at the end"}
 
-        :param collection_uri:      The uri of a data node whose schema is an instance of the Class "Collections"
+        :param collection_entity_id:The entity ID of a data node whose schema is an instance of the Class "Collections"
+        :param collection_class:    The Class of the above data node.  EXAMPLE: "Category"
         :param membership_rel_name:
         :param item_class_name:
         :param item_properties:
-        :param new_uri:             Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_entity_id:       Normally, the Entity ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
-        :return:                    The auto-increment "uri" assigned to the newly-created data node
+        :return:                    The auto-increment Entity ID assigned to the newly-created data node
         """
         #TODO:  DITCH!  The Data Node creation probably should be done ahead of time, and doesn't need to be the responsibility of this class!
         #TODO:  solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in link_to_collection_at_end()
 
-        assert GraphSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
+        assert GraphSchema.is_valid_entity_id(collection_entity_id), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
@@ -483,7 +486,7 @@ class Collections:
             MATCH (n:BA) -[r :{membership_rel_name}]-> (c:BA {{uri: $collection_id}}) 
             RETURN max(r.pos) AS max_pos
             '''
-        data_binding = {"collection_id": collection_uri}
+        data_binding = {"collection_id": collection_entity_id}
 
         #cls.db.debug_print(q, data_binding, "add_to_collection_at_end", True)
 
@@ -496,7 +499,7 @@ class Collections:
 
         data_binding = item_properties
 
-        collection_id = GraphSchema.get_data_node_internal_id(uri=collection_uri)
+        collection_id = GraphSchema.get_data_node_internal_id(class_name=collection_class, entity_id=collection_entity_id)
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=data_binding,
                                      extra_labels="BA",
@@ -504,24 +507,24 @@ class Collections:
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": pos}}
                                             ],
-                                     new_uri=new_uri
+                                     new_entity_id=new_entity_id
                                      )
-        return new_uri
+        return new_entity_id
 
 
 
     @classmethod
-    def add_to_collection_after_element(cls, collection_uri :str, collection_class :str,
+    def add_to_collection_after_element(cls, collection_entity_id :str, collection_class :str,
                                         membership_rel_name: str,
                                         item_class_name: str, item_properties: dict,
                                         insert_after_uri :str, insert_after_class :str,
-                                        new_uri=None) -> str:
+                                        new_entity_id=None) -> str:
         """
         Create a new Data Node, of the class specified in `item_class_name`, and with the given properties -
         and add to the specified Collection, linked by the specified relationship and inserted after the given collection Item
         (in the context of the positional order encoded in the relationship attribute "pos")
 
-        :param collection_uri:      The uri of a data node whose schema is an instance of the Class "Collections"
+        :param collection_entity_id:The Entity ID of a data node whose schema is an instance of the Class "Collections"
         :param collection_class:    For example, "Category"
 
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply
@@ -532,7 +535,7 @@ class Collections:
         :param insert_after_class:  The name of the Class of the element after which we want to insert.
                                         Note: (Class + URI) provides a unique identifier
 
-        :param new_uri:             Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
+        :param new_entity_id:             Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
         :return:                    The auto-increment "uri" assigned to the newly-created data node
         """
@@ -543,7 +546,7 @@ class Collections:
         #       which can lead to incorrect values of the "pos" relationship attributes.
         #       -> Follow the new way it is handled in link_to_collection_at_end()
 
-        assert GraphSchema.is_valid_uri(collection_uri), "The argument `collection_uri` isn't a valid URI string"
+        assert GraphSchema.is_valid_entity_id(collection_entity_id), "The argument `collection_uri` isn't a valid URI string"
         assert type(membership_rel_name) == str, "The argument `membership_rel_name` MUST be a string"
         assert type(item_class_name) == str, "The argument `item_class_name` MUST be a string"
         assert type(item_properties) == dict, "The argument `item_properties` MUST be a dictionary"
@@ -569,7 +572,7 @@ class Collections:
         LIMIT 1
         '''
 
-        data_binding = {"collection_id": collection_uri, "insert_after_uri": insert_after_uri}
+        data_binding = {"collection_id": collection_entity_id, "insert_after_uri": insert_after_uri}
         #cls.db.debug_print_query(q, data_binding)
 
         # ALTERNATE WAY OF PHRASING THE QUERY:
@@ -595,9 +598,10 @@ class Collections:
                 raise Exception(f"There is no node of class `{insert_after_class}` with the `uri` value ({insert_after_uri}) that was passed by `insert_after_uri`")
 
             #print("    It's case of 'insert AT THE END'")
-            return cls.add_to_collection_at_end(collection_uri=collection_uri, membership_rel_name=membership_rel_name,
+            return cls.add_to_collection_at_end(collection_entity_id=collection_entity_id, collection_class=collection_class,
+                                                membership_rel_name=membership_rel_name,
                                                 item_class_name=item_class_name, item_properties=item_properties,
-                                                new_uri=new_uri)
+                                                new_entity_id=new_entity_id)
 
 
         pos_before = result["pos_before"]
@@ -607,13 +611,13 @@ class Collections:
         if pos_after == pos_before + 1:
             # There's no room; shift everything that is past that position, by a count of DELTA_POS
             #print(f"    SHIFTING DOWN ITEMS whose `pos` value is {pos_after} and above  ***********")
-            cls.shift_down(collection_id=collection_uri, membership_rel_name=membership_rel_name, first_to_move=pos_after)
+            cls.shift_down(collection_id=collection_entity_id, membership_rel_name=membership_rel_name, first_to_move=pos_after)
             new_pos = pos_before + int(cls.DELTA_POS/2)			# This will be now be the empty halfway point
         else:
             new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
 
 
-        collection_id = GraphSchema.get_data_node_internal_id(uri=collection_uri)
+        collection_id = GraphSchema.get_data_node_internal_id(class_name=collection_class, entity_id=collection_entity_id)
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=item_properties,
                                      extra_labels="BA",
@@ -621,9 +625,9 @@ class Collections:
                                             "rel_name": membership_rel_name,
                                             "rel_attrs": {"pos": new_pos}}
                                             ],
-                                     new_uri=new_uri
+                                     new_entity_id=new_entity_id
                                      )
-        return new_uri
+        return new_entity_id
 
 
 

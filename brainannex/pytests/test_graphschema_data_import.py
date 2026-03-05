@@ -195,7 +195,7 @@ def test_import_pandas_nodes_3(db):
                                         primary_key="vehicle ID")
 
     # Expand the Schema, to also include "color"
-    GraphSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
+    GraphSchema.add_properties_to_class(class_node="Motor Vehicle", properties=["color"])
 
     import_result_2 = GraphSchema.import_pandas_nodes(df=df_2, class_name="Motor Vehicle",
                                                       max_batch_size=2,
@@ -548,7 +548,7 @@ def test_import_pandas_nodes_1_OLD(db):
         GraphSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
                                                  primary_key="vehicle ID")
 
-    GraphSchema.add_properties_to_class(class_node="Motor Vehicle", property_list=["color"])
+    GraphSchema.add_properties_to_class(class_node="Motor Vehicle", properties=["color"])
 
     import_car_list_2 = GraphSchema.import_pandas_nodes_NO_BATCH(df=df_2, class_name="Motor Vehicle",
                                                                  primary_key="vehicle ID", duplicate_option="merge")   # Duplicate records will be merged
@@ -1982,7 +1982,7 @@ def test_import_triplestore(db):
 
     result = GraphSchema.import_triplestore(df=df, class_node="Course",
                                             col_names = {1: "Course Title", 2: "School", 3: "Semester"},
-                                            uri_prefix = "r-")
+                                            entity_id_prefix="r-")
     assert len(result) == 1
 
     internal_id = result[0]

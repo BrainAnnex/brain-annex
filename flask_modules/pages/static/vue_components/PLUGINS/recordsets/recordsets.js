@@ -16,6 +16,7 @@ Vue.component('vue-plugin-rs',
                                             pos: 100,
                                             schema_code: "rs",
                                             uri: "rs-7",
+                                            internal_id: 123,
 
                                             caption: "Expressions",
                                             fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields;
@@ -29,7 +30,7 @@ Vue.component('vue-plugin-rs',
                                             clause_value: "Berkeley"
                                         }
                                       (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
-                            TODO: take "pos" and "class_name" out of item_data !  Start passing internal_id
+                                      TODO: take "pos", "class_name", "class_handler", "schema_code" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
@@ -447,14 +448,19 @@ Vue.component('vue-plugin-rs',
 
         computed: {
 
+            /**
+             * For page navigation
+             */
             number_of_pages()
-            // For page navigation
             {
                 return Math.ceil(this.total_count / this.current_metadata.n_group);
             },
 
+
+            /**
+             * For page navigation
+             */
             page_range()
-            // For page navigation
             {
                 var from = (this.current_page - 1) * this.current_metadata.n_group + 1;
                 var to =   from + this.recordset.length - 1;
@@ -650,13 +656,13 @@ Vue.component('vue-plugin-rs',
 
 
             /*
-                ---------   SERVER CALLS   ---------
+                -------------   SERVER CALLS   -------------
              */
 
             save_record_edit()
             /*  Invoked when the user asks to save the edit-in-progress
                 of an existing individual record.
-                NOT used for new records, nor to change the definition of the recordset .
+                NOT used for new records, nor to change the definition of the recordset
              */
             {
                 // Send the request to the server, using a POST
@@ -704,6 +710,9 @@ Vue.component('vue-plugin-rs',
                     this.status_message = `Operation completed`;
 
                     // Update the item in the recordset array that corresponds to the current record
+                    this.refresh_current_page();    // Refresh the current page
+
+                    /*
                     var internal_id = this.record_latest._internal_id;
 
                     const recordset_length = this.recordset.length;
@@ -718,6 +727,7 @@ Vue.component('vue-plugin-rs',
                         alert("Unable to refresh record : try reloading the page");
                     else
                         Vue.set(this.recordset, i, this.record_latest);
+                    */
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -779,6 +789,8 @@ Vue.component('vue-plugin-rs',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `New record added`;
+                    this.refresh_current_page();    // Refresh the current page
+                                                    // (which may or may not be affected by the newly-added record)
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -792,9 +804,11 @@ Vue.component('vue-plugin-rs',
 
 
 
+            /**
+             * Send a request to the server, to update or create this RECORDSET's definition
+             * (note: NOT to be confused with editing of individual records)
+             */
             save_recordset_edit()
-            // Send a request to the server, to update or create this RECORDSET's definition
-            // (note: NOT to be confused with editing of individual records)
             {
                 console.log(`In save_recordset_edit(), for Recordset with URI '${this.current_metadata.uri}'`);
 
@@ -997,13 +1011,26 @@ Vue.component('vue-plugin-rs',
 
 
 
+            refresh_current_page()
+            {
+                //console.log(`In refresh_current_page()`);
+                this.get_recordset(this.current_page);
+            },
+
+
+
+            /**
+             * Used for record navigation.
+             * Request from the server the specified "page" (group of records) of the recordset.
+             * If successful, it will fetch and update the values for:
+             *           this.recordset
+             *           this.total_count
+             *           this.current_page
+             * Note: changing those values will update the record display
+             *
+             * @param {number} page - To identify the desired chunk of consecutive records
+             */
             get_recordset(page)
-            /*  Request from the server the specified page (group of records) of the recordset.
-                If successful, it will update the values for:
-                        this.recordset
-                        this.total_count
-                        this.current_page
-              */
             {
                 let skip = (page-1) * this.current_metadata.n_group;
 
