@@ -76,7 +76,7 @@ Vue.component('vue-plugin-cd',
 
         data: function() {
             return {
-                editing_mode: (this.item_data.entity_id < 0 ? true : false),    // Negative URI means "new Item"
+                editing_mode: (this.item_data.entity_id < 0 ? true : false),    // Negative Entity ID means "new Item"
                 /*
                 fun_name: this.item_data.fun,
                 fun_args: this.item_data.args,
@@ -137,7 +137,7 @@ Vue.component('vue-plugin-cd',
                 // Start the body of the POST to send to the server
                 post_body = "class_name=" + this.current_data.class_name;
 
-                if (this.item_data.entity_id < 0)  {     // The negative URI is a convention indicating a new Content Item to create
+                if (this.item_data.entity_id < 0)  {     // The negative Entity ID is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
                     post_body += "&category_id=" + this.category_id;
                     const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
@@ -148,7 +148,7 @@ Vue.component('vue-plugin-cd',
                     url_server = `/BA/api/add_item_to_category`;     // URL to communicate with the server's endpoint
                 }
                 else {   // Update an existing Content Item
-                    post_body += "&uri=" + this.item_data.entity_id + "&class_name=Code+Documentation";
+                    post_body += "&entity_id=" + this.item_data.entity_id + "&class_name=Code+Documentation";
 
                     url_server = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
@@ -193,7 +193,7 @@ Vue.component('vue-plugin-cd',
                 if (success)  {     // Server reported SUCCESS
                     this.status = `Successful edit`;
 
-                    // If this was a new item (with the temporary negative URI), update its ID with the value assigned by the server
+                    // If this was a new item (with the temporary negative entity_id), update its ID with the value assigned by the server
                     if (this.item_data.entity_id < 0)
                         this.current_data.entity_id = server_payload;
 

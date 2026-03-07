@@ -401,8 +401,25 @@ def test_viewer_handler(db):
 def test_remove_relationship_before(db):
     pass
 
+
+
 def test_create_bread_crumbs(db):
-    pass
+    _, root_entity_id = initialize_categories(db)
+
+    result = Categories.create_bread_crumbs(category_entity_id=root_entity_id)
+    assert result == [root_entity_id]
+
+    math_entity_id = Categories.add_subcategory(category_uri=root_entity_id, data_dict={"subcategory_name": "math"})
+
+    result = Categories.create_bread_crumbs(category_entity_id=root_entity_id)
+    assert result == [root_entity_id]
+
+    result = Categories.create_bread_crumbs(category_entity_id=math_entity_id)
+    assert result == ['START_CONTAINER', [root_entity_id, 'ARROW', math_entity_id], 'END_CONTAINER']
+
+    # TODO: more tests
+
+
 
 def test__recursive(db):
     pass

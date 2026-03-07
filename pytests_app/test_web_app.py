@@ -56,6 +56,7 @@ def client(app):
 
 
 
+
 def test_get_class_properties_api(client):
     endpoint = "get_class_properties"
 
@@ -85,3 +86,34 @@ def test_get_class_properties_api(client):
     assert response.status_code == 200
     assert response.json["status"] == "error"
     assert response.json["error_message"] == "Missing required value for either `class_name` or `label` in the JSON data"
+
+
+
+def test_get_links_api(client):
+    endpoint = "get_links"
+
+    data = 'Company'
+
+    request = f"/BA/api/{endpoint}/{data}"
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == {"in" :[], "out": []}   # The database is empty
+
+
+    # Populate the database
+    GraphSchema.create_class(name="Company")
+
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == {"in" :[], "out": []}    # Still no links
+
+
+    GraphSchema.create_class(name="Person")
+    GraphSchema.create_class_relationship(from_class="Company", to_class="Person", rel_name="EMPLOYS")
+
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == {"in" :[], "out": ["EMPLOYS"]}

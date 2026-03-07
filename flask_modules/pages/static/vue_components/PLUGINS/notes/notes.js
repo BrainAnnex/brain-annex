@@ -14,7 +14,7 @@ Vue.component('vue-plugin-n',
                                    "class_name":"Note","title":"My TO-DO list"}
 
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The URI of the Category page where this Note is displayed (used when creating new documents)
+            category_id:    The entity_id of the Category page where this Note is displayed (used when creating new documents)
             index:          The zero-based position of this Document on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */
@@ -153,7 +153,7 @@ Vue.component('vue-plugin-n',
 
             get_note(item_data)
             {
-                //console.log("In get_note. Item to look up has URI: `" + item_data.entity_id + "`");
+                //console.log("In get_note. Item to look up has entity_id: `" + item_data.entity_id + "`");
 
                 this.waiting = true;
 
@@ -411,7 +411,7 @@ Vue.component('vue-plugin-n',
                     //console.log(`In finish_save() - entity ID is: ${this.item_data.entity_id}`);
 
                     // If this was a new item (with the temporary negative ID),
-                    // update its URI (in this Vue component) with the value assigned by the server;
+                    // update its entity_id (in this Vue component) with the value assigned by the server;
                     // also, update its basename accordingly
                     if (this.item_data.entity_id < 0)  {
                         this.current_data.entity_id = server_payload;

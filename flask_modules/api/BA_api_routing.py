@@ -508,7 +508,7 @@ class ApiRouting:
 
         @bp.route('/get_links/<class_name>')
         @login_required
-        def get_links(class_name):
+        def get_links_api(class_name):
             """
             Get the names of all the relationship attached to the specified Class.
             (No error if the Class doesn't exist)

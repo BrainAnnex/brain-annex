@@ -671,7 +671,7 @@ class GraphSchema:
 
 
     @classmethod
-    def create_class_relationship(cls, from_class: int | str, to_class: int | str,
+    def create_class_relationship(cls, from_class: int|str, to_class: int|str,
                                   rel_name="INSTANCE_OF", use_link_node=False, link_properties=None) -> None:
         """
         Create a relationship (provided that it doesn't already exist) with the specified name
@@ -699,6 +699,7 @@ class GraphSchema:
         :return:            None
         """
         #TODO: maybe rename rel_name to link_name, for consistency
+        #TODO: use accept Class names, not internal ID's
         #TODO: add a method that reports on all existing relationships among Classes?
         #TODO: provide more feedback in case of failure
 

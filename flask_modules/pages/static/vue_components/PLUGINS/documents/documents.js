@@ -11,11 +11,11 @@ Vue.component('vue-plugin-d',
                                       "entity_id": "4849", "schema_code": "d",
                                       "pos": 0,
                                       "internal_id": 123}
-                                      (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+                                      (if entity_id is -1, it means that it's a newly-created header, not yet registered with the server)
                                       TODO: take "pos", "class_name", "class_handler", "schema_code" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
+            category_id:    The Entity ID of the Category page where this document is displayed (used when creating new documents)
             index:          The zero-based position of this Document on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */
@@ -119,7 +119,7 @@ Vue.component('vue-plugin-d',
                         </select>
 
                         &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
-                        &nbsp;&nbsp; <span style="color: gray">URI: &#96;{{current_metadata.entity_id}}&#96;</span>
+                        &nbsp;&nbsp; <span style="color: gray">Entity ID: &#96;{{current_metadata.entity_id}}&#96;</span>
                         <br>
 
                         <p v-if="location" style="position: relative; z-index: 100;">
@@ -218,10 +218,10 @@ Vue.component('vue-plugin-d',
             },
 
 
-            cover_image(uri)
+            cover_image(entity_id)
             // Return the URL of the document's cover image (possibly a 404 error)
             {
-                return '/BA/api/serve_document_cover/' + uri;           // URL that generates the desired cover image
+                return '/BA/api/serve_document_cover/' + entity_id;           // URL that generates the desired cover image
             },
 
 
@@ -309,12 +309,12 @@ Vue.component('vue-plugin-d',
             save_edit()
             // Send a request to the server, to update the document's metadata
             {
-                //console.log(`In save_edit(): attempting to save the new metadata, for document with URI '${this.item_data.entity_id}'`);
+                //console.log(`In save_edit(): attempting to save the new metadata, for document with entity_id '${this.item_data.entity_id}'`);
 
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item_JSON";
 
-                const post_obj = {uri: this.item_data.entity_id,
+                const post_obj = {entity_id: this.item_data.entity_id,
                                   class_name: "Document",
                                   caption: this.current_metadata.caption,
                                   basename: this.current_metadata.basename,

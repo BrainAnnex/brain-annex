@@ -354,7 +354,7 @@ class Categories:
             MATCH (start :Category {entity_id: $category_uri})-[:BA_subcategory_of*0..9]->
                   (c :Category)-[:BA_subcategory_of]->(p :Category)
             WITH c, collect(DISTINCT p.entity_id) AS all_parents
-            RETURN c.entity_id AS uri, all_parents
+            RETURN c.entity_id AS entity_id, all_parents
             '''
         result = cls.db.query(q, {"category_uri": category_uri})      # A list of dictionaries
         # EXAMPLE:  [{'entity_id': 823, 'all_parents': [709]},
@@ -775,13 +775,13 @@ class Categories:
 
 
     @classmethod
-    def create_bread_crumbs(cls, category_uri :str) -> list:
+    def create_bread_crumbs(cls, category_entity_id :str) -> list:
         """
         Return a list of Category uri's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
-        :param category_uri:A string with the URI of the Category whose "ancestry bread crumbs" we want to construct
-        :return:            A list of Category URI's together with token strings,
+        :param category_entity_id:A string with the Entity ID of the Category whose "ancestry bread crumbs" we want to construct
+        :return:            A list of Category Entity ID's together with token strings,
                             providing directives for the HTML structure of the bread crumbs
                             EXAMPLE 1:  ['cat-root']
                             EXAMPLE 2:  ['START_CONTAINER', ['cat-root', 'ARROW', '799', 'ARROW', '876'], 'END_CONTAINER']
@@ -794,19 +794,21 @@ class Categories:
                                      'END_BLOCK', 'ARROW', '814'],
                                     'END_CONTAINER'
                                 ]
+
+                            where 'cat-root' is the actual entity ID of the root node (often '1')
         """
         root_uri = cls.get_root_entity_id()
-        if category_uri == root_uri:  # If it is the root
+        if category_entity_id == root_uri:  # If it is the root
             return [root_uri]
 
         # If we get here, we're NOT at the root.
 
-        parents_map = cls.create_parent_map(category_uri)
+        parents_map = cls.create_parent_map(category_entity_id)
         #print("In create_bread_crumbs().  parents_map: ", parents_map)
 
         # Put together a block (to be turned into an HTML element by the front end) depicting all possible
         # breadcrumb paths from the ROOT to the current category
-        return ["START_CONTAINER", cls._recursive(category_uri=category_uri, parents_map=parents_map, root_uri=root_uri) , "END_CONTAINER"]
+        return ["START_CONTAINER", cls._recursive(category_uri=category_entity_id, parents_map=parents_map, root_uri=root_uri) , "END_CONTAINER"]
 
 
 

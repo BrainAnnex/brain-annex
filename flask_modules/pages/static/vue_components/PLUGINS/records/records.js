@@ -158,7 +158,7 @@ Vue.component('vue-plugin-r',
         data: function() {
             return {
                 editing_mode: (this.item_data.entity_id < 0  ? true : false), // Flag indicating whether this record is being edited
-                                                                        // Negative uri means "new Item"
+                                                                        // Negative entity_id means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 
@@ -194,7 +194,7 @@ Vue.component('vue-plugin-r',
                 current_data: this.clone_and_standardize(this.item_data),
                 original_data: this.clone_and_standardize(this.item_data),
                 // Scrub some data, so that it won't show up in the tabular format.
-                //     `uri`, `schema_code`, `class_name`, `insert_after_uri` and `pos` get scrubbed out
+                //     `entity_id`, `schema_code`, `class_name`, `insert_after_uri` and `pos` get scrubbed out
                 //      TODO: separate display and control data!
                 // NOTE: clone_and_standardize() gets called twice
 
@@ -215,7 +215,7 @@ Vue.component('vue-plugin-r',
                 rel_dir: 'IN',
 
                 // Note that we have 2 different "wait for server" flags
-                waiting_for_server: (this.item_data.entity_id < 0) ? this.get_fields_from_server(this.item_data) : false, // Negative URI means "new Item"
+                waiting_for_server: (this.item_data.entity_id < 0) ? this.get_fields_from_server(this.item_data) : false, // Negative entity_id means "new Item"
 
                 waiting_mode: false,
                 status: "",
@@ -231,7 +231,7 @@ Vue.component('vue-plugin-r',
             {
                 const record_id = this.item_data.entity_id;
 
-                console.log(`Show the records linked to record URI '${record_id}' by the ${dir}-bound relationship '${rel_name}'`);
+                console.log(`Show the records linked to record entity_id '${record_id}' by the ${dir}-bound relationship '${rel_name}'`);
                 this.get_linked_records_from_server(record_id, rel_name, dir);
             },
 
@@ -372,16 +372,16 @@ Vue.component('vue-plugin-r',
 
             get_linked_records_from_server(record_id, rel_name, dir)
             /* Initiate request to server, to get the list of the properties
-               of the data nodes linked to the one specified by uri,
+               of the data nodes linked to the one specified by entity_id,
                by the relationship named by rel_name, in the direction specified by dir
 
-               :param record_id:    The uri string of the record of interest
+               :param record_id:    The entity_id string of the record of interest
              */
             {
-                console.log(`Getting the properties of data nodes linked to record with uri ${record_id} by means of the ${dir}-bound relationship '${rel_name}'`);
+                console.log(`Getting the properties of data nodes linked to record with entity_id ${record_id} by means of the ${dir}-bound relationship '${rel_name}'`);
 
                 let url_server = "/BA/api/get_records_by_link";
-                let post_obj = {uri: record_id, rel_name: rel_name, dir: dir};
+                let post_obj = {entity_id: record_id, rel_name: rel_name, dir: dir};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
 
@@ -401,8 +401,8 @@ Vue.component('vue-plugin-r',
                     console.log("    server call was successful; it returned: " , server_payload);
                     /*  EXAMPLE:
                             [
-                                {uri: "100", name: "mushrooms pie", eval: "+", schema_code: "r"},
-                                {uri: "180", name: "Margherita pie", eval: "OK", schema_code: "r"}
+                                {entity_id: "100", name: "mushrooms pie", eval: "+", schema_code: "r"},
+                                {entity_id: "180", name: "Margherita pie", eval: "OK", schema_code: "r"}
                             ]
                      */
                     this.linked_records = server_payload;
@@ -424,7 +424,7 @@ Vue.component('vue-plugin-r',
             get_link_summary_from_server(item)
             // Initiate request to server, to get the list of the names/counts of all the actual Inbound and Outbound links
             {
-                console.log(`Getting the links info for a Content Item of type 'r', with uri = ${item.entity_id}`);
+                console.log(`Getting the links info for a Content Item of type 'r', with entity_id = ${item.entity_id}`);
                 let url_server = "/BA/api/get_link_summary/" + item.entity_id;
                 console.log(`About to contact the server at ${url_server}`);
                 this.waiting_for_links = true;
@@ -570,11 +570,11 @@ Vue.component('vue-plugin-r',
                 // Start the body of the POST to send to the server
                 var post_obj = {schema_code: this.item_data.schema_code};
 
-                if (this.item_data.entity_id < 0)  {     // The negative URI is a convention indicating a new Content Item to create
+                if (this.item_data.entity_id < 0)  {     // The negative entity_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
                     post_obj["class_name"] = this.item_data.class_name;
-                    post_obj["insert_after_uri"] = this.item_data.insert_after_uri;     // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj["insert_after_uri"] = this.item_data.insert_after_uri;     // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                     post_obj["insert_after_class"] = this.item_data.insert_after_class; // Class of Content Item to insert after
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
@@ -618,7 +618,7 @@ Vue.component('vue-plugin-r',
 
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
              */
             {
                 console.log("Finalizing the Record saving operation...");
@@ -642,8 +642,8 @@ Vue.component('vue-plugin-r',
                         }
                     }
 
-                    // If this was a new item (with the temporary negative URI in the prop object `item_data`),
-                    // update its uri with the value assigned by the server
+                    // If this was a new item (with the temporary negative entity_id in the prop object `item_data`),
+                    // update its entity_id with the value assigned by the server
                     if (this.item_data.entity_id < 0)
                         this.current_data.entity_id = server_payload;
 
@@ -651,8 +651,8 @@ Vue.component('vue-plugin-r',
                     console.log("Records component sending `updated-item` signal to its parent");
                     //console.log(this.current_data);
                     // Note: the signal below ONLY include DISPLAY data, not control data such as
-                    //       `uri`, `schema_code`, `class_name`, `insert_after_uri`, `pos`
-                    //        WITH THE SINGLE EXCEPTION of `uri` field on newly-added records
+                    //       `entity_id`, `schema_code`, `class_name`, `insert_after_uri`, `pos`
+                    //        WITH THE SINGLE EXCEPTION of `entity_id` field on newly-added records
                     //        TODO: separate display and control data!
                     this.$emit('updated-item', this.current_data);
 
