@@ -8,6 +8,7 @@ IMPORTANT: first change the config.ini file as needed
 Note: this main program may also be started from the CLI with the "flask run" command
 """
 
+'''
 from flask import Flask
 from configparser import ConfigParser
 
@@ -42,7 +43,7 @@ from app_libraries.initialize import InitializeBrainAnnex
 #                                                                               #
 #################################################################################
 
-def extract_par(name :str, d, display=True) -> str:
+def extract_par_OLD(name :str, d, display=True) -> str:
     """
     Extract the parameter with the given name,
     from an object containing the parameters and their values.
@@ -66,8 +67,10 @@ def extract_par(name :str, d, display=True) -> str:
 
     return value
 #################################################################################
+'''
 
 
+'''
 config = ConfigParser()
 
 # Attempt to import parameters from the default config file first, then from 'config.ini' -
@@ -213,12 +216,21 @@ app.jinja_env.trim_blocks = True       # The first newline after a template tag 
 ### Set the secret key to some random bytes. Used to sign the cookies cryptographically
 app.secret_key = b"pqE3_t(4!x"
 
+'''
+
+from app_build import create_app
+
+
+# The object for the Flask app (exposed, at the top level of this module,
+#                   so that this main program may also be started from the CLI
+#                   with the "flask run" command)
+app = create_app()
 
 
 ###  Fire up the web app
 
 #if os.environ.get("FLASK_APP"):
-if DEPLOYMENT == "EXTERNAL":      # starting the app with gunicorn (or other WSGI HTTP Server)
+if app.config['DEPLOYMENT'] == "EXTERNAL":      # starting the app with gunicorn (or other WSGI HTTP Server)
     # The web app is started with commands such as:
     #           "gunicorn [OPTIONS] main:app"
     print(f" * EXTERNAL deployment: SET BROWSER TO http://YOUR_IP_OR_DOMAIN or https://YOUR_IP_OR_DOMAIN")
@@ -227,8 +239,10 @@ else:       # "FLASK" : starting the app with Flask
     #   - either by running main.py (for example from an IDE such as PyCharm)
     #   - or by starting flask from the CLI, with the command:
     #           "flask run [OPTIONS]" , after setting:  export FLASK_APP=main.py
-    debug_mode = True   # At least for now, local deployment always enables Flask's debug mode
+    debug_mode = True       # At least for now, local deployment always enables Flask's debug mode
+    PORT_NUMBER = app.config['PORT_NUMBER']
     print(f" * FLASK deployment: SET BROWSER TO http://localhost:{PORT_NUMBER}/BA/pages/admin")
+
     if __name__ == '__main__':  # Skip the next command if application is run from the Flask command line executable
         app.run(debug=debug_mode, port=PORT_NUMBER) # CORE of UI : transfer control to the "Flask object"
                                                     # This  will start a local WSGI server.  Threaded mode is enabled by default

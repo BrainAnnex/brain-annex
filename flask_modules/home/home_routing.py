@@ -157,8 +157,7 @@ class HomeRouting:
             print(f"do_login().  POST parameters -> username: `{username}` | passwd: `{passwd}`")
 
             # Verify the login credential against the database;
-            # if successful, obtain the User ID (-1 in case of failure)
-            #user_id = UserManagerNeo4j.check_login_credentials(username, passwd)
+            # if successful, obtain the User ID (an integer); otherwise, the value will be None
             user_id = UserManager.check_login_credentials(username, passwd)
 
             if user_id is None:

@@ -388,26 +388,25 @@ class ApiRouting:
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
         @bp.route('/get_class_properties')
         @login_required
-        def get_class_properties():
+        def get_class_properties_api():
             """
             Get all Properties of the given Class node (as specified by its name),
             optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
-            Return a JSON object with a list of the Property names of that Class.
-
-            If `class_name` is missing, and `label` is used instead,
-            the Property list is *estimated* by the label instead (and all other parameters are disregarded)
-
+            Return a JSON object with a list of the Property names of that Class;
+            if no Class node is found, an empty list is returned.
 
             GET VARIABLE:
-                json    A JSON-encoded dict
-
-            KEYS in the JSON-encoded dict:
-                    class_name
-                    label
-                    include_ancestors
-                    sort_by_path_len
-                    exclude_system
-                Either `class_name` or `label` must be present
+                json    A JSON-encoded dict;
+                        KEYS in the JSON-encoded dict:
+                                class_name
+                                label
+                                include_ancestors
+                                sort_by_path_len
+                                exclude_system
+                        Either `class_name` or `label` must be present;
+                        otherwise an error (but still a response code of 200) will be returned.
+                        If `class_name` is missing, and `label` is used instead,
+                        the Property list is *estimated* by the label instead (and all other parameters are disregarded)
 
             EXAMPLE invocations:
                 http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%7D
@@ -419,7 +418,7 @@ class ApiRouting:
                 http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%2C%20%22include_ancestors%22%3A%20true%2C%20%22exclude_system%22%3A%20true%7D
                     (corresponding to {"class_name": "Quote", "include_ancestors": True, "exclude_system": True})
 
-            Note: To generate URL-safe versions of the JSON-serialized data from d variable in Python, use
+            Note: To generate URL-safe versions of the JSON-serialized data from variable d in Python, use
                     import json
                     import urllib.parse
                     urllib.parse.quote(json.dumps(d))
@@ -438,7 +437,12 @@ class ApiRouting:
                                             ],
                                 "status":   "ok"
                             }
+
+                      In case of error, "status" will be "error",
+                      and the key "error_message" will replace "payload"
             """
+            # TODO: don't return response code of 200 in case of errors
+
             # Extract the GET values
             get_data = request.args    # Example: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
 
@@ -453,7 +457,7 @@ class ApiRouting:
 
 
             json_str = data_dict["json"]
-            #print("get_class_properties() - JSON string: ", json_str)
+            #print("get_class_properties_api() - JSON string: ", json_str)
 
             # TODO: turn a lot of the code below into a JSON-helper method;
             #       in particular, add a "json_decode" arg to extract_get_pars()
@@ -496,7 +500,7 @@ class ApiRouting:
             except Exception as ex:
                 response_data = {"status": "error", "error_message": str(ex)}
 
-            #print("get_class_properties() - response_data: ", response_data)
+            #print("get_class_properties_api() - response_data: ", response_data)
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
