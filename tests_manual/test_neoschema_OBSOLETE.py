@@ -60,12 +60,12 @@ def test_create_class(db):
     _ , french_class_uri = GraphSchema.create_class("French Vocabulary")
     match_specs = db.match(labels="CLASS")   # All Class nodes
     result = db.get_nodes(match_specs)
-    assert result == [{'name': 'French Vocabulary', 'uri': french_class_uri, 'strict': False}]
+    assert result == [{'name': 'French Vocabulary', 'entity_id': french_class_uri, 'strict': False}]
 
     _ , class_A_uri = GraphSchema.create_class("A", strict=True)
     result = db.get_nodes(match_specs)
-    expected = [{'name': 'French Vocabulary', 'uri': french_class_uri, 'strict': False},
-                {'name': 'A', 'uri': class_A_uri, 'strict': True}]
+    expected = [{'name': 'French Vocabulary', 'entity_id': french_class_uri, 'strict': False},
+                {'name': 'A', 'entity_id': class_A_uri, 'strict': True}]
     assert compare_recordsets(result, expected)
 
     with pytest.raises(Exception):
@@ -183,11 +183,11 @@ def test_get_class_attributes(db):
     db.empty_dbase()
 
     class_A_neoid , class_A_uri = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'uri': class_A_uri, 'strict': False}
+    assert GraphSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'entity_id': class_A_uri, 'strict': False}
 
     class_B_neoid , class_B_uri = GraphSchema.create_class("B", no_datanodes=True)
-    assert GraphSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'uri': class_A_uri, 'strict': False}
-    assert GraphSchema.get_class_attributes(class_B_neoid) == {'name': 'B', 'uri': class_B_uri, 'strict': False, 'no_datanodes': True}
+    assert GraphSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'entity_id': class_A_uri, 'strict': False}
+    assert GraphSchema.get_class_attributes(class_B_neoid) == {'name': 'B', 'entity_id': class_B_uri, 'strict': False, 'no_datanodes': True}
 
     with pytest.raises(Exception):
         GraphSchema.get_class_attributes(2345)                    # No such Class exists
@@ -741,13 +741,13 @@ def test_is_property_allowed(db):
 
     assert GraphSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
-    assert not GraphSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")
+    assert not GraphSchema.is_property_allowed(property_name="entity_id", class_name="German Vocabulary")
 
-    _ , content_uri = GraphSchema.create_class_with_properties("Content Item", ["uri"], strict=True)
+    _ , content_uri = GraphSchema.create_class_with_properties("Content Item", ["entity_id"], strict=True)
     GraphSchema.create_class_relationship(from_class="Foreign Vocabulary", to_class="Content Item", rel_name="INSTANCE_OF")
 
-    assert GraphSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")   # "uri" is now available thru ancestry
-    assert GraphSchema.is_property_allowed(property_name="uri", class_name="Foreign Vocabulary")
+    assert GraphSchema.is_property_allowed(property_name="entity_id", class_name="German Vocabulary")   # "entity_id" is now available thru ancestry
+    assert GraphSchema.is_property_allowed(property_name="entity_id", class_name="Foreign Vocabulary")
 
     assert not GraphSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
@@ -861,9 +861,9 @@ def test_allowable_props(db):
 
     # Check the internal data structure of the schema cache
     cached_data = schema_cache.get_all_cached_class_data(lax_int_uri)
-    assert cached_data["class_attributes"] == {"name": "My Lax class", "uri": lax_schema_uri, "strict": False}
+    assert cached_data["class_attributes"] == {"name": "My Lax class", "entity_id": lax_schema_uri, "strict": False}
     cached_data = schema_cache.get_all_cached_class_data(strict_int_uri)
-    assert cached_data["class_attributes"] == {"name": "My Strict class", "uri": strict_schema_uri, "strict": True}
+    assert cached_data["class_attributes"] == {"name": "My Strict class", "entity_id": strict_schema_uri, "strict": True}
 
 
 
@@ -978,7 +978,7 @@ def test_create_data_node_1(db):
         '''
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
-    assert result[0] == {'d': {'specialty': 'genetics', 'name': 'Dr. Watson', 'uri': uri}}
+    assert result[0] == {'d': {'specialty': 'genetics', 'name': 'Dr. Watson', 'entity_id': uri}}
 
 
     # Create a 3rd "doctor" data node, this time assigning 2 extra labels and also assigning a URI
@@ -997,7 +997,7 @@ def test_create_data_node_1(db):
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
 
-    assert result[0] == {'d': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'uri': uri}}
+    assert result[0] == {'d': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'entity_id': uri}}
 
 
     # Create a 4th "doctor" data node, this time using a tuple rather than a list to assign 2 extra labels
@@ -1016,7 +1016,7 @@ def test_create_data_node_1(db):
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
 
-    assert result[0] == {'d': {'specialty': 'pediatrics', 'name': 'Dr. Clark', 'uri': uri}}
+    assert result[0] == {'d': {'specialty': 'pediatrics', 'name': 'Dr. Clark', 'entity_id': uri}}
 
 
 
@@ -1255,7 +1255,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Dr. Watson", "specialty": "ob/gyn"}]
+    assert result == [{'entity_id': uri, "name": "Dr. Watson", "specialty": "ob/gyn"}]
 
 
     # Completely drop the specialty field
@@ -1264,7 +1264,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Dr. Watson"}]
+    assert result == [{'entity_id': uri, "name": "Dr. Watson"}]
 
 
     # Turn the name value blank, but don't drop the field
@@ -1273,7 +1273,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": ""}]
+    assert result == [{'entity_id': uri, "name": ""}]
 
 
     # Set the name, this time locating the record by its URI
@@ -1282,7 +1282,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming"}]
+    assert result == [{'entity_id': uri, "name": "Prof. Fleming"}]
 
 
     # Add 2 extra fields: notice the junk leading/trailing blanks in the string
@@ -1291,7 +1291,7 @@ def test_update_data_node(db):
     assert count == 2
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'entity_id': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
 
 
     # A vacuous "change" that doesn't actually do anything
@@ -1300,7 +1300,7 @@ def test_update_data_node(db):
     assert count == 0
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'entity_id': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
 
 
     # A "change" that doesn't actually change anything, but nonetheless is counted as 1 property set
@@ -1308,7 +1308,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
+    assert result == [{'entity_id': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False}]
 
 
     # A "change" that causes a field of blanks to get dropped
@@ -1316,7 +1316,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "location": "San Francisco", "retired": False}]
+    assert result == [{'entity_id': uri, "location": "San Francisco", "retired": False}]
 
 
 
@@ -1375,7 +1375,7 @@ def test_add_data_point_with_links(db):
 
 
     # Create a new data point for a "result", linked to the existing "patient" data point;
-    #   this time, request the assignment of an autoincrement "uri" to the new data node
+    #   this time, request the assignment of an autoincrement "entity_id" to the new data node
     result_neo_uri = GraphSchema.add_data_node_with_links(class_name="result",
                                                        properties={"biomarker": "glucose", "value": 99.0},
                                                        links=[{"internal_id": patient_neo_uri, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
@@ -1392,11 +1392,11 @@ def test_add_data_point_with_links(db):
                                        })
     assert len(result) == 1
     record = result[0]
-    assert record['r']['uri'] == "1"  # The first auto-increment value
+    assert record['r']['entity_id'] == "1"  # The first auto-increment value
 
 
     # Create a 2nd data point for a "result", linked to the existing "patient" data point;
-    #   this time, request the assignment of specific "uri" to the new data node
+    #   this time, request the assignment of specific "entity_id" to the new data node
     result2_neo_uri = GraphSchema.add_data_node_with_links(class_name="result",
                                                         properties={"biomarker": "cholesterol", "value": 180.0},
                                                         links=[{"internal_id": patient_neo_uri, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
@@ -1413,7 +1413,7 @@ def test_add_data_point_with_links(db):
     assert len(result) == 1
     print(result)
     record = result[0]
-    assert record['r2']['uri'] == "my-uri"      # The specific "uri" that was passed
+    assert record['r2']['entity_id'] == "my-uri"      # The specific "entity_id" that was passed
 
 
 
@@ -1704,7 +1704,7 @@ def test_add_data_point_fast_OBSOLETE(db):
 
 
     # Create a new data point for a "result", linked to the existing "patient" data point;
-    #   this time, request the assignment of an autoincrement "uri" to the new data node
+    #   this time, request the assignment of an autoincrement "entity_id" to the new data node
     result_neo_uri = GraphSchema.add_data_point_fast_OBSOLETE(class_name="result",
                                                            properties={"biomarker": "glucose", "value": 99.0},
                                                            connected_to_neo_id = patient_neo_uri,
@@ -1723,11 +1723,11 @@ def test_add_data_point_fast_OBSOLETE(db):
     assert len(result) == 1
     #print(result)
     record = result[0]
-    assert record['r']['uri'] == "1"  # The first auto-increment value
+    assert record['r']['entity_id'] == "1"  # The first auto-increment value
 
 
     # Create a 2nd data point for a "result", linked to the existing "patient" data point;
-    #   this time, request the assignment of specific "uri" to the new data node
+    #   this time, request the assignment of specific "entity_id" to the new data node
     result2_neo_uri = GraphSchema.add_data_point_fast_OBSOLETE(class_name="result",
                                                             properties={"biomarker": "cholesterol", "value": 180.0},
                                                             connected_to_neo_id = patient_neo_uri,
@@ -1745,7 +1745,7 @@ def test_add_data_point_fast_OBSOLETE(db):
     assert len(result) == 1
     print(result)
     record = result[0]
-    assert record['r2']['uri'] == "my=uri"      # The specific "uri" that was passed
+    assert record['r2']['entity_id'] == "my=uri"      # The specific "entity_id" that was passed
 
 
 
@@ -2034,12 +2034,12 @@ def test_add_data_relationship(db):
 
     # Now add a relationship using URI's instead of internal database ID's
     red_car_internal_id = GraphSchema.create_data_node(class_name="Car", properties={"color": "red"}, new_entity_id="new_car")
-    GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="uri", rel_name="DRIVES")
+    GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="entity_id", rel_name="DRIVES")
     assert db.links_exist(match_from=person_internal_id, match_to=red_car_internal_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         # Relationship name not declared in the Schema
-        GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="uri", rel_name="PAINTS")
+        GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="entity_id", rel_name="PAINTS")
 
 
 
@@ -2065,8 +2065,8 @@ def test_class_of_data_point(db):
     GraphSchema.create_class("Person")
     uri = GraphSchema.add_data_point_OLD("Person")
 
-    assert GraphSchema.class_of_data_node(node_id=uri, id_key="uri") == "Person"
-    assert GraphSchema.class_of_data_node(node_id=uri, id_key="uri", labels="Person") == "Person"
+    assert GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id") == "Person"
+    assert GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id", labels="Person") == "Person"
 
     # Now locate thru the internal database ID
     internal_id = GraphSchema.get_data_node_id(uri)
@@ -2321,20 +2321,20 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
     neo_uri, schema_uri = GraphSchema.create_class("My first class", strict=False)
 
     cache.get_cached_class_data(class_id=neo_uri, request="class_attributes")
-    expected_first_class = {"class_attributes":  {'name': 'My first class', 'uri': schema_uri, 'strict': False}
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'entity_id': schema_uri, 'strict': False}
                             }
     assert cache.get_all_cached_class_data(class_id=neo_uri) == expected_first_class
 
 
     cache.get_cached_class_data(class_id=neo_uri, request="class_properties")
-    expected_first_class = {"class_attributes":  {'name': 'My first class', 'uri': schema_uri, 'strict': False},
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'entity_id': schema_uri, 'strict': False},
                             "class_properties":  []
                             }
     assert cache.get_all_cached_class_data(class_id=neo_uri) == expected_first_class
 
 
     cache.get_cached_class_data(class_id=neo_uri, request="out_neighbors")
-    expected_first_class = {"class_attributes":  {'name': 'My first class', 'uri': schema_uri, 'strict': False},
+    expected_first_class = {"class_attributes":  {'name': 'My first class', 'entity_id': schema_uri, 'strict': False},
                             "class_properties":  [],
                             "out_neighbors": {}
                             }
@@ -2358,21 +2358,21 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
 
     cache.get_cached_class_data(class_id=patient_uri, request="class_attributes")
     assert len(cache._schema) == 2
-    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': True}
+    expected_patient = {"class_attributes":  {'name': 'patient', 'entity_id': schema_uri_patient, 'strict': True}
                        }
     assert cache.get_all_cached_class_data(class_id=patient_uri) == expected_patient
     assert cache.get_all_cached_class_data(class_id=neo_uri) == expected_first_class     # Unchanged
 
 
     cache.get_cached_class_data(class_id=patient_uri, request="class_properties")
-    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': True},
+    expected_patient = {"class_attributes":  {'name': 'patient', 'entity_id': schema_uri_patient, 'strict': True},
                         "class_properties": ['name', 'age', 'balance']
                         }
     assert cache.get_all_cached_class_data(class_id=patient_uri) == expected_patient
     assert cache.get_all_cached_class_data(class_id=neo_uri) == expected_first_class     # Unchanged
 
     cache.get_cached_class_data(class_id=patient_uri, request="out_neighbors")
-    expected_patient = {"class_attributes":  {'name': 'patient', 'uri': schema_uri_patient, 'strict': True},
+    expected_patient = {"class_attributes":  {'name': 'patient', 'entity_id': schema_uri_patient, 'strict': True},
                         "class_properties": ['name', 'age', 'balance'],
                         "out_neighbors": {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
                         }
@@ -2383,7 +2383,7 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
 
     cache.get_cached_class_data(class_id=result_uri, request="class_attributes")
     assert len(cache._schema) == 3
-    expected_result = {"class_attributes":  {'name': 'result', 'uri': schema_uri_result, 'strict': False}
+    expected_result = {"class_attributes":  {'name': 'result', 'entity_id': schema_uri_result, 'strict': False}
                       }
     assert cache.get_all_cached_class_data(class_id=result_uri) == expected_result
     assert cache.get_all_cached_class_data(class_id=patient_uri) == expected_patient     # Unchanged
@@ -2394,7 +2394,7 @@ def test_get_cached_class_data_2(db):   # Additional testing of get_cached_class
 
     cache.get_cached_class_data(class_id=doctor_uri, request="class_attributes")
     assert len(cache._schema) == 4
-    expected_doctor = {"class_attributes":  {'name': 'doctor', 'uri': schema_uri_doctor, 'strict': False}
+    expected_doctor = {"class_attributes":  {'name': 'doctor', 'entity_id': schema_uri_doctor, 'strict': False}
                        }
     assert cache.get_all_cached_class_data(class_id=doctor_uri) == expected_doctor
     assert cache.get_all_cached_class_data(class_id=result_uri) == expected_result       # Unchanged

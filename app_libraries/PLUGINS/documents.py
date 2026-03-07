@@ -179,8 +179,8 @@ class Documents:
                       (dir :Directory {name: $upload_folder}) 
                 MERGE (doc)-[:BA_stored_in]->(dir)
                 '''
-            #GraphSchema.db.debug_query_print(q, data_binding={"uri": uri, "upload_folder": upload_folder})
-            GraphSchema.db.query(q, data_binding={"uri": uri, "upload_folder": upload_folder})
+            #GraphSchema.db.debug_query_print(q, data_binding={"entity_id": uri, "upload_folder": upload_folder})
+            GraphSchema.db.query(q, data_binding={"entity_id": uri, "upload_folder": upload_folder})
             path = MediaManager.MEDIA_FOLDER + upload_folder + "/"
 
 

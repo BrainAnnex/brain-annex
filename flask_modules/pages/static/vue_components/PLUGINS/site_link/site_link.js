@@ -7,7 +7,7 @@ Vue.component('vue-plugin-sl',
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*
             item_data:      An object with the relevant data about this Site Link item;
-                                if the "uri" attribute is negative,
+                                if the "entity_id" attribute is negative,
                                 it means that it's a newly-created Content Item, not yet registered with the server
                                 (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
 
@@ -125,7 +125,7 @@ Vue.component('vue-plugin-sl',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.uri < 0  ? true : false), // Negative uri means "new Item"
+                editing_mode: (this.item_data.entity_id < 0  ? true : false), // Negative uri means "new Item"
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -250,7 +250,7 @@ Vue.component('vue-plugin-sl',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.uri < 0) {
+                if (this.current_data.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Records component sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
@@ -328,7 +328,7 @@ Vue.component('vue-plugin-sl',
                                };
 
 
-                if (this.item_data.uri < 0)  {     // Negative uri is a convention indicating a new Content Item to create
+                if (this.item_data.entity_id < 0)  {     // Negative uri is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj.category_id = this.category_id;
                     post_obj.insert_after_uri = this.item_data.insert_after_uri;        // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
@@ -337,7 +337,7 @@ Vue.component('vue-plugin-sl',
                     url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {     // Update an EXISTING Site Link
-                    post_obj.uri = this.item_data.uri;
+                    post_obj.entity_id = this.item_data.entity_id;
 
                     url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
@@ -375,8 +375,8 @@ Vue.component('vue-plugin-sl',
 
                     // If this was a newly-created item (with the temporary negative URI),
                     //  update its URI with the value assigned by the server
-                    if (this.item_data.uri < 0)
-                        this.current_data.uri = server_payload;
+                    if (this.item_data.entity_id < 0)
+                        this.current_data.entity_id = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Site Links component sending `updated-item` signal to its parent");

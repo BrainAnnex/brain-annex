@@ -61,17 +61,17 @@ class Collections:
 
 
     @classmethod
-    def is_collection(cls, collection_uri :str) -> bool:
+    def is_collection(cls, collection_entity_id :str) -> bool:
         """
-        Return True if the Data Node with the given uri is a Collection,
+        Return True if the Data Node with the given Entity ID is a Collection,
         that is, if its schema is a Class that is an INSTANCE_OF the "Collections" Class
 
-        :param collection_uri:  A string with the URI of a Data Node
-        :return:                True if the given data node is a Collection, or False otherwise
+        :param collection_entity_id:A string with the Entity ID of a Data Node
+        :return:                    True if the given data node is a Collection, or False otherwise
         """
 
         # Locate the Schema Class of the given Data Node
-        class_name = GraphSchema.class_of_data_node(node_id=collection_uri, id_key="uri")
+        class_name = GraphSchema.class_of_data_node(node_id=collection_entity_id, id_key="entity_id")
         return GraphSchema.is_instance_of(class1=class_name, class2="Collections")
 
 
@@ -81,7 +81,7 @@ class Collections:
         """
         Return the number of elements in the given Collection (i.e. Data Items linked to it thru the specified relationship)
 
-        :param collection_id:       The uri of a data node whose schema is an instance of the Class "Collections"
+        :param collection_id:       The Entity ID of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship from other Data Items to the given Collection node
         :param skip_check:          If True, no check is done to verify that the data node whose uri matches collection_id
                                     is indeed a Collection.
@@ -91,10 +91,10 @@ class Collections:
         """
         if not skip_check:
             assert cls.is_collection(collection_id), \
-                    f"The data node with uri `{collection_id}` doesn't exist or is not a Collection"
+                    f"The data node with Entity ID `{collection_id}` doesn't exist or is not a Collection"
 
         q = f'''
-            MATCH ({{uri: $collection_id}}) <- [:{membership_rel_name}] - (i) 
+            MATCH ({{entity_id: $collection_id}}) <- [:{membership_rel_name}] - (i) 
             RETURN count(i) AS node_count
             '''
         data_binding = {"collection_id": collection_id}
@@ -112,7 +112,7 @@ class Collections:
         Delete the specified Collection, provided that there are no Data Items linked to it.
         In case of error or failure, an Exception is raised.
 
-        :param collection_uri:  The "uri" string value identifying the desired Collection
+        :param collection_uri:  The "entity_id" string value identifying the desired Collection
         :return:                None
         """
         pass
@@ -127,11 +127,11 @@ class Collections:
         Create a new data node, of the class specified in item_class_name, and with the given properties -
         and add it at the beginning of the specified Collection, linked by the specified relationship
 
-        EXAMPLE:  new_uri = add_to_collection_at_beginning(collection_id=708, membership_rel_name="BA_in_category",
+        EXAMPLE:  new_entity_id = add_to_collection_at_beginning(collection_id=708, membership_rel_name="BA_in_category",
                                                         item_class_name="Header", item_properties={"text": "New Caption, at the end"})
         <SEE add_to_collection_at_end>
 
-        :return:                    The auto-increment "uri" assigned to the newly-created data node
+        :return:                    The auto-increment "entity_id" assigned to the newly-created data node
         """
         #TODO:  the Data Node creation perhaps should be done ahead of time, and doesn't need to be the responsibility of this class!
         #TODO:  solve the concurrency issue - of multiple requests arriving almost simultaneously, and being handled by a non-atomic update,
@@ -145,7 +145,7 @@ class Collections:
 
         # TODO: this query and the one in add_data_point(), below, ought to be combined, to avoid concurrency problems
         q = f'''
-            MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{uri: $collection_id}}) 
+            MATCH (n:BA) - [r :{membership_rel_name}] -> (c:BA {{entity_id: $collection_id}}) 
             RETURN min(r.pos) AS min_pos
             '''
         data_binding = {"collection_id": collection_entity_id}
@@ -188,16 +188,16 @@ class Collections:
         """
         TODO: NOT YET IMPLEMENTED!
 
-        :param item_uri:            The URI of an existing Data Node representing a "Collection Item"
+        :param item_uri:            The entity_id of an existing Data Node representing a "Collection Item"
                                         (for example, a "photo in an album" or a "content item in a category page")
         :param collection_uri:      The URI of an existing Collection Data Node
                                         (for example, a "photo album" or "category page")
         :param membership_link_name:The name to give to the new relationship to be created
                                         in the direction from the "Collection Item" to the Collection node
 
-        :param insert_after_uri:    The URI of the element after which we want to insert
+        :param insert_after_uri:    The entity_id of the element after which we want to insert
         :param insert_after_class:  The name of the Class of the element after which we want to insert.
-                                        Note: (Class + URI) provides a unique identifier
+                                        Note: (Class + entity_id) provides a unique identifier
 
         :return:                    None
         """
@@ -218,9 +218,9 @@ class Collections:
 
         Note: a database lock is used to deal with multiple concurrent calls.
 
-        :param item_uri:            The URI of an existing Data Node representing a "Collection Item"
+        :param item_uri:            The entity_id of an existing Data Node representing a "Collection Item"
                                         (for example, a "photo in an album" or a "content item in a category page")
-        :param collection_uri:      The URI of an existing Collection Data Node
+        :param collection_uri:      The entity_id of an existing Collection Data Node
                                         (for example, a "photo album" or "category page")
         :param membership_link_name:The name to give to the new relationship to be created
                                         in the direction from the "Collection Item" to the Collection node
@@ -230,7 +230,7 @@ class Collections:
         # TODO: (optionally?) enforce that the respective Classes of the Data Nodes are a relationship named membership_rel_name;
         #       use GraphSchema.class_relationship_exists()
 
-        # TODO: validate more thoroughly the URI's
+        # TODO: validate more thoroughly the entity_id's
         assert item_uri, \
             "link_to_collection_at_end(): Missing `item_uri` argument"
 
@@ -248,8 +248,8 @@ class Collections:
         # The "OPTIONAL MATCH" is used to compute a new positional value
         q = f'''
             MATCH (ci), (collection) 
-            WHERE ci.uri = $item_uri 
-              AND collection.uri = $collection_uri
+            WHERE ci.entity_id = $item_uri 
+              AND collection.entity_id = $collection_uri
               AND NOT ( (ci) -[:`{membership_link_name}`]-> (collection) )
             SET collection._LOCK_ = true
             WITH ci, collection
@@ -309,9 +309,9 @@ class Collections:
 
         In case no operation is performed, an Exception is raised.
 
-        :param item_uri:            The URI of a Data Node representing a "Collection Item" of the "from" Collection below
-        :param from_collection_uri: The URI of a Collection Data Node to which the above "Collection Item" is connected
-        :param to_collection_uri:   The URI of a Collection Data Node to which the above "Collection Item" needs to be switched to
+        :param item_uri:            The entity_id of a Data Node representing a "Collection Item" of the "from" Collection below
+        :param from_collection_uri: The entity_id of a Collection Data Node to which the above "Collection Item" is connected
+        :param to_collection_uri:   The entity_id of a Collection Data Node to which the above "Collection Item" needs to be switched to
         :param membership_rel_name: The name to give to the relationship
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    None
@@ -323,9 +323,9 @@ class Collections:
         q = f'''
             MATCH (collection_from) , (collection_to) ,
                   (moving_ci) -[old_r :`{membership_rel_name}`]-> (collection_from)
-            WHERE collection_from.uri = $from_collection_uri
-              AND collection_to.uri = $to_collection_uri
-              AND moving_ci.uri = $item_uri
+            WHERE collection_from.entity_id = $from_collection_uri
+              AND collection_to.entity_id = $to_collection_uri
+              AND moving_ci.entity_id = $item_uri
             WITH collection_from, collection_to, moving_ci, old_r
                         
             OPTIONAL MATCH (existing_ci) -[r :`{membership_rel_name}`]-> (collection_to)
@@ -351,15 +351,15 @@ class Collections:
 
         assert status.get('relationships_deleted') == 1, \
             f"relocate_to_other_collection_at_end(): failed to locate or delete the old '{membership_rel_name}' link " \
-            f"that goes to a Collection with URI '{from_collection_uri}'"
+            f"that goes to a Collection with entity_id '{from_collection_uri}'"
 
         assert status.get('relationships_created') == 1, \
             f"relocate_to_other_collection_at_end(): failed to create a new link " \
-            f"to a Collection with URI '{to_collection_uri}'"
+            f"to a Collection with entity_id '{to_collection_uri}'"
 
         assert status.get('properties_set') == 1, \
             f"relocate_to_other_collection_at_end(): failed to set the positional value to the new link " \
-            f"to a Collection with URI '{to_collection_uri}'"
+            f"to a Collection with entity_id '{to_collection_uri}'"
 
 
 
@@ -375,10 +375,10 @@ class Collections:
 
         Return the number of Collection Items successfully relocated.
 
-        :param items:               URI, or list of URI's, of Data Node(s)
+        :param items:               entity_id, or list of entity_id's, of Data Node(s)
                                         representing a "Collection Items" of the "from" Collection below
-        :param from_collection:     The URI of a Collection Data Node to which the above Collection Item(s) are connected
-        :param to_collection:       The URI of a Collection Data Node to which the above Collection Item(s) needs to be switched to
+        :param from_collection:     The entity_id of a Collection Data Node to which the above Collection Item(s) are connected
+        :param to_collection:       The entity_id of a Collection Data Node to which the above Collection Item(s) needs to be switched to
         :param membership_rel_name: The name to give to the relationship
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    The number of Collection Items successfully relocated
@@ -388,15 +388,15 @@ class Collections:
             items = [items]
         else:
             assert type(items) == list, \
-                "bulk_relocate_to_other_collection_at_end(): the argument `items` must be a string URI, or a list of them"
+                "bulk_relocate_to_other_collection_at_end(): the argument `items` must be a string entity_id, or a list of them"
 
 
         # Use an ATOMIC operation.  If any of the matches fail, no operation is performed
         # The "OPTIONAL MATCH" is used to compute a new initial positional value to use on the to_collection
         q = f'''
             MATCH (collection_from) , (collection_to)                
-            WHERE collection_from.uri = $from_collection
-              AND collection_to.uri = $to_collection            
+            WHERE collection_from.entity_id = $from_collection
+              AND collection_to.entity_id = $to_collection            
             WITH collection_from, collection_to
                         
             // Attempt to locate Items already on the "to" Collection
@@ -411,7 +411,7 @@ class Collections:
             
             UNWIND ITEM_INDEX_LIST AS i         // Used to process each Collection Item in turn
                 MATCH (moving_ci) -[old_r :`{membership_rel_name}`]-> (collection_from)
-                WHERE moving_ci.uri = $item_list[i]
+                WHERE moving_ci.entity_id = $item_list[i]
                 WITH moving_ci, old_r, collection_to, 
                      new_start_pos + i * {cls.DELTA_POS} AS new_pos
                 
@@ -483,7 +483,7 @@ class Collections:
 
         # TODO: this query and the one in add_data_point(), below, ought to be combined, to avoid concurrency problems
         q = f'''
-            MATCH (n:BA) -[r :{membership_rel_name}]-> (c:BA {{uri: $collection_id}}) 
+            MATCH (n:BA) -[r :{membership_rel_name}]-> (c:BA {{entity_id: $collection_id}}) 
             RETURN max(r.pos) AS max_pos
             '''
         data_binding = {"collection_id": collection_entity_id}
@@ -531,13 +531,13 @@ class Collections:
         :param item_class_name:     Name of the Class for the newly-created node
         :param item_properties:     Dictionary with the properties of the newly-created node
 
-        :param insert_after_uri:    The URI of the element after which we want to insert
+        :param insert_after_uri:    The entity_id of the element after which we want to insert
         :param insert_after_class:  The name of the Class of the element after which we want to insert.
-                                        Note: (Class + URI) provides a unique identifier
+                                        Note: (Class + entity_id) provides a unique identifier
 
         :param new_entity_id:             Normally, the Item ID is auto-generated, but it can also be provided (Note: MUST be unique)
 
-        :return:                    The auto-increment "uri" assigned to the newly-created data node
+        :return:                    The auto-increment "entity_id" assigned to the newly-created data node
         """
         #TODO: the Data Node creation perhaps should be done ahead of time,
         #       and doesn't need to be the responsibility of this class!  Switch over as soon as link_to_collection_after_element()
@@ -555,8 +555,8 @@ class Collections:
         # Match the 1st Content Item (node `n_after`) whose position value in the links to the give Collection is greater than
         # the position value from the specified "Insert After" node (`n_before`)
         q = f'''
-        MATCH (n_before :`{insert_after_class}` {{uri: $insert_after_uri}}) - [r_before :{membership_rel_name}] 
-                    -> (c :`{collection_class}` {{uri: $collection_id}})
+        MATCH (n_before :`{insert_after_class}` {{entity_id: $insert_after_uri}}) - [r_before :{membership_rel_name}] 
+                    -> (c :`{collection_class}` {{entity_id: $collection_id}})
                     <-  [r_after :{membership_rel_name}] - (n_after)
         WHERE r_after.pos > r_before.pos
         RETURN r_before.pos AS pos_before, r_after.pos AS pos_after
@@ -565,7 +565,7 @@ class Collections:
         '''
         #EXAMPLE:
         '''
-        MATCH (n_before :`Header` {uri: '717'}) - [r_before :BA_in_category] -> (c :`Category` {uri: '708'}) <- [r_after :BA_in_category] - (n_after)
+        MATCH (n_before :`Header` {entity_id: '717'}) - [r_before :BA_in_category] -> (c :`Category` {entity_id: '708'}) <- [r_after :BA_in_category] - (n_after)
         WHERE r_after.pos > r_before.pos
         RETURN r_before.pos AS pos_before, r_after.pos AS pos_after
         ORDER BY pos_after
@@ -577,7 +577,7 @@ class Collections:
 
         # ALTERNATE WAY OF PHRASING THE QUERY:
         '''
-        MATCH (n_before :`Header` {uri: '717'}) - [r_before :BA_in_category] -> (c :`Category` {uri: '708'}) <- [r_after :BA_in_category] - (n_after)
+        MATCH (n_before :`Header` {entity_id: '717'}) - [r_before :BA_in_category] -> (c :`Category` {entity_id: '708'}) <- [r_after :BA_in_category] - (n_after)
         WITH r_before.pos AS pos_before, r_after
         WHERE r_after.pos > pos_before
         RETURN pos_before, r_after.pos AS pos_after
@@ -593,9 +593,9 @@ class Collections:
             #       or a bad insert_after_uri value that matches no node
 
             # Try to locate that Content Item node that we were supposed to try to insert after
-            node = GraphSchema.get_single_data_node(node_id=insert_after_uri, id_key="uri", class_name=insert_after_class)
+            node = GraphSchema.get_single_data_node(node_id=insert_after_uri, id_key="entity_id", class_name=insert_after_class)
             if node is None:
-                raise Exception(f"There is no node of class `{insert_after_class}` with the `uri` value ({insert_after_uri}) that was passed by `insert_after_uri`")
+                raise Exception(f"There is no node of class `{insert_after_class}` with the `entity_id` value ({insert_after_uri}) that was passed by `insert_after_uri`")
 
             #print("    It's case of 'insert AT THE END'")
             return cls.add_to_collection_at_end(collection_entity_id=collection_entity_id, collection_class=collection_class,
@@ -638,7 +638,7 @@ class Collections:
         starting with nodes with the specified position value (and all greater values);
         this operation applies to nodes linked to the specified Collection thru a relationship with the given name.
 
-        :param collection_id:       The uri of a data node whose schema is an instance of the Class "Collections"
+        :param collection_id:       The entity_id of a data node whose schema is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship to which the positions ("pos" attribute) apply
         :param first_to_move:       All position ("pos") values greater or equal to this one will get shifted down
         :return:                    The number of modified items
@@ -646,7 +646,7 @@ class Collections:
         # Starting with a particular Collection node, look at all its relationships whose name is specified by membership_rel_name,
         #       and increase the value of the "pos" attributes on those relationships if their current values is at least first_to_move
         q = f'''
-        MATCH (c:BA {{uri: $collection_id}}) <- [r :{membership_rel_name}] - (n :BA)
+        MATCH (c:BA {{entity_id: $collection_id}}) <- [r :{membership_rel_name}] - (n :BA)
         WHERE r.pos >= $first_to_move
         SET r.pos = r.pos + {cls.DELTA_POS}
         '''

@@ -22,7 +22,7 @@ def db():
 
 def initialize_categories(db):
     # Clear the dbase, create the Category Schema, and creates a ROOT Category node;
-    # return the pair (internal database ID, URI) of that newly-created root node
+    # return the pair (internal database ID, entity_id) of that newly-created root node
 
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
@@ -30,7 +30,7 @@ def initialize_categories(db):
 
     return Categories.create_categories_root()  # Returns a pair (int|str, str)
                                                 # The root node contains the properties:
-                                                # {"name": "HOME", "remarks": "top level", "uri": "1", "root": True}
+                                                # {"name": "HOME", "remarks": "top level", "entity_id": "1", "root": True}
 
 
 
@@ -47,7 +47,7 @@ def test_get_category_info(db):
 
     result = Categories.get_category_info(root_uri)
 
-    assert result == {'root': True, 'name': 'HOME', 'uri': '1', 'remarks': 'top level'}
+    assert result == {'root': True, 'name': 'HOME', 'entity_id': '1', 'remarks': 'top level'}
     #TODO: more tests
 
 
@@ -60,10 +60,10 @@ def test_is_root_category(db):
 
 
 
-def test_get_root_uri(db):
+def test_get_root_entity_id(db):
     _, root_uri = initialize_categories(db)
 
-    assert Categories.get_root_uri() == root_uri
+    assert Categories.get_root_entity_id() == root_uri
     #TODO: more tests
 
 
@@ -73,10 +73,10 @@ def test_get_all_categories(db):
     _, root_uri = initialize_categories(db)
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-    assert result == [{'uri': root_uri, 'name': 'HOME', 'remarks': 'top level'}]
+    assert result == [{'entity_id': root_uri, 'name': 'HOME', 'remarks': 'top level'}]
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=False)
-    assert result == [{'uri': root_uri, 'name': 'HOME'}]
+    assert result == [{'entity_id': root_uri, 'name': 'HOME'}]
 
     result = Categories.get_all_categories(exclude_root=True, include_remarks=True)
     assert result == []
@@ -87,17 +87,17 @@ def test_get_all_categories(db):
                                                           "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-    expected = [{'uri': root_uri, 'name': 'HOME', 'remarks': 'top level'},
-                {'uri': language_uri, 'name': 'Languages', 'remarks': 'Common node for all languages'}]
+    expected = [{'entity_id': root_uri, 'name': 'HOME', 'remarks': 'top level'},
+                {'entity_id': language_uri, 'name': 'Languages', 'remarks': 'Common node for all languages'}]
     compare_recordsets(result, expected)
 
     # Add 2 new Categories ("French" and "Italian")
     french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
     italian_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "Italian"})
     result = Categories.get_all_categories(exclude_root=False, include_remarks=True)
-    expected = [{'uri': root_uri, 'name': 'HOME', 'remarks': 'top level'},
-                {'uri': language_uri, 'name': 'Languages', 'remarks': 'Common node for all languages'},
-                {'uri': french_uri, 'name': 'French'}, {'uri': italian_uri, 'name': 'Italian'}]
+    expected = [{'entity_id': root_uri, 'name': 'HOME', 'remarks': 'top level'},
+                {'entity_id': language_uri, 'name': 'Languages', 'remarks': 'Common node for all languages'},
+                {'entity_id': french_uri, 'name': 'French'}, {'entity_id': italian_uri, 'name': 'Italian'}]
     compare_recordsets(result, expected)
 
 
@@ -178,28 +178,28 @@ def test_get_parent_categories(db):
                                                "subcategory_remarks": "Common node for all languages"})
 
     result = Categories.get_parent_categories(language_uri)
-    assert result == [{"name": "HOME", "remarks": "top level", "uri": root_uri, "root": True}]
+    assert result == [{"name": "HOME", "remarks": "top level", "entity_id": root_uri, "root": True}]
     # The "Languages" node has 1 parent (the root)
 
     # Add a 2nd sub-category ("Courses") to the root
     courses_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Courses"})
 
     result = Categories.get_parent_categories(courses_uri)
-    assert result == [{"name": "HOME", "remarks": "top level", "uri": root_uri, "root": True}]
+    assert result == [{"name": "HOME", "remarks": "top level", "entity_id": root_uri, "root": True}]
     # The "Courses" node has 1 parent (the root)
 
     # Add a sub-category ("French") to "Languages"
     french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
     result = Categories.get_parent_categories(french_uri)
-    assert result == [{"name": "Languages", "remarks": "Common node for all languages", "uri": language_uri}]
+    assert result == [{"name": "Languages", "remarks": "Common node for all languages", "entity_id": language_uri}]
     # The "French" node has 1 parent ("Languages")
 
     # Make the "French" also a child of "Courses"
     Categories.add_subcategory_relationship(subcategory_uri=french_uri, category_uri=courses_uri)
     # The "French" node will now have 2 parents ("Languages" and "Courses)
     result = Categories.get_parent_categories(french_uri)
-    expected = [{"name": "Languages", "remarks": "Common node for all languages", "uri": language_uri},
-                {"name": "Courses", "uri": courses_uri}]
+    expected = [{"name": "Languages", "remarks": "Common node for all languages", "entity_id": language_uri},
+                {"name": "Courses", "entity_id": courses_uri}]
     assert compare_recordsets(result, expected)
 
 
@@ -207,29 +207,29 @@ def test_get_parent_categories(db):
 def test_get_ancestor_categories(db):
     _, root_uri = initialize_categories(db)
 
-    result = Categories.get_ancestor_categories(category_uri=root_uri)
+    result = Categories.get_ancestor_categories(category_entity_id=root_uri)
     assert result == []     # The root node has no ancestors
 
-    A_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "A"})
-    result = Categories.get_ancestor_categories(category_uri=A_uri)
+    A_entity_id = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "A"})
+    result = Categories.get_ancestor_categories(category_entity_id=A_entity_id)
     assert result == [root_uri]     # The root node is the only ancestor of Category "A"
 
     B_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "B"})
-    result = Categories.get_ancestor_categories(category_uri=B_uri)
+    result = Categories.get_ancestor_categories(category_entity_id=B_uri)
     assert result == [root_uri]     # The root node is the only ancestor of Category "B"
 
-    C_uri = Categories.add_subcategory({"category_uri": A_uri, "subcategory_name": "C"})
-    result = Categories.get_ancestor_categories(category_uri=C_uri)
-    assert compare_unordered_lists(result, [A_uri, root_uri])
+    C_uri = Categories.add_subcategory({"category_uri": A_entity_id, "subcategory_name": "C"})
+    result = Categories.get_ancestor_categories(category_entity_id=C_uri)
+    assert compare_unordered_lists(result, [A_entity_id, root_uri])
 
     # Make "A" a subcategory of "B"
-    Categories.add_subcategory_relationship(category_uri=B_uri, subcategory_uri=A_uri)
+    Categories.add_subcategory_relationship(category_uri=B_uri, subcategory_uri=A_entity_id)
 
-    result = Categories.get_ancestor_categories(category_uri=A_uri)
+    result = Categories.get_ancestor_categories(category_entity_id=A_entity_id)
     assert compare_unordered_lists(result, [B_uri, root_uri])
 
-    result = Categories.get_ancestor_categories(category_uri=C_uri)
-    assert compare_unordered_lists(result, [A_uri, B_uri, root_uri])
+    result = Categories.get_ancestor_categories(category_entity_id=C_uri)
+    assert compare_unordered_lists(result, [A_entity_id, B_uri, root_uri])
 
 
 
@@ -256,7 +256,7 @@ def test_get_sibling_categories(db):
     assert len(result) == 1
     entry = result[0]
     assert entry["name"] == "Italian"   # The sibling of "French" is "Italian"
-    assert entry["uri"] == italian_uri
+    assert entry["entity_id"] == italian_uri
     assert entry["_internal_id"] == italian_internal_id
     #assert compare_unordered_lists(entry["_node_labels"], ['Category', 'BA'])
 
@@ -265,7 +265,7 @@ def test_get_sibling_categories(db):
     entry = result[0]
     assert entry["name"] == "French"   # The sibling of "Italian" is "French"
 
-    expected = {"name": "French", "uri": french_uri, "_internal_id": french_internal_id, "_node_labels": ['BA', 'Category']}
+    expected = {"name": "French", "entity_id": french_uri, "_internal_id": french_internal_id, "_node_labels": ['BA', 'Category']}
 
     # We'll check the node labels separately, because their order may be reshuffled
     assert compare_unordered_lists(entry["_node_labels"], expected["_node_labels"])
@@ -324,7 +324,7 @@ def test_add_subcategory_relationship(db):
 
     # Verify that 'A' is indeed a subcategory of 'B'
     result = Categories.get_subcategories(category_uri=B_uri)
-    assert result == [{'_CLASS': 'Category', 'uri': A_uri, 'name': 'A'}]
+    assert result == [{'_CLASS': 'Category', 'entity_id': A_uri, 'name': 'A'}]
 
     with pytest.raises(Exception):
         # This would create a cycle
@@ -341,7 +341,7 @@ def test_get_see_also(db):
     Categories.create_see_also(from_category=A_uri, to_category=B_uri)
 
     result = Categories.get_see_also(from_category=A_uri)
-    assert result == [{'name': 'B', 'remarks': None, 'uri': B_uri}]
+    assert result == [{'name': 'B', 'remarks': None, 'entity_id': B_uri}]
 
 
 
@@ -354,8 +354,8 @@ def test_create_see_also(db):
 
     Categories.create_see_also(from_category=A_uri, to_category=B_uri)
 
-    assert db.links_exist(match_from = db.match(key_name="uri", key_value=A_uri),
-                          match_to = db.match(key_name="uri", key_value=B_uri),
+    assert db.links_exist(match_from = db.match(key_name="entity_id", key_value=A_uri),
+                          match_to = db.match(key_name="entity_id", key_value=B_uri),
                           rel_name="BA_see_also")
 
     with pytest.raises(Exception):
@@ -374,8 +374,8 @@ def test_remove_see_also(db):
 
     Categories.remove_see_also(from_category=A_uri, to_category=B_uri)
 
-    assert not db.links_exist(match_from = db.match(key_name="uri", key_value=A_uri),
-                              match_to = db.match(key_name="uri", key_value=B_uri),
+    assert not db.links_exist(match_from = db.match(key_name="entity_id", key_value=A_uri),
+                              match_to = db.match(key_name="entity_id", key_value=B_uri),
                               rel_name="BA_see_also")
 
     with pytest.raises(Exception):
@@ -424,12 +424,13 @@ def test_add_content_at_beginning(db):
     pass
 
 
+
 def test_link_content_at_end(db):
     _, root_uri = initialize_categories(db)
     #print("root URI is: ", root_uri)
 
     GraphSchema.create_class_with_properties(name="Image",
-                                             properties=["caption", "basename", "suffix", "uri"])
+                                             properties=["caption", "basename", "suffix", "entity_id"])
     GraphSchema.create_class_relationship(from_class="Image", to_class="Category",
                                           rel_name="BA_in_category")
 
@@ -442,9 +443,9 @@ def test_link_content_at_end(db):
     # Verify that all nodes and links are in place
     q = f'''
         MATCH p=
-        (:Image {{caption:"my_pic", uri:"i-100", `_CLASS`:"Image"}})
+        (:Image {{caption:"my_pic", entity_id:"i-100", `_CLASS`:"Image"}})
         -[:BA_in_category]->
-        (:Category {{uri: "{root_uri}", `_CLASS`:"Category"}})
+        (:Category {{entity_id: "{root_uri}", `_CLASS`:"Category"}})
         RETURN COUNT(p) AS path_count
         '''
     result = db.query(q, single_cell="path_count")
@@ -468,7 +469,7 @@ def test_add_content_after_element(db):
 
     # Introduce a new test Class, "Image"
     GraphSchema.create_class_with_properties(name="Image",
-                                             properties=["caption", "basename", "suffix", "uri"])
+                                             properties=["caption", "basename", "suffix", "entity_id"])
     GraphSchema.create_class_relationship(from_class="Image", to_class="Category",
                                           rel_name="BA_in_category")
 
@@ -478,11 +479,11 @@ def test_add_content_after_element(db):
                                   new_uri="i-USA")
 
     q = f'''
-        MATCH (c:Category {{uri: "{root_entity_id}"}})<-[r:BA_in_category]-(ci)
-        RETURN r.pos AS pos, ci.uri AS uri
+        MATCH (c:Category {{entity_id: "{root_entity_id}"}})<-[r:BA_in_category]-(ci)
+        RETURN r.pos AS pos, ci.entity_id AS entity_id
         ORDER BY pos
         '''
-    result = db.query(q, single_column="uri")
+    result = db.query(q, single_column="entity_id")
     assert result == ["i-USA"]
 
     # Create a new Data Node (of class "Image"), positioned after the previously-added "USA" Image on the Root Category Page
@@ -492,7 +493,7 @@ def test_add_content_after_element(db):
                                          insert_after_uri="i-USA", insert_after_class="Image",
                                          new_uri="i-Brazil")
 
-    result = db.query(q, single_column="uri")
+    result = db.query(q, single_column="entity_id")
     assert result == ["i-USA", "i-Brazil"]
 
     # Create a new Data Node (of class "Image"), positioned after the initially-added "USA" Image on the Root Category Page
@@ -501,13 +502,13 @@ def test_add_content_after_element(db):
                                   insert_after_uri="i-USA", insert_after_class="Image",
                                   new_uri="i-Mexico")
 
-    result = db.query(q, single_column="uri")
+    result = db.query(q, single_column="entity_id")
     assert result == ["i-USA", "i-Mexico", "i-Brazil"]
 
 
     # Introduce another new test Class, "Header"
     GraphSchema.create_class_with_properties(name="Header",
-                                             properties=["text", "uri"])
+                                             properties=["text", "entity_id"])
     GraphSchema.create_class_relationship(from_class="Header", to_class="Category",
                                           rel_name="BA_in_category")
 
@@ -517,7 +518,7 @@ def test_add_content_after_element(db):
                                   insert_after_uri="i-Mexico", insert_after_class="Image",
                                   new_uri="i-Header-1")
 
-    result = db.query(q, single_column="uri")
+    result = db.query(q, single_column="entity_id")
     assert result == ["i-USA", "i-Mexico", "i-Header-1", "i-Brazil"]
 
 
@@ -527,7 +528,7 @@ def test_add_content_after_element(db):
                                   insert_after_uri="i-Header-1", insert_after_class="Header",
                                   new_uri="i-Guyana")
 
-    result = db.query(q, single_column="uri")
+    result = db.query(q, single_column="entity_id")
     assert result == ["i-USA", "i-Mexico", "i-Header-1", "i-Guyana", "i-Brazil"]
 
 
@@ -537,7 +538,7 @@ def test_add_content_after_element(db):
                                   insert_after_uri="i-Header-1", insert_after_class="Header",
                                   new_uri="i-Venezuela")
 
-    result = db.query(q, single_column="uri")
+    result = db.query(q, single_column="entity_id")
     assert result == ["i-USA", "i-Mexico", "i-Header-1", "i-Venezuela", "i-Guyana", "i-Brazil"]
 
 
@@ -548,7 +549,7 @@ def test_add_content_after_element(db):
                                   insert_after_uri="i-Header-1", insert_after_class="Header",
                                   new_uri="i-Colombia")
 
-    result = db.query(q, single_column="uri")
+    result = db.query(q, single_column="entity_id")
     assert result == ["i-USA", "i-Mexico", "i-Header-1","i-Colombia", "i-Venezuela", "i-Guyana", "i-Brazil"]
 
 
@@ -557,7 +558,7 @@ def test_detach_from_category(db):
     _, root_uri = initialize_categories(db)
     #print("root URI is: ", root_uri)
 
-    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "uri"])
+    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "entity_id"])
     GraphSchema.create_class_relationship(from_class="Image", to_class="Category",
                                           rel_name="BA_in_category")
 
@@ -582,9 +583,9 @@ def test_detach_from_category(db):
     # Verify that nodes and links are in place
     q = f'''
         MATCH p=
-        (:Image {{caption:"my_pic", uri:"i-100", `_CLASS`:"Image"}})
+        (:Image {{caption:"my_pic", entity_id:"i-100", `_CLASS`:"Image"}})
         -[:BA_in_category]->
-        (:Category {{uri: "{new_cat_uri}", `_CLASS`:"Category"}})
+        (:Category {{entity_id: "{new_cat_uri}", `_CLASS`:"Category"}})
         RETURN COUNT(p) AS path_count
         '''
     result = db.query(q, single_cell="path_count")
@@ -608,7 +609,7 @@ def test_get_items_schema_data(db):
     assert res == {}    # There are no Contents Items yet attached to the Category
 
     GraphSchema.create_class_with_properties(name="Note", properties=["title", "basename", "suffix"])
-    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "uri"])
+    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "entity_id"])
 
     # Add some Content Items to the above Category
     Categories.add_content_at_end(category_uri=root_uri, item_class_name="Note",
@@ -620,13 +621,13 @@ def test_get_items_schema_data(db):
     Categories.add_content_at_end(category_uri=root_uri, item_class_name="Image",
                                   item_properties={"caption": "vacation pic", "basename": "pic1", "suffix": "jpg"})
     res = Categories.get_items_schema_data(category_uri=root_uri)
-    assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix', 'uri']}
+    assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix', 'entity_id']}
 
-    # Make the "uri" property of the Class "Image" to be a "system" property
-    GraphSchema.set_property_attribute(class_name="Image", prop_name="uri",
+    # Make the "entity_id" property of the Class "Image" to be a "system" property
+    GraphSchema.set_property_attribute(class_name="Image", prop_name="entity_id",
                                        attribute_name="system", attribute_value=True)
     res = Categories.get_items_schema_data(category_uri=root_uri)
-    assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix']}   # 'uri' is no longer included
+    assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix']}   # 'entity_id' is no longer included
 
 
 

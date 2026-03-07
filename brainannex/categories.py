@@ -59,7 +59,7 @@ class Categories:
         """
         if not GraphSchema.class_name_exists("Category"):
             GraphSchema.create_class_with_properties(name="Category",
-                                                     properties=["name", "remarks", "uri", "root"],
+                                                     properties=["name", "remarks", "entity_id", "root"],
                                                      strict=False)
 
             GraphSchema.create_class_relationship(from_class="Category", to_class="Category",
@@ -79,7 +79,7 @@ class Categories:
         # The rest of this function is, strictly speaking, about the CategoryPages
         if not GraphSchema.class_name_exists("Content Item"):
             GraphSchema.create_class_with_properties(name="Content Item", strict=False,
-                                                     properties=["uri"])
+                                                     properties=["entity_id"])
             GraphSchema.create_class_relationship(from_class="Content Item", to_class="Category",
                                                   rel_name="BA_in_category")
 
@@ -104,26 +104,26 @@ class Categories:
 
         :param category_uri:    A string uniquely identifying the desired Category
         :return:                The Category's properties (or a blank dictionary if not found)
-                                    EXAMPLES:   {"uri": "123", "name": "Astronomy", "remarks": "except cosmology"}
-                                                {"uri": "1", "name": "HOME", "root": true}
+                                    EXAMPLES:   {"entity_id": "123", "name": "Astronomy", "remarks": "except cosmology"}
+                                                {"entity_id": "1", "name": "HOME", "root": true}
         """
-        #return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="uri")
-        return GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Category", search=("uri", category_uri))
+        #return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="entity_id")
+        return GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Category", search=("entity_id", category_uri))
 
 
 
     @classmethod
-    def is_root_category(cls, category_uri :str) -> bool:
+    def is_root_category(cls, category_entity_id :str) -> bool:
         """
         Return True if the given ID corresponds to the ROOT Category, or False otherwise
 
-        :param category_uri:    A string identifying the desired Category
-        :return:                True if the given ID corresponds to the ROOT Category, or False otherwise
+        :param category_entity_id:  A string identifying the desired Category
+        :return:                    True if the given ID corresponds to the ROOT Category, or False otherwise
         """
-        assert GraphSchema.is_valid_entity_id(category_uri), \
+        assert GraphSchema.is_valid_entity_id(category_entity_id), \
             "is_root_category(): the argument `category_uri` is not a valid URI string"
 
-        category_properties = cls.get_category_info(category_uri)
+        category_properties = cls.get_category_info(category_entity_id)
 
         if category_properties.get("root"):
             return True
@@ -132,17 +132,17 @@ class Categories:
 
 
     @classmethod
-    def get_root_uri(cls) -> str|None:
+    def get_root_entity_id(cls) -> str | None:
         """
-        Fetch the URI of the root category
+        Fetch the Entity ID of the root category
 
-        :return:    The URI of the root category; if not found, return None.
+        :return:    The Entity ID of the root category; if not found, return None.
                     If more than one root exists, raise an Exception
         """
         #match = cls.db.match(label="Category", properties={"root": True})
         root_category = GraphSchema.get_single_data_node(node_id=True, id_key="root", class_name="Category")
         if root_category:
-            return root_category.get("uri")
+            return root_category.get("entity_id")
 
 
 
@@ -150,15 +150,15 @@ class Categories:
     def get_all_categories(cls, exclude_root=True, include_remarks=False) -> [dict]:
         """
         Return all the existing Categories - optionally except the root Category -
-        as a list of dictionaries with keys 'uri', 'name', 'pinned' and, optionally, 'remarks',
+        as a list of dictionaries with keys 'entity_id', 'name', 'pinned' and, optionally, 'remarks',
         sorted by name.
 
         :param exclude_root:    If True, the root Category is omitted
         :param include_remarks: If True, the 'remarks' property is included alongside all others
 
         :return:    A list of dictionaries.  EXAMPLE:
-                        [{'uri': '2', 'name': 'Work', 'remarks': 'Current or past'},
-                         {'uri': '3', 'name': 'Hobbies', pinned: True} ]
+                        [{'entity_id': '2', 'name': 'Work', 'remarks': 'Current or past'},
+                         {'entity_id': '3', 'name': 'Hobbies', pinned: True} ]
         """
         clause = ""
         if exclude_root:
@@ -171,7 +171,7 @@ class Categories:
         q =  f'''
              MATCH (cat :Category {{`_CLASS`: "Category"}})
              {clause}
-             RETURN cat.uri AS uri, cat.name AS name, cat.pinned AS pinned {remarks_subquery}
+             RETURN cat.entity_id AS entity_id, cat.name AS name, cat.pinned AS pinned {remarks_subquery}
              ORDER BY toLower(cat.name)
              '''
 
@@ -205,7 +205,7 @@ class Categories:
         # TODO: maybe turn into a method of GraphSchema :  count_inbound_rels(labels="BA, uri=category_uri, class_name="Category")
 
         match = cls.db.match(labels="Category",
-                             properties={"uri": category_uri})
+                             properties={"entity_id": category_uri})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="IN")
 
@@ -218,10 +218,10 @@ class Categories:
         :param category_uri:A string identifying the desired Category
         :return:            The number of (direct) parent categories of the given Category; possibly, zero
         """
-        # TODO: maybe turn into a method of GraphSchema :  count_outbound_rels(labels="BA, uri=category_uri, class_name="Category")
+        # TODO: maybe turn into a method of GraphSchema :  count_outbound_rels(labels="BA, entity_id=category_uri, class_name="Category")
 
         match = cls.db.match(labels="Category",
-                             properties={"uri": category_uri})
+                             properties={"entity_id": category_uri})
 
         return cls.db.count_links(match, rel_name="BA_subcategory_of", rel_dir="OUT")
 
@@ -233,13 +233,13 @@ class Categories:
         Return all the (immediate) subcategories of the given category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
-            [{'_CLASS': 'Category', 'uri': '2', 'name': 'Work', remarks: 'outside employment'},
-             {'_CLASS': 'Category', 'uri': '3', 'name': 'Hobbies'}]
+            [{'_CLASS': 'Category', 'entity_id': '2', 'name': 'Work', remarks: 'outside employment'},
+             {'_CLASS': 'Category', 'entity_id': '3', 'name': 'Hobbies'}]
 
         :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
         """
-        match = cls.db.match(labels="Category", key_name="uri", key_value=category_uri)
+        match = cls.db.match(labels="Category", key_name="entity_id", key_value=category_uri)
 
         return cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="IN",
                                    neighbor_labels="Category")
@@ -252,14 +252,14 @@ class Categories:
         Return all the (immediate) parent categories of the given Category,
         as a list of dictionaries with all the keys of the Category Class
         EXAMPLE:
-            [{'uri': '2', 'name': 'Work', remarks: 'outside employment'},
-             {'uri': '3', 'name': 'Hobbies'}]
+            [{'entity_id': '2', 'name': 'Work', remarks: 'outside employment'},
+             {'entity_id': '3', 'name': 'Hobbies'}]
 
         :param category_uri:A string identifying the desired Category
         :return:            A list of dictionaries
         """
         match = cls.db.match(labels="Category",
-                             properties={"uri": category_uri})
+                             properties={"entity_id": category_uri})
 
         result = cls.db.follow_links(match, rel_name="BA_subcategory_of", rel_dir="OUT",
                                    neighbor_labels="Category")
@@ -272,22 +272,22 @@ class Categories:
 
 
     @classmethod
-    def get_ancestor_categories(cls, category_uri :str) -> [str]:
+    def get_ancestor_categories(cls, category_entity_id :str) -> [str]:
         """
         Return all the ancestor categories - direct or indirect - of the given Category,
         as a list of the entity id's of the ancestor node
 
-        :param category_uri:A string identifying the desired Category
-        :return:            A list of the entity id's of its ancestor nodes
+        :param category_entity_id:  A string identifying the desired Category
+        :return:                    A list of the entity id's of its ancestor nodes
         """
         # Follow 1 or more outbound "BA_subcategory_of" relationships from the given Category node;
         q = '''
-            MATCH (c :Category {uri: $category_uri})-[:BA_subcategory_of*1..]->(c_ancestor)
-            RETURN DISTINCT c_ancestor.uri AS ENTITY_ID
+            MATCH (c :Category {entity_id: $category_uri})-[:BA_subcategory_of*1..]->(c_ancestor)
+            RETURN DISTINCT c_ancestor.entity_id AS ENTITY_ID
             ORDER BY ENTITY_ID
             '''
 
-        return cls.db.query(q, data_binding={"category_uri": category_uri},  single_column="ENTITY_ID")
+        return cls.db.query(q, data_binding={"category_uri": category_entity_id}, single_column="ENTITY_ID")
 
 
 
@@ -351,19 +351,19 @@ class Categories:
         #       where the child c is any ancestor node of the given Category node.
         #       A limit is imposed on the max length of the path
         q = '''
-            MATCH (start :Category {uri:$category_uri})-[:BA_subcategory_of*0..9]->
+            MATCH (start :Category {entity_id: $category_uri})-[:BA_subcategory_of*0..9]->
                   (c :Category)-[:BA_subcategory_of]->(p :Category)
-            WITH c, collect(DISTINCT p.uri) AS all_parents
-            RETURN c.uri AS uri, all_parents
+            WITH c, collect(DISTINCT p.entity_id) AS all_parents
+            RETURN c.entity_id AS uri, all_parents
             '''
         result = cls.db.query(q, {"category_uri": category_uri})      # A list of dictionaries
-        # EXAMPLE:  [{'uri': 823, 'all_parents': [709]},
-        #            {'uri': 709, 'all_parents': [544]},
-        #            {'uri': 544, 'all_parents': [1]}]
+        # EXAMPLE:  [{'entity_id': 823, 'all_parents': [709]},
+        #            {'entity_id': 709, 'all_parents': [544]},
+        #            {'entity_id': 544, 'all_parents': [1]}]
 
         parent_map = {}
         for entry in result:
-            key = entry["uri"]
+            key = entry["entity_id"]
             value = entry["all_parents"]
             parent_map[key] = value
 
@@ -419,14 +419,14 @@ class Categories:
         Add a new Subcategory to a given, already existing, Category
 
         :param data_dict:   Dictionary with the following keys:
-                                category_uri            URI to identify the Category
+                                category_uri            Entity ID to identify the Category
                                                             to which to add the new Subcategory
                                 subcategory_name        The name to give to the new Subcategory
-                                subcategory_remarks     (OPTIONAL)  A comment field for the new Subcategory
+                                subcategory_remarks     [OPTIONAL]  A comment field for the new Subcategory
 
         :param category_uri: [OPTIONAL] Way to specify the parent Category
 
-        :return:            A string with the "uri" of the Category node just created
+        :return:            A string with the "entity_id" of the Category node just created
                                 (which makes use of an auto-increment value)
         """
         # TODO: complete switch to named arguments rather than the archaic data_dict
@@ -454,7 +454,7 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        parent_category_internal_id = GraphSchema.get_data_node_id(key_value=category_uri, key_name="uri")
+        parent_category_internal_id = GraphSchema.get_data_node_id(key_value=category_uri, key_name="entity_id")
 
         new_uri = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
 
@@ -493,7 +493,7 @@ class Categories:
         if cls.count_subcategories(category_uri) > 0:
             raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because it has sub-categories. Use the Category manager to first sever those relationships")
 
-        number_deleted = GraphSchema.delete_data_nodes(node_id=category_uri, id_key="uri", class_name="Category")
+        number_deleted = GraphSchema.delete_data_nodes(node_id=category_uri, id_key="entity_id", class_name="Category")
 
         if number_deleted != 1:
             raise Exception(f"Failed to delete the requested Category (URI '{category_uri}')")
@@ -537,7 +537,7 @@ class Categories:
         #   (the originator) of the relationship
         try:
             GraphSchema.add_data_relationship(from_id=subcategory_uri, to_id=category_uri,
-                                              rel_name="BA_subcategory_of", id_type="uri")
+                                              rel_name="BA_subcategory_of", id_type="entity_id")
         except Exception as ex:
             raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship "
                             f"from Category uri `{subcategory_uri}` to Category uri `{category_uri}`. {ex}")
@@ -587,13 +587,13 @@ class Categories:
 
         :param from_category:   URI of the Category where the "see_also" relationship originates
         :return:                List (possibly empty) of dictionaries of data from Categories linked to
-                                    by a "see_also" relationship.  They keys are "name", "remarks", "uri".
-                                    EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
+                                    by a "see_also" relationship.  They keys are "name", "remarks", "entity_id".
+                                    EXAMPLE: [{'name': 'Quotes', 'entity_id': '823', 'remarks': None}]
         """
         # TODO: perhaps restore the old feature of also storing a "description" field on the relationships
 
-        return GraphSchema.follow_links(class_name="Category", node_id=from_category, id_key="uri",
-                                        link_name="BA_see_also", labels="Category", properties=["name", "remarks", "uri"])
+        return GraphSchema.follow_links(class_name="Category", node_id=from_category, id_key="entity_id",
+                                        link_name="BA_see_also", labels="Category", properties=["name", "remarks", "entity_id"])
 
 
 
@@ -606,7 +606,7 @@ class Categories:
         :param to_category:     URI of the Category where the "see_also" relationship terminates
         :return:                None
         """
-        GraphSchema.add_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
+        GraphSchema.add_data_relationship(from_id=from_category, to_id=to_category, id_type="entity_id",
                                           rel_name="BA_see_also")
 
 
@@ -621,7 +621,7 @@ class Categories:
         :param to_category:     URI of the Category where the "see_also" relationship terminates
         :return:                None
         """
-        GraphSchema.remove_data_relationship(from_id=from_category, to_id=to_category, id_type="uri",
+        GraphSchema.remove_data_relationship(from_id=from_category, to_id=to_category, id_type="entity_id",
                                              rel_name="BA_see_also", labels="Category")
 
 
@@ -685,12 +685,12 @@ class Categories:
                 parent_uri   = ancestry_uri[level -1]
 
 
-            print(f"    CREATING `{category_name}` as a subcategory of `{parent_name}` (uri: '{parent_uri}')")
+            print(f"    CREATING `{category_name}` as a subcategory of `{parent_name}` (entity_id: '{parent_uri}')")
             #new_uri = "TEMP"
             new_uri = Categories.add_subcategory(category_uri=parent_uri,
                                                  data_dict={"subcategory_name": category_name} )
             n_created += 1
-            print(f"        newly-assigned uri: '{new_uri}'")
+            print(f"        newly-assigned entity_id: '{new_uri}'")
             ancestry_name[level] = category_name
             ancestry_uri[level] = new_uri
 
@@ -795,7 +795,7 @@ class Categories:
                                     'END_CONTAINER'
                                 ]
         """
-        root_uri = cls.get_root_uri()
+        root_uri = cls.get_root_entity_id()
         if category_uri == root_uri:  # If it is the root
             return [root_uri]
 
@@ -880,8 +880,8 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True if the given Category has a "pinned" status; otherwise, False
         """
-        all_props = GraphSchema.get_single_data_node(node_id=uri, id_key="uri", class_name="Category")    # A dict, or None
-        assert all_props, f"is_pinned(): unable to locate the specified Category node (uri: '{uri}')"
+        all_props = GraphSchema.get_single_data_node(node_id=uri, id_key="entity_id", class_name="Category")    # A dict, or None
+        assert all_props, f"is_pinned(): unable to locate the specified Category node (entity_id: '{uri}')"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
 
@@ -905,13 +905,13 @@ class Categories:
         that the given Content Item is linked to
 
         :param item_uri:    The URI of a data node representing a Content Item
-        :return:            A list of dicts that have the keys "uri", "name", "remarks";
+        :return:            A list of dicts that have the keys "entity_id", "name", "remarks";
                                 any missing value will appear as None
         """
         # TODO: `item_uri` is no longer a universally-unique identifier
         q = '''
-            MATCH (:BA {uri: $item_uri}) - [:BA_in_category] -> (cat :Category)
-            RETURN cat.uri AS uri, cat.name AS name, cat.remarks AS remarks
+            MATCH (:BA {entity_id: $item_uri}) - [:BA_in_category] -> (cat :Category)
+            RETURN cat.entity_id AS uri, cat.name AS name, cat.remarks AS remarks
             '''
         result = cls.db.query(q, data_binding={"item_uri": item_uri})
         return result
@@ -927,10 +927,10 @@ class Categories:
         :param entity_id:   A string identifying the desired Category
         :return:            A list of dictionaries
                             EXAMPLE:
-                            [{'schema_code': 'i', 'uri': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
-                             {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-                             {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
-                             {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'uri': '6965', 'pos': 86, 'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
+                            [{'schema_code': 'i', 'entity_id': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
+                             {'schema_code': 'h', 'entity_id': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
+                             {'schema_code': 'n', 'entity_id': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
+                             {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'entity_id': '6965', 'pos': 86, 'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
         """
 
@@ -938,7 +938,7 @@ class Categories:
         # TODO: switch to using one of the Collections methods
 
         q = '''
-            MATCH (n) -[r :BA_in_category]-> (:Category {uri:$category_id}),
+            MATCH (n) -[r :BA_in_category]-> (:Category {entity_id: $category_id}),
             (cl :CLASS)
             WHERE cl.name = n.`_CLASS`
             RETURN n, 
@@ -1010,13 +1010,13 @@ class Categories:
               which can lead to incorrect values of the "pos" relationship attributes.
               -> Follow the new way it is handled in add_content_at_end()
 
-        :param category_uri:    The string "uri" of the Category to which this new Content Media is to be attached
+        :param category_uri:    The string "entity_id" of the Category to which this new Content Media is to be attached
         :param item_class_name: For example, "Image"
         :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix" (TODO: verify against schema)
         :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
                                     but it can also be provided (if provided, it MUST be unique)
         :param namespace:       Only applicable if new_uri is None : the namespace to use for automatically generating a URI
-        :return:                The auto-increment "uri" assigned to the newly-created data node
+        :return:                The auto-increment "entity_id" assigned to the newly-created data node
         """
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
@@ -1067,7 +1067,7 @@ class Categories:
         :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
                                     but it can also be provided (if provided, it MUST be unique)
         :param namespace:       Only applicable if new_uri is None : the namespace to use for automatically generating a URI
-        :return:                The "uri" (passed or created) of the newly-created data node
+        :return:                The "entity_id" (passed or created) of the newly-created data node
         """
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
@@ -1100,7 +1100,7 @@ class Categories:
         positionally inserted into the given Category Page after the specified Item
         (in the context of the positional order encoded in the "BA_in_category" relationship attribute "pos")
 
-        :param category_uri:    String with a unique "uri" identifying the Category
+        :param category_uri:    String with a unique "entity_id" identifying the Category
                                     to which this new Content Media is to be attached
 
         :param item_class_name: Class of the Content Item being added.  For example, "Image"
@@ -1117,7 +1117,7 @@ class Categories:
                                     but it can also be provided (if provided, it MUST be unique for its Class name)
         :param namespace:       Only applicable if `new_uri` is None : the namespace to use for automatically generating a URI
 
-        :return:                The auto-increment "uri" assigned to the newly-created data node
+        :return:                The auto-increment "entity_id" assigned to the newly-created data node
         """
         # TODO: verify `item_properties` against the new Item's schema
 
@@ -1150,11 +1150,11 @@ class Categories:
         :param item_uri:        The URI of a data node representing a Content Item
         :return:                None
         """
-        match_from = cls.db.match(key_name="uri", key_value=item_uri)
+        match_from = cls.db.match(key_name="entity_id", key_value=item_uri)
         match_to = cls.db.match(labels="Category")
         assert cls.db.number_of_links(match_from=match_from, match_to=match_to, rel_name="BA_in_category") > 1, \
             f"detach_from_category(): Cannot delete the only remaining 'BA_in_category' link " \
-            f"from Content Item (URI: '{item_uri}') to Categories"
+            f"from Content Item (entity_id: '{item_uri}') to Categories"
 
         GraphSchema.remove_data_relationship(from_id=item_uri, to_id=category_uri,
                                              rel_name="BA_in_category", labels=None)
@@ -1202,14 +1202,14 @@ class Categories:
 
         Properties marked as "system" are optionally excluded (default).
 
-        :param category_uri:A string with the "uri" value to identify the desired Category
+        :param category_uri:A string with the "entity_id" value to identify the desired Category
         :param exclude_system: [OPTIONAL] If True, Property nodes with the attribute "system" set to True will be excluded;
                                     default is True
         :return:            A dictionary whose keys are Class names (of Content Items attached to the given Category),
                             and whose values are the Properties (in their Schema order) of those Classes.
                             Properties declared in "ancestor" Classes (thru "INSTANCE_OF" relationships)
                             are also included.
-                            Properties regarded as "system" ones, such as "uri", are excluded.
+                            Properties regarded as "system" ones, such as "entity_id", are excluded.
                             EXAMPLE:
                                 {'Header': ['text'],
                                  'Site Link': ['url', 'name', 'date', 'comments', 'rating', 'read'],
@@ -1221,7 +1221,7 @@ class Categories:
         """
         # Locate the names of the Classes of all the Content Items attached to the given Category
         q = '''
-            MATCH  (cat :Category {uri: $category_uri, `_CLASS`: "Category"}) 
+            MATCH  (cat :Category {entity_id: $category_uri, `_CLASS`: "Category"}) 
                     <-[:BA_in_category]- (content_item),
                     (cl:CLASS)
             WHERE cl.name = content_item.`_CLASS`
@@ -1270,7 +1270,7 @@ class Categories:
         q = '''
             MATCH (ci1)-[r1:BA_in_category] -> (:Category {name: $name}) <- [r2:BA_in_category]-(ci2) 
             WHERE r1.pos = r2.pos AND id(ci1) < id(ci2)
-            RETURN r1.pos AS pos, ci1.uri AS item1, ci2.uri AS item2
+            RETURN r1.pos AS pos, ci1.entity_id AS item1, ci2.entity_id AS item2
             ORDER BY r1.pos
             '''
 
@@ -1302,7 +1302,7 @@ class Categories:
         q = '''
             MATCH (ci1)-[r1 :BA_in_category]->(c :Category)<-[r2 :BA_in_category]-(ci2)
             WHERE r1.pos = r2.pos AND id(ci1) < id(ci2)
-            RETURN c.name AS category_name, r1.pos AS pos, ci1.uri AS uri1, ci2.uri AS uri2
+            RETURN c.name AS category_name, r1.pos AS pos, ci1.entity_id AS uri1, ci2.entity_id AS uri2
             ORDER BY category_name, pos
             '''
         return cls.db.query(q)
@@ -1333,7 +1333,7 @@ class Categories:
             
             SET newr.pos = i * {Collections.DELTA_POS}
             
-            RETURN x.uri, i, newr.pos
+            RETURN x.entity_id, i, newr.pos
         '''
         cls.db.query(q, data_binding={"category_name": category_name})
 
@@ -1354,14 +1354,14 @@ class Categories:
         :return:
         """
         assert GraphSchema.is_valid_entity_id(category_uri), "ERROR: argument 'category_uri' is invalid"
-        assert GraphSchema.is_valid_entity_id(uri), "ERROR: argument 'uri' is not a valid string"
+        assert GraphSchema.is_valid_entity_id(uri), "ERROR: argument 'entity_id' is not a valid string"
         assert type(move_after_n) == int, "ERROR: argument 'move_after_n' is not an integer"
         assert move_after_n >= 0, "ERROR: argument 'move_after_n' cannot be negative"
 
         # Collect a subset of the first sorted "pos" values: enough values to cover across the insertion point
         number_to_consider = move_after_n + 1
         q = f'''
-            MATCH (c:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:Category {{entity_id: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos
             ORDER by pos
             LIMIT {number_to_consider}
@@ -1402,13 +1402,13 @@ class Categories:
 
         # Change the "pos" attribute of the relationship to the Content Item being moved
         q = f'''
-            MATCH (:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA {{uri: $uri}})
+            MATCH (:Category {{entity_id: $category_id}}) <- [r:BA_in_category] - (:BA {{entity_id: $uri}})
             SET r.pos = {new_pos}
             '''
 
         #print("q: ", q)
 
-        result = cls.db.update_query(q, {"category_id": category_uri, "uri": uri})
+        result = cls.db.update_query(q, {"category_id": category_uri, "entity_id": uri})
         number_props_set = result.get('properties_set')
         #print("number_props_set: ", number_props_set)
         if number_props_set != 1:
@@ -1448,7 +1448,7 @@ class Categories:
         assert n_to_skip >= 1, "ERROR: argument 'n_to_skip' must be at least 1"
 
         q = f'''
-            MATCH (c:Category {{uri: $category_id}}) <- [r:BA_in_category] - (:BA)
+            MATCH (c:Category {{entity_id: $category_id}}) <- [r:BA_in_category] - (:BA)
             WITH  r.pos AS pos, r
             ORDER by pos
             SKIP {n_to_skip}
@@ -1479,9 +1479,9 @@ class Categories:
         # Look for a Category node (c) that is connected to 2 Content Items (n1 and n2)
         #   thru "BA_in_category" relationships; then swap the "pos" attributes on those relationships
         q = '''
-            MATCH (n1 {uri: $uri_1})
-                        -[r1:BA_in_category]->(c:Category {uri: $cat_id})<-[r2:BA_in_category]-
-                  (n2 {uri: $uri_2})
+            MATCH (n1 {entity_id: $uri_1})
+                        -[r1:BA_in_category]->(c:Category {entity_id: $cat_id})<-[r2:BA_in_category]-
+                  (n2 {entity_id: $uri_2})
             WITH r1.pos AS tmp, r1, r2
             SET r1.pos = r2.pos, r2.pos = tmp
             '''

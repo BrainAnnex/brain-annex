@@ -6,8 +6,8 @@ Vue.component('vue-bread-crumbs',
         props: ['category_uri', 'bread_crumbs', 'all_categories'],
         /*  category_uri:       EXAMPLE: "123"
             bread_crumbs:       EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
-            all_categories:     EXAMPLE: [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"},
-                                          {"uri": "523", "name": "work", 'pinned': True}]
+            all_categories:     EXAMPLE: [{"entity_id": "1", "name": "HOME", "remarks": "ROOT NODE"},
+                                          {"entity_id": "523", "name": "work", 'pinned': True}]
          */
 
         template: `
@@ -84,7 +84,7 @@ Vue.component('vue-bread-crumbs',
                 let category_map = {}
                 for (let i in this.all_categories) {   // Note:  i will be an integer, not an array element!
                     let category_data = this.all_categories[i];
-                    let key_int = category_data.uri;
+                    let key_int = category_data.entity_id;
                     let key_str = key_int.toString();
 
                     if ('remarks' in category_data)

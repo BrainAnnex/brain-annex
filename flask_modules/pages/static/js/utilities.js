@@ -12,7 +12,7 @@ class Utilities
         //console.log(`Attempting to locate content item with uri "${uri}"`);
 
         for (var i = 0; i < content_array.length; i++) {
-            if (content_array[i].uri == uri)
+            if (content_array[i].entity_id == uri)
                 return i;          //  Found it
         }
 

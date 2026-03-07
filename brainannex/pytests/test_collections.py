@@ -19,14 +19,14 @@ def db():
 # ************  CREATE A SAMPLE COLLECTION for the testing  **************
 
 def create_sample_collections_class(db):
-    # Clear the dbase, create a sample Collections Class named "Photo Album" (a Class with a "name" and "uri" properties)
+    # Clear the dbase, create a sample Collections Class named "Photo Album" (a Class with a "name" and "entity_id" properties)
 
     db.empty_dbase()
 
     Collections.add_to_schema()
 
     GraphSchema.create_class_with_properties(name="Photo Album",
-                                             properties=["name", "uri"])
+                                             properties=["name", "entity_id"])
 
     GraphSchema.create_class_relationship(from_class="Photo Album", to_class="Collections",
                                           rel_name="INSTANCE_OF", use_link_node=False)
@@ -36,7 +36,7 @@ def create_sample_collections_class(db):
 def create_sample_collection_item_class():
     # Creates a "Photo" Class
     GraphSchema.create_class_with_properties(name="Photo",
-                                             properties=["caption", "uri"])
+                                             properties=["caption", "entity_id"])
 
 
 
@@ -72,7 +72,7 @@ def test_link_to_collection_at_end(db):
 
     # Verify that the "Dancers at Carnaval" photo is linked to the "Brazil vacation", with position 0
     q = '''
-        MATCH p=(:Photo {uri: $photo_uri, caption: "Dancers at Carnaval"})
+        MATCH p=(:Photo {entity_id: $photo_uri, caption: "Dancers at Carnaval"})
                 -[:in_album {pos: 0}]->
                 (:`Photo Album` {name: "Brazil vacation"}) 
         RETURN COUNT(p) AS number_paths
@@ -96,7 +96,7 @@ def test_link_to_collection_at_end(db):
     assert result == 1
     # And now check for the 2nd photo
     q = f'''
-        MATCH p=(:Photo {{uri: $photo_uri, caption: "canoeing on the Amazon"}})
+        MATCH p=(:Photo {{entity_id: $photo_uri, caption: "canoeing on the Amazon"}})
                 -[:in_album {{pos: {Collections.DELTA_POS}}}]->
                 (:`Photo Album` {{name: "Brazil vacation"}}) 
         RETURN COUNT(p) AS number_paths
@@ -118,19 +118,19 @@ def test_is_collection(db):
     GraphSchema.create_data_node(class_name="Photo Album",
                                  properties ={"name": "Jamaica vacation"}, new_entity_id=new_uri)
 
-    assert Collections.is_collection(collection_uri=new_uri)
+    assert Collections.is_collection(collection_entity_id=new_uri)
 
     with pytest.raises(Exception):
-        Collections.is_collection(collection_uri="some random string that is not a URI")
+        Collections.is_collection(collection_entity_id="some random string that is not a URI")
 
 
     # Create something that is NOT a collection
     GraphSchema.create_class_with_properties(name="Car",
-                                             properties=["color", "uri"])
+                                             properties=["color", "entity_id"])
     GraphSchema.create_namespace(name="cars", prefix="c-")
     car_uri = GraphSchema.reserve_next_entity_id(namespace="cars")
     GraphSchema.create_data_node(class_name="Car", properties ={"color": "white"}, new_entity_id=car_uri)
-    assert not Collections.is_collection(collection_uri=car_uri)
+    assert not Collections.is_collection(collection_entity_id=car_uri)
 
 
 
@@ -181,7 +181,7 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Verify that the carnaval photo is STILL linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        MATCH p=(:Photo {entity_id :$carnaval_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -196,7 +196,7 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Verify that the carnaval photo is now linked to the Brazil album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        MATCH p=(:Photo {entity_id: $carnaval_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Winter in Brazil"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -229,7 +229,7 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Verify that the landing photo is now linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$landing_photo_uri})
+        MATCH p=(:Photo {entity_id: $landing_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -243,7 +243,7 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Verify that the resort photo is now linked to the Jamaica album, with position 20
     q = '''
-        MATCH p=(:Photo {uri:$resort_photo_uri})
+        MATCH p=(:Photo {entity_id: $resort_photo_uri})
         -[:in_album {pos: 20}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -303,7 +303,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Verify that the carnaval photo is STILL linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        MATCH p=(:Photo {entity_id: $carnaval_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -318,7 +318,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Verify that the carnaval photo is now linked to the Brazil album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        MATCH p=(:Photo {entity_id: $carnaval_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Winter in Brazil"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -352,7 +352,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Verify that the landing photo is now linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$landing_photo_uri})
+        MATCH p=(:Photo {entity_id: $landing_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -361,7 +361,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Verify that the resort photo is now linked to the Jamaica album, with position 20
     q = '''
-        MATCH p=(:Photo {uri:$resort_photo_uri})
+        MATCH p=(:Photo {entity_id: $resort_photo_uri})
         -[:in_album {pos: 20}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''

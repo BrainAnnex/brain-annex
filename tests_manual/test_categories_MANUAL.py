@@ -110,10 +110,10 @@ def test_check_all_categories_for_duplicates(db):
 """
 For testing on Neo4j browser:
 
-MATCH (n:BA)-[r :BA_in_category]->(cat:BA {uri: 708}) RETURN r.pos, n.text, n.name, n.uri, n.basename ORDER BY r.pos
+MATCH (n:BA)-[r :BA_in_category]->(cat:BA {uri: 708}) RETURN r.pos, n.text, n.name, n.entity_id, n.basename ORDER BY r.pos
 
 MATCH (c:BA {uri: 708}) <- [r :BA_in_category] - (n :BA)
-RETURN r.pos, n.uri, n.text, n.basename
+RETURN r.pos, n.entity_id, n.text, n.basename
 ORDER by r.pos
 
 MATCH (n:BA {uri: xxx}) RETURN n

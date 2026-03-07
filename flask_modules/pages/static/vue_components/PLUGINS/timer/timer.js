@@ -13,7 +13,7 @@ Vue.component('vue-plugin-timer',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_data:      An object with the relevant data about this Content Item;
-                                if the "uri" attribute is negative,
+                                if the "entity_id" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
                                 (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
 
@@ -22,7 +22,7 @@ Vue.component('vue-plugin-timer',
                                         "pos":0,
                                         "ringtone":"dreamscape-alarm-clock-117680.mp3",
                                         "schema_code":"timer",
-                                        "uri":"8809"
+                                        "entity_id":"8809"
                                         }
 
                                 TODO: separate regular properties from control values
@@ -98,7 +98,7 @@ Vue.component('vue-plugin-timer',
                         <tr style='height:40px'>
                             <td align="center" colspan="3">
                                 <!-- preload="none"  -->
-                                <audio v-bind:id="'my_audio' + item_data.uri" controls style="display:none">
+                                <audio v-bind:id="'my_audio' + item_data.entity_id" controls style="display:none">
                                     <source v-bind:src="'/BA/pages/static/vue_components/PLUGINS/timer/alarms/' + current_data.audio_file" type="audio/mpeg">
                                 </audio>
                                 <button @click="play_audio('stop')" class='alarmButtons' style="color:red">SILENCE ALARM</button>
@@ -153,7 +153,7 @@ Vue.component('vue-plugin-timer',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: this.item_data.uri < 0 ? true : false,   // Negative URI means "new Item" (automatically placed in editing mode)
+                editing_mode: this.item_data.entity_id < 0 ? true : false,   // Negative URI means "new Item" (automatically placed in editing mode)
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -224,7 +224,7 @@ Vue.component('vue-plugin-timer',
             {
                 console.log(`In play_audio(): task = "${task}"`);
 
-                var audio = document.getElementById("my_audio"+ this.item_data.uri);    // HTML DOM Audio Object.  It inherits from HTMLMediaElement
+                var audio = document.getElementById("my_audio"+ this.item_data.entity_id);    // HTML DOM Audio Object.  It inherits from HTMLMediaElement
                                                                     // https://www.w3schools.com/jsref/dom_obj_audio.asp
 
                 if (task == 'play')  {
@@ -443,7 +443,7 @@ Vue.component('vue-plugin-timer',
                 // Start the body of the POST to send to the server
                 var post_obj = {class_name: this.item_data.class_name};
 
-                if (this.item_data.uri < 0)  {     // Negative uri is a convention indicating a new Content Item to create,
+                if (this.item_data.entity_id < 0)  {     // Negative uri is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
                      post_obj.category_id = this.category_id;
                      post_obj.insert_after_uri = this.item_data.insert_after_uri;       // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
@@ -452,7 +452,7 @@ Vue.component('vue-plugin-timer',
                      url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING Content Item
-                    post_obj.uri = this.item_data.uri;
+                    post_obj.entity_id = this.item_data.entity_id;
 
                     url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
@@ -496,8 +496,8 @@ Vue.component('vue-plugin-timer',
                     this.status_message = `Successful edit`;
 
                     // If this was a new item (with the temporary negative URI), update its URI with the value assigned by the server
-                    if (this.item_data.uri < 0)
-                        this.current_data.uri = server_payload;
+                    if (this.item_data.entity_id < 0)
+                        this.current_data.entity_id = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Timer Widget component sending `updated-item` signal to its parent");
@@ -524,7 +524,7 @@ Vue.component('vue-plugin-timer',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.uri < 0) {
+                if (this.current_data.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Timer Widget sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');

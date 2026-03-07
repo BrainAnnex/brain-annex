@@ -13,7 +13,7 @@ Vue.component('vue-plugin-table',
     {
         props: ['record_data_list', 'common_fields'],
         /*  record_data_list:  EXAMPLE:
-                                 [{"uri":52, "pos":10, "schema_code":"r", "class_name":"German Vocabulary",
+                                 [{"entity_id":52, "pos":10, "schema_code":"r", "class_name":"German Vocabulary",
                                   "German":"Tier", "English":"animal"}
                                  ]
                                  (if any uri is -1, it means that it's a newly-created header, not yet registered with the server)
@@ -45,7 +45,7 @@ Vue.component('vue-plugin-table',
                              get relayed to the parent of this component, with v-on="$listeners")
                   -->
                 <tr v-for="record in record_data_list" is="vue-plugin-single-record"
-                    v-bind:key="record.uri"
+                    v-bind:key="record.entity_id"
 
                     v-bind:record_data="record"
                     v-bind:field_list="common_fields"

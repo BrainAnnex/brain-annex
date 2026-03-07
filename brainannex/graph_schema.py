@@ -74,7 +74,7 @@ class GraphSchema:
                      assuming there is a Schema node for Class 'Image'
 
         - Every node used by this class, as well as the data nodes it manages,
-            contains has a unique attribute "_entity_id" (currently called "uri", but soon to be changed)
+            contains has a unique attribute "_entity_id" (formerly called "uri")
 
           The entity_id's of schema nodes have the form "schema-n", where n is a unique number.
 
@@ -265,7 +265,7 @@ class GraphSchema:
 
         schema_uri = cls._next_available_schema_entity_id()    # A schema-wide uri, also used for other types of Schema nodes
 
-        attributes = {"name": name, "uri": schema_uri, "strict": strict}
+        attributes = {"name": name, "entity_id": schema_uri, "strict": strict}
         if code:
             attributes["code"] = code
         if handler:
@@ -279,8 +279,8 @@ class GraphSchema:
 
 
         if create_index:
-            # Create an index and constraint for the pair (label=name, properties="uri")
-            cls.db.create_constraint(label=name, key="uri")
+            # Create an index and constraint for the pair (label=name, properties="entity_id")
+            cls.db.create_constraint(label=name, key="entity_id")
 
         return internal_id
 
@@ -330,7 +330,7 @@ class GraphSchema:
             cls.assert_valid_class_name(class_name)
 
             match = cls.db.match(labels="CLASS", key_name="name", key_value=class_name)
-            result = cls.db.get_nodes(match, single_cell="uri")
+            result = cls.db.get_nodes(match, single_cell="entity_id")
 
             if result is None:
                 raise Exception(f"get_class_entity_id(): no Schema Class named '{class_name}' found")
@@ -338,7 +338,7 @@ class GraphSchema:
             return result
 
 
-        result = cls.db.get_nodes(internal_id, single_cell="uri")
+        result = cls.db.get_nodes(internal_id, single_cell="entity_id")
 
         if result is None:
             raise Exception(f"get_class_entity_id(): no Class with internal id {internal_id} found")
@@ -359,7 +359,7 @@ class GraphSchema:
             f"GraphSchema.class_uri_exists(): argument `schema_uri` " \
             f"must be a string of the form 'schema-n' for some integer n)"
 
-        return cls.db.exists_by_key(labels="CLASS", key_name="uri", key_value=entity_id)
+        return cls.db.exists_by_key(labels="CLASS", key_name="entity_id", key_value=entity_id)
 
 
     @classmethod
@@ -403,7 +403,7 @@ class GraphSchema:
             "get_class_name_by_schema_uri(): The schema uri MUST be a string " \
             "of the form 'schema-n' for some integer n"
 
-        match = cls.db.match(labels="CLASS", key_name="uri", key_value=entity_id)
+        match = cls.db.match(labels="CLASS", key_name="entity_id", key_value=entity_id)
         result = cls.db.get_nodes(match, single_cell="name")
 
         if not result :
@@ -444,7 +444,7 @@ class GraphSchema:
         :param internal_id:     The internal database ID of the desired class
         :return:                A dictionary of attributed of the class with the given Schema ID;
                                     an Exception is raised if not found
-                                    EXAMPLE:  {'name': 'MY CLASS', 'uri': '123', 'strict': False}
+                                    EXAMPLE:  {'name': 'MY CLASS', 'entity_id': '123', 'strict': False}
         """
         #cls.db.assert_valid_internal_id(class_internal_id)
 
@@ -1301,9 +1301,9 @@ class GraphSchema:
             "add_properties_to_class(): class_node cannot be None"
 
         if type(class_node) == int:
-            class_uri = cls.get_class_entity_id(internal_id=class_node)
+            class_entity_id = cls.get_class_entity_id(internal_id=class_node)
         else:
-            class_uri = cls.get_class_entity_id(class_node)       # class_node is taken to be the Class name
+            class_entity_id = cls.get_class_entity_id(class_node)       # class_node is taken to be the Class name
 
         assert type(properties) == list, \
             "add_properties_to_class(): Argument `property_list` in add_properties_to_class() must be a list"
@@ -1311,15 +1311,17 @@ class GraphSchema:
 
         clean_property_list = [prop.strip() for prop in properties]
         for prop_name in clean_property_list:
-            assert prop_name != "", "add_properties_to_class(): Unacceptable Property name, either empty or blank"
-            assert type(prop_name) == str, "add_properties_to_class(): Unacceptable non-string Property name"
+            assert prop_name != "", \
+                "add_properties_to_class(): Unacceptable Property name, either empty or blank"
+            assert type(prop_name) == str, \
+                "add_properties_to_class(): Unacceptable non-string Property name"
 
         # Locate the largest index of the Properties currently present (stored on the "HAS_PROPERTY" links)
         q = '''
-            MATCH (:CLASS {uri: $schema_uri})-[r:HAS_PROPERTY]-(:PROPERTY)
+            MATCH (:CLASS {entity_id: $class_entity_id})-[r:HAS_PROPERTY]-(:PROPERTY)
             RETURN MAX(r.index) AS MAX_INDEX
             '''
-        max_index = cls.db.query(q, {"schema_uri": class_uri}, single_cell="MAX_INDEX")
+        max_index = cls.db.query(q, {"class_entity_id": class_entity_id}, single_cell="MAX_INDEX")
 
         # Determine the index value to use for the next Property
         if max_index is None:
@@ -1330,18 +1332,19 @@ class GraphSchema:
         number_properties_nodes_created = 0
 
         for property_name in clean_property_list:
-            new_schema_uri = cls._next_available_schema_entity_id()
+            new_schema_entity_id = cls._next_available_schema_entity_id()
             q = f'''
-                MATCH (c: `CLASS` {{ uri: '{class_uri}' }})
+                MATCH (c: `CLASS` {{ entity_id: '{class_entity_id}' }})
                 MERGE (c)-[:HAS_PROPERTY {{ index: {new_index} }}]
-                         ->(p :PROPERTY:SCHEMA {{ uri: '{new_schema_uri}', name: $property_name }})
+                         ->(p :PROPERTY:SCHEMA {{ entity_id: '{new_schema_entity_id}', name: $property_name }})
                 '''
             # EXAMPLE:
             '''
-            MATCH (c:`CLASS` {uri: 'schema-3'})
-            MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p :PROPERTY:SCHEMA {uri: 'schema-8', name: $property_name})
+            MATCH (c:`CLASS` {entity_id: 'schema-3'})
+            MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p :PROPERTY:SCHEMA {entity_id: 'schema-8', name: $property_name})
             '''
             #print(q)
+            #print(property_name)
             result = cls.db.update_query(q, {"property_name": property_name})
             number_properties_nodes_created += result.get("nodes_created")
             new_index += 1
@@ -1805,7 +1808,7 @@ class GraphSchema:
         assert len(entity) == 2, \
             "data_node_exists(): if the argument `entity` is passed as a tuple or list, it must have length 2"
 
-        return cls.data_node_exists_OLD(node_id=entity[1], id_key="uri", class_name=entity[0])
+        return cls.data_node_exists_OLD(node_id=entity[1], id_key="entity_id", class_name=entity[0])
 
 
 
@@ -1844,7 +1847,7 @@ class GraphSchema:
         assert len(find) == 2, \
             "data_node_exists(): if the argument `find` is passed as a tuple or list, it must have length 2"
 
-        return cls.data_node_exists_OLD(node_id=find[1], id_key="uri", class_name=find[0])
+        return cls.data_node_exists_OLD(node_id=find[1], id_key="entity_id", class_name=find[0])
 
 
 
@@ -1969,7 +1972,7 @@ class GraphSchema:
             assert class_name is not None, \
                 f"data_node_exists(): if the argument `search` is a dict, it must contain the key 'key_value'"
 
-            key_name = search["key_name"]  if "key_name" in search  else "uri"
+            key_name = search["key_name"]  if "key_name" in search  else "entity_id"
             assert type(key_name) == str, \
                 f"data_node_exists(): the value ({key_name}) passed " \
                 f"as 'key_name' must be a string; the passed value was {type(key_name)}"
@@ -2176,7 +2179,7 @@ class GraphSchema:
         assert len(find) == 2, \
             "get_single_data_node(): if the argument `find` is passed as a tuple or list, it must have length 2"
 
-        return cls.get_single_data_node(node_id=find[1], id_key="uri", class_name=find[0], hide_schema=hide_schema)
+        return cls.get_single_data_node(node_id=find[1], id_key="entity_id", class_name=find[0], hide_schema=hide_schema)
 
 
 
@@ -2201,7 +2204,7 @@ class GraphSchema:
         assert len(entity) == 2, \
             "get_single_data_node(): if the argument `entity` is passed as a tuple or list, it must have length 2"
 
-        return cls.get_single_data_node(node_id=entity[1], id_key="uri", class_name=entity[0], hide_schema=hide_schema)
+        return cls.get_single_data_node(node_id=entity[1], id_key="entity_id", class_name=entity[0], hide_schema=hide_schema)
 
 
 
@@ -2569,7 +2572,7 @@ class GraphSchema:
         #TODO: merge with get_data_node_id()
 
         #TODO: Should search for _CLASS, rather than by label
-        match = cls.db.match(key_name="uri", key_value=entity_id, labels=class_name)
+        match = cls.db.match(key_name="entity_id", key_value=entity_id, labels=class_name)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
         if class_name:
@@ -2588,7 +2591,7 @@ class GraphSchema:
 
 
     @classmethod
-    def get_data_node_id(cls, key_value :str, key_name="uri") -> int:
+    def get_data_node_id(cls, key_value :str, key_name="entity_id") -> int:
         """
         Get the internal database ID of a Data Node, given some other primary key
 
@@ -2632,7 +2635,7 @@ class GraphSchema:
             assert class_name is not None, \
                 f"data_node_exists(): if the argument `search` is a dict, it must contain the key 'key_value'"
 
-            key_name = search["key_name"]  if "key_name" in search  else "uri"
+            key_name = search["key_name"]  if "key_name" in search  else "entity_id"
             assert type(key_name) == str, \
                 f"data_node_exists(): the value ({key_name}) passed " \
                 f"as 'key_name' must be a string; the passed value was {type(key_name)}"
@@ -3026,7 +3029,7 @@ class GraphSchema:
 
 
     @classmethod
-    def data_nodes_of_class(cls, class_name :str, return_option="uri") -> Union[List[str], List[int]]:
+    def data_nodes_of_class(cls, class_name :str, return_option="entity_id") -> Union[List[str], List[int]]:
         """
         Return the entity_id's, or alternatively the internal database ID's,
         of all the Data Nodes of the given schema Class.
@@ -3043,15 +3046,15 @@ class GraphSchema:
         # TODO: pytest the 'return_option' argument
         # TODO: offer options to select only some nodes
 
-        assert return_option in ["uri", "_internal_id"], \
-            "data_nodes_of_class(): the argument `return_option` must be either 'uri' or '_internal_id'"
+        assert return_option in ["entity_id", "_internal_id"], \
+            "data_nodes_of_class(): the argument `return_option` must be either 'entity_id' or '_internal_id'"
 
         q = '''
             MATCH (n {_CLASS: $class_name}) 
             '''
 
-        if return_option == "uri":
-            q += "RETURN n.uri AS uri"
+        if return_option == "entity_id":
+            q += "RETURN n.entity_id AS uri"
         else:
             q += "RETURN id(n) AS _internal_id"
 
@@ -3317,7 +3320,7 @@ class GraphSchema:
                 "create_data_node(): argument `new_entity_id`, if provided, must be a string"
 
             #print("URI assigned to new data node: ", new_entity_id)
-            properties_to_set["uri"] = new_entity_id                   # Expand the dictionary
+            properties_to_set["entity_id"] = new_entity_id                   # Expand the dictionary
 
             # EXAMPLE of properties_to_set at this stage:
             #       {"make": "Toyota", "color": "white", "entity_id": "car-123"}
@@ -3380,7 +3383,7 @@ class GraphSchema:
         """
         if entity_id_namespace:
             new_uri = cls.reserve_next_entity_id(namespace=entity_id_namespace)
-            properties_to_set["uri"] = new_uri          # Expand the dictionary, to include the "entity_id" field
+            properties_to_set["entity_id"] = new_uri          # Expand the dictionary, to include the "entity_id" field
 
         # Prepare strings and a data-binding dictionary suitable for inclusion in a Cypher query,
         #   to define the new node to be created
@@ -3593,7 +3596,7 @@ class GraphSchema:
         if type(data_node) == int:
             where_clause =  f'WHERE id(n) = {data_node}'
         elif type(data_node) == str:
-            where_clause =  f'WHERE n.uri = "{data_node}"'
+            where_clause =  f'WHERE n.entity_id = "{data_node}"'
         else:
             raise Exception("update_data_node(): the argument `data_node` must be an integer or a string")
 
@@ -3751,7 +3754,7 @@ class GraphSchema:
         # Link the existing data node, with a "SCHEMA" relationship, to its Class node, and also set some properties on the data node
         q = f'''
             MATCH (existing) WHERE id(existing) = $existing_neo_id
-            SET existing.uri = $new_uri , existing.`_CLASS` = $class_name
+            SET existing.entity_id = $new_uri , existing.`_CLASS` = $class_name
             '''
 
         #cls.db.debug_query_print(q, data_binding, "register_existing_data_node") # Note: this is the special debug print for NeoAccess
@@ -3889,7 +3892,7 @@ class GraphSchema:
 
 
     @classmethod
-    def remove_data_relationship(cls, from_id :str, to_id :str, rel_name :str, id_type="uri", labels=None) -> None:
+    def remove_data_relationship(cls, from_id :str, to_id :str, rel_name :str, id_type="entity_id", labels=None) -> None:
         """
         Drop the relationship with the given name, from one to the other of the 2 given DATA nodes.
         Note: the data nodes are left untouched.
@@ -3908,13 +3911,13 @@ class GraphSchema:
 
         assert rel_name != "", f"remove_data_relationship(): no name was provided for the relationship"
 
-        assert id_type == "uri", \
-                f"remove_data_relationship(): currently, only the 'uri' option is available for the argument `id_type`"
+        assert id_type == "entity_id", \
+                f"remove_data_relationship(): currently, only the 'entity_id' option is available for the argument `id_type`"
 
-        match_from = cls.db.match(labels=labels, key_name="uri", key_value=from_id,
+        match_from = cls.db.match(labels=labels, key_name="entity_id", key_value=from_id,
                                   dummy_node_name="from")
 
-        match_to =   cls.db.match(labels=labels, key_name="uri", key_value=to_id,
+        match_to =   cls.db.match(labels=labels, key_name="entity_id", key_value=to_id,
                                   dummy_node_name="to")
 
         cls.db.remove_links(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
@@ -5166,7 +5169,7 @@ class GraphSchema:
             df_wide = df_wide.rename(columns=col_names)
 
         # Rename the "subject" column to be "entity_id"
-        df_wide = df_wide.rename(columns={"subject": "uri"})
+        df_wide = df_wide.rename(columns={"subject": "entity_id"})
 
         # Now that the data frame is transformed, do the actual import
         return cls.import_pandas_nodes_NO_BATCH(df=df_wide, class_name=class_node, entity_id_namespace=None,
@@ -5631,7 +5634,7 @@ class GraphSchema:
 
     '''                                       ~   URI'S   ~                                           '''
 
-    def ________URI________(DIVIDER):
+    def ________ENTITY_ID________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
@@ -5699,8 +5702,8 @@ class GraphSchema:
         new_uri = cls.reserve_next_entity_id(namespace=namespace)
         q = f'''
             MATCH (n) 
-            WHERE id(n) = $internal_id AND n.uri IS NULL
-            SET n.uri = $new_uri
+            WHERE id(n) = $internal_id AND n.entity_id IS NULL
+            SET n.entity_id = $new_uri
             '''
         data_binding = {"_internal_id": internal_id, "new_uri": new_uri}
         #cls.db.debug_query_print(q, data_binding)
@@ -5913,10 +5916,11 @@ class GraphSchema:
     @classmethod
     def _next_available_schema_entity_id(cls) -> str:
         """
-        Return the next available entity_id for nodes managed by this class.
-        For unique entity_id's to use on Data Nodes, use reserve_next_entity_id() instead
+        Return the next available Entity ID for Schema nodes.
+        For unique Entity ID's to use on Data Nodes, use reserve_next_entity_id() instead
 
-        :return:     A string based on unique auto-increment values, used for Schema nodes
+        :return:    A string based on unique auto-increment values, used for Schema nodes,
+                        using the prefix "schema-"
         """
         if not cls.namespace_exists("schema_node"):
             cls.create_namespace("schema_node")
@@ -5949,7 +5953,7 @@ class GraphSchema:
 
 
     @classmethod
-    def lookup_class_namespace(cls, class_name :str) -> Union[str, None]:
+    def lookup_class_namespace(cls, class_name :str) -> str|None:
         """
         Look up the namespace, if any, assigned to the given Class,
         by means of a standard "HAS_URI_GENERATOR" relationship.
