@@ -809,8 +809,8 @@ Vue.component('vue-record-navigator-graph',
                     console.log("    server call was successful; it returned: ", server_payload);
                     /*  EXAMPLE of server_payload:
                             [
-                                {uri: "100", _internal_id: 2, name: "mushrooms pie", eval: "+"},
-                                {uri: "180", _internal_id: 9, name: "Margherita pie", eval: "OK"}
+                                {entity_id: "100", _internal_id: 2, name: "mushrooms pie", eval: "+"},
+                                {entity_id: "180", _internal_id: 9, name: "Margherita pie", eval: "OK"}
                             ]
                     */
                     this.status_message = `Operation completed`;

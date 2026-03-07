@@ -9,17 +9,17 @@ Vue.component('vue-category-navbox',
                 'all_categories',
                 'show_right_sidebox'],
         /*  category_name:          Name of the Category currently being viewed
-            current_category_uri:   A string with the URI of the Category currently being viewed
+            current_category_uri:   A string with the entity_id of the Category currently being viewed
             parent_categories:      List of the parent categories of the Current Category;
                                         each item is an object, whose keys include
-                                        "uri" and "name" (among others)
+                                        "entity_id" and "name" (among others)
             subcategories:          List of the subcategories of the Current Category
             siblings_categories:    List of the sibling categories of the Current Category;
                                     each item is an object, whose keys include
-                                    "uri" and "name", "remarks" and "_internal_id" (among others)
+                                    "entity_id" and "name", "remarks" and "_internal_id" (among others)
             all_categories:         EXAMPLE:
-                                        [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"},
-                                         {"uri": "523", "name": "work", 'pinned': True}]
+                                        [{"entity_id": "1", "name": "HOME", "remarks": "ROOT NODE"},
+                                         {"entity_id": "523", "name": "work", 'pinned': True}]
             show_right_sidebox:     Flag indicating whether the sidebar is expanded (true) or contracted (false)
          */
 
@@ -39,7 +39,7 @@ Vue.component('vue-category-navbox',
                     <br>
                     <!-- All pinned categories -->
                     <template v-for="category in all_categories">
-                        <template v-if="category.pinned"><br>&bull; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a></template>
+                        <template v-if="category.pinned"><br>&bull; <a v-bind:href="'/BA/pages/viewer/' + category['entity_id']">{{category.name}}</a></template>
                     </template>
 
 
@@ -51,7 +51,7 @@ Vue.component('vue-category-navbox',
                     <span class='category-relatives'>Parent Categories:</span>
                     <span class='category-relatives' v-if="parent_categories.length === 0">None</span>
                     <template v-for="category in parent_categories">
-                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
+                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['entity_id']">{{category.name}}</a>
                     </template>
                     <br><br>
 
@@ -67,7 +67,7 @@ Vue.component('vue-category-navbox',
                         <span class='category-relatives'>Sibling Categories:</span>
                         <span class='category-relatives' v-if="siblings_categories.length === 0">None</span>
                         <template v-for="category in siblings_categories">
-                            <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
+                            <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['entity_id']">{{category.name}}</a>
                         </template>
                     </div>
 
@@ -77,7 +77,7 @@ Vue.component('vue-category-navbox',
                     <span class='category-relatives'>Sub-categories:</span>
                     <span class='category-relatives' v-if="subcategories.length === 0">None</span>
                     <template v-for="category in subcategories">
-                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
+                        <br>&deg; <a v-bind:href="'/BA/pages/viewer/' + category['entity_id']">{{category.name}}</a>
                     </template>
 
                     <hr>
@@ -112,7 +112,7 @@ Vue.component('vue-category-navbox',
                     <ul style=''>
                     <template v-for="category in categories_to_show">
                         <li>
-                        <a v-if="current_category_uri != category.uri" v-bind:href="'/BA/pages/viewer/' + category['uri']">{{category.name}}</a>
+                        <a v-if="current_category_uri != category.entity_id" v-bind:href="'/BA/pages/viewer/' + category['entity_id']">{{category.name}}</a>
                         <span v-else class="current-category">{{category.name}}</span>
                         </li>
                     </template>

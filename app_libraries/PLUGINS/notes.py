@@ -120,7 +120,7 @@ class Notes:
         body = item_data["body"]
         basename = item_data["basename"]
 
-        #uri = data_binding["uri"]
+        #uri = data_binding["entity_id"]
 
         if basename == "undefined":
             raise Exception("before_update_content(): got passed the value 'undefined' "

@@ -1454,14 +1454,14 @@ def test_create_data_nodes_from_python_data_1(db):
         MATCH (n1:`Import Data` {`_CLASS`: "Import Data"})
             -[:imported_data]->
             (n2:my_class_1 {`_CLASS`: "my_class_1"})
-        WHERE id(n2) = $uri
+        WHERE id(n2) = $entity_id
         RETURN n2
         '''
-    root_node = db.query(q, data_binding={"uri": root_id}, single_row=True)
+    root_node = db.query(q, data_binding={"entity_id": root_id}, single_row=True)
 
     root_record = root_node["n2"]
     assert root_record["legit"] == 123
-    #assert "uri" in root_record                # Not currently is use
+    #assert "entity_id" in root_record                # Not currently is use
     assert "unexpected" not in root_record      # Only the key in the Schema gets imported
 
 
@@ -1523,18 +1523,18 @@ def test_create_data_nodes_from_python_data_3(db):
             (n1:`Import Data` {`_CLASS`: "Import Data"})
             -[:imported_data]->
             (n2:patient {`_CLASS`: "patient"})
-        WHERE id(n2) = $uri
+        WHERE id(n2) = $entity_id
         RETURN n2
         '''
-    root_node = db.query(q, data_binding={"uri": root_id}, single_row=True)
+    root_node = db.query(q, data_binding={"entity_id": root_id}, single_row=True)
 
     # Only the keys in the Schema gets imported; the relationship "result" is not in the Schema, either
     root_record = root_node["n2"]
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
     assert root_record["_CLASS"] == "patient"
-    #assert "uri" in root_record            # Not currently is use
-    assert len(root_record) == 3            # Only the keys in the Schema gets imported
+    #assert "entity_id" in root_record          # Not currently in use
+    assert len(root_record) == 3                # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
     res = db.query(q)
@@ -1587,7 +1587,7 @@ def test_create_data_nodes_from_python_data_4(db):
     assert root_record["age"] == 23
     assert root_record["balance"] == 150.25
     assert root_record["_CLASS"] == "patient"
-    #assert "uri" in root_record        # Not currently is use
+    #assert "entity_id" in root_record        # Not currently is use
     assert len(root_record) == 4            # Only the keys in the Schema gets imported
 
     q = '''MATCH (n:patient)-[:result]-(m) RETURN n, m'''
@@ -1965,7 +1965,7 @@ def test_create_data_nodes_from_python_data_9(db):
     '''
     data_types = db.query(q, data_binding={"quote_id": new_root_id}, single_cell="data_types")
     #print(data_types)
-    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING', '_CLASS': 'STRING'}    # 'uri': 'INTEGER' (not in current use)
+    assert data_types == {'verified': 'BOOLEAN', 'attribution': 'STRING', 'quote': 'STRING', '_CLASS': 'STRING'}    # 'entity_id': 'INTEGER' (not in current use)
 
 
 
@@ -1974,7 +1974,7 @@ def test_import_triplestore(db):
 
     # Set up the Schema
     GraphSchema.create_class_with_properties(name="Course", strict=True,
-                                             properties=["uri", "Course Title", "School", "Semester"])
+                                             properties=["entity_id", "Course Title", "School", "Semester"])
 
     df = pd.DataFrame({"subject": [57, 57, 57],
                        "predicate": [1, 2, 3],
@@ -1987,7 +1987,7 @@ def test_import_triplestore(db):
 
     internal_id = result[0]
     lookup = db.get_nodes(internal_id)
-    assert lookup == [{'School': 'New York University', 'Semester': 'Fall 2024', 'Course Title': 'Advanced Graph Databases', 'uri': 'r-57', '_CLASS': 'Course'}]
+    assert lookup == [{'School': 'New York University', 'Semester': 'Fall 2024', 'Course Title': 'Advanced Graph Databases', 'entity_id': 'r-57', '_CLASS': 'Course'}]
 
 
     # A second 1-entity import
@@ -2000,7 +2000,7 @@ def test_import_triplestore(db):
 
     internal_id = result[0]
     lookup = db.get_nodes(internal_id)
-    assert lookup == [{'School': 'UC Berkeley', 'Semester': 'Spring 2023', 'Course Title': 'Systems Biology', 'uri': 'MCB 273', '_CLASS': 'Course'}]
+    assert lookup == [{'School': 'UC Berkeley', 'Semester': 'Spring 2023', 'Course Title': 'Systems Biology', 'entity_id': 'MCB 273', '_CLASS': 'Course'}]
 
 
 

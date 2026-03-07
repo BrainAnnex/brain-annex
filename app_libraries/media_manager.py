@@ -126,9 +126,9 @@ class MediaManager:
                                 "D:/media/documents/"
                                 "D:/media/images/resized/"
         """
-        class_name = GraphSchema.class_of_data_node(node_id=uri, id_key="uri")
+        class_name = GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id")
 
-        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=uri, id_key="uri",
+        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=uri, id_key="entity_id",
                                              link_name="BA_stored_in", properties="name")
         #print("dir_names: ", dir_names)
 
@@ -162,7 +162,7 @@ class MediaManager:
                                 EXAMPLE:
                                     ("D:/media/my_media_folder/images/", "my_pict", "jpg")
         """
-        content_node = GraphSchema.get_single_data_node(node_id=entity_id, id_key="uri", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node(node_id=entity_id, id_key="entity_id", class_name=class_name)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception(f'get_media_item_file(): Metadata not found for the Media file of Class `{class_name}` and Entity ID "{entity_id}"')
@@ -170,7 +170,7 @@ class MediaManager:
         basename = content_node['basename']
         suffix = content_node['suffix']
 
-        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=entity_id, id_key="uri",
+        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=entity_id, id_key="entity_id",
                                              link_name="BA_stored_in", properties="name")
         #print("dir_names: ", dir_names)
 
@@ -208,7 +208,7 @@ class MediaManager:
         """
         #TODO: phase out in favor of get_media_item_file()
 
-        content_node = GraphSchema.get_single_data_node(node_id=uri, id_key="uri", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node(node_id=uri, id_key="entity_id", class_name=class_name)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception(f'lookup_media_file(): Metadata not found for the Media file of Class `{class_name}` and uri="{uri}"')

@@ -66,7 +66,7 @@ def test_retrieve_full_path(db):
                                  new_entity_id="dir-1")
 
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
 
     assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/Tahiti vacation/"
     assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}"
@@ -93,7 +93,7 @@ def test_lookup_media_file(db):
                                  new_entity_id="dir-1")
 
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
 
     assert MediaManager.lookup_media_file(uri="image-1", class_name="Image") == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
     assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) \
@@ -120,7 +120,7 @@ def test_get_media_item_file(db):
     GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
                                  new_entity_id="dir-1")
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
 
     assert MediaManager.get_media_item_file(entity_id="image-1", class_name="Image") \
             == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
@@ -147,7 +147,7 @@ def test_get_full_filename(db):
                                  new_entity_id="dir-1")
 
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="uri")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
 
     assert MediaManager.get_full_filename("image-1", class_name="Image") == "D:/media/my_media_folder/images/Tahiti vacation/snap1.jpg"
     assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) == \

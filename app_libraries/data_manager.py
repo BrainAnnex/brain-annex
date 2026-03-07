@@ -494,7 +494,7 @@ class DataManager:
                                     or an Exception in case of failure
                                     (e.g., if public_required is True and the item isn't public)
         """
-        properties = {"uri": uri}
+        properties = {"entity_id": uri}
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
@@ -543,7 +543,7 @@ class DataManager:
 
 
         :param request_data: A dictionary with the keys, "rel_name" and "dir",
-                                plus either "uri" or "internal_id" (the latter takes priority)
+                                plus either "entity_id" or "internal_id" (the latter takes priority)
 
         :return:             A list of dictionaries with all the properties of the neighbor nodes,
                              including an extra field called "_node_labels", with a string of label names
@@ -560,12 +560,12 @@ class DataManager:
             match = int(request_data["internal_id"])
             return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True, include_labels=True, limit=100)
         else:
-            assert "uri" in request_data, \
+            assert "entity_id" in request_data, \
                 "get_records_by_link(): A value for `internal_id` or `uri` must be provided"
 
-            uri = request_data["uri"]
+            uri = request_data["entity_id"]
 
-            match = cls.db.match(key_name="uri", key_value=uri)
+            match = cls.db.match(key_name="entity_id", key_value=uri)
 
             return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=False, include_labels=True, limit=100)
 
@@ -606,7 +606,7 @@ class DataManager:
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_out, data_binding={"uri": uri})
+        result = cls.db.query(q_out, data_binding={"entity_id": uri})
         rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
 
@@ -617,7 +617,7 @@ class DataManager:
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_in,data_binding={"uri": uri})
+        result = cls.db.query(q_in,data_binding={"entity_id": uri})
         rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
         return  {"in": rel_in, "out": rel_out}
@@ -719,7 +719,7 @@ class DataManager:
         assert uri, "delete_content_item(): argument `uri` is missing"
 
         # Make sure that the requested Content Item exists
-        #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="uri", class_name=class_name), \
+        #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="entity_id", class_name=class_name), \
         assert GraphSchema.data_node_exists(find=(class_name, uri)), \
             f"delete_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
@@ -742,7 +742,7 @@ class DataManager:
 
         # Perform the actual deletion of the Content Item node
         #number_deleted = GraphSchema.delete_data_point(uri=uri, labels=class_name)
-        number_deleted = GraphSchema.delete_data_nodes(node_id=uri, id_key="uri", class_name=class_name)
+        number_deleted = GraphSchema.delete_data_nodes(node_id=uri, id_key="entity_id", class_name=class_name)
 
 
         if number_deleted == 1:
@@ -773,7 +773,7 @@ class DataManager:
 
         :return:            A dict with the internal database ID and uri
                                 assigned to the newly-created node
-                                EXAMPLE: {"_internal_id": 123, "uri": "rs-8"}
+                                EXAMPLE: {"_internal_id": 123, "entity_id": "rs-8"}
         """
         # TODO: more Schema enforcement
         # TODO: make the generation of the URI optional
@@ -782,7 +782,7 @@ class DataManager:
 
         internal_id = GraphSchema.create_data_node(class_name=class_name, properties=item_data, new_entity_id=new_uri)
 
-        return {"_internal_id": internal_id, "uri": new_uri}
+        return {"_internal_id": internal_id, "entity_id": new_uri}
 
 
 
@@ -1085,7 +1085,7 @@ class DataManager:
     #####################################################################################################
 
     @classmethod
-    def switch_category(cls, data_dict) -> None:
+    def switch_category(cls, data_dict :dict) -> None:
         """
         Switch one or more Content Items from being attached to a given Category,
         to another one
@@ -1102,31 +1102,32 @@ class DataManager:
         items = data_dict["items"]
 
         assert type(items) == list, \
-            f"The passed POST value `items` ({items}) doesn't evaluate to a list"
+            f"switch_category(): The passed POST value `items` ({items}) doesn't evaluate to a list"
 
         assert type(data_dict['from']) == str, \
-            f"The passed POST value `from` ({data_dict['from']}) doesn't evaluate to a string"
+            f"switch_category(): The passed POST value `from` ({data_dict['from']}) doesn't evaluate to a string"
 
         assert type(data_dict['to']) == str, \
-            f"The passed POST value `from` ({data_dict['to']}) doesn't evaluate to a string"
+            f"switch_category(): The passed POST value `from` ({data_dict['to']}) doesn't evaluate to a string"
 
 
         number_items = len(items)
 
         assert number_items != 0, \
-            f"The passed POST value `items` is an EMPTY list"
+            f"switch_category(): The passed POST value `items` is an EMPTY list"
 
 
         number_moved = Categories.relocate_across_categories(items=items,
-                                                        from_category=data_dict['from'],
-                                                        to_category=data_dict['to'])
+                                                             from_category=data_dict['from'],
+                                                             to_category=data_dict['to'])
         assert number_moved != 0, \
-            f"None of the {number_items} requested " \
+            f"switch_category(): None of the {number_items} requested " \
             f"Content Item(s) could be successfully moved across Categories"
 
         assert number_moved == number_items, \
-            f"Only {number_moved} of the {number_items} requested " \
+            f"switch_category(): Only {number_moved} of the {number_items} requested " \
             f"Content Item(s) could be successfully moved across Categories"
+
 
 
 
@@ -1173,7 +1174,7 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_properties = GraphSchema.get_single_data_node(node_id=search_category, id_key="uri", class_name="Category")
+            category_properties = GraphSchema.get_single_data_node(node_id=search_category, id_key="entity_id", class_name="Category")
             category_name = category_properties.get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
@@ -1199,8 +1200,8 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'entity_id': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'entity_id': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1212,7 +1213,7 @@ class DataManager:
             neighbor_props = cls.db.follow_links(match=internal_id,
                                                 rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Category")
             # EXAMPLE of neighbor_props:
-            #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
+            #   [{'entity_id': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)
             node["internal_links"] = neighbor_props
 
@@ -1281,8 +1282,8 @@ class DataManager:
 
         result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'entity_id': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'entity_id': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1294,7 +1295,7 @@ class DataManager:
             neighbor_props = cls.db.follow_links(match=internal_id,
                                                  rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Category")
             # EXAMPLE of neighbor_props:
-            #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
+            #   [{'entity_id': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)
             node["internal_links"] = neighbor_props
 
@@ -1522,7 +1523,7 @@ class DataManager:
                                 "limit"         The max number of entries to return
 
                             EXAMPLES:
-                                {"label": "BA", "key_name": "uri", "key_value": "sl-123"}
+                                {"label": "BA", "key_name": "entity_id", "key_value": "sl-123"}
                                 {"label": "doctor", "limit": 25, "skip": 50}
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
                                 {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
@@ -1942,7 +1943,7 @@ class DataManager:
             return f"File `{basename}` uploaded successfully, but <b>NO MATCHES</b> found"
 
 
-        #column_names = ["name", "role", "location", "uri", "schema_code"]
+        #column_names = ["name", "role", "location", "entity_id", "schema_code"]
         column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
         df = pd.DataFrame(all_matches, columns = column_names)
         print(df.count())
@@ -1964,7 +1965,7 @@ class DataManager:
         # 70 will map to 40, and so on:
         MATCH (c:BA {schema_code:"cat", uri:61}),          // <------ This is the Category "Professional Networking"
         (n:IP)
-        MERGE (n)-[:BA_in_category {pos:(n.uri - 69)*10+30}]->(c)
+        MERGE (n)-[:BA_in_category {pos:(n.entity_id - 69)*10+30}]->(c)
 
         # Rename all "IP" labels to "BA"
         MATCH (n:IP) SET n:BA

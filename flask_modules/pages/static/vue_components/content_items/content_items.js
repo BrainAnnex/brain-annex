@@ -39,8 +39,8 @@ Vue.component('vue-content-items',
                                     EXAMPLE: ["French", "English", "notes"]
             all_categories:     A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                     EXAMPLE:
-                                      [{"uri": "1", "name": "HOME"},
-                                       {"uri": "523", "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]
+                                      [{"entity_id": "1", "name": "HOME"},
+                                       {"entity_id": "523", "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]
 
             NOTE: some of the data is just passed thru by the child components, on its way to the grand-child 'vue-controls'
                   (TODO: bundle that data into an object)
@@ -50,7 +50,7 @@ Vue.component('vue-content-items',
             <!-- Outer container, serving as Vue-required template root -->
             <div v-bind:class="{'highlight': highlight, 'content-item': !use_separate_line, 'content-item-separate-line': use_separate_line}">
 
-            <a v-bind:name="item.schema_code + '_' + item.uri"></a>  <!-- Anchor for page scrolling -->
+            <a v-bind:name="item.schema_code + '_' + item.entity_id"></a>  <!-- Anchor for page scrolling -->
             <!--
                  The line with "v-bind:is" dynamically dispatches to the appropriate specialized component.
 
@@ -81,7 +81,7 @@ Vue.component('vue-content-items',
             </component>
 
             <p v-if="show_button" class="confirm-question">Confirm DELETE
-                <br><span style="font-size:18px">(item URI '{{item.uri}}' of Class '{{item.class_name}}')</span>?
+                <br><span style="font-size:18px">(item URI '{{item.entity_id}}' of Class '{{item.class_name}}')</span>?
                 <button button @click="confirm_delete" class='confirm-button'>OK</button>
                 <button button @click="cancel_delete" class='cancel-button'>Cancel</button>
             </p>
@@ -121,12 +121,12 @@ Vue.component('vue-content-items',
                     The "id" and the "class" attributes of the FORM element below
                     are meant for use by the JS package "Dropzone" -->
                 <form  class='dropzone'
-                       v-bind:id="'myDropzone_' + item.uri"
+                       v-bind:id="'myDropzone_' + item.entity_id"
                        action='/BA/api/upload_media'
                        style='padding-top:5px; margin-bottom:8px'
                 >
                     <input v-bind:value="category_uri" type='hidden' name='category_id'>
-                    <input v-bind:value="item.uri" type='hidden' name='insert_after_uri'>
+                    <input v-bind:value="item.entity_id" type='hidden' name='insert_after_uri'>
                     <input v-bind:value="item.class_name" type='hidden' name='insert_after_class'>
                 </form>
 
@@ -159,7 +159,7 @@ Vue.component('vue-content-items',
                 <template v-for='category in this.categories_linked_to'>
                     <span style="font-weight:bold; margin-left:20px; border:1px solid black; background-color:#DDD">&nbsp; {{category.name}} &nbsp;</span>
                     <span v-if="! is_last_tag">
-                        <img @click="untag_category(category.uri, category.name)"
+                        <img @click="untag_category(category.entity_id, category.name)"
                              src="/BA/pages/static/graphics/delete_12_1493279.png">
                     </span>
                     <span v-else style="margin-left:15px; color:gray; font-style:italic">
@@ -175,8 +175,8 @@ Vue.component('vue-content-items',
                             v-bind:title="'Add Category tags to this Content Item'">
                         <option disabled value="">[Select new tag]</option>
                         <option v-for="cat in all_categories"
-                                v-if="cat.uri != category_uri"
-                                v-bind:value="{uri: cat.uri , name: cat.name}">
+                                v-if="cat.entity_id != category_uri"
+                                v-bind:value="{uri: cat.entity_id , name: cat.name}">
                             {{cat.name}}
                         </option>
                     </select>
@@ -200,10 +200,10 @@ Vue.component('vue-content-items',
                 insert_box: false,      // Whether to display, at the bottom, a box used to insert a new Content Item below this one
 
                 categories_linked_to: [],   // Array of objects representing Categories to which this Content Item is attached to;
-                                            //      each object contains the attributes "uri", "name", "remarks"
+                                            //      each object contains the attributes "entity_id", "name", "remarks"
 
                 category_to_add: "",        // Object with data about the Category chosen to tag this Content Item with
-                                            //      Attributes are "uri" and "name" (Note: "" indicates no selection in the menu)
+                                            //      Attributes are "entity_id" and "name" (Note: "" indicates no selection in the menu)
 
                 //dropzone_id: "form#myDropzone_12345",     // This did NOT work
 
@@ -254,7 +254,7 @@ Vue.component('vue-content-items',
              */
             {
                 console.log(`About to dynamically create a 'Dropzone' object, `
-                            + `immediately below Content Item URI '${this.item.uri}' of Class '${this.item.class_name}'`);
+                            + `immediately below Content Item URI '${this.item.entity_id}' of Class '${this.item.class_name}'`);
 
                 // Note that the ID of the Dropzone FORM element makes reference to the PREVIOUS Content Item; this ID is not actually used, but should be unique
                 // (if attempting to create it a second time, for example by closing and re-opening the add-content box,
@@ -264,7 +264,7 @@ Vue.component('vue-content-items',
                 //this.dropzone_id = "form#myDropzone_" + uuid;
                 //const dropzone_form_id = this.dropzone_id;
 
-                const dropzone_form_id = "myDropzone_" + this.item.uri;     // EXAMPLE: "myDropzone_h-86"   TODO: this ID might not be unique on a page; the URI might contain blanks
+                const dropzone_form_id = "myDropzone_" + this.item.entity_id;     // EXAMPLE: "myDropzone_h-86"   TODO: this ID might not be unique on a page; the URI might contain blanks
                                                                             // MUST match the value in the "v-bind:id" variable in form definition
                                                                             // TODO: try to switch to the Internal Database ID instead
 
@@ -376,7 +376,7 @@ Vue.component('vue-content-items',
             add_content_below()
             // Expose a box below the Item, to let the user enter a new Content Item
             {
-                console.log(`'vue-content-items' component received Event 'add-content'. Showing the box for adding new content below Item with URI: '${this.item.uri}' and Class '${this.item.class_name}'`);
+                console.log(`'vue-content-items' component received Event 'add-content'. Showing the box for adding new content below Item with URI: '${this.item.entity_id}' and Class '${this.item.class_name}'`);
                 this.insert_box = true;
                 this.insert_dropzone_element();
             },
@@ -385,7 +385,7 @@ Vue.component('vue-content-items',
             edit_tags()
             // Expose a box below the Item, to let the user view/add/remove Category tags for this Content Item
             {
-                console.log(`'vue-content-items' component received Event 'edit-tags'.  Showing editing box for the tags of Item with URI: ${this.item.uri}`);
+                console.log(`'vue-content-items' component received Event 'edit-tags'.  Showing editing box for the tags of Item with URI: ${this.item.entity_id}`);
                 //console.log(this.item);
                 this.tag_edit_box = true;
                 this.populate_category_links();     // Query the server, if needed
@@ -395,9 +395,9 @@ Vue.component('vue-content-items',
             add_tag()
             // Invoked when the user chooses an entry from the "ADD CATEGORY TAG" menu
             {
-                const category_uri = this.category_to_add.uri;
+                const category_uri = this.category_to_add.entity_id;
                 const category_name = this.category_to_add.name;
-                const item_uri = this.item.uri;
+                const item_uri = this.item.entity_id;
 
                 //console.log(`add_tag(): requesting server to tag Item '${item_uri}' with Category '${category_name}' (URI '${category_uri}')`);
                 const url_server_api = `/BA/api/link_content_at_end/${category_uri}/${item_uri}`;
@@ -439,7 +439,7 @@ Vue.component('vue-content-items',
             untag_category(category_uri, category_name)
             // Detach the current Content Item from the specified Category
             {
-                const item_uri = this.item.uri;
+                const item_uri = this.item.entity_id;
 
                 console.log(`Untag Item (URI ${item_uri}) from Category '${category_name}' (URI '${category_uri}') : Not yet implemented`);
 
@@ -469,7 +469,7 @@ Vue.component('vue-content-items',
                     // Update the UI : drop the just-removed Category from the array categories_linked_to
                     const unlinked_uri = custom_data;
                     for (i in this.categories_linked_to) {   // Note:  i is the index, not an array element!
-                        if (this.categories_linked_to[i]["uri"] == unlinked_uri)
+                        if (this.categories_linked_to[i]["entity_id"] == unlinked_uri)
                             this.categories_linked_to.splice(i, 1); // Deletes 1 element from the i-th position in array.
                                                                     //      Note: Vue automatically detect splice() ops
                     }
@@ -499,7 +499,7 @@ Vue.component('vue-content-items',
                 */
 
                 // Send the request to the server, using a GET
-                const url_server_api = `/BA/api/get_categories_linked_to/${this.item.uri}`;
+                const url_server_api = `/BA/api/get_categories_linked_to/${this.item.entity_id}`;
                 console.log(`About to contact the server at ${url_server_api}`);
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -539,7 +539,7 @@ Vue.component('vue-content-items',
             {
                 // Send a signal to the parent (the Category Page) to insert a new blank item of the specified type, below this one
                 console.log(`In 'vue-content-items' component, add_new_item_below().`);
-                console.log(`    Request to insert new Content Item below the Item with URI '${this.item.uri}' and class name '${this.item.class_name}'`);
+                console.log(`    Request to insert new Content Item below the Item with URI '${this.item.entity_id}' and class name '${this.item.class_name}'`);
                 console.log(`    New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
                 console.log("    `vue-content-items` component is sending 'insert-new-item-after' signal to its parent");
 

@@ -142,7 +142,7 @@ def test_initialize_schema(db):
         '''
     db.query(q)
 
-    result = GraphSchema.all_properties("BA", "uri", 88)
+    result = GraphSchema.all_properties("BA", "entity_id", 88)
     assert result == ['Notes', 'English', 'German']     # Note: order might differ!
 
 

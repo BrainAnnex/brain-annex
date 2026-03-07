@@ -6,7 +6,7 @@ Vue.component('vue-plugin-rs',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_data:      An object with the relevant data about this Recordset item;
-                                if the "uri" attribute is negative,
+                                if the "entity_id" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
                                 (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
 
@@ -15,7 +15,7 @@ Vue.component('vue-plugin-rs',
                                             class_handler:"recordsets",
                                             pos: 100,
                                             schema_code: "rs",
-                                            uri: "rs-7",
+                                            entity_id: "rs-7",
                                             internal_id: 123,
 
                                             caption: "Expressions",
@@ -29,11 +29,11 @@ Vue.component('vue-plugin-rs',
                                             clause_key: "city",
                                             clause_value: "Berkeley"
                                         }
-                                      (if uri is negative, it means that it's a newly-created header, not yet registered with the server)
+                                      (if entity_id is negative, it means that it's a newly-created header, not yet registered with the server)
                                       TODO: take "pos", "class_name", "class_handler", "schema_code" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
+            category_id:    The entity_id of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Recordset on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names (for the Recordset entity, not its records!), in Schema order.
@@ -361,15 +361,15 @@ Vue.component('vue-plugin-rs',
                 record_being_editing: null, // The "ID" of the record currently being edited, if any;
                                             // for now, only one record at a time may be edited
 
-                editing_mode: ((this.item_data.uri < 0) || this.edit_mode  ? true : false), // Flag indicating whether this record is being edited
-                                                                                            // Negative uri means "new Item"
+                editing_mode: ((this.item_data.entity_id < 0) || this.edit_mode  ? true : false), // Flag indicating whether this record is being edited
+                                                                                            // Negative entity_id means "new Item"
 
                 recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
 
                 /* This `current_metadata` object - with the metadata of the recordset - contains the values bound
                       to the editing fields in the UI, initially cloned from the prop data;
                       it'll change in the course of the edit-in-progress.
-                      EXAMPLE: {class_name: "Recordset", class_handler: "recordsets", pos: 12, uri: "rs-4",
+                      EXAMPLE: {class_name: "Recordset", class_handler: "recordsets", pos: 12, entity_id: "rs-4",
                                 caption: "Verbs", filter_label: "French Vocabulary", n_group: 5}
                       NOTE:  the property `fields_to_show` is managed separately
 
@@ -412,7 +412,7 @@ Vue.component('vue-plugin-rs',
         {
             console.log(`The Recordsets component has been mounted`);
 
-            if (this.item_data.uri < 0)  {  // A negative URI is a convention to indicate a just-created Recordset
+            if (this.item_data.entity_id < 0)  {  // A negative entity_id is a convention to indicate a just-created Recordset
                 this.edit_recordset();
                 return;
             }
@@ -594,9 +594,9 @@ Vue.component('vue-plugin-rs',
                 Invoked when the user clicks on the "EDIT" control for that record
 
                 :param record:  An object with the standard properties
-                                    "_internal_id", "_node_labels", and "uri" [may or may not have a value],
+                                    "_internal_id", "_node_labels", and "entity_id" [may or may not have a value],
                                     plus whatever fields are part of the given particular record (node)
-                                    EXAMPLE:  {_internal_id: 123, _node_labels: ["Restaurant"], uri: "r-88",
+                                    EXAMPLE:  {_internal_id: 123, _node_labels: ["Restaurant"], entity_id: "r-88",
                                                name: "Pizzeria NY", city: "NYC"}
              */
             {
@@ -670,7 +670,7 @@ Vue.component('vue-plugin-rs',
 
                 const post_obj = {
                                     internal_id: this.record_latest._internal_id
-                                 };     // Note: not using (at least for now, `uri` nor `class_name`)
+                                 };     // Note: not using (at least for now, `entity_id` nor `class_name`)
 
                 // Go over each field name of the recordset
                 for (let field_name of this.headers)    // Looping over array
@@ -746,7 +746,7 @@ Vue.component('vue-plugin-rs',
             // Send a request to the server, to save a record NEWLY ENTERED thru a form
             // (NOT for editing existing records)
             {
-                console.log(`In save_new_record(), for Recordset with URI '${this.current_metadata.uri}'`);
+                console.log(`In save_new_record(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 var url_server_api = "/BA/api/create_data_node_JSON";
 
@@ -810,7 +810,7 @@ Vue.component('vue-plugin-rs',
              */
             save_recordset_edit()
             {
-                console.log(`In save_recordset_edit(), for Recordset with URI '${this.current_metadata.uri}'`);
+                console.log(`In save_recordset_edit(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a POST
 
@@ -818,12 +818,12 @@ Vue.component('vue-plugin-rs',
                 if (Number.isNaN(n_group))
                     n_group = 15;   // DEFAULT value to use if missing or not a valid integer
 
-                if (this.current_metadata.uri < 0) {    // A negative URI is a convention to indicate a just-created Recordset
+                if (this.current_metadata.entity_id < 0) {    // A negative entity_id is a convention to indicate a just-created Recordset
                     // Create a new Recordset
                     var url_server_api = "/BA/api/add_item_to_category_JSON";
                     var post_obj = {category_uri: this.category_id,
                                     class_name: this.item_data.class_name,
-                                    insert_after_uri: this.item_data.insert_after_uri,      // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                                    insert_after_uri: this.item_data.insert_after_uri,      // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                                     insert_after_class: this.item_data.insert_after_class,  // Class of Content Item to insert after
 
                                     // Node properties (in particular,
@@ -842,7 +842,7 @@ Vue.component('vue-plugin-rs',
                     // Update an existing Recordset
                     var url_server_api = "/BA/api/update_content_item_JSON";
 
-                    var post_obj = {uri: this.current_metadata.uri,
+                    var post_obj = {entity_id: this.current_metadata.entity_id,
                                     class_name: this.item_data.class_name,
 
                                     filter_label: this.current_metadata.filter_label,  // Used to identify nodes considered part of  this Recordset
@@ -879,16 +879,16 @@ Vue.component('vue-plugin-rs',
                 //console.log(`Custom data passed: ${custom_data}`);
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
-                    if (this.current_metadata.uri < 0)  {
+                    if (this.current_metadata.entity_id < 0)  {
                         // If this was a newly-created item (with the temporary negative ID)
                         this.status_message = `Recordset creation completed`;
-                        this.current_metadata.uri = server_payload;     // Update the temporary URI with the value assigned by the server
+                        this.current_metadata.entity_id = server_payload;     // Update the temporary entity_id with the value assigned by the server
                     }
                     else
                         this.status_message = `Recordset update completed`;
 
                     // Inform the parent component of the new state of the data
-                    //TODO: get this to work, and also manage changes in URI (maybe pass original negative URI as separate arg, or extra field in object)
+                    //TODO: get this to work, and also manage changes in entity_id (maybe pass original negative entity_id as separate arg, or extra field in object)
                     //console.log("Recordsets component sending `updated-item` signal to its parent, with the following data:");
                     //this.$emit('updated-item', this.current_metadata);
 
@@ -966,7 +966,7 @@ Vue.component('vue-plugin-rs',
                 If successful, it will update the value for this.headers
             */
             {
-                console.log(`In get_fields(): attempting to retrieve field names of recordset with URI '${this.current_metadata.uri}'`);
+                console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 const url_server_api = "/BA/api/get_class_properties";
 
@@ -1034,7 +1034,7 @@ Vue.component('vue-plugin-rs',
             {
                 let skip = (page-1) * this.current_metadata.n_group;
 
-                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with URI '${this.current_metadata.uri}'`);
+                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get_filtered";

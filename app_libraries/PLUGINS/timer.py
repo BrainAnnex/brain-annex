@@ -25,7 +25,7 @@ class Timer:
         # TODO: this ought to be done by plugin_support.py
         if not GraphSchema.class_name_exists("Content Item"):
             GraphSchema.create_class_with_properties(name="Content Item", strict=False,
-                                                     properties=["uri"])
+                                                     properties=["entity_id"])
             GraphSchema.create_class_relationship(from_class="Content Item", to_class="Category",
                                                   rel_name="BA_in_category")
 

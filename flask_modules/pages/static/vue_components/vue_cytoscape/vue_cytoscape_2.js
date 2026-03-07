@@ -12,9 +12,9 @@ Vue.component('vue_cytoscape_2',
 
                 1) "structure"
                         EXAMPLE:
-                            [{'name': 'German Vocabulary', 'strict': False, 'uri': 'schema-1', 'internal_id': 77, 'id': 77, 'labels': ['CLASS']},
+                            [{'name': 'German Vocabulary', 'strict': False, 'entity_id': 'schema-1', 'internal_id': 77, 'id': 77, 'labels': ['CLASS']},
                              {'allowed': ['der', 'die', 'das'], 'name': 'Gender', 'dtype': 'categorical',
-                                   'uri': 'schema-91', 'internal_id': 79, 'id': 79, 'labels': ['PROPERTY']},
+                                   'entity_id': 'schema-91', 'internal_id': 79, 'id': 79, 'labels': ['PROPERTY']},
                              {'name': 'HAS_PROPERTY', 'source': 116602, 'target': 116618, 'id': 'edge-185'}
                             ]
 

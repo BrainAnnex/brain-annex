@@ -190,9 +190,9 @@ class ApiRouting:
 
         :param get_data:            An ImmutableMultiDict object, which is a sub-class of Dictionary
                                         that may contain multiple values for the same key.
-                                        EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
+                                        EXAMPLE: ImmutableMultiDict([('entity_id', '123'), ('rel_name', 'BA_served_at')])
         :param required_par_list:   [OPTIONAL] A list or tuple of name of GET parameters whose presence is to be enforced.
-                                        EXAMPLE: ['uri', 'rel_name']
+                                        EXAMPLE: ['entity_id', 'rel_name']
 
         :return:                    A dict populated with the GET data
         """
@@ -221,11 +221,11 @@ class ApiRouting:
 
         :param post_data:           An ImmutableMultiDict object, which is a sub-class of Dictionary
                                         that may contain multiple values for the same key.
-                                        EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at')])
+                                        EXAMPLE: ImmutableMultiDict([('entity_id', '123'), ('rel_name', 'BA_served_at')])
 
         :param required_par_list:   [OPTIONAL] A list or tuple of name of POST parameters whose presence is to be enforced.
                                         If the json_decode argument is True, then these parameters may reside
-                                        EXAMPLE: ['uri', 'rel_name']
+                                        EXAMPLE: ['entity_id', 'rel_name']
         :param json_decode:         If True, all values are expected to be JSON-encoded strings
         :return:                    A dict populated with the POST data
         """
@@ -247,7 +247,7 @@ class ApiRouting:
 
         #TODO:  maybe optionally pass a list of pars that must be int, and handle conversion and errors;
         #       but maybe the parameter validation doesn't belong to this API module, which ought to remain thin
-        #       Example - int_pars = ['uri']
+        #       Example - int_pars = ['entity_id']
 
         #TODO: merge with get_form_data()
 
@@ -388,26 +388,25 @@ class ApiRouting:
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
         @bp.route('/get_class_properties')
         @login_required
-        def get_class_properties():
+        def get_class_properties_api():
             """
             Get all Properties of the given Class node (as specified by its name),
             optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
-            Return a JSON object with a list of the Property names of that Class.
-
-            If `class_name` is missing, and `label` is used instead,
-            the Property list is *estimated* by the label instead (and all other parameters are disregarded)
-
+            Return a JSON object with a list of the Property names of that Class;
+            if no Class node is found, an empty list is returned.
 
             GET VARIABLE:
-                json    A JSON-encoded dict
-
-            KEYS in the JSON-encoded dict:
-                    class_name
-                    label
-                    include_ancestors
-                    sort_by_path_len
-                    exclude_system
-                Either `class_name` or `label` must be present
+                json    A JSON-encoded dict;
+                        KEYS in the JSON-encoded dict:
+                                class_name
+                                label
+                                include_ancestors
+                                sort_by_path_len
+                                exclude_system
+                        Either `class_name` or `label` must be present;
+                        otherwise an error (but still a response code of 200) will be returned.
+                        If `class_name` is missing, and `label` is used instead,
+                        the Property list is *estimated* by the label instead (and all other parameters are disregarded)
 
             EXAMPLE invocations:
                 http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%7D
@@ -419,7 +418,7 @@ class ApiRouting:
                 http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%2C%20%22include_ancestors%22%3A%20true%2C%20%22exclude_system%22%3A%20true%7D
                     (corresponding to {"class_name": "Quote", "include_ancestors": True, "exclude_system": True})
 
-            Note: To generate URL-safe versions of the JSON-serialized data from d variable in Python, use
+            Note: To generate URL-safe versions of the JSON-serialized data from variable d in Python, use
                     import json
                     import urllib.parse
                     urllib.parse.quote(json.dumps(d))
@@ -438,7 +437,12 @@ class ApiRouting:
                                             ],
                                 "status":   "ok"
                             }
+
+                      In case of error, "status" will be "error",
+                      and the key "error_message" will replace "payload"
             """
+            # TODO: don't return response code of 200 in case of errors
+
             # Extract the GET values
             get_data = request.args    # Example: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
 
@@ -453,7 +457,7 @@ class ApiRouting:
 
 
             json_str = data_dict["json"]
-            #print("get_class_properties() - JSON string: ", json_str)
+            #print("get_class_properties_api() - JSON string: ", json_str)
 
             # TODO: turn a lot of the code below into a JSON-helper method;
             #       in particular, add a "json_decode" arg to extract_get_pars()
@@ -489,14 +493,14 @@ class ApiRouting:
                     prop_set = GraphSchema.db.sample_properties(label=label, sample_size=30)    # Estimate the list of properties by label
                     # Take out Schema-related properties, if present
                     prop_set.discard("_CLASS")      # Remove if present
-                    prop_set.discard("uri")         # Remove if present
+                    prop_set.discard("entity_id")         # Remove if present
                     prop_list = list(prop_set)
 
                 response_data = {"status": "ok", "payload": prop_list}
             except Exception as ex:
                 response_data = {"status": "error", "error_message": str(ex)}
 
-            #print("get_class_properties() - response_data: ", response_data)
+            #print("get_class_properties_api() - response_data: ", response_data)
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
@@ -504,7 +508,7 @@ class ApiRouting:
 
         @bp.route('/get_links/<class_name>')
         @login_required
-        def get_links(class_name):
+        def get_links_api(class_name):
             """
             Get the names of all the relationship attached to the specified Class.
             (No error if the Class doesn't exist)
@@ -668,7 +672,7 @@ class ApiRouting:
                                       "French"
                                     ]
             """
-            prop_list = GraphSchema.all_properties("BA", "uri", uri)
+            prop_list = GraphSchema.all_properties("BA", "entity_id", uri)
             response = {"status": "ok", "payload": prop_list}
             # TODO: handle error scenarios
 
@@ -1118,7 +1122,7 @@ class ApiRouting:
             # TODO: provide flexibility for the max number returned (currently hardwired)
             # Extract the POST values
             post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('uri', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
+            # EXAMPLE: ImmutableMultiDict([('entity_id', '123'), ('rel_name', 'BA_served_at'), ('dir', 'IN')])
             #cls.show_post_data(post_data)
 
             try:
@@ -1233,7 +1237,7 @@ class ApiRouting:
                     {
                       "payload": {
                         "_internal_id": 1234,
-                        "uri": "q-88"
+                        "entity_id": "q-88"
                       },
                       "status": "ok"
                     }
@@ -1265,7 +1269,7 @@ class ApiRouting:
                 payload = DataManager.create_data_node(class_name=class_name,
                                                        item_data=pars_dict)
                 # It returns the internal database ID and the URI of the newly-created Data Node
-                # EXAMPLE: {"_internal_id": 123, "uri": "rs-8"}
+                # EXAMPLE: {"_internal_id": 123, "entity_id": "rs-8"}
 
                 response_data = {"status": "ok", "payload": payload}
             except Exception as ex:
@@ -1286,7 +1290,7 @@ class ApiRouting:
             Update an existing Data Node, possibly representing a Content Item.
 
             Required POST variables:
-                'uri', 'class_name'
+                'entity_id', 'class_name'
             Optional  POST variables: whichever fields are being edited
 
             NOTES:  the "class_name" field in the POST data is redundant.
@@ -1301,14 +1305,14 @@ class ApiRouting:
             #TODO: explore more Schema enforcements
 
             # Extract the POST values
-            post_data = request.form    # Example: ImmutableMultiDict([('uri', '11'), ('class_name', 'Header'), ('text', 'my_header')])
+            post_data = request.form    # Example: ImmutableMultiDict([('entity_id', '11'), ('class_name', 'Header'), ('text', 'my_header')])
             #cls.show_post_data(post_data, "update_content_item")
 
             try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['uri', 'class_name'])
-                uri=data_dict["uri"]
+                data_dict = cls.extract_post_pars(post_data, required_par_list=['entity_id', 'class_name'])
+                uri=data_dict["entity_id"]
                 class_name=data_dict["class_name"]
-                del data_dict["uri"]
+                del data_dict["entity_id"]
                 del data_dict["class_name"]
                 DataManager.update_content_item(entity_id=uri, class_name=class_name,
                                                 update_data=data_dict)
@@ -1342,7 +1346,7 @@ class ApiRouting:
 
             EXAMPLES of invocation:
                 curl http://localhost:5000/BA/api/update_content_item_JSON
-                        -d 'json={"uri":"6965","class_name":"Recordset","class":"YouTube Channel","n_group":7,"order_by":"name"}'
+                        -d 'json={"entity_id":"6965","class_name":"Recordset","class":"YouTube Channel","n_group":7,"order_by":"name"}'
 
                 curl http://localhost:5000/BA/api/update_content_item_JSON
                         -d 'json={"internal_id":123,"note":"My note","name":"Brain Annex channel"}'
@@ -1364,14 +1368,14 @@ class ApiRouting:
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
             # EXAMPLES of data_dict:
-            #       {'uri': '6967', 'class_name': 'Recordset', 'class': 'University Classes', 'n_group': 12, 'order_by': 'code'}
+            #       {'entity_id': '6967', 'class_name': 'Recordset', 'class': 'University Classes', 'n_group': 12, 'order_by': 'code'}
             #       {'internal_id': 123, 'note': 'My note', 'name': 'Brain Annex channel'}
             # See: https://flask.palletsprojects.com/en/1.1.x/api/
             print("In update_content_item_JSON() -  data_dict: ", data_dict)
 
             # TODO: create a helper function for the unpacking/validation below
             # The following values will be None if missing
-            uri = data_dict.get('uri')
+            uri = data_dict.get('entity_id')
             class_name = data_dict.get('class_name')
             label = data_dict.get('label')
             internal_id = data_dict.get('internal_id')
@@ -1386,7 +1390,7 @@ class ApiRouting:
 
             # Take out special fields that aren't meant to be set in the Data Node being edited
             if uri:
-                del data_dict["uri"]
+                del data_dict["entity_id"]
             if class_name:
                 del data_dict["class_name"]
             if label:
@@ -1477,7 +1481,7 @@ class ApiRouting:
                 rel_name = data_dict['rel_name']
 
                 # The adding of the relationship is done here
-                GraphSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="uri",
+                GraphSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="entity_id",
                                                   rel_name=rel_name)
 
                 response_data = {"status": "ok"}                                    # If no errors
@@ -1929,12 +1933,12 @@ class ApiRouting:
                                                                     {
                                                                       "name": "Some Category name",
                                                                       "remarks": null,
-                                                                      "uri": "cat-123"
+                                                                      "entity_id": "cat-123"
                                                                     },
                                                                     {
                                                                       "name": ".A Test",
                                                                       "remarks": "my test",
-                                                                      "uri": "cat-999"
+                                                                      "entity_id": "cat-999"
                                                                     }
                                                                  ]
             """

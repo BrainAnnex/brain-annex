@@ -17,7 +17,7 @@ Vue.component('vue-plugin-single-record',
     {
         props: ['record_data', 'field_list'],
         /*  record_data:    Object.  EXAMPLE:
-                            {"uri":"52", "pos":10, "schema_code":"r",
+                            {"entity_id":"52", "pos":10, "schema_code":"r",
                              "class_name":"German Vocabulary",
                              "German":"Tier", "English":"animal"}
 
@@ -116,7 +116,7 @@ Vue.component('vue-plugin-single-record',
                 const url_server_api = "/BA/api/update_content_item";
 
                 let post_obj = {schema_code: this.record_data.schema_code,
-                                uri: this.record_data.uri,
+                                uri: this.record_data.entity_id,
                                 class_name: this.record_data.class_name
                                 };
                 // Go over each key (field name); note that keys that aren't field names were previously eliminated
@@ -159,8 +159,8 @@ Vue.component('vue-plugin-single-record',
                     // Inform the ancestral root component of the new state of the data
                     console.log("'vue-plugin-single-record' component sending 'updated-item' signal to its parent");
                     let signal_data = Object.assign({}, this.record_current);    // Clone the object
-                    // We'll be passing all the edited values, plus the field "uri" and "schema_code" to identify the record
-                    signal_data.uri = this.record_data.uri;
+                    // We'll be passing all the edited values, plus the field "entity_id" and "schema_code" to identify the record
+                    signal_data.entity_id = this.record_data.entity_id;
                     signal_data.schema_code = "r";
                     this.$emit('updated-item', signal_data);
                 }
@@ -186,7 +186,7 @@ Vue.component('vue-plugin-single-record',
                 // Scrub some data, so that it won't be passed to the server during edits.
                 // In this Vue component, this scrubbing is NOT needed for the UI display, because
                 // we're currently only dealing with a FIXED set of fields, as passed by the props
-                delete clone_obj.uri;           // A protected field; TODO: specify that in the Schema
+                delete clone_obj.entity_id;           // A protected field; TODO: specify that in the Schema
                 delete clone_obj.schema_code;   // A protected field; TODO: specify that in the Schema
                 delete clone_obj.class_name;    // Not part of the record; TODO: maybe pass as separate prop
                 delete clone_obj.pos;           // TODO: this might be getting phased out
