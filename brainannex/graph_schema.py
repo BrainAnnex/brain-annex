@@ -2557,61 +2557,6 @@ class GraphSchema:
         return name_list
 
 
-
-    @classmethod
-    def get_data_node_internal_id(cls, class_name :str, entity_id :str) -> int:
-        """
-        Returns the internal database ID of the given Data Node,
-        specified by its Class and Entity ID
-
-        :param class_name:  Name of the Data Node's Class
-        :param entity_id:   A string to uniquely identify a Data Node of the above Class
-
-        :return:            The internal database ID of the requested Data Node;
-                                if none (or more than one) found, an Exception is raised
-        """
-        #TODO: merge with get_data_node_id()
-
-        #TODO: Should search for _CLASS, rather than by label
-        match = cls.db.match(key_name="entity_id", key_value=entity_id, labels=class_name)
-        result = cls.db.get_nodes(match, return_internal_id=True)
-
-        if class_name:
-            assert result, f"GraphSchema.get_data_node_internal_id(): " \
-                           f"no Data Node with the given entity_id ('{entity_id}') and class_name ('{class_name}') was found"
-        else:
-            assert result, f"GraphSchema.get_data_node_internal_id(): " \
-                           f"no Data Node with the given entity_id ('{entity_id}') was found"
-
-        if len(result) > 1:
-            raise Exception(f"GraphSchema.get_data_node_internal_id(): more than 1 Data Node "
-                            f"with the given entity_id ('{entity_id}') was found ({len(result)} were found)")
-
-        return result[0]["_internal_id"]
-
-
-
-    @classmethod
-    def get_data_node_id(cls, key_value :str, key_name="entity_id") -> int:
-        """
-        Get the internal database ID of a Data Node, given some other primary key
-
-        :param key_value:   The name of a primary key to use for the node lookup
-        :param key_name:    The value of the above primary key
-        :return:            The internal database ID of the specified Data Node
-        """
-        #TODO: merge with get_data_node_internal_id()
-
-        match = cls.db.match(key_name=key_name, key_value=key_value)
-        result = cls.db.get_nodes(match, return_internal_id=True, single_cell="_internal_id")
-
-        assert result is not None, \
-            f"get_data_node_id(): unable to find a data node with the attribute `{key_name}={key_value}`"
-
-        return result
-
-
-
     @classmethod
     def _data_node_match_helper_OLD(cls, search : int | str | dict) -> (str, str, dict):
         """
@@ -2941,6 +2886,60 @@ class GraphSchema:
 
 
     @classmethod
+    def get_data_node_internal_id(cls, class_name :str, entity_id :str) -> int:
+        """
+        Returns the internal database ID of the given Data Node,
+        specified by its Class and Entity ID
+
+        :param class_name:  Name of the Data Node's Class
+        :param entity_id:   A string to uniquely identify a Data Node of the above Class
+
+        :return:            The internal database ID of the requested Data Node;
+                                if none (or more than one) found, an Exception is raised
+        """
+        #TODO: merge with get_data_node_id()
+
+        #TODO: Should search for _CLASS, rather than by label
+        match = cls.db.match(key_name="entity_id", key_value=entity_id, labels=class_name)
+        result = cls.db.get_nodes(match, return_internal_id=True)
+
+        if class_name:
+            assert result, f"GraphSchema.get_data_node_internal_id(): " \
+                           f"no Data Node with the given entity_id ('{entity_id}') and class_name ('{class_name}') was found"
+        else:
+            assert result, f"GraphSchema.get_data_node_internal_id(): " \
+                           f"no Data Node with the given entity_id ('{entity_id}') was found"
+
+        if len(result) > 1:
+            raise Exception(f"GraphSchema.get_data_node_internal_id(): more than 1 Data Node "
+                            f"with the given entity_id ('{entity_id}') was found ({len(result)} were found)")
+
+        return result[0]["_internal_id"]
+
+
+
+    @classmethod
+    def class_and_entity_id(cls, internal_id :int|str):
+        """
+        Look up the Class name and Entity ID of the given node
+
+        :param internal_id: The internal database ID of the node of interest
+        :return:            The pair (Class name , Entity ID)
+        """
+        q = f'''
+        MATCH (n)
+        WHERE id(n) = $internal_id
+        RETURN n.`_CLASS` AS class_name, n.`entity_id` AS entity_id
+        '''
+        data_binding = {"internal_id": internal_id}
+        #cls.db.debug_query_print(q, data_binding, "class_of_data_node")
+        result = cls.db.query(q, data_binding, single_row=True)
+
+        return (result["class_name"], result["entity_id"])
+
+
+
+    @classmethod
     def class_of_data_node(cls, node_id, id_key=None, labels=None) -> str:
         """
         Return the name of the Class of the given data node: identified
@@ -3055,7 +3054,7 @@ class GraphSchema:
             '''
 
         if return_option == "entity_id":
-            q += "RETURN n.entity_id AS uri"
+            q += "RETURN n.entity_id AS entity_id"
         else:
             q += "RETURN id(n) AS _internal_id"
 
@@ -3224,7 +3223,7 @@ class GraphSchema:
 
     @classmethod
     def create_data_node(cls, class_name :str, properties=None, extra_labels=None,
-                         new_entity_id=None, silently_drop=False, links=None) -> int | str:
+                         new_entity_id=None, silently_drop=False, links=None) -> int|str:
         """
         Create a new data node, of the specified Class,
         with the given optional properties, and optional extra label(s),
@@ -3260,9 +3259,9 @@ class GraphSchema:
                                 EXAMPLE: {"make": "Toyota", "color": "white"}
         :param extra_labels:[OPTIONAL] String, or list/tuple of strings, with label(s) to assign to the new data node,
                                 IN ADDITION TO the Class name (which is always used as label)
-        :param new_entity_id:     [OPTIONAL]  If a string is passed as `new_entity_id`, then a field (node property) called "entity_id"
+        :param new_entity_id:[OPTIONAL]  If a string is passed as `new_entity_id`, then a field (node property) called "entity_id"
                                 is set to that value
-        :param silently_drop: [OPTIONAL] If True, any requested properties not allowed by the Schema are simply dropped;
+        :param silently_drop:[OPTIONAL] If True, any requested properties not allowed by the Schema are simply dropped;
                                 otherwise, an Exception is raised if any property isn't allowed
                                 Note: only applicable for "Strict" schema - otherwise, anything goes!
         :param links:       [OPTIONAL] List of dicts identifying existing nodes,
@@ -3893,7 +3892,7 @@ class GraphSchema:
 
 
     @classmethod
-    def remove_data_relationship(cls, from_id :str, to_id :str, rel_name :str, id_type="entity_id", labels=None) -> None:
+    def remove_data_relationship_OLD(cls, from_id :str, to_id :str, rel_name :str, id_type="entity_id", labels=None) -> None:
         """
         Drop the relationship with the given name, from one to the other of the 2 given DATA nodes.
         Note: the data nodes are left untouched.
@@ -3907,13 +3906,12 @@ class GraphSchema:
 
         :return:            None.  If the specified relationship didn't get deleted, raise an Exception
         """
-        # TODO: first verify that the relationship is optional in the schema???
-        # TODO: migrate from "entity_id" values to also offer option or internal database ID's, as done in class_of_data_node()
+        # TODO: ditch in favor of remove_data_relationship()!  The Entity ID is no longer enough to identify a data node
 
-        assert rel_name != "", f"remove_data_relationship(): no name was provided for the relationship"
+        assert rel_name != "", f"remove_data_relationship_OLD(): no name was provided for the relationship"
 
         assert id_type == "entity_id", \
-                f"remove_data_relationship(): currently, only the 'entity_id' option is available for the argument `id_type`"
+                f"remove_data_relationship_OLD(): currently, only the 'entity_id' option is available for the argument `id_type`"
 
         match_from = cls.db.match(labels=labels, key_name="entity_id", key_value=from_id,
                                   dummy_node_name="from")
@@ -3922,6 +3920,28 @@ class GraphSchema:
                                   dummy_node_name="to")
 
         cls.db.remove_links(match_from, match_to, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
+
+
+
+    @classmethod
+    def remove_data_relationship(cls, from_id :int|str, to_id :int|str, rel_name :str) -> None:
+        """
+        Drop the relationship with the given name, from one to the other of the 2 given DATA nodes.
+        Note: the data nodes are left untouched.
+        If the specified relationship didn't get deleted, raise an Exception
+
+        :param from_id:     Internal database ID of the data node at which the relationship originates
+        :param to_id:       Internal database ID of the data node at which the relationship ends
+        :param rel_name:    The name of the relationship to delete
+
+        :return:            None.  If the specified relationship didn't get deleted, raise an Exception
+        """
+        # TODO: first verify that the relationship is optional in the schema? (if the nodes have a specified Class)
+
+        assert rel_name != "", \
+            f"remove_data_relationship(): no name was provided for the relationship"
+
+        cls.db.remove_links(match_from=from_id, match_to=to_id, rel_name=rel_name)   # This will raise an Exception if no relationship is removed
 
 
 

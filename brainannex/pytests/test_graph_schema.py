@@ -1662,9 +1662,6 @@ def test_get_all_data_nodes_of_class(db):
 
 
 
-def test_class_of_data_node(db):
-    pass    # TODO
-
 def test_data_nodes_of_class(db):
     pass    # TODO
 
@@ -2649,18 +2646,47 @@ def test_add_data_relationship(db):
 
 
 def test_remove_data_relationship(db):
-    pass    # TODO
+    db.empty_dbase()
+    GraphSchema.create_class("Person")
+    p1 = GraphSchema.create_data_node(class_name="Person", properties={"name": "Jack"})
+    p2 = GraphSchema.create_data_node(class_name="Person", properties={"name": "Jill"},
+                                      links=[{"internal_id": p1, "rel_name": "KNOWS"}])
+
+    assert db.number_of_links(match_from=p2, match_to=p1, rel_name="KNOWS") == 1
+
+    with pytest.raises(Exception):
+        GraphSchema.remove_data_relationship(from_id=p2, to_id=p1, rel_name="NON_EXISTENT")
+
+    with pytest.raises(Exception):
+        GraphSchema.remove_data_relationship(from_id=p2, to_id=p1, rel_name="")     # Missing name
+
+
+    GraphSchema.remove_data_relationship(from_id=p2, to_id=p1, rel_name="KNOWS")
+    assert db.number_of_links(match_from=p2, match_to=p1, rel_name="KNOWS") == 0    # Now gone
 
 
 
-def test_class_of_data_point(db):
+def test_class_and_entity_id(db):
+    db.empty_dbase()
+    GraphSchema.create_class("Person")
+    p = GraphSchema.create_data_node(class_name="Person", properties={"name": "Julian"},
+                                     new_entity_id="person-1")
+
+    result = GraphSchema.class_and_entity_id(p)
+    assert result == ('Person', 'person-1')
+
+
+
+def test_class_of_data_node(db):
     db.empty_dbase()
     with pytest.raises(Exception):
         GraphSchema.class_of_data_node(node_id=123)     # No such data node exists
 
+
     internal_id = db.create_node("random")
     with pytest.raises(Exception):
         GraphSchema.class_of_data_node(node_id=internal_id)     # It's not a data node
+
 
     GraphSchema.create_class("Person")
     person_entity_id = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
@@ -2670,7 +2696,7 @@ def test_class_of_data_point(db):
     assert GraphSchema.class_of_data_node(node_id=person_entity_id, id_key="entity_id", labels="Person") == "Person"
 
     # Now locate thru the internal database ID
-    internal_id = GraphSchema.get_data_node_id(person_entity_id)
+    internal_id = GraphSchema.get_data_node_internal_id(class_name="Person", entity_id=person_entity_id)
     #print("internal_id: ", internal_id)
     assert GraphSchema.class_of_data_node(node_id=internal_id) == "Person"
 

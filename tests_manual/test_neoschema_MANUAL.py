@@ -314,4 +314,4 @@ def test_add_data_relationship(db):
 
 
 def test_remove_data_relationship(db):
-    GraphSchema.remove_data_relationship(from_id=3, to_id=1, rel_name="BA_subcategory_of")
+    GraphSchema.remove_data_relationship_OLD(from_id=3, to_id=1, rel_name="BA_subcategory_of")

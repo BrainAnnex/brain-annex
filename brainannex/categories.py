@@ -454,7 +454,7 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        parent_category_internal_id = GraphSchema.get_data_node_id(key_value=category_uri, key_name="entity_id")
+        parent_category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id=category_uri)
 
         new_uri = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
 
@@ -621,8 +621,8 @@ class Categories:
         :param to_category:     URI of the Category where the "see_also" relationship terminates
         :return:                None
         """
-        GraphSchema.remove_data_relationship(from_id=from_category, to_id=to_category, id_type="entity_id",
-                                             rel_name="BA_see_also", labels="Category")
+        GraphSchema.remove_data_relationship_OLD(from_id=from_category, to_id=to_category, id_type="entity_id",
+                                                 rel_name="BA_see_also", labels="Category")
 
 
 
@@ -913,7 +913,7 @@ class Categories:
         # TODO: `item_uri` is no longer a universally-unique identifier
         q = '''
             MATCH (:BA {entity_id: $item_uri}) - [:BA_in_category] -> (cat :Category)
-            RETURN cat.entity_id AS uri, cat.name AS name, cat.remarks AS remarks
+            RETURN cat.entity_id AS entity_id, cat.name AS name, cat.remarks AS remarks
             '''
         result = cls.db.query(q, data_binding={"item_uri": item_uri})
         return result
@@ -1142,24 +1142,25 @@ class Categories:
 
 
     @classmethod
-    def detach_from_category(cls, category_uri :str, item_uri :str) -> None:
+    def detach_from_category(cls, category_entity_id :str, item_internal_id : int | str) -> None:
         """
         Sever the link from the specified Content Item and the given Category.
         If it's the only Category that the Content Item is currently linked to,
         an Exception is raised (to avoid leaving that Content Item "stranded")
 
-        :param category_uri:    The URI of a data node representing a Category
-        :param item_uri:        The URI of a data node representing a Content Item
-        :return:                None
+        :param category_entity_id:  The Entity ID of a data node representing a Category
+        :param item_internal_id:    The internal database ID of a data node representing a Content Item
+        :return:                    None
         """
-        match_from = cls.db.match(key_name="entity_id", key_value=item_uri)
         match_to = cls.db.match(labels="Category")
-        assert cls.db.number_of_links(match_from=match_from, match_to=match_to, rel_name="BA_in_category") > 1, \
+        assert cls.db.number_of_links(match_from=item_internal_id, match_to=match_to, rel_name="BA_in_category") > 1, \
             f"detach_from_category(): Cannot delete the only remaining 'BA_in_category' link " \
-            f"from Content Item (entity_id: '{item_uri}') to Categories"
+            f"from Content Item (internal ID: '{item_internal_id}') to Categories"
 
-        GraphSchema.remove_data_relationship(from_id=item_uri, to_id=category_uri,
-                                             rel_name="BA_in_category", labels=None)
+        category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id=category_entity_id)
+
+        GraphSchema.remove_data_relationship(from_id=item_internal_id, to_id=category_internal_id,
+                                             rel_name="BA_in_category")
 
 
 
@@ -1304,7 +1305,7 @@ class Categories:
         q = '''
             MATCH (ci1)-[r1 :BA_in_category]->(c :Category)<-[r2 :BA_in_category]-(ci2)
             WHERE r1.pos = r2.pos AND id(ci1) < id(ci2)
-            RETURN c.name AS category_name, r1.pos AS pos, ci1.entity_id AS uri1, ci2.entity_id AS uri2
+            RETURN c.name AS category_name, r1.pos AS pos, ci1.entity_id AS entity_id_1, ci2.entity_id AS entity_id_2
             ORDER BY category_name, pos
             '''
         return cls.db.query(q)

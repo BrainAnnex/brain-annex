@@ -439,23 +439,24 @@ Vue.component('vue-content-items',
             untag_category(category_uri, category_name)
             // Detach the current Content Item from the specified Category
             {
-                const item_uri = this.item.entity_id;
+                const item_internal_id = this.item.internal_id;
 
-                console.log(`Untag Item (entity_id ${item_uri}) from Category '${category_name}' (entity_id '${category_uri}') : Not yet implemented`);
+                console.log(`Untag Item (internal_id {$internal_id} , entity_id ${this.item.entity_id} of Class ${this.item.class_name}) from Category '${category_name}' (entity_id '${category_uri}')`);
 
                 // Send the request to the server, using a GET
-                const url_server_api = `/BA/api/detach_from_category/${category_uri}/${item_uri}`;
+                const url_server_api = `/BA/api/detach_from_category/${category_uri}/${item_internal_id}`;
                 console.log(`About to contact the server at ${url_server_api}`);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "GET",
+                             callback_fn: this.finish_untag_category,
+                             custom_data: category_uri
+                            });
 
                 this.waiting = true;        // Entering a waiting-for-server mode
                 this.error = false;         // Clear any error from the previous operation
                 this.status_message = "";   // Clear any message from the previous operation
-
-                // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_OLD(url_server_api,
-                            {callback_fn: this.finish_untag_category,
-                             custom_data: category_uri
-                            });
             },
 
             finish_untag_category(success, server_payload, error_message, custom_data)
