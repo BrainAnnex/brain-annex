@@ -580,14 +580,14 @@ def test_detach_from_category(db):
                                           rel_name="BA_in_category")
 
     # Create a new Data Node
-    GraphSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
+    img = GraphSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
                                  new_entity_id="i-100")
 
     Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
 
     with pytest.raises(Exception):
         # It would leave the Content Item "stranded"
-        Categories.detach_from_category(category_uri=root_uri, item_uri="i-100")
+        Categories.detach_from_category(category_entity_id=root_uri, item_internal_id=img)
 
 
     # Create a 2nd Category, and link up the Content Item to it
@@ -595,7 +595,7 @@ def test_detach_from_category(db):
     Categories.link_content_at_end(category_uri=new_cat_uri, item_uri="i-100")
 
     # Now, the detachment of the Content Item from the initial (root) Category is possible
-    Categories.detach_from_category(category_uri=root_uri, item_uri="i-100")
+    Categories.detach_from_category(category_entity_id=root_uri, item_internal_id=img)
 
     # Verify that nodes and links are in place
     q = f'''

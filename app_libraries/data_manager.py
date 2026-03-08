@@ -450,8 +450,8 @@ class DataManager:
             Categories.remove_relationship_before(from_id=from_uri, to_id=to_uri,
                                                   rel_name=rel_name)       # Category-specific action
 
-        GraphSchema.remove_data_relationship(from_id=from_uri, to_id=to_uri,
-                                             rel_name=rel_name, labels="BA")
+        GraphSchema.remove_data_relationship_OLD(from_id=from_uri, to_id=to_uri,
+                                                 rel_name=rel_name, labels="BA")
 
 
 
