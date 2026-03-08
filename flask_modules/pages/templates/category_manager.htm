@@ -150,7 +150,7 @@ It does *NOT* delete `' + p.name + '`'"
         <div style='width:105px'>&nbsp;</div>
 
 
-        <!-- Add an existing Category as an additional parent Category -->
+        <!-- Turn an existing Category as an additional parent Category -->
         <div style='width:180px; text-align:center'>
             <span style='font-style:italic; color:#666666'>Make &ldquo;{{category_name}}&rdquo; also a Sub-category of:</span>
             <br>
@@ -374,11 +374,6 @@ It does *NOT* delete `' + s.name + '`'"
     <span v-bind:class="{'error-message': error, 'status-message-success': !error }">[[status_message]]</span>
 </p>
 
-
-<p style="margin-top:0; padding: 5px; width: 50%">
-    <span style="font-size:12px; background-color: #eeeeaf">Note:  <i>a few functions aren't yet implemented.</i></span>
-</p>
-
 <br>
 
 </div>	<!-- END OF lightbox -->
@@ -407,9 +402,9 @@ new Vue({
         // The DATA HANDOVER from Flask to Vue
         category_uri: {{category_uri}},
         all_categories: {{all_categories | tojson}},       // List of all categories, each of which is an object
-                                                           // Eg: [{uri: '888', name: 'Greek'}]
+                                                           // Eg: [{entity_id: '888', name: 'Greek'}]
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
-                                                           // Eg: [{uri: '544', name: 'Language', schema_code: 'cat'}]
+                                                           // Eg: [{entity_id: '544', name: 'Language', schema_code: 'cat'}]
         subcategories: {{subcategories | tojson}},         // List of sub-categories, each of which is an object
                                                            //       (same format as for parent_categories)
         see_also_categories: {{see_also_categories | tojson}},   // List of related Categories, each an object
@@ -470,15 +465,15 @@ new Vue({
 
         add_see_also()
         /*  Create a 'BA_see_also' link from the current category
-            to the just-selected category (specified by this.entity_id_see_also_child_to_add)
+            to the just-selected category (specified by this.uri_see_also_child_to_add)
          */
         {
-            console.log(`Attempting to create a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the just-selected Category URI '${this.entity_id_see_also_child_to_add}'`);
+            console.log(`Attempting to create a 'SEE ALSO' link from the current Category (Entity ID '${this.category_uri}') to the just-selected Category Entity ID '${this.uri_see_also_child_to_add}'`);
 
             let url_server = "/BA/api/see_also";
 
             let post_obj = {from_category_uri: this.category_uri,
-                            to_category_uri: this.entity_id_see_also_child_to_add,
+                            to_category_uri: this.uri_see_also_child_to_add,
                             action: "add"};
             console.log(`About to contact the server at ${url_server} .  POST object:`);
             console.log(post_obj);
@@ -491,13 +486,13 @@ new Vue({
                         {method: "POST",
                          data_obj: post_obj,
                          callback_fn: this.finish_add_see_also,
-                         custom_data: this.entity_id_see_also_child_to_add}
+                         custom_data: this.uri_see_also_child_to_add}
                         );
         },
 
         finish_add_see_also(success, server_payload, error_message, custom_data)
         // Callback function to wrap up the action of add_see_also() upon getting a response from the server
-        // custom_data contains the uri of the Category pointed to by the newly-added SEE_ALSO link
+        // custom_data contains the entity ID of the Category pointed to by the newly-added SEE_ALSO link
         {
             console.log(`Finalizing the add_see_also operation...  custom_data: ${custom_data}`);
             if (success)  {     // Server reported SUCCESS
@@ -510,11 +505,11 @@ new Vue({
                 const item_index = Utilities.find_item_by_uri(custom_data, this.all_categories);
                 if (item_index != 1)  {      // If found
                     const category_data = this.all_categories[item_index];
-                    this.see_also_categories.push({uri: custom_data, name: category_data.name, remarks: category_data.remarks});
+                    this.see_also_categories.push({entity_id: custom_data, name: category_data.name, remarks: category_data.remarks});
                 }
                 else  {                         // Not found
-                    alert(`Unable to locate Category with URI: '${custom_data}'; try refreshing the page`);
-                    this.see_also_categories.push({uri: custom_data});
+                    alert(`Unable to locate Category with Entity ID: '${custom_data}'; try refreshing the page`);
+                    this.see_also_categories.push({entity_id: custom_data});
                 }
             }
             else  {             // Server reported FAILURE
@@ -524,15 +519,15 @@ new Vue({
 
             // Final wrap-up, regardless of error or success
             this.waiting = false;                   // Make a note that the asynchronous operation has come to an end
-            this.entity_id_see_also_child_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
+            this.uri_see_also_child_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
         },
 
 
 
         remove_see_also(uri)
-        // Remove the 'SEE ALSO' link from the current Category to the Category with the given uri
+        // Remove the 'SEE ALSO' link from the current Category to the Category with the given Entity ID
         {
-            console.log(`Attempting to remove a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the Category with URI '${uri}'`);
+            console.log(`Attempting to remove a 'SEE ALSO' link from the current Category (Entity ID '${this.category_uri}') to the Category with URI '${uri}'`);
 
             // Send the request to the server, using a POST
             const url_server_api = "/BA/api/see_also";
@@ -588,21 +583,21 @@ new Vue({
 
 
         add_parent_category()
-        // Link up the just-selected parent category (specified by this.entity_id_parent_to_add) to the current category
+        // Link up the just-selected parent category (specified by this.uri_parent_to_add) to the current category
         {
-            console.log(`Attempting to make the just-selected Category (URI '${this.entity_id_parent_to_add}') a parent of the current Category (URI '${this.category_uri}')`);
+            console.log(`Attempting to make the just-selected Category (Entity ID '${this.uri_parent_to_add}') a parent of the current Category (Entity ID '${this.category_uri}')`);
 
             //let url_server = "/BA/api/add_relationship";
             let url_server = "/BA/api/add_subcategory_relationship";
 
-            let get_obj = {cat: this.entity_id_parent_to_add,
+            let get_obj = {cat: this.uri_parent_to_add,
                            sub: this.category_uri
                            };
 
             /*
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
             let post_obj = {from: this.category_uri,
-                            to: this.entity_id_parent_to_add,
+                            to: this.uri_parent_to_add,
                             rel_name: "BA_subcategory_of",
                             schema_code: "cat"};
             */
@@ -619,12 +614,12 @@ new Vue({
                          data_obj: get_obj,
                          json_encode_send: false,
                          callback_fn: this.finish_add_parent_category,
-                         custom_data: this.entity_id_parent_to_add});
+                         custom_data: this.uri_parent_to_add});
         },
 
         finish_add_parent_category(success, server_payload, error_message, custom_data)
         // Callback function to wrap up the action of add_parent_category() upon getting a response from the server
-        // custom_data contains the uri of the requested new Parent Category
+        // custom_data contains the Entity ID of the requested new Parent Category
         {
             console.log(`Finalizing the add_parent_category operation...  custom_data: ${custom_data}`);
             if (success)  {     // Server reported SUCCESS
@@ -646,26 +641,26 @@ new Vue({
 
             // Final wrap-up, regardless of error or success
             this.waiting = false;           // Make a note that the asynchronous operation has come to an end
-            this.entity_id_parent_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
+            this.uri_parent_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
         },
 
 
 
         add_child_category()
-        // Link up the just-selected child category (specified by this.entity_id_child_to_add) to the current category
+        // Link up the just-selected child category (specified by this.uri_child_to_add) to the current category
         {
-            console.log(`Attempting to make the just-selected Category (URI '${this.entity_id_child_to_add}') a sub-category of the current Category (URI '${this.category_uri}')`);
+            console.log(`Attempting to make the just-selected Category (Entity ID '${this.uri_child_to_add}') a sub-category of the current Category (Entity ID '${this.category_uri}')`);
 
             //let url_server = "/BA/api/add_relationship";
             let url_server = "/BA/api/add_subcategory_relationship";
 
             let get_obj = {cat: this.category_uri,
-                           sub: this.entity_id_child_to_add
+                           sub: this.uri_child_to_add
                           };
 
             /*
             // NOTE: the "BA_subcategory_of" relationship goes FROM the subcategory node TO the parent category node
-            let post_obj = {from: this.entity_id_child_to_add,
+            let post_obj = {from: this.uri_child_to_add,
                             to: this.category_uri,
                             rel_name: "BA_subcategory_of",
                             schema_code: "cat"};
@@ -683,12 +678,12 @@ new Vue({
                          data_obj: get_obj,
                          json_encode_send: false,
                          callback_fn: this.finish_add_child_category,
-                         custom_data: this.entity_id_child_to_add});
+                         custom_data: this.uri_child_to_add});
         },
 
         finish_add_child_category(success, server_payload, error_message, custom_data)
         // Callback function to wrap up the action of add_child_category() upon getting a response from the server
-        // custom_data contains the uri of the requested new Parent Category
+        // custom_data contains the Entity ID of the requested new Parent Category
         {
             console.log(`Finalizing the add_child_category operation...  custom_data: ${custom_data}`);
             if (success)  {     // Server reported SUCCESS
@@ -710,7 +705,7 @@ new Vue({
 
             // Final wrap-up, regardless of error or success
             this.waiting = false;           // Make a note that the asynchronous operation has come to an end
-            this.entity_id_child_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
+            this.uri_child_to_add = '';    // Reset the pulldown menu to its default choice (asking the user to make a selection)
         },
 
 
@@ -832,7 +827,7 @@ new Vue({
             }
 
             let url_server = "/BA/api/update_content_item";
-            let post_obj = {uri: this.category_uri,
+            let post_obj = {entity_id: this.category_uri,
                             class_name: "Category",
                             name: this.category_name_current_data,
                             remarks: this.category_remarks_current_data};
@@ -953,14 +948,14 @@ new Vue({
 
         finish_add_subcategory(success, server_payload, error_message)
         /*  Callback function to wrap up the action of add_subcategory() upon getting a response from the server.
-            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned Entity ID
          */
         {
             console.log("Finalizing the Add Subcategory operation...");
             if (success)  {     // Server reported SUCCESS
-                this.status_message = `New sub-category successfully added (assigned URI '${server_payload}')`;
+                this.status_message = `New sub-category successfully added (assigned Entity ID '${server_payload}')`;
                 // Update the data of the root component, to refresh some displays
-                let new_subcategory = {uri: server_payload, name: this.new_subcategory_name};
+                let new_subcategory = {entity_id: server_payload, name: this.new_subcategory_name};
                 this.subcategories.push(new_subcategory);
                 this.all_categories.push(new_subcategory);      // TODO: sort alphabetically
             }
