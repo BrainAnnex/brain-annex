@@ -341,6 +341,7 @@ Vue.component('vue-plugin-r',
                 // Scrub some data, so that it won't show up in the tabular format
                 delete clone_obj.entity_id;
                 delete clone_obj.internal_id;
+                delete clone_obj.insert_after_uri;
                 delete clone_obj.schema_code;   // TODO: in the process of getting phased out
                 delete clone_obj.class_name;
                 delete clone_obj.pos;          // TODO: this might be getting phased out

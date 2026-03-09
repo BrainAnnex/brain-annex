@@ -37,7 +37,8 @@ Vue.component('vue-plugin-n',
 
                 <!-- The Editor Controls (with the SAVE and CANCEL buttons) -->
                 <div class='editor-controls'>
-                    <button @click="save_edit()">SAVE</button>
+                    <button v-if="! (this.item_data.entity_id < 0)" @click="save_edit(false)">SAVE and Continue</button>
+                    <button @click="save_edit(true)">SAVE and EXIT</button>
                     <button @click="cancel_edit()">CANCEL</button>
                     <span style='margin-left:10px'>Title:</span>
                     <input type="text" v-model="current_data['title']" placeholder="Optionally specify a title" size="60">
@@ -296,45 +297,55 @@ Vue.component('vue-plugin-n',
             }, // create_new_editor
 
 
-            save_edit()
-            // Invoked by clicking on the "SAVE" link (only visible in editing mode)
-            {
-                noteID = this.item_data.entity_id;    // Negative values indicates a new Note
 
-                console.log("Inside save_edit().  noteID = " + noteID);
+            /**
+             * Invoked by clicking on either of the "SAVE" buttons (only visible in editing mode)
+
+             * @param {bool} exit   - To indentify whether the user wishes to exit the editing mode upon saving the note
+             */
+            save_edit(exit)
+            {
+                const noteID = this.item_data.entity_id;    // Negative values indicates a new Note
+
+                console.log(`Inside save_edit():  Entity ID = ${noteID} , exit = ${exit}`);
 
                 if (!this.note_editor)  {
                     alert("ERROR: unable to locate the CKeditor object.  Save the contents of the Note in a separate document, then refresh page and re-edit");
                     return;
                 }
 
-                // Retrieve the CKeditor's content.  This data will be sent to the server
-                var html = this.note_editor.getData();
+                // Retrieve the CKeditor's text contents.  This data will be sent to the server
+                const html = this.note_editor.getData();
 
-                console.log("Edited value is: " + html);
+                //console.log("Edited value is (attempting to save) is: " + html);
 
-                // Bring all controls back to non-edit mode:
-                // show the note, and update the visibility of the various controls
-                this.editing_mode = false;
+                if (exit)  {
+                    // Bring all controls back to non-edit mode:
+                    // show the note, and update the visibility of the various controls
+                    // TODO: wait to do this until the server communicates success of the editing operation
+                    this.editing_mode = false;
 
-                // Destroy the editor
-                // self.destroy_editor();
+                    // Destroy the editor
+                    // self.destroy_editor();
+                }
 
-                this.do_box_save(noteID, html);
+                this.do_box_save(noteID, html, exit);
 
             },  // save_edit
 
 
-            do_box_save(noteID, newBody)
-            /* 	Invoked when the "SAVE" button is pressed on the specified note.
-                Carry out, asynchronously, the record update operation.
-                If noteID < 0 then we're adding a new note; otherwise, we're editing the existing note with the specified ID
+
+            /**
+             *  Invoked when the "SAVE" button is pressed on the specified note.
+             *  Carry out, asynchronously, the record update operation.
+             *  If noteID < 0 then we're adding a new note; otherwise, we're editing the existing note with the specified ID
              */
+            do_box_save(noteID, newBody, exit)
             {
                 var invocation;
                 var keyID;
 
-                console.log("Inside do_box_save() : noteID = " + noteID);
+                console.log(`Inside do_box_save() : Entity ID = ${noteID} , exit = ${exit}`);
                 console.log("newBody :" + newBody);
 
                 this.new_note_value = newBody;					// Save the value of the tentative edit (subject to successful server update)
@@ -370,13 +381,16 @@ Vue.component('vue-plugin-n',
                     var url_server_api = "/BA/api/update_content_item"; // TODO: probably phase out in favor of '/update_content_item_JSON'
                 }
 
+                console.log(`In server_communication_POST(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_obj);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_obj,
                              json_encode_send: false,
-                             callback_fn: this.finish_save
+                             callback_fn: this.finish_save,
+                             custom_data: exit
                             });
 
                 this.save_waiting = true;
@@ -385,7 +399,7 @@ Vue.component('vue-plugin-n',
             },  // do_box_save()
 
 
-            finish_save(success, server_payload, error_message)
+            finish_save(success, server_payload, error_message, custom_data)
             /*	Callback function to wrap up the action of save() upon getting a response from the server.
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity ID.
 
@@ -397,6 +411,10 @@ Vue.component('vue-plugin-n',
                 var boxValue;
 
                 console.log("Finalizing the Note save operation...");
+                console.log(`Custom pass-thru data:`);
+                console.log(custom_data);
+
+                const exit = custom_data;
 
                 /* Turn the note box into its final value
 
@@ -405,12 +423,11 @@ Vue.component('vue-plugin-n',
                  */
 
                 if (success) {          // Server reported SUCCESS
+                   console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = "Successful edit";
                     this.error = false;
 
-                    //console.log(`In finish_save() - entity ID is: ${this.item_data.entity_id}`);
-
-                    // If this was a new item (with the temporary negative ID),
+                    // If this was a new item (with the temporary negative Entity ID),
                     // update its entity_id (in this Vue component) with the value assigned by the server;
                     // also, update its basename accordingly
                     if (this.item_data.entity_id < 0)  {
@@ -422,6 +439,8 @@ Vue.component('vue-plugin-n',
                     // Inform the parent component of the new state of the data
                     console.log("Notes component sending `updated-item` signal to its parent");
                     this.$emit('updated-item', this.current_data);
+                    // Note: the above operation has the effect of re-starting this component, and it's
+                    //       therefore not directly compatible with the "Save and Continue" option
 
                     boxValue = this.new_note_value;
 
@@ -442,7 +461,10 @@ Vue.component('vue-plugin-n',
 
                 this.body_of_note = boxValue;   // Set the Note content (to either the new value or the restored old value)
 
-                this.editing_mode = false;      // Exit the editing mode
+                if (exit) {
+                    this.editing_mode = false;      // Exit the editing mode
+                }
+
                 this.save_waiting = false;
 
                 //console.log("attempting to reload mathjax just before exiting finish_save()");
