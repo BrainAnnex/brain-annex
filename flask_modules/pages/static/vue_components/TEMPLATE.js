@@ -160,7 +160,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             {
                 console.log("Finalizing the get_data_from_server() operation...");
                 console.log(`Custom pass-thru data:`);
-                console.log(custom_data)
+                console.log(custom_data);
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
