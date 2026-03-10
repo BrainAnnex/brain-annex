@@ -37,8 +37,8 @@ Vue.component('vue-plugin-n',
 
                 <!-- The Editor Controls (with the SAVE and CANCEL buttons) -->
                 <div class='editor-controls'>
-                    <button v-if="! (this.item_data.entity_id < 0)" @click="save_edit(false)">SAVE and Continue</button>
-                    <button @click="save_edit(true)">SAVE and EXIT</button>
+                    <button @click="save_edit(true)" style="font-weight:bold">SAVE and EXIT</button>
+                    <button v-if="! (this.item_data.entity_id < 0)" @click="save_edit(false)" style="color:#222">SAVE and Continue</button>
                     <button @click="cancel_edit()">CANCEL</button>
                     <span style='margin-left:10px'>Title:</span>
                     <input type="text" v-model="current_data['title']" placeholder="Optionally specify a title" size="60">

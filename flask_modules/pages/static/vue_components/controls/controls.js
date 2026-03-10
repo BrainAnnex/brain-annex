@@ -102,9 +102,13 @@ Vue.component('vue-controls',
                 this.$emit('move-down-content-item');
             },
 
-            move_item() {
-                // Invoked when the user chooses an entry from the move-to menu
-                // Note: this signal gets ultimately intercepted by the GRAND-parent component (the Vue root element)
+
+            /**     Invoked when the user chooses an entry from the move-to menu, to relocate Content Item within the page
+              *     Send a signal that gets ultimately intercepted by the GRAND-parent component (the Vue root element),
+              *     which manages the actual operation
+              */
+            move_item()
+            {
                 console.log("`vue-controls` component is sending a 'relocate-content-item' signal to its parent, with argument: ", this.move_after);
                 this.$emit('relocate-content-item', this.move_after);
             },
