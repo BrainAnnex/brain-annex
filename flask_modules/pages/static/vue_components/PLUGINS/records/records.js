@@ -45,7 +45,7 @@ Vue.component('vue-plugin-r',
 
 
             <!--
-                Row for the data, the controls and the links
+                ROW for the DATA, the CONTROLS and the LINKS
              -->
             <tr>
                 <td v-for="key in this.determine_cells()">
@@ -66,7 +66,7 @@ Vue.component('vue-plugin-r',
                 </td>
                 -->
 
-                <!-- Cell for the links  -->
+                <!-- CELL for the LINKS  -->
                 <td v-if="!expanded_row" @click="expand_links_cell()" class="clickable-icon" style='background-color:#333' align="center" >    <!-- "See more" cell  -->
                     <span style='color:#DDD; font-weight:bold; font-size:18px'>&gt;</span>
                 </td>
@@ -236,8 +236,10 @@ Vue.component('vue-plugin-r',
             },
 
 
+
+            /** Expand the table cell that will show the summary of the inbound/outbound links
+              */
             expand_links_cell()
-            // Expand the table cell that will show the summary of the inbound/outbound links
             {
                 this.expanded_row = true;
                 this.get_link_summary_from_server(this.item_data);
@@ -422,15 +424,22 @@ Vue.component('vue-plugin-r',
 
 
 
+            /** Initiate request to server, to get the list of the names/counts of all the actual Inbound and Outbound links
+             */
             get_link_summary_from_server(item)
-            // Initiate request to server, to get the list of the names/counts of all the actual Inbound and Outbound links
             {
-                console.log(`Getting the links info for a Content Item of type 'r', with entity_id = ${item.entity_id}`);
-                let url_server = "/BA/api/get_link_summary/" + item.entity_id;
-                console.log(`About to contact the server at ${url_server}`);
+                console.log(`get_link_summary_from_server(): getting the links info for a Content Item of type 'r', with entity_id = ${item.entity_id}`);
+
+                const url_server_api = "/BA/api/get-link-summary-by-id/" + item.internal_id + "/group";
+
+                console.log(`About to contact the server at ${url_server_api}`);
+
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "GET",
+                             callback_fn: this.finish_get_link_summary_from_server
+                            });
+
                 this.waiting_for_links = true;
-                ServerCommunication.contact_server_OLD(url_server,
-                            {callback_fn: this.finish_get_link_summary_from_server});
             },
 
             finish_get_link_summary_from_server(success, server_payload, error_message)
