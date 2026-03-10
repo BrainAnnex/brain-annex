@@ -572,12 +572,12 @@ class DataManager:
 
 
     @classmethod
-    def get_link_summary(cls, uri :str, omit_names = None) -> dict:
+    def get_link_summary(cls, entity_id :str, omit_names = None) -> dict:
         """
         Return a dictionary structure identifying the names and counts of all
         inbound and outbound links to/from the given data node.
 
-        :param uri:         String with the URI of a data node
+        :param entity_id:   String with the Entity ID of a data node
         :param omit_names:  Optional list of relationship names to disregard
         :return:            A dictionary with the names and counts of inbound and outbound links.
                             Each inner list is a pair [name, count]
@@ -592,6 +592,7 @@ class DataManager:
                                     ]
                                 }
         """
+        # TODO: entity_id is no longer unique in absence of Class name.  Maybe ditch?
         # TODO: use GraphAccess.get_link_summary() instead, after it is generalized to accept match structures
         if omit_names:
             assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
@@ -601,23 +602,23 @@ class DataManager:
 
         # Get outbound links (names and counts)
         q_out = f'''
-                MATCH (n :BA {{uri:$uri}})-[r]->(n2 :BA)
+                MATCH (n :BA {{entity_id:$entity_id}})-[r]->(n2 :BA)
                 {where_clause}
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_out, data_binding={"entity_id": uri})
+        result = cls.db.query(q_out, data_binding={"entity_id": entity_id})
         rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
 
         # Get inbound links (names and counts)
         q_in = f'''
-                MATCH (n :BA {{uri:$uri}})<-[r]-(n2 :BA)
+                MATCH (n :BA {{entity_id:$entity_id}})<-[r]-(n2 :BA)
                 {where_clause}
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_in,data_binding={"entity_id": uri})
+        result = cls.db.query(q_in, data_binding={"entity_id": entity_id})
         rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
         return  {"in": rel_in, "out": rel_out}

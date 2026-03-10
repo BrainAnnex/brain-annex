@@ -1022,18 +1022,21 @@ class ApiRouting:
 
 
 
-        @bp.route('/get_link_summary/<uri_str>')
+        @bp.route('/get_link_summary/<entity_id>')
         @login_required
-        def get_link_summary_api(uri_str):
+        def get_link_summary_api(entity_id):
             """
+            DEPRECATED - DON'T USE.  TO OBSOLETE!
+
             Return a JSON structure identifying the names and counts of all
-            inbound and outbound links to/from the given data node.
+            inbound and outbound links to/from the given data node,
+            EXCEPT for any links named 'BA_in_category'
 
             This is approximately the data-node counterpart of the schema API 'get_links'
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_link_summary/47
 
-            :param uri_str: ID of a data node
+            :param uri_str:     Entity ID of a data node
             :return:            A JSON string with the names and counts of inbound and outbound links
                                 EXAMPLE:
                                     {
@@ -1049,9 +1052,9 @@ class ApiRouting:
                                         }
                                     }
             """
+            #TODO: entity_id is no longer unique in absence of Class name.  Maybe ditch?
             try:
-                uri = uri_str
-                payload = DataManager.get_link_summary(uri, omit_names = ['BA_in_category'])
+                payload = DataManager.get_link_summary(entity_id=entity_id, omit_names = ['BA_in_category'])
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
                 response = {"status": "error", "error_message": str(ex)}    # Error termination
@@ -1059,9 +1062,11 @@ class ApiRouting:
             return jsonify(response)   # This function also takes care of the Content-Type header
 
 
+
         @bp.route('/get-link-summary-by-id/<internal_id>')
+        @bp.route('/get-link-summary-by-id/<internal_id>/<group>')
         @login_required
-        def get_link_summary_by_id(internal_id):
+        def get_link_summary_by_id(internal_id, group=None):
             """
             Return a JSON structure identifying the names and counts of all
             the inbound and outbound links to and from the given node.
@@ -1069,8 +1074,12 @@ class ApiRouting:
             EXAMPLE invocation: http://localhost:5000/BA/api/get-link-summary-by-id/123
 
             :param internal_id: Internal database ID of the node of interest
+            :param group:       If set to the string group", the inbound nodes get grouped together,
+                                    and likewise for the outbound ones.
+                                    ALSO, any links named 'BA_in_category' are disregarded
+
             :return:            A JSON string with the names and counts of inbound and outbound links
-                                EXAMPLE:
+                                EXAMPLE (without `group` option):
                                     {
                                         "status": "ok",
                                         "payload": [["HAS_ON_PAYROLL", "IN", 2],
@@ -1078,16 +1087,32 @@ class ApiRouting:
                                                     ["MARRIED_TO", "OUT", 1]
                                                    ]
                                     }
+
+                                EXAMPLE of payload with the `group` option:
+                                        "payload": {
+                                            "in": [
+                                                ["BA_served_at", 1]
+                                            ],
+                                            "out": [
+                                                ["BA_located_in", 1],
+                                                ["BA_cuisine_type", 2]
+                                            ]
+                                        }
             """
             try:
-                link_data = GraphSchema.db.get_link_summary(internal_id=internal_id)
-                # Transform the format      TODO: maybe move to DataManager
-                payload = []
-                for l in link_data["in"]:   # Process the inbound links
-                    payload.append([l[0], "IN", l[1]])  # EXAMPLE: payload.append(["EMPLOYS", "IN", 2])
+                if group == "group":
+                    payload = GraphSchema.db.get_link_summary(internal_id=internal_id,
+                                                              omit_names = ['BA_in_category'])
+                else:
+                    link_data = GraphSchema.db.get_link_summary(internal_id=internal_id)
+                    # Transform the format      TODO: maybe move to DataManager
+                    payload = []
+                    for l in link_data["in"]:   # Process the inbound links
+                        payload.append([l[0], "IN", l[1]])  # EXAMPLE: payload.append(["EMPLOYS", "IN", 2])
 
-                for l in link_data["out"]:  # Process the outbound links
-                    payload.append([l[0], "OUT", l[1]])
+                    for l in link_data["out"]:  # Process the outbound links
+                        payload.append([l[0], "OUT", l[1]])
+
 
                 response = {"status": "ok", "payload": payload}             # Successful termination
             except Exception as ex:
