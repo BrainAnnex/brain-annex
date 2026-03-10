@@ -2056,7 +2056,7 @@ class ApiRouting:
             #TODO: TODO: switch to an after-item version?
 
             try:
-                Categories.reposition_content(category_uri=category_uri, uri=uri, move_after_n=int(move_after_n))
+                Categories.reposition_content(category_uri=category_uri, entity_id=uri, move_after_n=int(move_after_n))
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
                 err_details = f"Unable to reposition the Content Item.  {exceptions.exception_helper(ex)}"

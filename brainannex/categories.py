@@ -1343,21 +1343,21 @@ class Categories:
 
 
     @classmethod
-    def reposition_content(cls, category_uri :str, uri: str, move_after_n: int):
+    def reposition_content(cls, category_uri :str, entity_id :str, move_after_n: int):
         """
         Reposition the given Content Item after the n-th item (counting starts with 1) in specified Category.
 
         Note: there's no harm (though it's wasteful) to move an item to a final sequence position where it already is;
               its "pos" value will change
 
-        :param category_uri:    A string identifying the desired Category
-        :param uri:             A string with the URI of the Content Item we're repositioning
+        :param category_uri:    A string identifying the desired Category by its Entity ID
+        :param entity_id:       A string with the Entity ID  of the Content Item we're repositioning
         :param move_after_n:    The index (counting from 1) of the item after which we want to position the item being moved
                                     Use n=0 to indicate "move before anything else"
         :return:
         """
         assert GraphSchema.is_valid_entity_id(category_uri), "ERROR: argument 'category_uri' is invalid"
-        assert GraphSchema.is_valid_entity_id(uri), "ERROR: argument 'entity_id' is not a valid string"
+        assert GraphSchema.is_valid_entity_id(entity_id), "ERROR: argument 'entity_id' is not a valid string"
         assert type(move_after_n) == int, "ERROR: argument 'move_after_n' is not an integer"
         assert move_after_n >= 0, "ERROR: argument 'move_after_n' cannot be negative"
 
@@ -1405,17 +1405,17 @@ class Categories:
 
         # Change the "pos" attribute of the relationship to the Content Item being moved
         q = f'''
-            MATCH (:Category {{entity_id: $category_id}}) <- [r:BA_in_category] - (:BA {{entity_id: $uri}})
+            MATCH (:Category {{entity_id: $category_id}}) <- [r:BA_in_category] - (:BA {{entity_id: $entity_id}})
             SET r.pos = {new_pos}
             '''
 
         #print("q: ", q)
 
-        result = cls.db.update_query(q, {"category_id": category_uri, "entity_id": uri})
+        result = cls.db.update_query(q, {"category_id": category_uri, "entity_id": entity_id})
         number_props_set = result.get('properties_set')
         #print("number_props_set: ", number_props_set)
         if number_props_set != 1:
-            raise Exception(f"Content Item (id {uri}) not found in Category (id {category_uri}), or could not be moved")
+            raise Exception(f"Content Item (id {entity_id}) not found in Category (id {category_uri}), or could not be moved")
 
 
 
