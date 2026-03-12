@@ -1032,8 +1032,9 @@ class DataManager:
 
         See also get_records_by_class()
 
-        :param internal_id: [OPTIONAL]
-        :param limit:       [OPTIONAL]
+        :param internal_id: [OPTIONAL] To identify the Content Item of interest
+        :param limit:       [OPTIONAL] Max number of folder names to return
+
         :return:            The dictionary containing:
                                 1. "location":  the name of the directory of the specified Content Item,
                                                 if applicable (or None if not specified)
@@ -1062,12 +1063,14 @@ class DataManager:
             result = cls.db.follow_links(match=internal_id,
                                          rel_name="BA_stored_in", rel_dir="OUT",
                                          neighbor_labels="Directory")
-            assert len(result) == 1, \
-                f"directories_stored_in(): found {len(result)} results (instead of 1) " \
-                f"for the location of Content Item with internal_id {internal_id}"
-            location = result[0].get("name")
-            assert location is not None, \
-                f"directories_stored_in(): missing name for the location of Content Item with internal_id {internal_id}"
+            assert len(result) <= 1, \
+                f"directories_stored_in(): found MULTIPLE locations ({len(result)})   " \
+                f"for the Content Item with internal_id {internal_id}"
+
+            if len(result) == 1:
+                location = result[0].get("name")
+            else:
+                location = None
 
         return {"location": location, "all_directories": directory_list}
 
