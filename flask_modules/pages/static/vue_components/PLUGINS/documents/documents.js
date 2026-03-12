@@ -122,7 +122,7 @@ Vue.component('vue-plugin-d',
                         &nbsp;&nbsp; <span style="color: gray">Entity ID: &#96;{{current_metadata.entity_id}}&#96;</span>
                         <br>
 
-                        <p v-if="location" style="position: relative; z-index: 100;">
+                        <p style="position: relative; z-index: 100;">
                             <span class="label">Storage (not yet editable):</span><br>
 
                             <select @change='change_storage_dir' v-model="location" style="font-size: 10px">
@@ -234,11 +234,8 @@ Vue.component('vue-plugin-d',
                 //console.log(`Received request to edit document metadata`);
                 this.edit_metadata = true;
 
-                if (this.location === null)  {
-                    console.log("Retrieving folder location");
-                    this.retrieve_document_folders(this.item_data.internal_id);
-                }
-
+                console.log("Retrieving folder location");
+                this.retrieve_document_folders(this.item_data.internal_id);
             },
 
 
@@ -378,7 +375,9 @@ Vue.component('vue-plugin-d',
 
 
             /**
-             * Initiate request to server
+             * Initiate request to server, to obtain the names of all storage folders,
+             * as well as the folder where this document is kept (a null for this latter value
+             * is taken to mean "default folder for documents")
              */
             retrieve_document_folders(internal_id)
             {
@@ -386,7 +385,6 @@ Vue.component('vue-plugin-d',
                 const url_server_api = "/BA/api/directories-stored-in";
 
                 const post_data = {node_internal_id: internal_id};
-                //const my_var = "some value";        // Optional parameter to pass thru, if needed
 
                 console.log(`In server_communication_POST(): about to contact the server at "${url_server_api}" .  POST data:`);
                 console.log(post_data);
@@ -396,8 +394,7 @@ Vue.component('vue-plugin-d',
                             {method: "POST",
                              data_obj: post_data,
                              json_encode_send: true,
-                             callback_fn: this.finish_retrieve_document_folders,
-                             //custom_data: my_var
+                             callback_fn: this.finish_retrieve_document_folders
                             });
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -415,23 +412,28 @@ Vue.component('vue-plugin-d',
             */
             {
                 console.log("Finalizing the retrieve_document_folders() operation...");
-                console.log(`Custom pass-thru data:`);
-                console.log(custom_data)
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    this.location = server_payload.location;
+                    console.log(`server_payload.location: ${server_payload.location}`);
+
                     this.all_directories = server_payload.all_directories;
+
+                    if (server_payload.location === null)  {
+                        console.log("    falling back on standard default");
+                        this.location = "[STANDARD DEFAULT FOLDER FOR DOCUMENTS]";
+                        this.all_directories.push(this.location);
+                        }
+                    else
+                        this.location = server_payload.location;
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    //...
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                //...
             }
 
 
