@@ -2763,6 +2763,25 @@ def test_create_namespace(db):
 
 
 
+def test_assign_namespace_to_class(db):
+    db.empty_dbase()
+
+    GraphSchema.create_namespace(name="photo")
+
+    GraphSchema.create_class(name="Image")
+
+    GraphSchema.assign_namespace_to_class(class_name="Image", namespace="photo")
+
+    q = '''
+    MATCH (n :CLASS:SCHEMA {name:"Image"})
+          -[:HAS_URI_GENERATOR]->
+          (:`Schema Autoincrement` {namespace:"photo", next_count:1})
+    RETURN COUNT(n) AS node_count
+    '''
+    assert db.query(q, single_cell="node_count") == 1
+
+
+
 def test__next_available_schema_entity_id(db):
     db.empty_dbase()
 
