@@ -8,13 +8,14 @@ Vue.component('vue-plugin-d',
         /*  item_data:      EXAMPLE: {"class_name": "Document",
                                       "basename": "test", "suffix": "pdf",
                                       "caption": "My first document", "url": "https://arxiv.org/pdf/2402.09090",
-                                      "uri": "4849", "schema_code": "d",
-                                      "pos": 0}
-                                      (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
-                                      TODO: take "pos" and "class_name" out of item_data !
+                                      "entity_id": "4849", "schema_code": "d",
+                                      "pos": 0,
+                                      "internal_id": 123}
+                                      (if entity_id is -1, it means that it's a newly-created header, not yet registered with the server)
+                                      TODO: take "pos", "class_name", "class_handler", "schema_code" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
+            category_id:    The Entity ID of the Category page where this document is displayed (used when creating new documents)
             index:          The zero-based position of this Document on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */
@@ -29,7 +30,7 @@ Vue.component('vue-plugin-d',
 
 
                     <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
-                    <div v-show="!edit_metadata"   @dblclick="edit_metadata=true">
+                    <div v-show="!edit_metadata"   @dblclick="edit_content_item()">
                         <span style='font-weight:bold; font-size:12px'>&ldquo;{{current_metadata.caption}}&rdquo;</span>
                         <br><br>
 
@@ -49,7 +50,7 @@ Vue.component('vue-plugin-d',
                         <!-- Show cover image, if present -->
                         <img
                             v-if="show_cover_image"
-                            v-bind:src="cover_image(current_metadata.uri)"
+                            v-bind:src="cover_image(current_metadata.entity_id)"
                             @error="show_cover_image = false"
                             width=200
                         >
@@ -75,7 +76,7 @@ Vue.component('vue-plugin-d',
                     </div>
 
 
-                    <!----------  EDITABLE version (show when in editing mode)  ---------->
+                    <!----------  EDITABLE version (shown when in editing mode)  ---------->
                     <div v-show="edit_metadata">
                         <br><br>
                         <span class="label">Caption</span>
@@ -118,7 +119,19 @@ Vue.component('vue-plugin-d',
                         </select>
 
                         &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
-                        &nbsp;&nbsp; <span style="color: gray">URI: &#96;{{current_metadata.uri}}&#96;</span>
+                        &nbsp;&nbsp; <span style="color: gray">Entity ID: &#96;{{current_metadata.entity_id}}&#96;</span>
+                        <br>
+
+                        <p style="position: relative; z-index: 100;">
+                            <span class="label">Storage (not yet editable):</span><br>
+
+                            <select @change='change_storage_dir' v-model="location" style="font-size: 10px">
+                                <option v-for="dir in all_directories"
+                                        v-bind:value="dir">
+                                    {{dir}}
+                                </option>
+                            </select>
+                        </p>
 
                         <!-- CONTROLS to edit the document METADATA -->
                         <p v-show="edit_metadata" style="text-align: right">
@@ -174,6 +187,18 @@ Vue.component('vue-plugin-d',
 
                 show_cover_image: true,
 
+                location : null,    // The storage directory for this document; null indicates the default, or to be looked up
+                                    //  EXAMPLE: "documents/Ebooks & Articles/SYSTEMS BIO"
+
+                all_directories: null,  // Array of names of all available storage directories
+                                        /* EXAMPLE:
+                                            [
+                                                "documents/Ebooks & Articles/Biomedical",
+                                                "documents/Ebooks & Articles/SYSTEMS BIO",
+                                                "documents/Ebooks & Articles/math"
+                                            ]
+                                         */
+
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -189,22 +214,28 @@ Vue.component('vue-plugin-d',
             document_url(item)
             // Return the URL of the document's body
             {
-                return '/BA/api/serve_media/Document/' + item.uri;      // URL that generates the desired document
+                return '/BA/api/serve_media/Document/' + item.entity_id;      // URL that generates the desired document
             },
 
 
-            cover_image(uri)
+            cover_image(entity_id)
             // Return the URL of the document's cover image (possibly a 404 error)
             {
-                return '/BA/api/serve_document_cover/' + uri;           // URL that generates the desired cover image
+                return '/BA/api/serve_document_cover/' + entity_id;           // URL that generates the desired cover image
             },
 
 
+
+            /**
+             * Enable the document edit mode
+             */
             edit_content_item()
-            // Enable the document edit mode
             {
-                //console.log(`Documents component received signal to edit document's metadata`);
+                //console.log(`Received request to edit document metadata`);
                 this.edit_metadata = true;
+
+                console.log("Retrieving folder location");
+                this.retrieve_document_folders(this.item_data.internal_id);
             },
 
 
@@ -261,20 +292,26 @@ Vue.component('vue-plugin-d',
             },
 
 
+            change_storage_dir()
+            {
+                alert("Change of storage location not yet implemented");
+            },
+
+
 
             /*
-                ---------   SERVER CALLS   ---------
+                ------------   SERVER CALLS   ------------
              */
 
             save_edit()
             // Send a request to the server, to update the document's metadata
             {
-                //console.log(`In save_edit(): attempting to save the new metadata, for document with URI '${this.item_data.uri}'`);
+                //console.log(`In save_edit(): attempting to save the new metadata, for document with entity_id '${this.item_data.entity_id}'`);
 
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item_JSON";
 
-                const post_obj = {uri: this.item_data.uri,
+                const post_obj = {entity_id: this.item_data.entity_id,
                                   class_name: "Document",
                                   caption: this.current_metadata.caption,
                                   basename: this.current_metadata.basename,
@@ -334,6 +371,69 @@ Vue.component('vue-plugin-d',
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;       // Make a note that the asynchronous operation has come to an end
                 this.edit_metadata = false; // Leave the editing mode
+            },
+
+
+            /**
+             * Initiate request to server, to obtain the names of all storage folders,
+             * as well as the folder where this document is kept (a null for this latter value
+             * is taken to mean "default folder for documents")
+             */
+            retrieve_document_folders(internal_id)
+            {
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/directories-stored-in";
+
+                const post_data = {node_internal_id: internal_id};
+
+                console.log(`In server_communication_POST(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_data);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_data,
+                             json_encode_send: true,
+                             callback_fn: this.finish_retrieve_document_folders
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_retrieve_document_folders(success, server_payload, error_message, custom_data)
+            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+                custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+            */
+            {
+                console.log("Finalizing the retrieve_document_folders() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    console.log(`server_payload.location: ${server_payload.location}`);
+
+                    this.all_directories = server_payload.all_directories;
+
+                    if (server_payload.location === null)  {
+                        console.log("    falling back on standard default");
+                        this.location = "[STANDARD DEFAULT FOLDER FOR DOCUMENTS]";
+                        this.all_directories.push(this.location);
+                        }
+                    else
+                        this.location = server_payload.location;
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
             }
 
 

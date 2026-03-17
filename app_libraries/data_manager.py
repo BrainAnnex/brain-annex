@@ -371,7 +371,7 @@ class DataManager:
 
         # Locate the internal ID of the Class node
         class_internal_id = GraphSchema.get_class_internal_id(class_name.strip())
-        number_prop_added = GraphSchema.add_properties_to_class(class_node= class_internal_id, property_list = [prop_name])
+        number_prop_added = GraphSchema.add_properties_to_class(class_node= class_internal_id, properties= [prop_name])
         if number_prop_added != 1:
             raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}` (internal ID {class_internal_id})")
 
@@ -450,8 +450,8 @@ class DataManager:
             Categories.remove_relationship_before(from_id=from_uri, to_id=to_uri,
                                                   rel_name=rel_name)       # Category-specific action
 
-        GraphSchema.remove_data_relationship(from_id=from_uri, to_id=to_uri,
-                                             rel_name=rel_name, labels="BA")
+        GraphSchema.remove_data_relationship_OLD(from_id=from_uri, to_id=to_uri,
+                                                 rel_name=rel_name, labels="BA")
 
 
 
@@ -494,7 +494,7 @@ class DataManager:
                                     or an Exception in case of failure
                                     (e.g., if public_required is True and the item isn't public)
         """
-        properties = {"uri": uri}
+        properties = {"entity_id": uri}
         if public_required:
             properties["public"] = True     # Extend the match requirements
 
@@ -517,15 +517,16 @@ class DataManager:
     @classmethod
     def get_records_by_class(cls, class_name :str, field_name :str, order_by :str) -> []:
         """
-        Return a list of values of a particular field, of all the records of the given Class,
+        Return a list of values of one particular field, of all the records of the given Class,
         optionally sorted by the given field
 
-        :param class_name:
-        :param field_name:
-        :param order_by:
+        :param class_name:  String with the name of the desired Schema Class
+        :param field_name:  Name of the single field to retrieve
+        :param order_by:    Name of the field to sort the results by
         :return:            A list of values
         """
-        # TODO: generalize, and move to GraphSchema
+        # TODO: generalize, and move to GraphSchema.
+        #       Is it really needed, given GraphSchema.get_nodes_by_filter() ?  Maybe just absorb into the latter
         match = cls.db.match(labels=class_name)
         return cls.db.get_single_field(match=match, field_name=field_name, order_by=order_by)
 
@@ -542,7 +543,7 @@ class DataManager:
 
 
         :param request_data: A dictionary with the keys, "rel_name" and "dir",
-                                plus either "uri" or "internal_id" (the latter takes priority)
+                                plus either "entity_id" or "internal_id" (the latter takes priority)
 
         :return:             A list of dictionaries with all the properties of the neighbor nodes,
                              including an extra field called "_node_labels", with a string of label names
@@ -559,24 +560,24 @@ class DataManager:
             match = int(request_data["internal_id"])
             return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=True, include_labels=True, limit=100)
         else:
-            assert "uri" in request_data, \
+            assert "entity_id" in request_data, \
                 "get_records_by_link(): A value for `internal_id` or `uri` must be provided"
 
-            uri = request_data["uri"]
+            uri = request_data["entity_id"]
 
-            match = cls.db.match(key_name="uri", key_value=uri)
+            match = cls.db.match(key_name="entity_id", key_value=uri)
 
             return cls.db.follow_links(match, rel_name=rel_name, rel_dir=dir, include_id=False, include_labels=True, limit=100)
 
 
 
     @classmethod
-    def get_link_summary(cls, uri :str, omit_names = None) -> dict:
+    def get_link_summary(cls, entity_id :str, omit_names = None) -> dict:
         """
         Return a dictionary structure identifying the names and counts of all
         inbound and outbound links to/from the given data node.
 
-        :param uri:         String with the URI of a data node
+        :param entity_id:   String with the Entity ID of a data node
         :param omit_names:  Optional list of relationship names to disregard
         :return:            A dictionary with the names and counts of inbound and outbound links.
                             Each inner list is a pair [name, count]
@@ -591,6 +592,7 @@ class DataManager:
                                     ]
                                 }
         """
+        # TODO: entity_id is no longer unique in absence of Class name.  Maybe ditch?
         # TODO: use GraphAccess.get_link_summary() instead, after it is generalized to accept match structures
         if omit_names:
             assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
@@ -600,23 +602,23 @@ class DataManager:
 
         # Get outbound links (names and counts)
         q_out = f'''
-                MATCH (n :BA {{uri:$uri}})-[r]->(n2 :BA)
+                MATCH (n :BA {{entity_id:$entity_id}})-[r]->(n2 :BA)
                 {where_clause}
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_out, data_binding={"uri": uri})
+        result = cls.db.query(q_out, data_binding={"entity_id": entity_id})
         rel_out = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
 
         # Get inbound links (names and counts)
         q_in = f'''
-                MATCH (n :BA {{uri:$uri}})<-[r]-(n2 :BA)
+                MATCH (n :BA {{entity_id:$entity_id}})<-[r]-(n2 :BA)
                 {where_clause}
                 RETURN type(r) AS rel_name, count(n2) AS rel_count
                 '''
 
-        result = cls.db.query(q_in,data_binding={"uri": uri})
+        result = cls.db.query(q_in, data_binding={"entity_id": entity_id})
         rel_in = [ [ l["rel_name"],l["rel_count"] ] for l in result ]
 
         return  {"in": rel_in, "out": rel_out}
@@ -718,7 +720,7 @@ class DataManager:
         assert uri, "delete_content_item(): argument `uri` is missing"
 
         # Make sure that the requested Content Item exists
-        #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="uri", class_name=class_name), \
+        #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="entity_id", class_name=class_name), \
         assert GraphSchema.data_node_exists(find=(class_name, uri)), \
             f"delete_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
@@ -741,7 +743,7 @@ class DataManager:
 
         # Perform the actual deletion of the Content Item node
         #number_deleted = GraphSchema.delete_data_point(uri=uri, labels=class_name)
-        number_deleted = GraphSchema.delete_data_nodes(node_id=uri, id_key="uri", class_name=class_name)
+        number_deleted = GraphSchema.delete_data_nodes(node_id=uri, id_key="entity_id", class_name=class_name)
 
 
         if number_deleted == 1:
@@ -772,16 +774,16 @@ class DataManager:
 
         :return:            A dict with the internal database ID and uri
                                 assigned to the newly-created node
-                                EXAMPLE: {"_internal_id": 123, "uri": "rs-8"}
+                                EXAMPLE: {"_internal_id": 123, "entity_id": "rs-8"}
         """
         # TODO: more Schema enforcement
         # TODO: make the generation of the URI optional
-        new_uri = GraphSchema.generate_uri(class_name)
+        new_uri = GraphSchema.generate_entity_id(class_name)
         #print(f"create_new_content_item() - New item will be assigned URI: '{new_uri}'")
 
-        internal_id = GraphSchema.create_data_node(class_name=class_name, properties=item_data, new_uri=new_uri)
+        internal_id = GraphSchema.create_data_node(class_name=class_name, properties=item_data, new_entity_id=new_uri)
 
-        return {"_internal_id": internal_id, "uri": new_uri}
+        return {"_internal_id": internal_id, "entity_id": new_uri}
 
 
 
@@ -819,10 +821,10 @@ class DataManager:
         if len(namespace_links) == 1:
             namespace = namespace_links[0]
             print(f"    Using namespace '{namespace}'")
-            new_uri = GraphSchema.reserve_next_uri(namespace=namespace)
+            new_uri = GraphSchema.reserve_next_entity_id(namespace=namespace)
         else:
             print(f"    Using default namespace")
-            new_uri = GraphSchema.reserve_next_uri()
+            new_uri = GraphSchema.reserve_next_entity_id()
         # TODO: --- end of portion to replace
 
         #print(f"add_new_content_item_to_category() - New item will be assigned URI: '{new_uri}'")
@@ -940,7 +942,7 @@ class DataManager:
 
 
         # Generate a new ID (which is needed by some plugin-specific modules)
-        new_uri = GraphSchema.reserve_next_uri()      # TODO: switch to using specific namespaces
+        new_uri = GraphSchema.reserve_next_entity_id()      # TODO: switch to using specific namespaces
         #print(f"New item will be assigned URI: '{new_uri}'")
 
         # PLUGIN-SPECIFIC OPERATIONS that change data_binding and perform filesystem operations
@@ -1022,6 +1024,60 @@ class DataManager:
 
 
 
+    @classmethod
+    def directories_stored_in(cls, internal_id=None, limit=100) -> dict:
+        """
+        Extract the directory location of the given Content Item, if specified,
+        as well as the list of all registered directories
+
+        See also get_records_by_class()
+
+        :param internal_id: [OPTIONAL] To identify the Content Item of interest
+        :param limit:       [OPTIONAL] Max number of folder names to return
+
+        :return:            The dictionary containing:
+                                1. "location":  the name of the directory of the specified Content Item,
+                                                if applicable (or None if not specified)
+                                2. "all_directories": the sorted list of all directory names
+
+                                EXAMPLE:
+                                 {"location": "documents/Ebooks & Articles/SYSTEMS BIO",
+                                  "all_directories":
+                                        [
+                                            "documents/Ebooks & Articles/SYSTEMS BIO",
+                                            "documents/Ebooks & Articles/math"
+                                        ]
+                                  }
+        """
+        result, _ = GraphSchema.get_nodes_by_filter(class_name="Directory",
+                                                    order_by="name", sort_ignore_case=["name"],
+                                                    limit=limit)
+        #print(result)
+        #TODO: let get_nodes_by_filter() extract the desired single field
+        directory_list = [d.get("name") for d in result]
+        #print(directory_list)
+
+        if internal_id is None:
+            location = None
+        else:
+            result = cls.db.follow_links(match=internal_id,
+                                         rel_name="BA_stored_in", rel_dir="OUT",
+                                         neighbor_labels="Directory")
+            assert len(result) <= 1, \
+                f"directories_stored_in(): found MULTIPLE locations ({len(result)})   " \
+                f"for the Content Item with internal_id {internal_id}"
+
+            if len(result) == 1:
+                location = result[0].get("name")
+            else:
+                location = None
+
+        return {"location": location, "all_directories": directory_list}
+
+
+
+
+
 
 
     #####################################################################################################
@@ -1033,7 +1089,7 @@ class DataManager:
     #####################################################################################################
 
     @classmethod
-    def switch_category(cls, data_dict) -> None:
+    def switch_category(cls, data_dict :dict) -> None:
         """
         Switch one or more Content Items from being attached to a given Category,
         to another one
@@ -1050,31 +1106,32 @@ class DataManager:
         items = data_dict["items"]
 
         assert type(items) == list, \
-            f"The passed POST value `items` ({items}) doesn't evaluate to a list"
+            f"switch_category(): The passed POST value `items` ({items}) doesn't evaluate to a list"
 
         assert type(data_dict['from']) == str, \
-            f"The passed POST value `from` ({data_dict['from']}) doesn't evaluate to a string"
+            f"switch_category(): The passed POST value `from` ({data_dict['from']}) doesn't evaluate to a string"
 
         assert type(data_dict['to']) == str, \
-            f"The passed POST value `from` ({data_dict['to']}) doesn't evaluate to a string"
+            f"switch_category(): The passed POST value `from` ({data_dict['to']}) doesn't evaluate to a string"
 
 
         number_items = len(items)
 
         assert number_items != 0, \
-            f"The passed POST value `items` is an EMPTY list"
+            f"switch_category(): The passed POST value `items` is an EMPTY list"
 
 
         number_moved = Categories.relocate_across_categories(items=items,
-                                                        from_category=data_dict['from'],
-                                                        to_category=data_dict['to'])
+                                                             from_category=data_dict['from'],
+                                                             to_category=data_dict['to'])
         assert number_moved != 0, \
-            f"None of the {number_items} requested " \
+            f"switch_category(): None of the {number_items} requested " \
             f"Content Item(s) could be successfully moved across Categories"
 
         assert number_moved == number_items, \
-            f"Only {number_moved} of the {number_items} requested " \
+            f"switch_category(): Only {number_moved} of the {number_items} requested " \
             f"Content Item(s) could be successfully moved across Categories"
+
 
 
 
@@ -1121,7 +1178,7 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_properties = GraphSchema.get_single_data_node(node_id=search_category, id_key="uri", class_name="Category")
+            category_properties = GraphSchema.get_single_data_node(node_id=search_category, id_key="entity_id", class_name="Category")
             category_name = category_properties.get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
@@ -1147,8 +1204,8 @@ class DataManager:
         """
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'entity_id': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'entity_id': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1160,7 +1217,7 @@ class DataManager:
             neighbor_props = cls.db.follow_links(match=internal_id,
                                                 rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Category")
             # EXAMPLE of neighbor_props:
-            #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
+            #   [{'entity_id': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)
             node["internal_links"] = neighbor_props
 
@@ -1229,8 +1286,8 @@ class DataManager:
 
         result = cls.db.query_extended(q, data_binding={"id_list": list(matching_all)}, flatten=True)
         # EXAMPLE:
-        #   [{'basename': 'notes-2', 'uri': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
-        #    {'basename': 'notes-3', 'uri': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
+        #   [{'basename': 'notes-2', 'entity_id': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
+        #    {'basename': 'notes-3', 'entity_id': '14', 'schema_code': 'n', 'title': 'undefined', 'suffix': 'htm', '_internal_id': 3, '_node_labels': ['BA', 'Note']}}
         #   ]
 
         for node in result:
@@ -1242,7 +1299,7 @@ class DataManager:
             neighbor_props = cls.db.follow_links(match=internal_id,
                                                  rel_name="BA_in_category", rel_dir="OUT", neighbor_labels="Category")
             # EXAMPLE of neighbor_props:
-            #   [{'uri': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
+            #   [{'entity_id': 966, 'schema_code': 'cat', 'name': "Deploying VM's on Oracle cloud"}]
             #print(neighbor_props)
             node["internal_links"] = neighbor_props
 
@@ -1470,7 +1527,7 @@ class DataManager:
                                 "limit"         The max number of entries to return
 
                             EXAMPLES:
-                                {"label": "BA", "key_name": "uri", "key_value": "sl-123"}
+                                {"label": "BA", "key_name": "entity_id", "key_value": "sl-123"}
                                 {"label": "doctor", "limit": 25, "skip": 50}
                                 {'label': 'YouTube Channel', 'clause': "n.name CONTAINS 'sc'", 'order_by': 'name'}
                                 {'label': 'Quote', 'clause': "n.quote CONTAINS 'kiss'", 'order_by': 'attribution,quote'}
@@ -1890,7 +1947,7 @@ class DataManager:
             return f"File `{basename}` uploaded successfully, but <b>NO MATCHES</b> found"
 
 
-        #column_names = ["name", "role", "location", "uri", "schema_code"]
+        #column_names = ["name", "role", "location", "entity_id", "schema_code"]
         column_names = ["method_name", "args", "return_value", "comments", "class_name", "class_description"]
         df = pd.DataFrame(all_matches, columns = column_names)
         print(df.count())
@@ -1912,7 +1969,7 @@ class DataManager:
         # 70 will map to 40, and so on:
         MATCH (c:BA {schema_code:"cat", uri:61}),          // <------ This is the Category "Professional Networking"
         (n:IP)
-        MERGE (n)-[:BA_in_category {pos:(n.uri - 69)*10+30}]->(c)
+        MERGE (n)-[:BA_in_category {pos:(n.entity_id - 69)*10+30}]->(c)
 
         # Rename all "IP" labels to "BA"
         MATCH (n:IP) SET n:BA

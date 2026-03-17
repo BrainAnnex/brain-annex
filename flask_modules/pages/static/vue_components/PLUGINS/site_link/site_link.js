@@ -7,7 +7,7 @@ Vue.component('vue-plugin-sl',
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*
             item_data:      An object with the relevant data about this Site Link item;
-                                if the "uri" attribute is negative,
+                                if the "entity_id" attribute is negative,
                                 it means that it's a newly-created Content Item, not yet registered with the server
                                 (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
 
@@ -22,7 +22,7 @@ Vue.component('vue-plugin-sl',
                                 EXAMPLE: ["url","name","date","comments","rating","read"]
 
             EXAMPLE: {"item_data": {class_name:"Site Link",
-                                            uri: "4912", position: 20,  schema_code: "sl"
+                                            entity_id: "4912", position: 20,  schema_code: "sl"
                                             url: "http://example.com",
                                             name:"test", rating: 4.5
                                            },
@@ -125,14 +125,14 @@ Vue.component('vue-plugin-sl',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.uri < 0  ? true : false), // Negative uri means "new Item"
+                editing_mode: (this.item_data.entity_id < 0  ? true : false), // Negative entity_id means "new Item"
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
                 //      Note: for new Content Items, it only contains
-                //              `class_name`, `schema_code`, `uri`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
+                //              `class_name`, `schema_code`, `entity_id`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
                 //            For existing Content Items, it contains
-                //              `class_name`, `schema_code`, `uri`, `pos`, and Content-specific fields
+                //              `class_name`, `schema_code`, `entity_id`, `pos`, and Content-specific fields
                 current_data:   Object.assign({}, this.item_data),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
@@ -250,7 +250,7 @@ Vue.component('vue-plugin-sl',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.uri < 0) {
+                if (this.current_data.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Records component sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');
@@ -328,16 +328,16 @@ Vue.component('vue-plugin-sl',
                                };
 
 
-                if (this.item_data.uri < 0)  {     // Negative uri is a convention indicating a new Content Item to create
+                if (this.item_data.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj.category_id = this.category_id;
-                    post_obj.insert_after_uri = this.item_data.insert_after_uri;        // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj.insert_after_uri = this.item_data.insert_after_uri;        // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                     post_obj.insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
 
                     url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {     // Update an EXISTING Site Link
-                    post_obj.uri = this.item_data.uri;
+                    post_obj.entity_id = this.item_data.entity_id;
 
                     url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
@@ -361,7 +361,7 @@ Vue.component('vue-plugin-sl',
 
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
 
                 success:        boolean indicating whether the server call succeeded
                 server_payload: whatever the server returned (stripped of information about the success of the operation)
@@ -373,10 +373,10 @@ Vue.component('vue-plugin-sl',
                 if (success)  {     // Server reported SUCCESS
                     this.status_message = `Successful edit`;
 
-                    // If this was a newly-created item (with the temporary negative URI),
-                    //  update its URI with the value assigned by the server
-                    if (this.item_data.uri < 0)
-                        this.current_data.uri = server_payload;
+                    // If this was a newly-created item (with the temporary negative entity_id),
+                    //  update its entity_id with the value assigned by the server
+                    if (this.item_data.entity_id < 0)
+                        this.current_data.entity_id = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Site Links component sending `updated-item` signal to its parent");

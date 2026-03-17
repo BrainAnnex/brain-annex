@@ -35,7 +35,7 @@ def initialize_categories(db):
 def test_get_records_by_link(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 
-    book_1 = db.create_node("book", {'title': 'The Double Helix', "uri": "biochem-1"})
+    book_1 = db.create_node("book", {'title': 'The Double Helix', "entity_id": "biochem-1"})
     book_2 = db.create_node("book", {'title': 'Intro to Hilbert Spaces'})
 
     # Create new node, linked to the previous two
@@ -52,7 +52,7 @@ def test_get_records_by_link(db):
                                       ]
                                       )
 
-    request_data = {"uri": "biochem-1", "rel_name": "OWNS", "dir": "IN"}
+    request_data = {"entity_id": "biochem-1", "rel_name": "OWNS", "dir": "IN"}
     result = DataManager.get_records_by_link(request_data)
     expected = [{"name": "Julian", "city": "Berkeley", '_node_labels': ['person']}]
     assert result == expected
@@ -64,7 +64,7 @@ def test_get_records_by_link(db):
 
     request_data = {"internal_id": person_id, "rel_name": "OWNS", "dir": "OUT"}
     result = DataManager.get_records_by_link(request_data)
-    expected = [{'title': 'The Double Helix', 'uri': 'biochem-1', '_internal_id': book_1, '_node_labels': ['book']} ,
+    expected = [{'title': 'The Double Helix', 'entity_id': 'biochem-1', '_internal_id': book_1, '_node_labels': ['book']} ,
                 {'title': 'Intro to Hilbert Spaces', '_internal_id': book_2, '_node_labels': ['book']}]
     assert compare_recordsets(result, expected)
 
@@ -76,35 +76,35 @@ def test_update_content_item(db):
 
     # Create a Content Item, and attach it to the Root Category
     GraphSchema.create_class_with_properties(name="Photo", strict=True,
-                                             properties=["caption", "remarks", "uri"])
+                                             properties=["caption", "remarks", "entity_id"])
     Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
                                   item_properties={"caption": "beach at sunrise"}, new_uri="photo_1")
 
     # Alter the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
                                     update_data={"caption": "beach at sunrise"})    # No actual change
-    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="uri", class_name="Photo")
+    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="entity_id", class_name="Photo")
     assert result.get("caption") == "beach at sunrise"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
                                     update_data={"caption": "    beach under full moon  "})
-    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="uri", class_name="Photo")
+    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="entity_id", class_name="Photo")
     assert result.get("caption") == "beach under full moon"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter again the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
                                     update_data={"caption": "      "})
-    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="uri", class_name="Photo")
+    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="entity_id", class_name="Photo")
     assert result.get("caption") is None        # That field is now gone altogether
     assert result.get("remarks") is None
 
     # Alter yet again the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
                                     update_data={"remarks": "3 is a charm!  ", "caption": "  beach in the late afternoon"})
-    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="uri", class_name="Photo")
+    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="entity_id", class_name="Photo")
     assert result.get("caption") == "beach in the late afternoon"
     assert result.get("remarks") == "3 is a charm!"
 
@@ -116,50 +116,57 @@ def test_update_content_item(db):
 
 def test_switch_category(db):
 
-    _, root_uri = initialize_categories(db)
+    _, root_entity_id = initialize_categories(db)
 
-    greece_uri = Categories.add_subcategory({"category_uri": root_uri, "subcategory_name": "Greece",
-                                             "subcategory_remarks": "Summer trip to Greece"})
+    greece_entity_id = Categories.add_subcategory({"category_uri": root_entity_id, "subcategory_name": "Greece",
+                                                   "subcategory_remarks": "Summer trip to Greece"})
 
     # Create 2 Content Items, and initially attach them to the Root Category
     GraphSchema.create_class_with_properties(name="Photo",
-                                             properties=["name", "uri"])
+                                             properties=["name", "entity_id"])
 
     GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
     all_photo_uris = []
     for i in range(4):
-        photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+        photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
         all_photo_uris.append(photo_uri)
-        Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
+        Categories.add_content_at_end(category_uri=root_entity_id, item_class_name="Photo",
                                       item_properties={"caption": "photo_"+str(i+1)}, new_uri=photo_uri)
 
 
     # Relocate the first 2 photos to the "Greece" Category
-    DataManager.switch_category({"items": ['photo-1', 'photo-2'], "from": root_uri, "to": greece_uri})
+    DataManager.switch_category({"items": ['photo-1', 'photo-2'], "from": root_entity_id, "to": greece_entity_id})
 
     # Verify that those 2 photos are now linked to the "Greece" Category, at the expected positions
-    result = Categories.get_content_items_by_category(uri=greece_uri)
-    expected = [{'caption': 'photo_1', 'uri': 'photo-1', 'pos': 0, 'class_name': 'Photo'},
-                {'caption': 'photo_2', 'uri': 'photo-2', 'pos': Collections.DELTA_POS, 'class_name': 'Photo'}]
+    result = Categories.get_content_items_by_category(entity_id=greece_entity_id)
+
+    internal_ids = [GraphSchema.get_data_node_internal_id(class_name="Photo", entity_id=f"photo-{n}")
+                        for n in range(1, 5)]       # internal_ids[0] will correspond to 'photo-1', etc.
+
+    expected = [{'caption': 'photo_1', 'entity_id': 'photo-1', 'pos': 0, 'class_name': 'Photo', 'internal_id': internal_ids[0]},
+                {'caption': 'photo_2', 'entity_id': 'photo-2', 'pos': Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[1]}]
 
     assert compare_recordsets(result, expected)
 
 
     # Separately, add a new photo to the "Greece" Category
-    photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
-    Categories.add_content_at_end(category_uri=greece_uri, item_class_name="Photo",
+    photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
+    assert photo_uri == "photo-5"
+    Categories.add_content_at_end(category_uri=greece_entity_id, item_class_name="Photo",
                                   item_properties={"caption": "photo_extra"}, new_uri=photo_uri)
+
+    internal_ids.append(GraphSchema.get_data_node_internal_id(class_name="Photo", entity_id=photo_uri))
 
 
     # Now relocate the remaining 2 photos from the Root Category to the "Greece" Category
-    DataManager.switch_category({"items": ['photo-3', 'photo-4'], "from": root_uri, "to": greece_uri})
+    DataManager.switch_category({"items": ['photo-3', 'photo-4'], "from": root_entity_id, "to": greece_entity_id})
 
     # Verify that those 2 photos are now linked to the "Greece" Category, at the expected positions
-    result = Categories.get_content_items_by_category(uri=greece_uri)
+    result = Categories.get_content_items_by_category(entity_id=greece_entity_id)
     # Concatenate two dicts
-    expected += [{'caption': 'photo_extra', 'uri': 'photo-5', 'pos': 2 * Collections.DELTA_POS, 'class_name': 'Photo'},
-                 {'caption': 'photo_3', 'uri': 'photo-3',     'pos': 3 * Collections.DELTA_POS, 'class_name': 'Photo'},
-                 {'caption': 'photo_4', 'uri': 'photo-4',     'pos': 4 * Collections.DELTA_POS, 'class_name': 'Photo'}]
+    expected += [{'caption': 'photo_extra', 'entity_id': 'photo-5', 'pos': 2 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[4]},
+                 {'caption': 'photo_3', 'entity_id': 'photo-3',     'pos': 3 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[2]},
+                 {'caption': 'photo_4', 'entity_id': 'photo-4',     'pos': 4 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[3]}]
     assert compare_recordsets(result, expected)
 
 

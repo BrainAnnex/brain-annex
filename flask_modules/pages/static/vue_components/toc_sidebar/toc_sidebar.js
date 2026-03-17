@@ -1,6 +1,6 @@
 /*  Left sidebar (with the page's Table of Contents)
-    Used by page_viewer.htm and search.htm
-    Show the headers, and varying details of some of the Content Items under them
+    Used by page_viewer.htm and by search.htm
+    Show clickable entries the page headers, and for the Content Items
  */
 
 Vue.component('vue-toc-sidebar',
@@ -8,18 +8,21 @@ Vue.component('vue-toc-sidebar',
         props: {
 
             /*  Array containing item-data objects.  EXAMPLE:
-                                [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
-                                 {pos:50,"uri":"8",schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Image"}
-                                ]
+                        [{pos:0,"entity_id":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
+                         {pos:50,"entity_id":"8",schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Image"}
+                        ]
              */
             content_array: {
+                required: true
             },
 
             /* Flag indicating whether this sidebar is to be shown */
             show_left_sidebar : {
+                type: Boolean,
+                required: true
             },
 
-            /* Flag indicating whether the "Details?" checkbox is to be shown */
+            /* Flag indicating whether the "Details?" checkbox is to be included */
             show_hide_details:  {
                 type: Boolean,
                 default: true
@@ -34,64 +37,69 @@ Vue.component('vue-toc-sidebar',
                 <!--
                     EXPANDED (normal) version of the left sidebar
                   -->
-                <div v-show='show_left_sidebar' class='sidebar-left'>
+                <div v-show='show_left_sidebar' class='sidebar-toc-left  sidebar-left-expanded'>
 
-                    <img @click='set_sidebar_state(false)'  src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right'
-                         class='clickable-icon'
-                         title='Click to collapse sidebar' alt='Click to collapse sidebar'>
+                    <!--Non-scrollable "stick" portion at the top -->
+                    <p class="toc-header">
 
-                    <!-- Page navigation section -->
-                    <a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
-                        <span v-if="show_hide_details">
-                            <input type="checkbox" v-model="expand_categories" style='margin-left:8px'>
-                            Details?
-                        </span>
-                    <br>
+                        <!-- Icon to collapse the sidebar -->
+                        <img @click='set_sidebar_state(false)'  src='/BA/pages/static/graphics/thin_left_arrow_32.png' align='right'
+                             class='clickable-icon'
+                             title='Click to collapse sidebar' alt='Click to collapse sidebar'>
+
+                        <!-- Page navigation section -->
+                        <a href='#' style='font-size:14px; font-weight:bold'>TOP</a>
+                            <span v-if="show_hide_details">
+                                <input type="checkbox" v-model="expand_categories" style='margin-left:8px'>
+                                Details?
+                            </span>
+                    </p>
+
 
                     <div class="page-toc">
                         <template v-for="item in content_array">
                             <p v-if="item.schema_code == 'h'" class="header">
-                                <br><a v-bind:href="'#h_' + item.uri">{{item.text}}</a><br>
+                                <br><a v-bind:href="'#h_' + item.entity_id">{{item.text}}</a><br>
                             </p>
 
                             <template v-if="expand_categories">
                                 <!-- Case-by-case, based on the type of Content Item -->
                                 <p v-if="item.schema_code == 'cd'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.name">{{item.name}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.name">{{item.name}}</a>
                                     <br>
                                 </p>
 
                                 <p v-else-if="item.schema_code == 'i'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.caption">{{item.caption}}</a>
                                     <img src='/BA/pages/static/graphics/image_14_1814111.png' title="image" alt="image">
                                     <br>
                                 </p>
 
                                 <p v-else-if="item.schema_code == 'd'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.caption}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.caption">{{item.caption}}</a>
                                     <img src='/BA/pages/static/graphics/document_14_2124302.png' title="document" alt="document">
                                     <br>
                                 </p>
 
                                 <p v-else-if="item.schema_code == 'n' && item.title">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.title}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.caption">{{item.title}}</a>
                                     <br>
                                 </p>
 
                                 <p v-else-if="item.schema_code == 'rs' && item.class">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" v-bind:title="item.caption">{{item.class}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.caption">{{item.class}}</a>
                                     <img src='/BA/pages/static/graphics/tabular_16_9040670.png' title="recordset" alt="recordset">
                                     <br>
                                 </p>
 
                                 <p v-else-if="item.schema_code == 'sl' && item.name">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri" title="Bookmark (site link)">{{item.name}}</a>
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" title="Bookmark (site link)">{{item.name}}</a>
                                     <img src='/BA/pages/static/graphics/16_bookmark_1904655.png' title="bookmark" alt="bookmark">
                                     <br>
                                 </p>
 
                                 <p v-else-if="item.schema_code != 'h'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.uri">
+                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id">
                                         {{item.class_name}}
                                     </a>
                                     <img src='/BA/pages/static/graphics/13_database_record.png'>
@@ -99,19 +107,20 @@ Vue.component('vue-toc-sidebar',
                             </template>
 
                         </template>
+
+                        <br>
+                        <a href='#BOTTOM' style='font-size:14px; font-weight:bold'>BOTTOM</a>
+                        <br><br><br>
+
                     </div>      <!-- END of page-toc -->
 
-                    <br><a href='#BOTTOM' style='font-size:14px; font-weight:bold'>BOTTOM</a>
-
-                    <br><br>
-
-                </div>		<!-- END OF class 'sidebar-left' -->
+                </div>		<!-- END OF class 'sidebar-left-expanded' -->
 
 
                 <!--
                     COLLAPSED version of the left sidebar
                   -->
-                <div v-show='!show_left_sidebar' class='sidebar-left-collapsed'>
+                <div v-show='!show_left_sidebar' class='sidebar-toc-left  sidebar-left-collapsed'>
                     <img @click='set_sidebar_state(true)' src='/BA/pages/static/graphics/thin_right_arrow_32.png' align='left'
                          class='clickable-icon'
                          title='Click to expand sidebar' alt='Click to expand sidebar'>

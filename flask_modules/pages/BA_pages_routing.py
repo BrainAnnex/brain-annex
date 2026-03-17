@@ -114,7 +114,7 @@ class PagesRouting:
 
             # Get the Name and Remarks attached to the given Category
             category_info = Categories.get_category_info(category_uri)
-            # EXAMPLE : [{'uri': '3', 'name': 'Hobbies', 'remarks': 'excluding sports'}]
+            # EXAMPLE : [{'entity_id': '3', 'name': 'Hobbies', 'remarks': 'excluding sports'}]
 
             if not category_info:   # If page wasn't found
                 # TODO: add a special page to show the error messages
@@ -154,15 +154,15 @@ class PagesRouting:
             # EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
 
             see_also_links = Categories.get_see_also(category_uri)
-            # EXAMPLE: [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
+            # EXAMPLE: [{'name': 'Quotes', 'entity_id': '823', 'remarks': None}]
 
-            # Fetch all the Content Items attached to this Category
+            # Fetch the data for all the Content Items attached to this Category
             content_items = Categories.get_content_items_by_category(category_uri)
             #   List of dictionaries.  EXAMPLE:
             #       [
-            #           {'schema_code': 'h', 'uri': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-            #           {'schema_code': 'n', 'uri': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
-            #           {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
+            #           {'schema_code': 'h', 'entity_id': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
+            #           {'schema_code': 'n', 'entity_id': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
+            #           {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'entity_id': '6965', 'pos': 86,
             #                                   'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
             #       ]
             #print(content_items)
@@ -201,7 +201,7 @@ class PagesRouting:
             """
             template = "md_file_generator.htm"
 
-            content_items = Categories.get_content_items_by_category(uri=category_uri)
+            content_items = Categories.get_content_items_by_category(entity_id=category_uri)
 
             return render_template(template,
                                    site_data = cls.site_data,
@@ -226,7 +226,7 @@ class PagesRouting:
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")
             #category_remarks = category_info.get("remarks", "")
             subcategories = Categories.get_subcategories(category_uri)
-                            # EXAMPLE: [{'uri': '2', 'name': 'Work'}, {'uri': '3', 'name': 'Hobbies'}]
+                            # EXAMPLE: [{'entity_id': '2', 'name': 'Work'}, {'entity_id': '3', 'name': 'Hobbies'}]
 
             return render_template(template,
                                    site_data = cls.site_data,
@@ -334,7 +334,7 @@ class PagesRouting:
             category_remarks = category_info.get("remarks", "")
 
             # EXAMPLE of the various categories listings, below:
-            #               [{'uri': 2, 'name': 'Work'}, {'uri': 3, 'name': 'Hobbies'}]
+            #               [{'entity_id': 2, 'name': 'Work'}, {'entity_id': 3, 'name': 'Hobbies'}]
             all_categories = Categories.get_all_categories(exclude_root=False)
             subcategories = Categories.get_subcategories(category_uri)
             parent_categories = Categories.get_parent_categories(category_uri)
@@ -398,7 +398,7 @@ class PagesRouting:
             for item in content_items:
                 #print(item)
                 if "schema_code" not in item:
-                    class_name = GraphSchema.class_of_data_node(node_id=item["uri"], id_key="uri")
+                    class_name = GraphSchema.class_of_data_node(node_id=item["entity_id"], id_key="entity_id")
                     schema_code = GraphSchema.get_schema_code(class_name=class_name)
                     item["schema_code"] = schema_code
 

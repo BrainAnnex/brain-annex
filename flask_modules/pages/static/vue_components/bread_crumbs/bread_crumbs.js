@@ -6,8 +6,8 @@ Vue.component('vue-bread-crumbs',
         props: ['category_uri', 'bread_crumbs', 'all_categories'],
         /*  category_uri:       EXAMPLE: "123"
             bread_crumbs:       EXAMPLE: ['START_CONTAINER', ['1', 'ARROW', '544'], 'END_CONTAINER']
-            all_categories:     EXAMPLE: [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"},
-                                          {"uri": "523", "name": "work", 'pinned': True}]
+            all_categories:     EXAMPLE: [{"entity_id": "1", "name": "HOME", "remarks": "ROOT NODE"},
+                                          {"entity_id": "523", "name": "work", 'pinned': True}]
          */
 
         template: `
@@ -54,8 +54,8 @@ Vue.component('vue-bread-crumbs',
                             bread_crumbs_str += "<div style='clear:right'></div>";
                         else if (item == "ARROW")
                             bread_crumbs_str += " &raquo; ";
-                        // If we get thus far, the item is regarded to be a Category URI
-                        // NOTE: in principle, there's a risk that a URI could be equal to one of the tokens...
+                        // If we get thus far, the item is regarded to be a Category entity_id
+                        // NOTE: in principle, there's a risk that a entity_id could be equal to one of the tokens...
                         else if (item == this.category_uri)
                             bread_crumbs_str += `<span class='br_nav'>${this.category_map[item][0]}</span>`;
                         else
@@ -73,7 +73,7 @@ Vue.component('vue-bread-crumbs',
 
             create_category_map()
             // TODO: this seems overkill for just the bread crumbs, but may come in handy for multiple uses if moved to the Vue root
-            /*  Create and return an object to map Category URI's to the pairs [Category name, remarks]
+            /*  Create and return an object to map Category entity_id's to the pairs [Category name, remarks]
                 EXAMPLE:  {
                                 "1": ["HOME", "ROOT NODE"],
                                 "123": ["Work", ""]
@@ -84,7 +84,7 @@ Vue.component('vue-bread-crumbs',
                 let category_map = {}
                 for (let i in this.all_categories) {   // Note:  i will be an integer, not an array element!
                     let category_data = this.all_categories[i];
-                    let key_int = category_data.uri;
+                    let key_int = category_data.entity_id;
                     let key_str = key_int.toString();
 
                     if ('remarks' in category_data)

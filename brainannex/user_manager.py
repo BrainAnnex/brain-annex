@@ -209,7 +209,7 @@ class UserManager:
                 return user_id      # Successful login
             else:
                 print(f"check_login_credentials(): failed validation of user credentials for user `{username}`")
-                return None
+                return None          # Unsuccessful login
 
 
 

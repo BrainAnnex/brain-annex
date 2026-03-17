@@ -2,29 +2,30 @@
 {#  General viewer page for a list of Content Items (the list is specified in Flask parameter content_items)
     Vue.js is used for the rendering
 
-    Flask-passed parameters:
+
+    FLASK-PASSED parameters:
 
         site_data           A dict (for details, see BA_pages_routings.py)
         current_page
         username
 
-        category_uri        A string with the URI of the Category featured on this page
+        category_uri        A string with the Entity ID of the Category featured on this page
         category_name       The name of the above Category
         category_remarks    Descriptive extra text about this Category (may be missing)
 
         all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                     EXAMPLE:
-                                          [{"uri": "1",   "name": "HOME", "remarks": "ROOT NODE"},
-                                           {"uri: "123",  "name": "Calculus"},
-                                           {"uri": "523", "name": "Work at Acme", "pinned": True}]
-        subcategories       EXAMPLE: [{'uri': '2', 'name': 'Work', remarks: 'outside employment', OTHER_FIELDS_NOT_USED}]
+                                          [{"entity_id": "1",   "name": "HOME", "remarks": "ROOT NODE"},
+                                           {"entity_id": "123",  "name": "Calculus"},
+                                           {"entity_id": "523", "name": "Work at Acme", "pinned": True}]
+        subcategories       EXAMPLE: [{'entity_id': '2', 'name': 'Work', remarks: 'outside employment', OTHER_FIELDS_NOT_USED}]
         parent_categories
         siblings_categories
 
         bread_crumbs    A list with data from which to create UI "bread crumbs"
 
         see_also_links  A list with data about all the "see also" links originating from this Category
-                            EXAMPLE:  [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
+                            EXAMPLE:  [{'name': 'Quotes', 'entity_id': '823', 'remarks': None}]
 
         records_types   A list of all the Classes that can be used for new Records
                             (i.e. classes that are INSTANCE_OF the "Records" class)
@@ -34,26 +35,26 @@
 
         items_schema_data: A dictionary of record class names, mapped into the ordered list of their property names.
                              Ancestral Properties, thru "INSTANCE_OF", are also included.
-                             However, Properties that have the attribute "system" set to True (such as "uri"), are excluded
+                             However, Properties that have the attribute "system" set to True (such as "entity_id"), are excluded
                              EXAMPLE:
                                  {"Quote": ["quote", "attribution", "notes"],
                                   "French Vocabulary": ["French", "English", "notes"],
                                   "Site Link": ["url", "name", "date", "comments", "rating", "read"]
                                  }
 
-        content_items:  A list of dictionaries with the data for all the Content Items on this page
+        content_items:  A list of dictionaries with the data for each the Content Items on this page
                         EXAMPLE:
-                            [{'schema_code': 'i', 'uri': 'i-1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
-                             {'schema_code': 'h', 'uri': 'h-23', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-                             {'schema_code': 'n', 'uri': 'n-41', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
-                             {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'uri': '6965', 'pos': 86,
+                            [{'schema_code': 'i', 'entity_id': 'i-1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
+                             {'schema_code': 'h', 'entity_id': 'h-23', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
+                             {'schema_code': 'n', 'entity_id': 'n-41', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
+                             {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'entity_id': '6965', 'pos': 86,
                                                          'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
 
         upload_directories: A list of folders registered with BrainAnnex
                             EXAMPLE:
                                 ["documents/Ebooks & Articles",
-                                "documents/Ebooks & Articles/Computer Science"]
+                                 "documents/Ebooks & Articles/Computer Science"]
 
     -----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
@@ -234,8 +235,8 @@
 <div v-if="all_subcategories.length > 0" class='subsections'>
     <span class='subsections-label'>Subcategories: </span>
     <template v-for="(subcategory, index) in all_subcategories" class='subsection-link'>
-        <span v-if="index == 0" class='subsection-link'><a v-bind:href="'/BA/pages/viewer/' + [[ subcategory['uri'] ]]">[[ subcategory['name'] ]]</a></span>
-        <span v-else class='subsection-link'>&nbsp; &diams; &nbsp;<a v-bind:href="'/BA/pages/viewer/' + [[ subcategory['uri'] ]]">[[ subcategory['name'] ]]</a></span>
+        <span v-if="index == 0" class='subsection-link'><a v-bind:href="'/BA/pages/viewer/' + [[ subcategory['entity_id'] ]]">[[ subcategory['name'] ]]</a></span>
+        <span v-else class='subsection-link'>&nbsp; &diams; &nbsp;<a v-bind:href="'/BA/pages/viewer/' + [[ subcategory['entity_id'] ]]">[[ subcategory['name'] ]]</a></span>
     </template>
 </div>
 
@@ -246,7 +247,7 @@
     <p style="margin-bottom:15px">
         -> <b>SEE ALSO:</b>&nbsp;&nbsp;&nbsp;
         {% for linked_category in see_also_links %}
-            <a href="/BA/pages/viewer/{{linked_category.uri}}" style="margin-right:30px">
+            <a href="/BA/pages/viewer/{{linked_category.entity_id}}" style="margin-right:30px">
                 {{linked_category.name}}
             </a>
         {% endfor %}
@@ -316,7 +317,7 @@
 <template v-if="expose_controls && !bulk_operations"  v-for="(item, index) in content_array">
 
     <vue-content-items
-        v-bind:key="item.schema_code + '_' + item.uri + '_' + index"
+        v-bind:key="item.schema_code + '_' + item.entity_id + '_' + index"
 
         v-bind:item="item"
         v-bind:expose_controls="expose_controls"
@@ -362,7 +363,7 @@
 <template v-if="bulk_operations"  v-for="(item, index) in content_array">
 
     <vue-content-items
-            v-bind:key="item.uri + '_bulk'"
+            v-bind:key="item.entity_id + '_bulk'"
 
             v-bind:item="item"
             v-bind:expose_controls="false"
@@ -381,7 +382,7 @@
 
     <!-- TODO: maybe the binding to the input element should include class_name besides uri -->
     <p style="margin-top:0; margin-bottom:40px">
-        <input type="checkbox"  v-bind:ref="item.uri"  @click="bulk_checkbox_clicked(item, index)">
+        <span style="color:rgb(149, 149, 149)">[[index]]</span> <input type="checkbox"  v-bind:ref="item.entity_id"  @click="bulk_checkbox_clicked(item, index)">
 
         <span v-if="! checkboxes_selected.includes(index)">
             <a v-if="group_boundary === null" @click.prevent="contiguous_group(item, index)" href="#" style="margin-left: 15px">
@@ -419,8 +420,8 @@
             style='margin-left:15px'>
         <option disabled value="">[Select new tag]</option>
         <option v-for="cat in all_categories"
-                v-if="cat.uri != category_uri"
-                v-bind:value="{uri: cat.uri , name: cat.name}">
+                v-if="cat.entity_id != category_uri"
+                v-bind:value="{entity_id: cat.entity_id , name: cat.name}">
             [[cat.name]]
         </option>
     </select>
@@ -443,7 +444,7 @@
 
     <!-- Show here the individual Content Item -->
     <vue-content-items
-            v-bind:key="index + '_' + item.uri"
+            v-bind:key="index + '_' + item.entity_id"
 
             v-bind:item="item"
             v-bind:expose_controls="expose_controls"
@@ -668,22 +669,22 @@ new Vue({
                                     //            flask_modules/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
-                                    // Array containing objects with the data for all the Content Items on this page
-                                    // EXAMPLE: [{pos:0,"uri":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
-                                    //           {pos:50,"uri":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Image"}
+                                    // Array of objects with the data for each of the Content Items on this page
+                                    // EXAMPLE: [{pos:0,"entity_id":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
+                                    //           {pos:50,"entity_id":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Image"}
                                     //          ]
-                                    // TODO: component-editable fields and non-editable ones ("pos", "uri", "schema_code", "class_name") ought to be treated differently
+                                    // TODO: component-editable fields and non-editable ones ("pos", "entity_id", "schema_code", "class_name") ought to be treated differently
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
-        category_uri: {{category_uri | tojson}},    // A string with the URI of the Category featured on this page
+        category_uri: {{category_uri | tojson}},    // A string with the Entity ID of the Category featured on this page
 
         show_left_sidebar: true,    // If true, the the left sidebar (with the Page Contents) is shown; otherwise, collapsed
         show_right_sidebox: true,   // If true, the the left sidebar (with the Category navigation) is shown; otherwise, collapsed
 
         records_types: {{records_types | tojson}},   // Array of all the names of leaf Classes associated to records
 
-        items_schema_data : {{items_schema_data | tojson }}, // EXAMPLE:
+        items_schema_data : {{items_schema_data | tojson }},    // EXAMPLE:
                                                                  // {"Quote": ["quote", "attribution", "notes"],
                                                                  //  "French Vocabulary": ["French", "English", "notes"],
                                                                  //  "Site Link": ["url", "name", "date", "comments", "rating", "read"]}
@@ -696,27 +697,28 @@ new Vue({
         parent_categories: {{parent_categories  | tojson}},
 
         all_subcategories: {{subcategories | tojson}},
-                        // EXAMPLE: [{"uri":"709","name":"English"},{"uri":"708","name":"Italian"},{"uri":"514","name":"French"}]
+                        // EXAMPLE: [{"entity_id":"709","name":"English"},{"entity_id":"708","name":"Italian"},{"entity_id":"514","name":"French"}]
 
         siblings_categories: {{siblings_categories | tojson}},
-                        // EXAMPLE: [{'name': 'French', 'uri': '514', 'schema_code': 'cat', '_internal_id': 522}]
+                        // EXAMPLE: [{'name': 'French', 'entity_id': '514', 'schema_code': 'cat', '_internal_id': 522}]
 
         all_categories: {{all_categories | tojson}},
-                        // EXAMPLE: [{"uri": "1", "name": "HOME", "remarks": "ROOT NODE"}, {"uri": 523, "name": "work", 'pinned': True}]
+                        // EXAMPLE: [{"entity_id": "1", "name": "HOME", "remarks": "ROOT NODE"}, {"entity_id": 523, "name": "work", 'pinned': True}]
 
-        next_new_item_uri: -1,      // Auto-increment negative values as URI placeholders for new Content Items being added: -1, -2, ...
+        next_new_item_uri: -1,      // Auto-increment negative values as Entity ID placeholders for new Content Items being added: -1, -2, ...
 
 
         // For bulk operations.  TODO: turn into a Vue component
         bulk_operations: false,     // If true, checkboxes for bulk operations of Content Items are revealed
         checkboxes_selected: [],    // Array of index positions of the Content Items selected for bulk operations
-                                    // The order doesn't matter; it will be sorted prior to sending to server
+                                    // The order doesn't matter; it will be sorted prior to sending to server,
+                                    //      and prior to the orderly removal of the moved items from the page (must be from bottom to top)
                                     // (note: the sorting will preserve the positional order prior on the page, prior to sending request to server)
                                     // EXAMPLE:  [4, 0, 1, 9, 7, 8]
 
         group_boundary: null,       // The array index (in the array content_array) of
                                     //      the first or last Content Item selected in a contiguous group
-        category_to_move_to: null,  // The uri of the Category to bulk-move the selected Content Items to
+        category_to_move_to: null,  // The Entity ID of the Category to bulk-move the selected Content Items to
 
         category_input_navigator: null, // Content of INPUT element used for Category navigation
                                         //     (in conjunction with "Awesomplete" module)
@@ -754,14 +756,14 @@ new Vue({
             maxItems: 20,               // Max number of matches being shown in pop-down menu
 
             data: function (item, input) {
-                        // Translate our data-source key names ("name" and "uri")
+                        // Translate our data-source key names ("name" and "entity_id")
                         // to the key names expected by Awesomplete ("label" and "value", respectively).
                         // If a "remarks" key is also present in the data, incorporate it into the "label",
                         // within square brackets
                         if (item.remarks !== undefined)
-                            return { label: item.name + " [" + item.remarks + "]" , value: item.uri };
+                            return { label: item.name + " [" + item.remarks + "]" , value: item.entity_id };
                         else
-                            return { label: item.name, value: item.uri };
+                            return { label: item.name, value: item.entity_id };
             }
         });
 
@@ -821,8 +823,8 @@ new Vue({
         {
             for (let i = 0; i < this.content_array.length; ++i)  {
                 let ci = this.content_array[i];
-                let uri = ci.uri;
-                console.log(`    resetting checkmark for URI "${uri}"`);
+                let uri = ci.entity_id;
+                console.log(`    resetting checkmark for Entity ID "${uri}"`);
                 let checkbox_element_arr = this.$refs[uri];         // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
                                                                     // that we're looping over
                 //console.log(checkbox_element_arr);                // This reveals an array whose only entry is the <INPUT> element
@@ -847,17 +849,17 @@ new Vue({
 
         bulk_checkbox_clicked(item, index)
         /* Invoked whenever the user clicks on any of the CHECKBOXES visible while in bulk-edit mode.
-            Note that that <INPUT> elements with the checkboxes contain:   v-bind:ref="item.uri"
+            Note that that <INPUT> elements with the checkboxes contain:   v-bind:ref="item.entity_id"
          */
         {
-            // Extract the URI and Class of the Content Item whose checkbox was clicked
-            const uri = item.uri;
+            // Extract the Entity ID and Class of the Content Item whose checkbox was clicked
+            const uri = item.entity_id;
             const class_name = item.class_name;
 
-            //console.log(`Clicked checkbox for Content Item with URI: '${uri}' from Class '${class_name}'`);
+            //console.log(`Clicked checkbox for Content Item with Entity ID: '${uri}' from Class '${class_name}'`);
 
             //console.log(this.$refs);                          // Shows an array whose keys are the uri's of
-                                                                // all the various <INPUT> elements that contain v-bind:ref="item.uri"
+                                                                // all the various <INPUT> elements that contain v-bind:ref="item.entity_id"
             const checkbox_element_arr = this.$refs[uri];       // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
                                                                 // that invoked this function
             //console.log(checkbox_element_arr);                // This reveals an array whose only entry is the <INPUT> element
@@ -866,17 +868,11 @@ new Vue({
             const checkbox_status = checkbox_element.checked;   // This will be true if the checkbox is in a selected state (AFTER our click!)
             //console.log(`    checkbox status is: ${checkbox_status}`);
 
-            // Update the array of URI's that are selected for the bulk-update operation
+            // Update the array of Entity ID's that are selected for the bulk-update operation
             //console.log(`bulk_checkbox_clicked() BEFORE update - State variable checkboxes_selected (indexes of checkboxes that are marked) : ${this.checkboxes_selected}`);
 
             if (checkbox_status) {
                 console.log(`    new box checked`);   // Note: the switch to checked state happened upon the click, BEFORE we get here
-                /*
-                if (this.checkboxes_selected.includes(index))  {  // Unexpected scenario
-                    alert(`Attempting to select checkbox for Class/URI: '${[class_name, uri]}' more than once; it's recommended to refresh the page and start over`);
-                    return;
-                }
-                */
                 if (! this.checkboxes_selected.includes(index))
                     this.checkboxes_selected.push(index);
             }
@@ -901,16 +897,16 @@ new Vue({
             `item` and `index` refer to the Content Item next to the link, and its index position on the page.
          */
         {
-            console.log(`Clicking on link next to item of index ${index} for bulk operations.  Item Class name: "${item.class_name}" , URI: "${item.uri}"`);
+            console.log(`Clicking on link next to item of index ${index} for bulk operations.  Item Class name: "${item.class_name}" , URI: "${item.entity_id}"`);
             //console.log(`Item details:`);
             //console.log(item);
             console.log(`this.group_boundary = ${this.group_boundary}`);
 
             //console.log(this.$refs);                              // Shows an object whose keys are the uri's of
-                                                                    // all the various <INPUT> elements that contain v-bind:ref="item.uri"
+                                                                    // all the various <INPUT> elements that contain v-bind:ref="item.entity_id"
 
             if (this.group_boundary === null)  {
-                const uri = item.uri;
+                const uri = item.entity_id;
                 const class_name = item.class_name;
                 console.log(`    the link click is resulting in STARTING a contiguous group in index position ${index} for Content Item with URI '${uri}' from Class '${class_name}'`);
 
@@ -936,7 +932,7 @@ new Vue({
             }
 
             else {
-                console.log(`    the link click is resulting in **ENDING** contiguous group in index position ${index} for Content Item with URI '${item.uri}' from Class '${item.class_name}'`);
+                console.log(`    the link click is resulting in **ENDING** contiguous group in index position ${index} for Content Item with URI '${item.entity_id}' from Class '${item.class_name}'`);
                 // Select all Content Items, from index `this.group_boundary` to the `index` argument
                 var start_pos = Math.min(this.group_boundary, index);
                 var end_pos  =  Math.max(this.group_boundary, index);
@@ -949,7 +945,7 @@ new Vue({
                         continue;       // Already handled it when first selected it
                     }
 
-                    let uri = this.content_array[i].uri;
+                    let uri = this.content_array[i].entity_id;
                     let class_name = this.content_array[i].class_name;
                     console.log(`        checking box in index position ${i} for Content Item with URI ${uri} from Class '${class_name}'`);
 
@@ -995,27 +991,28 @@ new Vue({
             }
 
             const category_from_uri = this.category_uri;
-            const category_to_uri = this.category_to_move_to.uri;
+            const category_to_uri = this.category_to_move_to.entity_id;
             const category_to_name = this.category_to_move_to.name;
 
             console.log(`Bulk reclassifying the Content Items in the following index positions:  ${this.checkboxes_selected}`);
-            console.log(`    moving them from Category URI '${category_from_uri}' ("${this.category_name}") to URI '${category_to_uri}' ("${category_to_name}")`);
+            console.log(`    moving them from Category Entity ID '${category_from_uri}' ("${this.category_name}") to Entity ID '${category_to_uri}' ("${category_to_name}")`);
 
-            this.checkboxes_selected.sort();
-            console.log(`    checkboxes_selected (sorted) : ${this.checkboxes_selected}`);
+            this.checkboxes_selected.sort((a, b) => a - b);     // Sorting must be done this way, to work on numerical values!!  Damn JS!
+            console.log(`    checkboxes_selected (sorted) : ${this.checkboxes_selected}`);  // Sorted index positions of the selected items
 
             var uri_list_sorted = [];
 
             for (var index of this.checkboxes_selected) {     // Loop over the list of selected checkboxes
-                const {class_name, uri} = this.content_array[index];    // Extract some properties from this Content Item
+                const {class_name, entity_id} = this.content_array[index];    // Extract some properties from this Content Item
                 // TODO: for now, the class_name isn't being passed to the server
-                console.log(`    Readying Content Item  class_name : ${class_name} , uri : ${uri}`);
-                uri_list_sorted.push(uri);
+                console.log(`    Readying Content Item -> class_name : "${class_name}" , Entity ID : "${entity_id}"`);
+                uri_list_sorted.push(entity_id);
             }
             console.log(`    uri_list_sorted : ${uri_list_sorted}`);
 
 
             // TODO: in the future, both the URI's and the class names will be sent to the server, as soon as the backend is upgraded
+            //       (or maybe use internal database ID's instead)
 
             // Send the request to the server, using a POST
             const url_server_api = "/BA/api/switch_category";
@@ -1056,17 +1053,35 @@ new Vue({
                 this.status_message = `${this.checkboxes_selected.length} Content Items moved to other category`;
 
                 // Refresh the page display by taking out the Content Item that were moved away
-                console.log("    updating page by removing items: ", this.checkboxes_selected);
+                console.log("    updating page by removing items (checkboxes_selected): ", this.checkboxes_selected);
                 // Update the page, by ditching the Content Items that were moved away, in REVERSE page order,
                 // so that index values will still be correct as Items get taken off the page!
-                for (let i = this.checkboxes_selected.length - 1 ; i >= 0  ; --i) { // Loop over the indexes of the checkboxes that were selected (in REVERSE order_)
-                    let index = this.checkboxes_selected[i];
-                    let {class_name , uri} = this.content_array[index];     // Unpack some properties of this Content Item
-                    console.log(`    removing item with URI '${uri}' and Class '${class_name}' from page: array index is ${index}`);
+                //console.log("this.content_array:");
+                //console.log(this.content_array);
+                //console.log(`   length of above array: ${this.content_array.length}`);
+
+                let indexes_to_remove = [];
+                // Loop over the indexes of the checkboxes that were selected
+                // (in REVERSE order, because the removal of earlier ones would change indexes of later ones!)
+                // This loop is just for data gathering; the actual removal is done later
+                for (let i = this.checkboxes_selected.length - 1 ; i >= 0  ; --i) {
+                     let index = this.checkboxes_selected[i];
+                     console.log(`    making note to remove from the page the Content Item with array index ${index}`);
+                     indexes_to_remove.push(index);                                 // Save for the round of actual elimination
+                     let {class_name , entity_id} = this.content_array[index];      // Unpack some properties of this Content Item
+                     console.log(`       -> from that index position will be removing item with  Entity ID '${entity_id}' and Class '${class_name}'`);
+                }
+
+                // Carry out the actual removal from the page of the moved Content Items
+                // Note: doing this loop and the previous loop in just 1 pass seems to run afoul of Vue
+                for (let i in indexes_to_remove) {   // Note:  i will be an integer, not an array element!!
+                    let index = indexes_to_remove[i];
+                    console.log(`      * about to actually remove Content Item from index ${index}`);
                     this.content_array.splice(index, 1);                    // Deletes 1 array element from the specified index position
                                                                             // (note: the index position of the remaining Items - earlier in
                                                                             //        this.content_array - won't be affected)
                 }
+
 
                 // Reset all variables related to those checkboxes
                 this.checkboxes_selected = [];          // Clear the data about the checkboxes that were selected
@@ -1146,14 +1161,14 @@ new Vue({
 
         finish_add_subcategory(success, server_payload, error_message)
         /*  Callback function to wrap up the action of add_subcategory() upon getting a response from the server.
-            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned Entity ID
          */
         {
             console.log("Finalizing the Add Subcategory operation...");
             if (success)  {     // Server reported SUCCESS
-                this.status_message = `New sub-category successfully added (assigned URI '${server_payload}')`;
+                this.status_message = `New sub-category successfully added (assigned Entity ID '${server_payload}')`;
                 // Update the data of the root component, to refresh some displays
-                let new_subcategory = {uri: server_payload, name: this.new_subcategory_name};
+                let new_subcategory = {entity_id: server_payload, name: this.new_subcategory_name};
                 this.all_subcategories.push(new_subcategory);
                 this.all_categories.push(new_subcategory);      // TODO: sort alphabetically
             }
@@ -1174,10 +1189,10 @@ new Vue({
 
         cancel_edit(item)
         {
-            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , uri ${item.uri} , pos ${item.pos}`);
-            if (item.uri == -1)  {
+            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , Entity ID ${item.entity_id} , pos ${item.pos}`);
+            if (item.entity_id == -1)  {
                 // If we're aborting the edit of a new Content Item, delete it from the page
-                index = this.locate_item_pos(item.schema_code, item.uri, item.pos);
+                index = this.locate_item_pos(item.schema_code, item.entity_id, item.pos);
                 console.log(`Aborting the edit of a NEW Content Item, whose index position on the page is ${index}`);
                 this.content_array.splice(index, 1);    // It modifies the array, to take out 1 element in position index
             }
@@ -1191,9 +1206,9 @@ new Vue({
         {
             //console.log(item);
             console.log(`In root component, insert_new_item_after()`);
-            console.log(`    Insert after Item URI '${item.uri}' of class '${item.class_name}'. New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
+            console.log(`    Insert after Item Entity ID '${item.entity_id}' of class '${item.class_name}'. New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
 
-            this.create_new_item_after(item.uri, item.class_name, schema_code, class_name);
+            this.create_new_item_after(item.entity_id, item.class_name, schema_code, class_name);
         },
 
 
@@ -1215,12 +1230,12 @@ new Vue({
             }
 
             // Assemble the data for a new Content Item.
-            // Using an auto-incremented negative number as a temporary URI is a convention to indicate a NEW Content Item
+            // Using an auto-incremented negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
             let blank_record;
             if (class_name)     // If a class name was passed, store it
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
+                blank_record = {entity_id: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
             else  {               // No class name was provided.  TODO: obsolete - this branch no longer in use
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
+                blank_record = {entity_id: this.next_new_item_uri, schema_code: schema_code, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
                 alert("create_new_item_after(): adding new Content Item that lacks a Class name!");
             }
 
@@ -1238,21 +1253,19 @@ new Vue({
 
 
 
-        add_new_item_at_bottom(schema_code, class_name)
-        /*  Add a new Content Item of the specified type,
-            placed at the bottom of the page (past the last Item)
+        /**
+         * Add a new Content Item of the specified type,
+         *  placed at the bottom of the page (past the last Item)
          */
+        add_new_item_at_bottom(schema_code, class_name)
         {
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
 
-            // Assemble the data for a new Content Item.  Using a negative number as a temporary URI is a convention to indicate a NEW Content Item
-            let blank_record;
-            if (class_name)   // If a class name was passed, store it
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: "BOTTOM"};
-            else {            // No class name was provided.  TODO: obsolete - this branch no longer in use
-                blank_record = {uri: this.next_new_item_uri, schema_code: schema_code, insert_after_uri: "BOTTOM"};
-                alert("add_new_item_at_bottom(): adding new Content Item that lacks a Class name");
-            }
+            // Assemble the data for a new Content Item.  Using a negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
+            let blank_record = {entity_id: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: "BOTTOM"};
+
+            console.log("blank_record:");
+            console.log(blank_record);
 
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
@@ -1265,8 +1278,8 @@ new Vue({
         delete_content_item(item)
         // Delete from the page and from the database the specified Content Item
         {
-            console.log(`delete_content_item(): Root element received signal to delete content item of Class '${item.class_name}' , uri '${item.uri}'`);
-            const index = this.locate_item_simplified(item.uri, item.class_name);
+            console.log(`delete_content_item(): Root element received signal to delete content item of Class '${item.class_name}' , entity_id '${item.entity_id}'`);
+            const index = this.locate_item_simplified(item.entity_id, item.class_name);
             console.log(`delete_content_item(): Content item located in position ${index}`);
 
             if (index == -1)  {
@@ -1274,7 +1287,7 @@ new Vue({
                 return;
             }
 
-            const url_server = `/BA/api/delete/${item.uri}/${item.class_name}`;
+            const url_server = `/BA/api/delete/${item.entity_id}/${item.class_name}`;
             ServerCommunication.contact_server(url_server, 
                         {callback_fn: this.finish_delete, 
                          custom_data: index}
@@ -1302,9 +1315,9 @@ new Vue({
         //
         {
             const schema_code = item.schema_code;
-            const uri = item.uri;
+            const uri = item.entity_id;
 
-            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , uri ${uri}`);
+            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , Entity ID ${uri}`);
 
             const number_items = this.content_array.length;
 
@@ -1325,7 +1338,7 @@ new Vue({
             }
 
             // Request the server to perform the operation on the data
-            const swap_uri = this.content_array[i-1].uri;       // The ID of the Item that we're swapping with
+            const swap_uri = this.content_array[i-1].entity_id;       // The ID of the Item that we're swapping with
             const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
@@ -1356,9 +1369,9 @@ new Vue({
         //
         {
             const schema_code = item.schema_code;
-            const uri = item.uri;
+            const uri = item.entity_id;
 
-            console.log(`Root element received signal to move DOWN the content item of type '${item.schema_code}' , id ${item.uri}`);
+            console.log(`Root element received signal to move DOWN the content item of type '${item.schema_code}' , id ${item.entity_id}`);
 
             const number_items = this.content_array.length;
 
@@ -1379,7 +1392,7 @@ new Vue({
             }
 
             // Request the server to perform the operation on the data
-            const swap_uri = this.content_array[i+1].uri;       // The ID of the Item that we're swapping with
+            const swap_uri = this.content_array[i+1].entity_id;       // The ID of the Item that we're swapping with
             const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
@@ -1413,30 +1426,30 @@ new Vue({
            item:       pre-edit record
            new_data:   post-edit record
 
-           Note that the values of the special key "uri" on `new_data` will only appear
+           Note that the values of the special key "entity_id" on `new_data` will only appear
            (and differ from the corresponding field on `item`)
            if this is a newly-created Content Item,
-           which was tentatively assigned an autoincr negative value as temp uri.
+           which was tentatively assigned an autoincr negative value as temp entity_id.
 
            The special keys "schema_code" and "pos" are not changed.
 
            EXAMPLE of `item` and `new_data`, for a NEWLY-CREATED item:
-               item:     {uri: -2,
+               item:     {entity_id: -2,
                           schema_code: "h", class_name: "Header", pos: -12}
-               new_data: {uri: "h-243",
-                          text: "Some Header"}    [Notice: no control fields, except for `uri`]
+               new_data: {entity_id: "h-243",
+                          text: "Some Header"}    [Notice: no control fields, except for `entity_id`]
          */
         {
             console.log("In absorb_item_updates()");
             console.log(`    Original data of Content Item being updated:`);
             console.log(item);
 
-            const old_uri = item.uri;               // This will be a negative number if it was a temporary value for a newly-created Content Item
+            const old_uri = item.entity_id;               // This will be a negative number if it was a temporary value for a newly-created Content Item
 
             const schema_code = item.schema_code;   // This will never be affected by edits
             const class_name = item.class_name;     // This will never be affected by edits
 
-            console.log(`    Root element received signal to UPDATE the Content Item that originally had uri: ${old_uri}`);
+            console.log(`    Root element received signal to UPDATE the Content Item that originally had entity_id: ${old_uri}`);
 
             console.log(`    Data for the update:`);
             console.log(new_data);
@@ -1444,11 +1457,11 @@ new Vue({
             var uri = old_uri;
 
             if (old_uri < 0)  {
-                console.log(`    A temporary URI of ${old_uri} is being replaced by the newly-assigned permanent URI '${new_data.uri}'`);
-                uri = new_data.uri;
+                console.log(`    A temporary URI of ${old_uri} is being replaced by the newly-assigned permanent URI '${new_data.entity_id}'`);
+                uri = new_data.entity_id;
             }
-            else if (new_data.uri !== undefined  &&  new_data.uri != old_uri)  {
-                console.error(`    Unexpected attempt to update a permanent URI ('${old_uri}'), with a different value ('${new_data.uri}')`);
+            else if (new_data.entity_id !== undefined  &&  new_data.entity_id != old_uri)  {
+                console.error(`    Unexpected attempt to update a permanent URI ('${old_uri}'), with a different value ('${new_data.entity_id}')`);
                 alert("Attempting to update a permanent URI on the display.  Save your work and refresh the page");
                 return;
             }
@@ -1473,8 +1486,8 @@ new Vue({
             updated_record["schema_code"] = schema_code;
             updated_record["class_name"] = class_name;
 
-            // Also set (in the case of new items) or restore (in the case of existing items) the control field "uri"
-            updated_record["uri"] = uri;
+            // Also set (in the case of new items) or restore (in the case of existing items) the control field "entity_id"
+            updated_record["entity_id"] = uri;
 
             // Note about the special key "pos":
             //      1) existing records will have a value not changed thru edits (a separate mechanism is used to reposition items)
@@ -1507,16 +1520,16 @@ new Vue({
 
            NOT to be used for newly-added records: use absorb_item_updates() for those.
            
-           new_data: object containing the special keys "uri" and "schema_code" (TODO: later replace with the internal_dbase_id),
+           new_data: object containing the special keys "entity_id" and "schema_code" (TODO: later replace with the internal_dbase_id),
                      used to identify the entry in this.content_array,
                      plus keys/values will all the other properties to update.  
                      Unaffected fields aren't expected to be included (but no harm if they are.)
-                     EXAMPLE: {uri: '5622', schema_code: 'r', English: 'Woman', German: 'Frau'}
+                     EXAMPLE: {entity_id: '5622', schema_code: 'r', English: 'Woman', German: 'Frau'}
          */
         {
             console.log("In absorb_updates_existing_item()");
             const schema_code = new_data.schema_code;
-            const uri = new_data.uri;
+            const uri = new_data.entity_id;
 
             console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' , with original uri '${uri}'`);
             console.log(`    Data for the update:`);
@@ -1536,10 +1549,10 @@ new Vue({
             let updated_record = Object.assign({}, this.content_array[index]);      // Start with a clone of the Content Item object
                                                                                     // (to allow for a complete record replacement for Vue reactivity)
 
-            // Update all attributes, except "uri" and "schema_code", 
+            // Update all attributes, except "entity_id" and "schema_code",
             // in the object that will replace the element in content_array at our index position
             for (key in new_data)  {    // Loop over all the keys in the object
-                if (key != "uri"  &&  key != "schema_code")  {
+                if (key != "entity_id"  &&  key != "schema_code")  {
                     let new_value = new_data[key];
                     if (new_value == "")  {
                         //console.log(`    Ditching the field '${key}'`);
@@ -1560,15 +1573,16 @@ new Vue({
 
 
         relocate_content_item(item, where_to)
-        /*  (At the request of another component) Relocate the specified Item within the page, to be placed after specified position,
+        /*  (At the request of another component) Relocate the specified Item within the page,
+            to be placed after specified position,
             and inform the server of this operation.
             Note: where_to is a 1-based index of Content Items on the page; by our convention, 0 means "move to top"
          */
         {
             const schema_code = item.schema_code;
-            const uri = item.uri;
+            const entity_id = item.entity_id;
 
-            console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , id ${item.uri} to just after the ${where_to}-th entry, within category ${this.category_uri}`);
+            console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , Entity id ${item.entity_id} to just after the ${where_to}-th entry, within category ${this.category_uri}`);
 
             const number_items = this.content_array.length;
 
@@ -1577,10 +1591,10 @@ new Vue({
                 return;
             }
 
-            const i = this.locate_item_simplified(uri, item.class_name);     // Locate the specified Content Item in the array of Content Items
+            const i = this.locate_item_simplified(entity_id, item.class_name);     // Locate the specified Content Item in the array of Content Items
 
             if (i == -1)  {  // Not found
-                alert(`Item type '${schema_code}' , id ${uri} NOT found. Maybe was deleted in another browser tab? No action taken`);
+                alert(`Item type '${schema_code}' , id ${entity_id} NOT found. Maybe was deleted in another browser tab? No action taken`);
                 return;
             }
 
@@ -1592,7 +1606,7 @@ new Vue({
             }
 
             // Request the server to perform the operation on the database
-            const url_server = `/BA/api/reposition/${this.category_uri}/${uri}/${where_to}`;
+            const url_server = `/BA/api/reposition/${this.category_uri}/${entity_id}/${where_to}`;
             console.log(url_server);
 
             ServerCommunication.contact_server(url_server, 
@@ -1621,6 +1635,8 @@ new Vue({
             IMPORTANT: index_of_moved_item is zero-based, while move_after_n starts at 1 (0 means "move to top")
          */
         {
+            //console.log(`In reposition_content({$index_of_moved_item}, ${move_after_n})`);
+
             if (index_of_moved_item < 0 || index_of_moved_item >= this.content_array.length) {
                 console.error(`index_of_moved_item ${index_of_moved_item} is out of bounds.  Expected range is [0-${this.content_array.length - 1}]`);
                 return false;
@@ -1669,7 +1685,7 @@ new Vue({
             const number_items = this.content_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].uri == uri  &&  this.content_array[i].class_name == class_name)
+                if (this.content_array[i].entity_id == uri  &&  this.content_array[i].class_name == class_name)
                     return i;          //  Found it
             }
 
@@ -1691,7 +1707,7 @@ new Vue({
             const number_items = this.content_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].uri == uri)
+                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].entity_id == uri)
                     return i;          //  Found it
             }
 
@@ -1709,7 +1725,7 @@ new Vue({
 
             for (var i = 0; i < number_items; i++) {
                 if (this.content_array[i].schema_code == schema_code  &&
-                    this.content_array[i].uri == uri  &&
+                    this.content_array[i].entity_id == uri  &&
                     this.content_array[i].pos == pos)
                     return i;          //  Found it
             }

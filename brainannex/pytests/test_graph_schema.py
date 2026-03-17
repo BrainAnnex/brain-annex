@@ -23,10 +23,10 @@ def create_sample_schema_1():
     # and relationships between the Classes: HAS_RESULT, IS_ATTENDED_BY (both originating from "patient"
 
     patient_id  = GraphSchema.create_class_with_properties(name="patient",
-                                                              properties=["name", "age", "balance"], strict=True)
+                                                           properties=["name", "age", "balance"], strict=True)
 
     result_id  = GraphSchema.create_class_with_properties(name="result",
-                                                             properties=["biomarker", "value"], strict=False)
+                                                          properties=["biomarker", "value"], strict=False)
 
     doctor_id  = GraphSchema.create_class_with_properties(name="doctor",
                                                              properties=["name", "specialty"], strict=False)
@@ -57,15 +57,17 @@ def create_sample_schema_2():
 def test_create_class(db):
     db.empty_dbase()
 
-    _ , french_class_uri = GraphSchema.create_class("French Vocabulary")
+    french_class_id = GraphSchema.create_class("French Vocabulary")
+    french_class_uri = GraphSchema.get_class_entity_id(class_name="French Vocabulary")
     match_specs = db.match(labels="CLASS")   # All Class nodes
-    result = db.get_nodes(match_specs)
-    assert result == [{'name': 'French Vocabulary', 'uri': french_class_uri, 'strict': False}]
+    result = db.get_nodes(match_specs, return_internal_id=True)
+    assert result == [{'name': 'French Vocabulary', 'entity_id': french_class_uri, 'strict': False, '_internal_id': french_class_id}]
 
-    _ , class_A_uri = GraphSchema.create_class("A", strict=True)
-    result = db.get_nodes(match_specs)
-    expected = [{'name': 'French Vocabulary', 'uri': french_class_uri, 'strict': False},
-                {'name': 'A', 'uri': class_A_uri, 'strict': True}]
+    class_A_id = GraphSchema.create_class("A", strict=True)
+    class_A_uri = GraphSchema.get_class_entity_id(class_name="A")
+    result = db.get_nodes(match_specs, return_internal_id=True)
+    expected = [{'name': 'French Vocabulary', 'entity_id': french_class_uri, 'strict': False, '_internal_id': french_class_id},
+                {'name': 'A', 'entity_id': class_A_uri, 'strict': True, '_internal_id': class_A_id}]
     assert compare_recordsets(result, expected)
 
     with pytest.raises(Exception):
@@ -75,10 +77,10 @@ def test_create_class(db):
 
 def test_get_class_internal_id(db):
     db.empty_dbase()
-    A_neo_uri, _ = GraphSchema.create_class("A")
+    A_neo_uri = GraphSchema.create_class("A")
     assert GraphSchema.get_class_internal_id("A") == A_neo_uri
 
-    B_neo_uri, _ = GraphSchema.create_class("B")
+    B_neo_uri = GraphSchema.create_class("B")
     assert GraphSchema.get_class_internal_id("A") == A_neo_uri
     assert GraphSchema.get_class_internal_id("B") == B_neo_uri
 
@@ -87,44 +89,49 @@ def test_get_class_internal_id(db):
 
 
 
-def test_get_class_uri(db):
+def test_get_class_entity_id_1(db):
     db.empty_dbase()
-    _ , class_A_uri = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_uri("A") == class_A_uri
+    class_A_id = GraphSchema.create_class("A")
+    class_A_uri = GraphSchema.get_class_entity_id(internal_id=class_A_id)
+    assert GraphSchema.get_class_entity_id(class_name="A") == class_A_uri
 
-    _ , class_B_uri = GraphSchema.create_class("B")
-    assert GraphSchema.get_class_uri("A") == class_A_uri
-    assert GraphSchema.get_class_uri("B") == class_B_uri
+    class_B_id = GraphSchema.create_class("B")
+    class_B_uri = GraphSchema.get_class_entity_id(internal_id=class_B_id)
+    assert GraphSchema.get_class_entity_id(class_name="A") == class_A_uri
+    assert GraphSchema.get_class_entity_id(class_name="B") == class_B_uri
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_uri("NON-EXISTENT CLASS")
+        assert GraphSchema.get_class_entity_id(class_name="NON-EXISTENT CLASS")
 
 
 
-def test_get_class_uri_by_internal_id(db):
+def test_get_class_entity_id_2(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        GraphSchema.get_class_uri_by_internal_id(999)   # Non-existent class
+        GraphSchema.get_class_entity_id(internal_id=999)   # Non-existent class
 
-    class_A_neo_uri , class_A_uri = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_uri_by_internal_id(class_A_neo_uri) == class_A_uri
+    class_A_internal_id = GraphSchema.create_class("A")
+    class_A_uri = GraphSchema.get_class_entity_id(class_name="A")
+    assert GraphSchema.get_class_entity_id(internal_id=class_A_internal_id) == class_A_uri
 
-    class_B_neo_uri , class_B_uri = GraphSchema.create_class("B")
-    assert GraphSchema.get_class_uri_by_internal_id(class_A_neo_uri) == class_A_uri
-    assert GraphSchema.get_class_uri_by_internal_id(class_B_neo_uri) == class_B_uri
+    class_B_internal_id = GraphSchema.create_class("B")
+    class_B_uri = GraphSchema.get_class_entity_id(class_name="B")
+    assert GraphSchema.get_class_entity_id(internal_id=class_A_internal_id) == class_A_uri
+    assert GraphSchema.get_class_entity_id(internal_id=class_B_internal_id) == class_B_uri
 
 
 
 def test_class_uri_exists(db):
     db.empty_dbase()
-    assert not GraphSchema.class_uri_exists("schema-123")
+    assert not GraphSchema.class_entity_id_exists("schema-123")
 
     with pytest.raises(Exception):
-        assert GraphSchema.class_uri_exists(123)  # Not a string
+        assert GraphSchema.class_entity_id_exists(123)  # Not a string
 
-    _ , class_A_uri = GraphSchema.create_class("A")
-    assert GraphSchema.class_uri_exists(class_A_uri)
+    GraphSchema.create_class("A")
+    class_A_uri = GraphSchema.get_class_entity_id(class_name="A")
+    assert GraphSchema.class_entity_id_exists(class_A_uri)
 
 
 
@@ -136,35 +143,38 @@ def test_class_name_exists(db):
     assert GraphSchema.class_name_exists("A")
 
     with pytest.raises(Exception):
-        assert GraphSchema.class_uri_exists("B")
+        assert GraphSchema.class_entity_id_exists("B")
 
     with pytest.raises(Exception):
-        assert GraphSchema.class_uri_exists(123)
+        assert GraphSchema.class_entity_id_exists(123)
 
 
 
 def test_get_class_name_by_schema_uri(db):
     db.empty_dbase()
-    _ , class_A_uri = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_name_by_schema_uri(class_A_uri) == "A"
+    GraphSchema.create_class("A")
+    class_A_uri = GraphSchema.get_class_entity_id(class_name="A")
+    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
 
-    _ , class_B_uri = GraphSchema.create_class("B")
-    assert GraphSchema.get_class_name_by_schema_uri(class_A_uri) == "A"
-    assert GraphSchema.get_class_name_by_schema_uri(class_B_uri) == "B"
+    GraphSchema.create_class("B")
+    class_B_uri = GraphSchema.get_class_entity_id(class_name="B")
+    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity_id(class_B_uri) == "B"
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_uri("schema-XYZ")
+        assert GraphSchema.get_class_name_by_schema_entity_id("schema-XYZ")
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_uri(123)
+        assert GraphSchema.get_class_name_by_schema_entity_id(123)
+
 
 
 def test_get_class_name(db):
     db.empty_dbase()
-    class_A_neoid , _ = GraphSchema.create_class("A")
+    class_A_neoid = GraphSchema.create_class("A")
     assert GraphSchema.get_class_name(class_A_neoid) == "A"
 
-    class_B_neoid , _ = GraphSchema.create_class("B")
+    class_B_neoid = GraphSchema.create_class("B")
     assert GraphSchema.get_class_name(class_A_neoid) == "A"
     assert GraphSchema.get_class_name(class_B_neoid) == "B"
 
@@ -182,12 +192,14 @@ def test_get_class_name(db):
 def test_get_class_attributes(db):
     db.empty_dbase()
 
-    class_A_neoid , class_A_uri = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'uri': class_A_uri, 'strict': False}
+    class_A_neoid = GraphSchema.create_class("A")
+    class_A_uri = GraphSchema.get_class_entity_id(class_name="A")
+    assert GraphSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'entity_id': class_A_uri, 'strict': False}
 
-    class_B_neoid , class_B_uri = GraphSchema.create_class("B", no_datanodes=True)
-    assert GraphSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'uri': class_A_uri, 'strict': False}
-    assert GraphSchema.get_class_attributes(class_B_neoid) == {'name': 'B', 'uri': class_B_uri, 'strict': False, 'no_datanodes': True}
+    class_B_neoid = GraphSchema.create_class("B", no_datanodes=True)
+    class_B_uri = GraphSchema.get_class_entity_id(class_name="B")
+    assert GraphSchema.get_class_attributes(class_A_neoid) == {'name': 'A', 'entity_id': class_A_uri, 'strict': False}
+    assert GraphSchema.get_class_attributes(class_B_neoid) == {'name': 'B', 'entity_id': class_B_uri, 'strict': False, 'no_datanodes': True}
 
     with pytest.raises(Exception):
         GraphSchema.get_class_attributes(2345)                    # No such Class exists
@@ -230,7 +242,7 @@ def test_rename_class(db):
         GraphSchema.rename_class(old_name="Car", new_name="Vehicle")  # Doesn't exist
 
     internal_id = GraphSchema.create_class_with_properties("Car", strict=True,
-                                                              properties=["color"])
+                                                           properties=["color"])
 
     result = GraphSchema.rename_class(old_name="Car", new_name="Vehicle")
     assert result == 0       # No Data Nodes were affected
@@ -283,8 +295,10 @@ def test_rename_class(db):
 
 def test_create_class_relationship(db):
     db.empty_dbase()
-    french_id , french_uri  = GraphSchema.create_class("French Vocabulary")
-    foreign_id, foreign_uri = GraphSchema.create_class("Foreign Vocabulary")
+    french_id = GraphSchema.create_class("French Vocabulary")
+    french_uri = GraphSchema.get_class_entity_id(class_name="French Vocabulary")
+    foreign_id = GraphSchema.create_class("Foreign Vocabulary")
+    foreign_uri = GraphSchema.get_class_entity_id(class_name="Foreign Vocabulary")
 
     # Blank or None name will also raise an Exception
     with pytest.raises(Exception):
@@ -295,9 +309,9 @@ def test_create_class_relationship(db):
     GraphSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name="INSTANCE_OF")
 
     q = f'''MATCH 
-        (from :CLASS {{name:"French Vocabulary", uri: '{french_uri}'}})
+        (from :CLASS {{name:"French Vocabulary", entity_id: '{french_uri}'}})
         -[:INSTANCE_OF]
-        ->(to :CLASS {{name:"Foreign Vocabulary", uri: '{foreign_uri}'}}) 
+        ->(to :CLASS {{name:"Foreign Vocabulary", entity_id: '{foreign_uri}'}}) 
         WHERE id(from) = {french_id} AND id(to) = {foreign_id}
         RETURN count(from) AS number_found
         '''
@@ -315,9 +329,9 @@ def test_create_class_relationship(db):
 
     # Verify
     q = f'''MATCH 
-        (from :CLASS {{name:"French Vocabulary", uri: '{french_uri}'}})
+        (from :CLASS {{name:"French Vocabulary", entity_id: '{french_uri}'}})
         -[:INSTANCE_OF]
-        ->(to :CLASS {{name:"Foreign Vocabulary", uri: '{foreign_uri}'}})
+        ->(to :CLASS {{name:"Foreign Vocabulary", entity_id: '{foreign_uri}'}})
         <-[:INSTANCE_OF]-(:CLASS {{name:"German Vocabulary"}})
         WHERE id(from) = {french_id} AND id(to) = {foreign_id}
         RETURN count(from) AS number_found
@@ -325,15 +339,16 @@ def test_create_class_relationship(db):
     assert db.query(q, single_cell="number_found") == 1
 
 
-    _, course_uri = GraphSchema.create_class("Course")
+    GraphSchema.create_class("Course")
+    course_uri = GraphSchema.get_class_entity_id(class_name="Course")
     GraphSchema.create_class_relationship(from_class="Foreign Vocabulary", to_class="Course",
                                           rel_name="USED_IN", link_properties=["Frequency", "Usefulness"])
 
     # Verify
     q = f'''MATCH 
-        (from :CLASS {{name:"Foreign Vocabulary", uri: '{foreign_uri}'}})
+        (from :CLASS {{name:"Foreign Vocabulary", entity_id: '{foreign_uri}'}})
         -[:USED_IN]->(l :LINK)-[:USED_IN]
-        ->(to :CLASS {{name:"Course", uri: '{course_uri}'}})
+        ->(to :CLASS {{name:"Course", entity_id: '{course_uri}'}})
         MATCH (l)-[:HAS_PROPERTY]->(p :PROPERTY)
         RETURN p.name AS prop_name ORDER BY prop_name
         '''
@@ -403,8 +418,8 @@ def test_class_relationship_exists(db):
 
 def test_delete_class_relationship(db):
     db.empty_dbase()
-    _ , class_A_uri = GraphSchema.create_class("A")
-    _ , class_B_uri = GraphSchema.create_class("B")
+    GraphSchema.create_class("A")
+    GraphSchema.create_class("B")
 
     with pytest.raises(Exception):
         GraphSchema.delete_class_relationship(from_class="A", to_class="B", rel_name=None)
@@ -445,8 +460,8 @@ def test_delete_class_relationship(db):
 
 def test_unlink_classes(db):
     db.empty_dbase()
-    person, _ = GraphSchema.create_class(name="Person")
-    car, _ = GraphSchema.create_class(name="Car")
+    person= GraphSchema.create_class(name="Person")
+    car= GraphSchema.create_class(name="Car")
 
     # Create links in both directions between our 2 Classes
     GraphSchema.create_class_relationship(from_class="Person", to_class="Car", rel_name="OWNS")
@@ -621,10 +636,10 @@ def test_is_strict_class(db):
 def test_is_strict_class_fast(db):
     db.empty_dbase()
 
-    internal_id , _ = GraphSchema.create_class("I am strict", strict=True)
+    internal_id = GraphSchema.create_class("I am strict", strict=True)
     assert GraphSchema.is_strict_class_fast(internal_id)
 
-    internal_id , _ = GraphSchema.create_class("I am lax", strict=False)
+    internal_id = GraphSchema.create_class("I am lax", strict=False)
     assert not GraphSchema.is_strict_class_fast(internal_id)
 
 
@@ -632,13 +647,13 @@ def test_is_strict_class_fast(db):
 def test_allows_data_nodes(db):
     db.empty_dbase()
 
-    int_id_yes , _ = GraphSchema.create_class("French Vocabulary")
+    int_id_yes = GraphSchema.create_class("French Vocabulary")
     assert GraphSchema.allows_data_nodes(class_name="French Vocabulary") == True
-    assert GraphSchema.allows_data_nodes(class_internal_id=int_id_yes) == True
+    assert GraphSchema.allows_data_nodes(internal_id=int_id_yes) == True
 
-    int_id_no , _ = GraphSchema.create_class("Vocabulary", no_datanodes = True)
+    int_id_no = GraphSchema.create_class("Vocabulary", no_datanodes = True)
     assert GraphSchema.allows_data_nodes(class_name="Vocabulary") == False
-    assert GraphSchema.allows_data_nodes(class_internal_id=int_id_no) == False
+    assert GraphSchema.allows_data_nodes(internal_id=int_id_no) == False
 
 
 
@@ -687,26 +702,26 @@ def test_get_class_properties(db):
     db.empty_dbase()
 
     GraphSchema.create_class_with_properties("My first class", properties=["A", "B", "C"])
-    neo_uri = GraphSchema.get_class_internal_id("My first class")
-    props = GraphSchema.get_class_properties(neo_uri)
+    internal_id = GraphSchema.get_class_internal_id("My first class")
+    props = GraphSchema.get_class_properties(internal_id)
     assert props == ["A", "B", "C"]
     props = GraphSchema.get_class_properties("My first class")
     assert props == ["A", "B", "C"]
 
-    neo_uri, _ = GraphSchema.create_class("My BIG class")
-    props = GraphSchema.get_class_properties(neo_uri)
+    internal_id= GraphSchema.create_class("My BIG class")
+    props = GraphSchema.get_class_properties(internal_id)
     assert props == []
     props = GraphSchema.get_class_properties("My BIG class")
     assert props == []
 
-    GraphSchema.add_properties_to_class(class_node=neo_uri, property_list = ["X", "Y"])
-    props = GraphSchema.get_class_properties(neo_uri)
+    GraphSchema.add_properties_to_class(class_node=internal_id, properties= ["X", "Y"])
+    props = GraphSchema.get_class_properties(internal_id)
     assert props == ["X", "Y"]
     props = GraphSchema.get_class_properties(class_node="My BIG class")
     assert props == ["X", "Y"]
 
-    GraphSchema.add_properties_to_class(class_node=neo_uri, property_list = ["Z"])
-    props = GraphSchema.get_class_properties(neo_uri)
+    GraphSchema.add_properties_to_class(class_node=internal_id, properties= ["Z"])
+    props = GraphSchema.get_class_properties(internal_id)
     assert props == ["X", "Y", "Z"]
 
 
@@ -750,10 +765,56 @@ def test_get_class_properties(db):
 
 
 def test_add_properties_to_class(db):
-    pass    # TODO
+    db.empty_dbase()
+
+    internal_id= GraphSchema.create_class("My first class")
+
+    GraphSchema.add_properties_to_class(class_node=internal_id, properties= ["X", "Y"])
+    q = '''
+    MATCH (p1:PROPERTY {name: "X", entity_id:"schema-2"})
+    <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+    (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+    RETURN n
+    '''
+    result = db.query(q)
+    assert len(result) == 1
+
+    GraphSchema.add_properties_to_class(class_node=internal_id, properties= ["Z"])
+    q = '''
+    MATCH (p1:PROPERTY {name: "X", entity_id:"schema-2"})
+    <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+    (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+    RETURN n
+    '''
+    result = db.query(q)
+    assert len(result) == 1
+
+    q = '''
+    MATCH (p1:PROPERTY {name: "Z", entity_id:"schema-4"})
+    <-[:HAS_PROPERTY {index: 3}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+    (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+    RETURN n
+    '''
+    result = db.query(q)
+    assert len(result) == 1
+
+
 
 def test_create_class_with_properties(db):
-    pass    # TODO
+    db.empty_dbase()
+
+    internal_id = GraphSchema.create_class_with_properties("Car", strict=True,
+                                                           properties=["color"])
+
+    q = f'''
+    MATCH (n:CLASS {{name: "Car", strict:true}})-[:HAS_PROPERTY]->(:PROPERTY {{name: "color"}}) 
+    WHERE id(n) = {internal_id}
+    RETURN n LIMIT 25
+    '''
+    result = db.query(q)
+    assert len(result) == 1
+
+    #TODO: more tests
 
 
 
@@ -804,8 +865,7 @@ def test_is_property_allowed(db):
     assert not GraphSchema.is_property_allowed(property_name="cost", class_name="I_dont_exist")
 
     GraphSchema.create_class_with_properties("My Lax class", ["A", "B"], strict=False)
-    strict_internal_id = GraphSchema.create_class_with_properties("My Strict class", ["X", "Y"], strict=True)
-    strict_uri = GraphSchema.get_class_uri_by_internal_id(strict_internal_id)
+    GraphSchema.create_class_with_properties("My Strict class", ["X", "Y"], strict=True)
 
     assert GraphSchema.is_property_allowed(property_name="A", class_name="My Lax class")
     assert GraphSchema.is_property_allowed(property_name="B", class_name="My Lax class")
@@ -815,13 +875,12 @@ def test_is_property_allowed(db):
     assert GraphSchema.is_property_allowed(property_name="Y", class_name="My Strict class")
     assert not GraphSchema.is_property_allowed(property_name="some other field", class_name="My Strict class")
 
-    GraphSchema.add_properties_to_class(class_uri=strict_uri, property_list=["some other field"])   # Now it will be declared!
+    GraphSchema.add_properties_to_class(class_node="My Strict class", properties=["some other field"])   # Now it will be declared!
 
     assert GraphSchema.is_property_allowed(property_name="some other field", class_name="My Strict class")
 
 
-    german_internal_id = GraphSchema.create_class_with_properties("German Vocabulary", ["German"], strict=True)
-    german_uri = GraphSchema.get_class_uri_by_internal_id(german_internal_id)
+    GraphSchema.create_class_with_properties("German Vocabulary", ["German"], strict=True)
     assert GraphSchema.is_property_allowed(property_name="German", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
@@ -829,19 +888,17 @@ def test_is_property_allowed(db):
     # "notes" and "English" are Properties of the more general "Foreign Vocabulary" Class,
     # of which "German Vocabulary" is an instance
     foreign_internal_id = GraphSchema.create_class_with_properties("Foreign Vocabulary", ["English", "notes"], strict=True)
-    foreign_uri = GraphSchema.get_class_uri_by_internal_id(foreign_internal_id)
     GraphSchema.create_class_relationship(from_class="German Vocabulary", to_class="Foreign Vocabulary", rel_name="INSTANCE_OF")
 
     assert GraphSchema.is_property_allowed(property_name="notes", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="English", class_name="German Vocabulary")
-    assert not GraphSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")
+    assert not GraphSchema.is_property_allowed(property_name="entity_id", class_name="German Vocabulary")
 
-    content_internal_id = GraphSchema.create_class_with_properties("Content Item", ["uri"], strict=True)
-    content_uri = GraphSchema.get_class_uri_by_internal_id(content_internal_id)
+    GraphSchema.create_class_with_properties("Content Item", ["entity_id"], strict=True)
     GraphSchema.create_class_relationship(from_class="Foreign Vocabulary", to_class="Content Item", rel_name="INSTANCE_OF")
 
-    assert GraphSchema.is_property_allowed(property_name="uri", class_name="German Vocabulary")   # "uri" is now available thru ancestry
-    assert GraphSchema.is_property_allowed(property_name="uri", class_name="Foreign Vocabulary")
+    assert GraphSchema.is_property_allowed(property_name="entity_id", class_name="German Vocabulary")   # "entity_id" is now available thru ancestry
+    assert GraphSchema.is_property_allowed(property_name="entity_id", class_name="Foreign Vocabulary")
 
     assert not GraphSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
@@ -849,17 +906,17 @@ def test_is_property_allowed(db):
 
     # Properties "New_1", "New_2", "New_3" will be added, respectively,
     # to the Classes "German Vocabulary", "Foreign Vocabulary" and "Content Item"
-    GraphSchema.add_properties_to_class(class_uri=german_uri, property_list=["New_1"])
+    GraphSchema.add_properties_to_class(class_node="German Vocabulary", properties=["New_1"])
     assert GraphSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
 
-    GraphSchema.add_properties_to_class(class_uri=foreign_uri, property_list=["New_2"])
+    GraphSchema.add_properties_to_class(class_node="Foreign Vocabulary", properties=["New_2"])
     assert GraphSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
 
-    GraphSchema.add_properties_to_class(class_uri=content_uri, property_list=["New_3"])
+    GraphSchema.add_properties_to_class(class_node="Content Item", properties=["New_3"])
     assert GraphSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
@@ -927,15 +984,6 @@ def test_get_schema_code(db):
 
 
 
-def test_get_schema_uri(db):
-    db.empty_dbase()
-    _ , schema_uri_i = GraphSchema.create_class("My_class", code="i")
-    _ , schema_uri_n = GraphSchema.create_class("My_other_class", code="n")
-
-    assert GraphSchema.get_schema_uri(schema_code="i") == schema_uri_i
-    assert GraphSchema.get_schema_uri(schema_code="n") == schema_uri_n
-    assert GraphSchema.get_schema_uri(schema_code="x") == ""
-
 
 
 ################   DATA NODES : READING   ##############
@@ -994,12 +1042,12 @@ def test_get_single_data_node_EXPERIMENTAL(db):
         GraphSchema.get_single_data_node_EXPERIMENTAL(search={"key_name": "make", "key_value": "Toyota", "class_name": "Car"})   # Using "make" as primary key will fail uniqueness
 
 
-    # Create a 3rd Car node, this time with a "uri" field
+    # Create a 3rd Car node, this time with a "entity_id" field
     GraphSchema.create_data_node(class_name="Car",
-                                 properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
+                                 properties={"make": "Honda", "color": "blue"}, new_entity_id="car-1")
 
-    result = GraphSchema.get_single_data_node_EXPERIMENTAL(search={"key_name": "uri", "key_value": "car-1", "class_name": "Car"})
-    assert result == {'color': 'blue', 'make': 'Honda', 'uri': 'car-1'}
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL(search={"key_name": "entity_id", "key_value": "car-1", "class_name": "Car"})
+    assert result == {'color': 'blue', 'make': 'Honda', 'entity_id': 'car-1'}
 
 
     # Now try it on a generic database node that is NOT a Data Node
@@ -1043,12 +1091,12 @@ def test_get_single_data_node_EXPERIMENTAL_2(db):
         GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=("make", "Toyota"), class_name="Car")   # Using "make" as primary key will fail uniqueness
 
 
-    # Create a 3rd Car node, this time with a "uri" field
+    # Create a 3rd Car node, this time with a "entity_id" field
     GraphSchema.create_data_node(class_name="Car",
-                                 properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
+                                 properties={"make": "Honda", "color": "blue"}, new_entity_id="car-1")
 
-    result = GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=("uri", "car-1"), class_name="Car")
-    assert result == {'color': 'blue', 'make': 'Honda', 'uri': 'car-1'}
+    result = GraphSchema.get_single_data_node_EXPERIMENTAL_2(search=("entity_id", "car-1"), class_name="Car")
+    assert result == {'color': 'blue', 'make': 'Honda', 'entity_id': 'car-1'}
 
 
     # Now try it on a generic database node that is NOT a Data Node
@@ -1096,12 +1144,12 @@ def test_get_single_data_node(db):
         GraphSchema.get_single_data_node(node_id="Toyota", id_key="make", class_name="Car")   # Using "make" as primary key will fail uniqueness
 
 
-    # Create a 3rd Car node, this time with a "uri" field
+    # Create a 3rd Car node, this time with a "entity_id" field
     GraphSchema.create_data_node(class_name="Car",
-                                 properties={"make": "Honda", "color": "blue"}, new_uri="car-1")
+                                 properties={"make": "Honda", "color": "blue"}, new_entity_id="car-1")
 
-    result = GraphSchema.get_single_data_node(node_id="car-1", id_key="uri", class_name="Car")
-    assert result == {'color': 'blue', 'make': 'Honda', 'uri': 'car-1'}
+    result = GraphSchema.get_single_data_node(node_id="car-1", id_key="entity_id", class_name="Car")
+    assert result == {'color': 'blue', 'make': 'Honda', 'entity_id': 'car-1'}
 
 
     # Now try it on a generic database node that is NOT a Data Node
@@ -1126,16 +1174,16 @@ def test_data_node_exists_OLD(db):
     db.empty_dbase()
 
     assert not GraphSchema.data_node_exists_OLD(node_id=123)
-    assert not GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="uri", class_name="Car")
+    assert not GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="entity_id", class_name="Car")
     assert not GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id", class_name="Employee")
 
     GraphSchema.create_class(name="Car", strict = True)
-    internal_id = GraphSchema.create_data_node(class_name="Car", new_uri="c-88")
+    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="c-88")
     assert GraphSchema.data_node_exists_OLD(node_id=internal_id)
     assert GraphSchema.data_node_exists_OLD(node_id=internal_id, class_name="Car")
     assert not GraphSchema.data_node_exists_OLD(node_id=internal_id, class_name="BOAT")
-    assert GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="uri", class_name="Car")
-    assert not GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="uri", class_name="BOAT")
+    assert GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="entity_id", class_name="Car")
+    assert not GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="entity_id", class_name="BOAT")
 
     GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
     GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
@@ -1159,7 +1207,7 @@ def test_data_node_exists(db):
     assert not GraphSchema.data_node_exists(find=("Car", "c-88"))
 
     GraphSchema.create_class(name="Car", strict = True)
-    internal_id = GraphSchema.create_data_node(class_name="Car", new_uri="c-88")
+    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="c-88")
     assert GraphSchema.data_node_exists(find=internal_id)
     assert GraphSchema.data_node_exists(find=("Car", "c-88"))
     assert not GraphSchema.data_node_exists(find=("BOAT", "c-88"))
@@ -1177,20 +1225,20 @@ def test_data_node_exists_EXPERIMENTAL_2(db):
     db.empty_dbase()
 
     assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=123, class_name="Unknown")
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("uri", "c-88"), class_name="Car")
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("entity_id", "c-88"), class_name="Car")
     assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee")
 
     with pytest.raises(Exception):
-        GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("uri", "c-88"), class_name="")     # Bad Class bane
+        GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("entity_id", "c-88"), class_name="")     # Bad Class bane
 
     with pytest.raises(Exception):
         assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=([1, 2], 45), class_name="Employee")  # Bad value for "key_name" (1st element of pair)
 
     GraphSchema.create_class(name="Car", strict = True)
-    internal_id = GraphSchema.create_data_node(class_name="Car", new_uri="c-88")
+    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="c-88")
     assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=internal_id, class_name="Car")
-    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("uri", "c-88"), class_name="Car")
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("uri", "c-88"), class_name="BOAT")
+    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("entity_id", "c-88"), class_name="Car")
+    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("entity_id", "c-88"), class_name="BOAT")
 
     GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
     GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
@@ -1231,7 +1279,7 @@ def test_data_node_exists_EXPERIMENTAL(db):
             search={"class_name": "Employee", "key_name": [1, 2], "key_value": 45})  # Bad value for "key_name"
 
     GraphSchema.create_class(name="Car", strict = True)
-    internal_id = GraphSchema.create_data_node(class_name="Car", new_uri="c-88")
+    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="c-88")
     assert GraphSchema.data_node_exists_EXPERIMENTAL(search=internal_id)
     assert GraphSchema.data_node_exists_EXPERIMENTAL(search={"class_name": "Car", "key_value": "c-88"})
     assert not GraphSchema.data_node_exists_EXPERIMENTAL(search={"class_name": "BOAT", "key_value": "c-88"})
@@ -1602,20 +1650,17 @@ def test_get_all_data_nodes_of_class(db):
     assert result == [{'make': 'C&C', 'type': 'sloop', '_internal_id': db_id_boat1, '_node_labels': ['Boat']}]
 
     # Create a data node with uri field
-    db_id_car2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Fiat", "color": "blue"}, new_uri="cincilla")
+    db_id_car2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Fiat", "color": "blue"}, new_entity_id="cincilla")
 
     result= GraphSchema.get_all_data_nodes_of_class(class_name="Car")
 
     expected = [{'make': 'Toyota', 'color': 'white', '_internal_id': db_id_car1, '_node_labels': ['Car']},
-                {'make': 'Fiat', 'color': 'blue', '_internal_id': db_id_car2, '_node_labels': ['Car'], 'uri': 'cincilla'}
+                {'make': 'Fiat', 'color': 'blue', '_internal_id': db_id_car2, '_node_labels': ['Car'], 'entity_id': 'cincilla'}
                ]
 
     assert compare_recordsets(result, expected)
 
 
-
-def test_class_of_data_node(db):
-    pass    # TODO
 
 def test_data_nodes_of_class(db):
     pass    # TODO
@@ -1682,7 +1727,7 @@ def test_create_data_node_1(db):
     internal_id = GraphSchema.create_data_node(class_name="doctor",
                                                properties={"name": "Dr. Preeti", "specialty": "sports medicine"},
                                                extra_labels = None,
-                                               new_uri=None, silently_drop=False)
+                                               new_entity_id=None, silently_drop=False)
 
     q = '''
         MATCH (dn :doctor {name: "Dr. Preeti", specialty: "sports medicine", `_CLASS`: "doctor"}) 
@@ -1700,7 +1745,7 @@ def test_create_data_node_1(db):
     internal_id = GraphSchema.create_data_node(class_name="doctor",
                                                properties={"name": "Dr. Watson", "specialty": "genetics"},
                                                extra_labels = "Nobelist",
-                                               new_uri=uri, silently_drop=False)
+                                               new_entity_id=uri, silently_drop=False)
 
     q = '''
         MATCH (dn :doctor:Nobelist {name: "Dr. Watson", specialty: "genetics", `_CLASS`: "doctor"}) 
@@ -1709,7 +1754,7 @@ def test_create_data_node_1(db):
         '''
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
-    assert result[0] == {'dn': {'specialty': 'genetics', 'name': 'Dr. Watson', 'uri': uri, '_CLASS': "doctor"}}
+    assert result[0] == {'dn': {'specialty': 'genetics', 'name': 'Dr. Watson', 'entity_id': uri, '_CLASS': "doctor"}}
 
 
     # Create a 3rd "doctor" data node, this time assigning 2 extra labels and also assigning a URI
@@ -1717,7 +1762,7 @@ def test_create_data_node_1(db):
     internal_id = GraphSchema.create_data_node(class_name="doctor",
                                                properties={"name": "Dr. Lewis", "specialty": "radiology"},
                                                extra_labels = ["retired", "person"],
-                                               new_uri=uri, silently_drop=False)
+                                               new_entity_id=uri, silently_drop=False)
 
     q = '''
         MATCH (dn :doctor:retired:person {name: "Dr. Lewis", specialty: "radiology", `_CLASS`: "doctor"}) 
@@ -1727,7 +1772,7 @@ def test_create_data_node_1(db):
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
 
-    assert result[0] == {'dn': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'uri': uri, '_CLASS': "doctor"}}
+    assert result[0] == {'dn': {'specialty': 'radiology', 'name': 'Dr. Lewis', 'entity_id': uri, '_CLASS': "doctor"}}
 
 
     # Create a 4th "doctor" data node, this time using a tuple rather than a list to assign 2 extra labels
@@ -1735,7 +1780,7 @@ def test_create_data_node_1(db):
     internal_id = GraphSchema.create_data_node(class_name="doctor",
                                                properties={"name": "Dr. Clark", "specialty": "pediatrics"},
                                                extra_labels = ("retired", "person"),
-                                               new_uri=uri, silently_drop=False)
+                                               new_entity_id=uri, silently_drop=False)
 
     q = '''
         MATCH (dn :doctor:retired:person {name: "Dr. Clark", specialty: "pediatrics", `_CLASS`: "doctor"}) 
@@ -1745,7 +1790,7 @@ def test_create_data_node_1(db):
     result = db.query(q, data_binding={"internal_id": internal_id})
     assert len(result) == 1
 
-    assert result[0] == {'dn': {'specialty': 'pediatrics', 'name': 'Dr. Clark', 'uri': uri, '_CLASS': "doctor"}}
+    assert result[0] == {'dn': {'specialty': 'pediatrics', 'name': 'Dr. Clark', 'entity_id': uri, '_CLASS': "doctor"}}
 
 
 
@@ -1761,13 +1806,13 @@ def test_create_data_node_2(db):
     with pytest.raises(Exception):
         GraphSchema.create_data_node(class_name="person",
                                      properties={"name": "Joe", "address": "extraneous undeclared field"},
-                                     extra_labels = None, new_uri=None,
+                                     extra_labels = None, new_entity_id=None,
                                      silently_drop=False)
 
     # To prevent a failure, we can ask to silently drop any undeclared property
     internal_id = GraphSchema.create_data_node(class_name="person",
                                                properties={"age": 22, "address": "extraneous undeclared field"},
-                                               extra_labels = None, new_uri=None,
+                                               extra_labels = None, new_entity_id=None,
                                                silently_drop=True)
     q = '''
         MATCH (p :person {age: 22, `_CLASS`: "person"}) 
@@ -1787,7 +1832,7 @@ def test_create_data_node_2(db):
     # Because the class is "lenient", data nodes may be created with undeclared properties
     internal_id = GraphSchema.create_data_node(class_name="car",
                                                properties={"brand": "Toyota", "color": "white"},
-                                               extra_labels = None, new_uri=None,
+                                               extra_labels = None, new_entity_id=None,
                                                silently_drop=False)
     q = '''
         MATCH (c :car {brand: "Toyota", color: "white", `_CLASS`: "car"}) 
@@ -1809,7 +1854,7 @@ def test_create_data_node_3(db):
         GraphSchema.create_data_node(class_name="No data nodes allowed")   # The Class doesn't allow data nodes
 
 
-    class_internal_id , class_schema_uri = GraphSchema.create_class("Car", strict=True)
+    class_internal_id = GraphSchema.create_class("Car", strict=True)
 
     assert GraphSchema.count_data_nodes_of_class("Car") == 0
 
@@ -1853,7 +1898,7 @@ def test_create_data_node_3(db):
 
 
     # Successfully adding a 3rd data point
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, property_list=["color"]) # Expand the allow class properties
+    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["color"]) # Expand the allow class properties
 
     new_datanode_internal_id = GraphSchema.create_data_node(class_name="Car",
                                                             properties={"color": "white"})
@@ -1872,7 +1917,7 @@ def test_create_data_node_3(db):
 
 
     # Again expand the allowed class properties
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, property_list=["year"])
+    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["year"])
 
     with pytest.raises(Exception):
         GraphSchema.create_data_node(class_name="Car",
@@ -1970,11 +2015,11 @@ def test_create_data_node_4(db):
 
 
     # Create a new data node for a "result", linked to the existing "patient" data node;
-    #   this time, also assign a "uri" to the new data node, and it's an IN-bound relationship
+    #   this time, also assign a "entity_id" to the new data node, and it's an IN-bound relationship
     result_internal_id = GraphSchema.create_data_node(class_name="result",
                                                       properties={"biomarker": "glucose", "value": 99},
                                                       links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
-                                                      new_uri="RESULT-1")
+                                                      new_entity_id="RESULT-1")
     q = '''
         MATCH 
         (p :patient {name: "Jill", age: 22, balance: 145, `_CLASS`:"patient"})
@@ -1988,15 +2033,15 @@ def test_create_data_node_4(db):
                                        })
     assert len(result) == 1
     record = result[0]
-    assert record['r']['uri'] == "RESULT-1"
+    assert record['r']['entity_id'] == "RESULT-1"
 
 
     # Create a 2nd data point for a "result", linked to the existing "patient" data point;
-    #   agan with a specific "uri" assigned to the new data node
+    #   agan with a specific "entity_id" assigned to the new data node
     result2_internal_id = GraphSchema.create_data_node(class_name="result",
                                                        properties={"biomarker": "cholesterol", "value": 180},
                                                        links=[{"internal_id": patient_internal_id, "rel_name": "HAS_RESULT", "rel_dir": "IN"}],
-                                                       new_uri="RESULT-2")
+                                                       new_entity_id="RESULT-2")
     q = '''
         MATCH 
         (r1 :result {biomarker: "glucose", value: 99, `_CLASS`:"result"})
@@ -2012,8 +2057,8 @@ def test_create_data_node_4(db):
                                        })
     assert len(result) == 1
     record = result[0]
-    assert record['r1']['uri'] == "RESULT-1"    # From earlier
-    assert record['r2']['uri'] == "RESULT-2"    # The specific "uri" that was passed
+    assert record['r1']['entity_id'] == "RESULT-1"    # From earlier
+    assert record['r2']['entity_id'] == "RESULT-2"    # The specific "entity_id" that was passed
 
 
     # Create another "patient" node, linked to the existing "doctor" data node, this time with some extra properties
@@ -2092,10 +2137,10 @@ def test_update_data_node(db):
 
     # Create a "doctor" data node
     GraphSchema.create_namespace(name="doctor", prefix ="doc-")
-    uri = GraphSchema.reserve_next_uri(namespace="doctor")
+    uri = GraphSchema.reserve_next_entity_id(namespace="doctor")
     internal_id = GraphSchema.create_data_node(class_name="doctor",
                                                properties={"name": "Dr. Watson", "specialty": "pediatrics"},
-                                               new_uri=uri)
+                                               new_entity_id=uri)
 
     # The doctor is changing specialty...
     count = GraphSchema.update_data_node(data_node=internal_id, set_dict={"specialty": "ob/gyn"})
@@ -2103,7 +2148,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Dr. Watson", "specialty": "ob/gyn", "_CLASS": "doctor"}]
+    assert result == [{'entity_id': uri, "name": "Dr. Watson", "specialty": "ob/gyn", "_CLASS": "doctor"}]
 
 
     # Completely drop the specialty field
@@ -2112,7 +2157,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Dr. Watson", "_CLASS": "doctor"}]
+    assert result == [{'entity_id': uri, "name": "Dr. Watson", "_CLASS": "doctor"}]
 
 
     # Turn the name value blank, but don't drop the field
@@ -2121,7 +2166,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "", "_CLASS": "doctor"}]
+    assert result == [{'entity_id': uri, "name": "", "_CLASS": "doctor"}]
 
 
     # Set the name, this time locating the record by its URI
@@ -2130,7 +2175,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "_CLASS": "doctor"}]
+    assert result == [{'entity_id': uri, "name": "Prof. Fleming", "_CLASS": "doctor"}]
 
 
     # Add 2 extra fields: notice the junk leading/trailing blanks in the string
@@ -2139,7 +2184,7 @@ def test_update_data_node(db):
     assert count == 2
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
+    assert result == [{'entity_id': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
 
 
     # A vacuous "change" that doesn't actually do anything
@@ -2148,7 +2193,7 @@ def test_update_data_node(db):
     assert count == 0
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
+    assert result == [{'entity_id': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
 
 
     # A "change" that doesn't actually change anything, but nonetheless is counted as 1 property set
@@ -2156,7 +2201,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
+    assert result == [{'entity_id': uri, "name": "Prof. Fleming", "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
 
 
     # A "change" that causes a field of blanks to get dropped
@@ -2164,7 +2209,7 @@ def test_update_data_node(db):
     assert count == 1
     result = db.get_nodes(match=internal_id,
                           return_internal_id=False, return_labels=False)
-    assert result == [{'uri': uri, "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
+    assert result == [{'entity_id': uri, "location": "San Francisco", "retired": False, "_CLASS": "doctor"}]
 
 
 
@@ -2175,12 +2220,12 @@ def test_add_data_node_merge(db):
         GraphSchema.add_data_node_merge(class_name="I_dont_exist",
                                         properties={"junk": 123})     # No such class exists
 
-    class_internal_id , _ = GraphSchema.create_class("No data nodes allowed", no_datanodes = True)
+    GraphSchema.create_class("No data nodes allowed", no_datanodes = True)
     with pytest.raises(Exception):
         GraphSchema.add_data_node_merge(class_name="No data nodes allowed",
                                         properties={"junk": 123})   # The Class doesn't allow data nodes
 
-    class_internal_id , class_schema_uri = GraphSchema.create_class("Car", strict=True)
+    class_internal_id = GraphSchema.create_class("Car", strict=True)
     assert GraphSchema.count_data_nodes_of_class("Car") == 0
 
     with pytest.raises(Exception):
@@ -2190,7 +2235,7 @@ def test_add_data_node_merge(db):
         # "color" is not a registered property of the Class "Car"
         GraphSchema.add_data_node_merge(class_name="Car", properties={"color": "white"})
 
-    GraphSchema.add_properties_to_class(class_node = class_internal_id, property_list = ["color"])
+    GraphSchema.add_properties_to_class(class_node = class_internal_id, properties= ["color"])
 
 
     # Successfully adding the first data point
@@ -2249,7 +2294,7 @@ def test_add_data_node_merge(db):
 
 
     # Again expand the allowed class properties
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, property_list=["year"])
+    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["year"])
 
     with pytest.raises(Exception):
         GraphSchema.add_data_node_merge(class_name="Car",
@@ -2328,7 +2373,7 @@ def test_add_data_node_merge(db):
     assert GraphSchema.count_data_nodes_of_class("Car") == 5     # UNCHANGED
 
 
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, property_list=["make"])
+    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["make"])
     # ... but there's no car "red, 1999, Toyota"
     new_datanode_id, status = GraphSchema.add_data_node_merge(class_name="Car",
                                                               properties={"color": "red", "year": 1999, "make": "Toyota"})
@@ -2546,10 +2591,10 @@ def test_add_data_relationship(db):
     with pytest.raises(Exception):
         GraphSchema.add_data_relationship(from_id=neo_uri_1, to_id=neo_uri_2, rel_name="junk") # Not data nodes with a Schema
 
-    _ , person_class_uri = GraphSchema.create_class("Person", strict=True)
-    person_internal_id = GraphSchema.create_data_node(class_name="Person", new_uri="julian")
+    GraphSchema.create_class("Person", strict=True)
+    person_internal_id = GraphSchema.create_data_node(class_name="Person", new_entity_id="julian")
 
-    _ , car_class_uri = GraphSchema.create_class("Car")
+    GraphSchema.create_class("Car")
     car_internal_id = GraphSchema.create_data_node(class_name="Car", properties={"color": "white"})
 
     with pytest.raises(Exception):
@@ -2590,52 +2635,81 @@ def test_add_data_relationship(db):
     assert db.links_exist(match_from=car_internal_id, match_to=person_internal_id, rel_name="IS_DRIVEN_BY")
 
     # Now add a relationship using URI's instead of internal database ID's
-    red_car_internal_id = GraphSchema.create_data_node(class_name="Car", properties={"color": "red"}, new_uri="new_car")
-    GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="uri", rel_name="DRIVES")
+    red_car_internal_id = GraphSchema.create_data_node(class_name="Car", properties={"color": "red"}, new_entity_id="new_car")
+    GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="entity_id", rel_name="DRIVES")
     assert db.links_exist(match_from=person_internal_id, match_to=red_car_internal_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         # Relationship name not declared in the Schema
-        GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="uri", rel_name="PAINTS")
+        GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="entity_id", rel_name="PAINTS")
 
 
 
 def test_remove_data_relationship(db):
-    pass    # TODO
+    db.empty_dbase()
+    GraphSchema.create_class("Person")
+    p1 = GraphSchema.create_data_node(class_name="Person", properties={"name": "Jack"})
+    p2 = GraphSchema.create_data_node(class_name="Person", properties={"name": "Jill"},
+                                      links=[{"internal_id": p1, "rel_name": "KNOWS"}])
+
+    assert db.number_of_links(match_from=p2, match_to=p1, rel_name="KNOWS") == 1
+
+    with pytest.raises(Exception):
+        GraphSchema.remove_data_relationship(from_id=p2, to_id=p1, rel_name="NON_EXISTENT")
+
+    with pytest.raises(Exception):
+        GraphSchema.remove_data_relationship(from_id=p2, to_id=p1, rel_name="")     # Missing name
+
+
+    GraphSchema.remove_data_relationship(from_id=p2, to_id=p1, rel_name="KNOWS")
+    assert db.number_of_links(match_from=p2, match_to=p1, rel_name="KNOWS") == 0    # Now gone
 
 
 
-def test_class_of_data_point(db):
+def test_class_and_entity_id(db):
+    db.empty_dbase()
+    GraphSchema.create_class("Person")
+    p = GraphSchema.create_data_node(class_name="Person", properties={"name": "Julian"},
+                                     new_entity_id="person-1")
+
+    result = GraphSchema.class_and_entity_id(p)
+    assert result == ('Person', 'person-1')
+
+
+
+def test_class_of_data_node(db):
     db.empty_dbase()
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=123)  # No such data node exists
+        GraphSchema.class_of_data_node(node_id=123)     # No such data node exists
+
 
     internal_id = db.create_node("random")
     with pytest.raises(Exception):
         GraphSchema.class_of_data_node(node_id=internal_id)     # It's not a data node
 
-    GraphSchema.create_class("Person")
-    uri = GraphSchema.reserve_next_uri()      # Obtain (and reserve) the next auto-increment value
-    GraphSchema.create_data_node(class_name="Person", new_uri=uri)
 
-    assert GraphSchema.class_of_data_node(node_id=uri, id_key="uri") == "Person"
-    assert GraphSchema.class_of_data_node(node_id=uri, id_key="uri", labels="Person") == "Person"
+    GraphSchema.create_class("Person")
+    person_entity_id = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
+    GraphSchema.create_data_node(class_name="Person", new_entity_id=person_entity_id)
+
+    assert GraphSchema.class_of_data_node(node_id=person_entity_id, id_key="entity_id") == "Person"
+    assert GraphSchema.class_of_data_node(node_id=person_entity_id, id_key="entity_id", labels="Person") == "Person"
 
     # Now locate thru the internal database ID
-    internal_id = GraphSchema.get_data_node_id(uri)
-    #print("neo_uri: ", neo_uri)
+    internal_id = GraphSchema.get_data_node_internal_id(class_name="Person", entity_id=person_entity_id)
+    #print("internal_id: ", internal_id)
     assert GraphSchema.class_of_data_node(node_id=internal_id) == "Person"
 
     GraphSchema.create_class("Extra")
     # Create a forbidden scenario with a data node having 2 Schema classes
     q = f'''
-        MATCH (n {{uri: '{uri}' }})
+        MATCH (n {{entity_id: '{person_entity_id}' }})
         SET n.`_CLASS` = 666
         '''
     #db.debug_print(q, {}, "test")
     db.update_query(q)
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=uri, id_key="uri")    # Data node is associated to a non-string class name
+        GraphSchema.class_of_data_node(node_id=person_entity_id, id_key="entity_id")    # Data node is associated to a non-string class name
 
 
 
@@ -2689,59 +2763,71 @@ def test_create_namespace(db):
 
 
 
-def test_reserve_next_uri(db):
+def test__next_available_schema_entity_id(db):
+    db.empty_dbase()
+
+    assert GraphSchema._next_available_schema_entity_id() == "schema-1"
+
+    assert GraphSchema.namespace_exists("schema_node")
+
+    assert GraphSchema._next_available_schema_entity_id() == "schema-2"
+    assert GraphSchema._next_available_schema_entity_id() == "schema-3"
+
+
+
+def test_reserve_next_entity_id(db):
     db.empty_dbase()
 
     GraphSchema.create_namespace(name="data_node")   # Accept default blank prefix/suffix
-    assert GraphSchema.reserve_next_uri(namespace="data_node") == "1"   # Accept default blank prefix/suffix
-    assert GraphSchema.reserve_next_uri("data_node") == "2"
-    assert GraphSchema.reserve_next_uri("data_node") == "3"
-    assert GraphSchema.reserve_next_uri(namespace="data_node", prefix="i-") == "i-4"        # Force a prefix
-    assert GraphSchema.reserve_next_uri(namespace="data_node", suffix=".jpg") == "5.jpg"    # Force a suffix
-    assert GraphSchema.reserve_next_uri("data_node") == "6"
-    assert GraphSchema.reserve_next_uri() == "7"    # default namespace
+    assert GraphSchema.reserve_next_entity_id(namespace="data_node") == "1"   # Accept default blank prefix/suffix
+    assert GraphSchema.reserve_next_entity_id("data_node") == "2"
+    assert GraphSchema.reserve_next_entity_id("data_node") == "3"
+    assert GraphSchema.reserve_next_entity_id(namespace="data_node", prefix="i-") == "i-4"        # Force a prefix
+    assert GraphSchema.reserve_next_entity_id(namespace="data_node", suffix=".jpg") == "5.jpg"    # Force a suffix
+    assert GraphSchema.reserve_next_entity_id("data_node") == "6"
+    assert GraphSchema.reserve_next_entity_id() == "7"    # default namespace
 
     with pytest.raises(Exception):
-        GraphSchema.reserve_next_uri(namespace="notes")   # Namespace doesn't exist yet
+        GraphSchema.reserve_next_entity_id(namespace="notes")   # Namespace doesn't exist yet
 
     GraphSchema.create_namespace(name="notes", prefix="n-")
-    assert GraphSchema.reserve_next_uri(namespace="notes") == "n-1"
-    assert GraphSchema.reserve_next_uri(namespace="notes", prefix="n-") == "n-2"    # Redundant specification of prefix
-    assert GraphSchema.reserve_next_uri(namespace="notes") == "n-3"                 # No need to specify the prefix (stored)
+    assert GraphSchema.reserve_next_entity_id(namespace="notes") == "n-1"
+    assert GraphSchema.reserve_next_entity_id(namespace="notes", prefix="n-") == "n-2"    # Redundant specification of prefix
+    assert GraphSchema.reserve_next_entity_id(namespace="notes") == "n-3"                 # No need to specify the prefix (stored)
 
     GraphSchema.create_namespace(name="schema_node", prefix="schema-")
-    assert GraphSchema.reserve_next_uri(namespace="schema_node") == "schema-1"
-    assert GraphSchema.reserve_next_uri(namespace="schema_node") == "schema-2"
+    assert GraphSchema.reserve_next_entity_id(namespace="schema_node") == "schema-1"
+    assert GraphSchema.reserve_next_entity_id(namespace="schema_node") == "schema-2"
 
     GraphSchema.create_namespace(name="documents", prefix="d-", suffix="")
-    assert GraphSchema.reserve_next_uri("documents", prefix="d-", suffix="") == "d-1"
-    assert GraphSchema.reserve_next_uri("documents", prefix="d-") == "d-2"
-    assert GraphSchema.reserve_next_uri("documents", prefix="doc.", suffix=".new") == "doc.3.new"
+    assert GraphSchema.reserve_next_entity_id("documents", prefix="d-", suffix="") == "d-1"
+    assert GraphSchema.reserve_next_entity_id("documents", prefix="d-") == "d-2"
+    assert GraphSchema.reserve_next_entity_id("documents", prefix="doc.", suffix=".new") == "doc.3.new"
 
     GraphSchema.create_namespace(name="images", prefix="i_", suffix=".jpg")
-    assert GraphSchema.reserve_next_uri("images", prefix="i_", suffix=".jpg") == "i_1.jpg"
-    assert GraphSchema.reserve_next_uri("images", prefix="i_") == "i_2.jpg"
-    assert GraphSchema.reserve_next_uri("documents") == "d-4"     # It remembers the original prefix
-    assert GraphSchema.reserve_next_uri("documents", suffix="/view") == "d-5/view"
-    assert GraphSchema.reserve_next_uri("documents") == "d-6"
-    assert GraphSchema.reserve_next_uri("documents", prefix=None, suffix=None) == "d-7"
+    assert GraphSchema.reserve_next_entity_id("images", prefix="i_", suffix=".jpg") == "i_1.jpg"
+    assert GraphSchema.reserve_next_entity_id("images", prefix="i_") == "i_2.jpg"
+    assert GraphSchema.reserve_next_entity_id("documents") == "d-4"     # It remembers the original prefix
+    assert GraphSchema.reserve_next_entity_id("documents", suffix="/view") == "d-5/view"
+    assert GraphSchema.reserve_next_entity_id("documents") == "d-6"
+    assert GraphSchema.reserve_next_entity_id("documents", prefix=None, suffix=None) == "d-7"
 
     with pytest.raises(Exception):
-        assert GraphSchema.reserve_next_uri(123)    # Not a string
+        assert GraphSchema.reserve_next_entity_id(123)    # Not a string
 
     with pytest.raises(Exception):
-        assert GraphSchema.reserve_next_uri("       ")
+        assert GraphSchema.reserve_next_entity_id("       ")
     with pytest.raises(Exception):
-        GraphSchema.reserve_next_uri(namespace=123)
+        GraphSchema.reserve_next_entity_id(namespace=123)
 
     with pytest.raises(Exception):
-        GraphSchema.reserve_next_uri(namespace="     ")
+        GraphSchema.reserve_next_entity_id(namespace="     ")
 
     with pytest.raises(Exception):
-        GraphSchema.reserve_next_uri(namespace="schema_node", prefix=666)
+        GraphSchema.reserve_next_entity_id(namespace="schema_node", prefix=666)
 
     with pytest.raises(Exception):
-        GraphSchema.reserve_next_uri(namespace="schema_node", suffix=["what is this"])
+        GraphSchema.reserve_next_entity_id(namespace="schema_node", suffix=["what is this"])
 
 
 
@@ -2749,7 +2835,7 @@ def test_advance_autoincrement(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        GraphSchema.reserve_next_uri(namespace="a")   # Namespace doesn't exist yet
+        GraphSchema.reserve_next_entity_id(namespace="a")   # Namespace doesn't exist yet
 
     GraphSchema.create_namespace("a")
     GraphSchema.create_namespace("schema", suffix=".test")
@@ -2793,19 +2879,20 @@ def test_advance_autoincrement(db):
 
 def test_is_valid_schema_uri(db):
     db.empty_dbase()
-    _ , uri = GraphSchema.create_class("Records")
-    assert GraphSchema.is_valid_schema_uri(uri)
+    record_id = GraphSchema.create_class("Records")
+    uri = GraphSchema.get_class_entity_id(internal_id=record_id)
+    assert GraphSchema.is_valid_schema_entity_id(uri)
 
-    assert not GraphSchema.is_valid_schema_uri("")
-    assert not GraphSchema.is_valid_schema_uri("      ")
-    assert not GraphSchema.is_valid_schema_uri("abc")
-    assert not GraphSchema.is_valid_schema_uri(123)
-    assert not GraphSchema.is_valid_schema_uri(None)
+    assert not GraphSchema.is_valid_schema_entity_id("")
+    assert not GraphSchema.is_valid_schema_entity_id("      ")
+    assert not GraphSchema.is_valid_schema_entity_id("abc")
+    assert not GraphSchema.is_valid_schema_entity_id(123)
+    assert not GraphSchema.is_valid_schema_entity_id(None)
 
-    assert GraphSchema.is_valid_schema_uri("schema-123")
-    assert not GraphSchema.is_valid_schema_uri("schema-")
-    assert not GraphSchema.is_valid_schema_uri("schema-zzz")
-    assert not GraphSchema.is_valid_schema_uri("schema123")
+    assert GraphSchema.is_valid_schema_entity_id("schema-123")
+    assert not GraphSchema.is_valid_schema_entity_id("schema-")
+    assert not GraphSchema.is_valid_schema_entity_id("schema-zzz")
+    assert not GraphSchema.is_valid_schema_entity_id("schema123")
 
 
 
@@ -2840,9 +2927,9 @@ def test_prepare_match_cypher_clause():
     assert result[1] == "WHERE id(dn) = $node_id"
     assert result[2] == {"node_id": 123}
 
-    result = GraphSchema.prepare_match_cypher_clause(node_id="c-88", id_key="uri")
+    result = GraphSchema.prepare_match_cypher_clause(node_id="c-88", id_key="entity_id")
     assert result[0] == ""
-    assert result[1] == "WHERE dn.`uri` = $node_id"
+    assert result[1] == "WHERE dn.`entity_id` = $node_id"
     assert result[2] == {"node_id": "c-88"}
 
     result = GraphSchema.prepare_match_cypher_clause(node_id=3, id_key="dimension")
@@ -2860,16 +2947,16 @@ def test_prepare_match_cypher_clause():
     assert result[1] == "WHERE id(dn) = $node_id AND dn.`_CLASS` = $class_name"
     assert result[2] == {"node_id": 123, "class_name": "Car"}
 
-    result = GraphSchema.prepare_match_cypher_clause(node_id="c-88", id_key="uri", class_name="Car")
+    result = GraphSchema.prepare_match_cypher_clause(node_id="c-88", id_key="entity_id", class_name="Car")
     assert result[0] == ":`Car`"
-    assert result[1] == "WHERE dn.`uri` = $node_id AND dn.`_CLASS` = $class_name"
+    assert result[1] == "WHERE dn.`entity_id` = $node_id AND dn.`_CLASS` = $class_name"
     assert result[2] == {"node_id": "c-88", "class_name": "Car"}
 
     with pytest.raises(Exception):
         GraphSchema.prepare_match_cypher_clause()     # No arguments
 
     with pytest.raises(Exception):
-        GraphSchema.prepare_match_cypher_clause(id_key="uri") # Missing arg `node_id`
+        GraphSchema.prepare_match_cypher_clause(id_key="entity_id") # Missing arg `node_id`
 
     with pytest.raises(Exception):
         GraphSchema.prepare_match_cypher_clause(node_id=123, id_key=456)  # id_key, if present, must be a str

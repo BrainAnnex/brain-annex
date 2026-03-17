@@ -85,12 +85,14 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
             /*
-                ---------   SERVER CALLS   ---------
+                ------------   SERVER CALLS   ------------
              */
 
-            server_communication_POST()          /* *** "POST" ***  version */
-            /* Initiate request to server
+
+            /**
+             * Initiate request to server
              */
+            server_communication_POST()          /* *** "POST" ***  version */
             {
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
@@ -107,7 +109,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 ServerCommunication.contact_server(url_server_api,
                             {method: "POST",
                              data_obj: post_data,
-                             json_encode_send: false,  /* OR true, as desired */
+                             json_encode_send: true,  /* OR false, as desired */
                              callback_fn: this.finish_server_communication,
                              custom_data: my_var
                             });
@@ -118,9 +120,10 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             },
 
 
-            server_communication_GET()          /*  *** "GET" ***  version */
-            /* Initiate request to server
+            /**
+             * Initiate request to server
              */
+            server_communication_GET()          /*  *** "GET" ***  version */
             {
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
@@ -145,18 +148,19 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
             // COMMON handler, for GET/POST
-            finish_server_communication(success, server_payload, error_message, custom_data)
-            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
 
-                success:        Boolean indicating whether the server call succeeded
-                server_payload: Whatever the server returned (stripped of information about the success of the operation)
-                error_message:  A string only applicable in case of failure
-                custom_data:    Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
-            */
+            /** Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+             *
+             * @param {bool} success - Boolean indicating whether the server call succeeded
+             * @param server_payload - Whatever the server returned (stripped of information about the success of the operation)
+             * @param {string} error_message - Only applicable in case of failure
+             * @param custom_data            - Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+             */
+            finish_server_communication(success, server_payload, error_message, custom_data)
             {
                 console.log("Finalizing the get_data_from_server() operation...");
                 console.log(`Custom pass-thru data:`);
-                console.log(custom_data)
+                console.log(custom_data);
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
@@ -170,7 +174,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                   //...
+                //...
             },
 
         }  // METHODS

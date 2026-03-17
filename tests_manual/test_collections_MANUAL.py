@@ -15,20 +15,20 @@ def test_collection_size():
 
 
 def test_add_to_collection_at_end():
-    new_uri = Collections.add_to_collection_at_end(collection_uri=708, membership_rel_name="BA_in_category",
+    new_uri = Collections.add_to_collection_at_end(collection_entity_id=708, membership_rel_name="BA_in_category",
                                                    item_class_name="Headers", item_properties={"text": "New Caption, at the end"})
     print("new_uri:", new_uri)
 
 
 def test_add_to_collection_at_beginning():
-    new_uri = Collections.add_to_collection_at_beginning(collection_uri=708, membership_rel_name="BA_in_category",
+    new_uri = Collections.add_to_collection_at_beginning(collection_entity_id=708, membership_rel_name="BA_in_category",
                                                          item_class_name="Headers", item_properties={"text": "New Caption, at the very top"})
     print("new_uri:", new_uri)
 
 
 def test_add_to_collection_after_element():
     new_uri = \
-        Collections.add_to_collection_after_element(collection_uri=708, membership_rel_name="BA_in_category",
+        Collections.add_to_collection_after_element(collection_entity_id=708, membership_rel_name="BA_in_category",
                                                     item_class_name="Headers", item_properties={"text": "Caption 4, inserted 'after element'"},
                                                     insert_after_uri=729)
     print("new_uri: ", new_uri)

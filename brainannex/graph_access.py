@@ -1344,7 +1344,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def remove_links(self, match_from :int|CypherBuilder, match_to :int|CypherBuilder, rel_name) -> int:
+    def remove_links(self, match_from :int|str|CypherBuilder, match_to :int|str|CypherBuilder, rel_name) -> int:
         """
         Remove one or more links (aka relationships/edges)
         originating in any of the nodes specified by the match_from specifications,
@@ -1359,15 +1359,15 @@ class GraphAccess(InterGraph):
                         Neo4j allows multiple relationships with the same name between the same two nodes,
                         as long as the relationships differ in their properties
 
-        :param match_from:  EITHER an integer with an internal database node id,
+        :param match_from:  EITHER an integer or string with an internal database node id,
                                 OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-        :param match_to:    EITHER an integer with an internal database node id,
+        :param match_to:    EITHER an integer or string with an internal database node id,
                                 OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
                             Note: match_from and match_to, if created by calls to match(),
                                   in scenarios where a clause dummy name is actually used,
                                   MUST use different clause dummy names.
 
-        :param rel_name:    (OPTIONAL) The name of the relationship to delete between the 2 specified nodes;
+        :param rel_name:    [OPTIONAL] The name of the relationship to delete between the 2 specified nodes;
                                 if None or a blank string, all relationships between those 2 nodes will get deleted.
                                 Blanks allowed.
 
@@ -1442,15 +1442,15 @@ class GraphAccess(InterGraph):
 
 
 
-    def number_of_links(self, match_from: Union[int, CypherBuilder], match_to: Union[int, CypherBuilder], rel_name: str) -> int:
+    def number_of_links(self, match_from :int|str|CypherBuilder, match_to :int|str|CypherBuilder, rel_name :str) -> int:
         """
         Return the number of links (aka edges or relationships) with the given name
         that exist in the direction from and to the nodes (individual nodes or set of nodes)
         that are specified in the first two arguments.
 
-        :param match_from:  EITHER an integer with an internal database node id,
+        :param match_from:  EITHER an integer or string with an internal database node id,
                                 OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-        :param match_to:    EITHER an integer with an internal database node id,
+        :param match_to:    EITHER an integer or string with an internal database node id,
                                 OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
                             Note: match_from and match_to, if created by calls to match(),
                                   in scenarios where a clause dummy name is actually used,
@@ -1637,9 +1637,11 @@ class GraphAccess(InterGraph):
         :param limit:           [OPTIONAL] The max number of neighbors to visit (not in any particular order);
                                     by default 100
 
-        :return:                A list of dictionaries with all the properties of the neighbor nodes.
+        :return:                A (possibly empty) list of dictionaries with all the properties of the neighbor nodes.
                                     If `include_id` is True, then each dict also contains a key named "_internal_id",
                                     with the internal database ID value.
+                                    If `include_labels` is True, then each dict also contains a key named "_node_labels",
+                                    with a list of the node labels.
                                     Any datetime, etc, value in the database are first converted to python strings
         """
         # TODO: add an option to only retrieve SOME of the properties

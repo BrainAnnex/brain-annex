@@ -19,14 +19,14 @@ def db():
 # ************  CREATE A SAMPLE COLLECTION for the testing  **************
 
 def create_sample_collections_class(db):
-    # Clear the dbase, create a sample Collections Class named "Photo Album" (a Class with a "name" and "uri" properties)
+    # Clear the dbase, create a sample Collections Class named "Photo Album" (a Class with a "name" and "entity_id" properties)
 
     db.empty_dbase()
 
     Collections.add_to_schema()
 
     GraphSchema.create_class_with_properties(name="Photo Album",
-                                             properties=["name", "uri"])
+                                             properties=["name", "entity_id"])
 
     GraphSchema.create_class_relationship(from_class="Photo Album", to_class="Collections",
                                           rel_name="INSTANCE_OF", use_link_node=False)
@@ -36,7 +36,7 @@ def create_sample_collections_class(db):
 def create_sample_collection_item_class():
     # Creates a "Photo" Class
     GraphSchema.create_class_with_properties(name="Photo",
-                                             properties=["caption", "uri"])
+                                             properties=["caption", "entity_id"])
 
 
 
@@ -46,8 +46,8 @@ def setup_test_collection(db):
     create_sample_collection_item_class()   # Creates a "Photo" Class
 
     # Create a Collection: a "Photo Album" named "Brazil vacation"
-    new_uri = GraphSchema.reserve_next_uri(prefix="album-")
-    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Brazil vacation"}, new_uri=new_uri)
+    new_uri = GraphSchema.reserve_next_entity_id(prefix="album-")
+    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Brazil vacation"}, new_entity_id=new_uri)
 
     return new_uri
 
@@ -62,9 +62,9 @@ def test_link_to_collection_at_end(db):
 
     # Create a 1st Collection Item : a Carnaval photo
     GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
-    carnaval_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    carnaval_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
+                                 properties ={"caption": "Dancers at Carnaval"}, new_entity_id=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
                                           collection_uri=brazil_album_uri,
@@ -72,7 +72,7 @@ def test_link_to_collection_at_end(db):
 
     # Verify that the "Dancers at Carnaval" photo is linked to the "Brazil vacation", with position 0
     q = '''
-        MATCH p=(:Photo {uri: $photo_uri, caption: "Dancers at Carnaval"})
+        MATCH p=(:Photo {entity_id: $photo_uri, caption: "Dancers at Carnaval"})
                 -[:in_album {pos: 0}]->
                 (:`Photo Album` {name: "Brazil vacation"}) 
         RETURN COUNT(p) AS number_paths
@@ -83,9 +83,9 @@ def test_link_to_collection_at_end(db):
 
 
     # Create a 2nd Collection Item : a canoeing photo
-    canoe_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
+    canoe_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS", prefix="photo-")
     GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "canoeing on the Amazon"}, new_uri=canoe_photo_uri)
+                                 properties ={"caption": "canoeing on the Amazon"}, new_entity_id=canoe_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=canoe_photo_uri,
                                           collection_uri=brazil_album_uri,
@@ -96,7 +96,7 @@ def test_link_to_collection_at_end(db):
     assert result == 1
     # And now check for the 2nd photo
     q = f'''
-        MATCH p=(:Photo {{uri: $photo_uri, caption: "canoeing on the Amazon"}})
+        MATCH p=(:Photo {{entity_id: $photo_uri, caption: "canoeing on the Amazon"}})
                 -[:in_album {{pos: {Collections.DELTA_POS}}}]->
                 (:`Photo Album` {{name: "Brazil vacation"}}) 
         RETURN COUNT(p) AS number_paths
@@ -112,25 +112,25 @@ def test_is_collection(db):
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
     # Create a Collection
-    new_uri = GraphSchema.reserve_next_uri(prefix="album-")   # This starts a namespace with autoincrement
+    new_uri = GraphSchema.reserve_next_entity_id(prefix="album-")   # This starts a namespace with autoincrement
     assert new_uri == "album-1"
 
     GraphSchema.create_data_node(class_name="Photo Album",
-                                 properties ={"name": "Jamaica vacation"}, new_uri=new_uri)
+                                 properties ={"name": "Jamaica vacation"}, new_entity_id=new_uri)
 
-    assert Collections.is_collection(collection_uri=new_uri)
+    assert Collections.is_collection(collection_entity_id=new_uri)
 
     with pytest.raises(Exception):
-        Collections.is_collection(collection_uri="some random string that is not a URI")
+        Collections.is_collection(collection_entity_id="some random string that is not a URI")
 
 
     # Create something that is NOT a collection
     GraphSchema.create_class_with_properties(name="Car",
-                                             properties=["color", "uri"])
+                                             properties=["color", "entity_id"])
     GraphSchema.create_namespace(name="cars", prefix="c-")
-    car_uri = GraphSchema.reserve_next_uri(namespace="cars")
-    GraphSchema.create_data_node(class_name="Car", properties ={"color": "white"}, new_uri=car_uri)
-    assert not Collections.is_collection(collection_uri=car_uri)
+    car_uri = GraphSchema.reserve_next_entity_id(namespace="cars")
+    GraphSchema.create_data_node(class_name="Car", properties ={"color": "white"}, new_entity_id=car_uri)
+    assert not Collections.is_collection(collection_entity_id=car_uri)
 
 
 
@@ -139,18 +139,18 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Create 2 Collections : "Jamaica" and a "Brazil" photo albums
     GraphSchema.create_namespace(name="ALBUMS", prefix="album-")
-    jamaica_uri = GraphSchema.reserve_next_uri(namespace="ALBUMS")
-    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
-    brazil_uri = GraphSchema.reserve_next_uri(namespace="ALBUMS")
+    jamaica_uri = GraphSchema.reserve_next_entity_id(namespace="ALBUMS")
+    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_entity_id=jamaica_uri)
+    brazil_uri = GraphSchema.reserve_next_entity_id(namespace="ALBUMS")
     GraphSchema.create_data_node(class_name="Photo Album",
-                                 properties ={"name": "Winter in Brazil"}, new_uri=brazil_uri)
+                                 properties ={"name": "Winter in Brazil"}, new_entity_id=brazil_uri)
 
     # Create a Collection Item : a Carnaval photo "accidentally" placed in the Jamaica album
     create_sample_collection_item_class()
     GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
-    carnaval_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    carnaval_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
+                                 properties ={"caption": "Dancers at Carnaval"}, new_entity_id=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
                                           collection_uri=jamaica_uri,
@@ -181,7 +181,7 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Verify that the carnaval photo is STILL linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        MATCH p=(:Photo {entity_id :$carnaval_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -196,7 +196,7 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Verify that the carnaval photo is now linked to the Brazil album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        MATCH p=(:Photo {entity_id: $carnaval_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Winter in Brazil"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -206,13 +206,13 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Create 2 other Collection Items : a photo of landing in Jamaica and a photo at a Jamaica resort,
     # both "accidentally" placed in the Brazil album
-    landing_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    landing_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "Landing in Jamaica"}, new_uri=landing_photo_uri)
+                                 properties ={"caption": "Landing in Jamaica"}, new_entity_id=landing_photo_uri)
 
-    resort_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    resort_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
+                                 properties ={"caption": "At the resort in Jamaica"}, new_entity_id=resort_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
                                           membership_link_name="in_album")
@@ -229,7 +229,7 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Verify that the landing photo is now linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$landing_photo_uri})
+        MATCH p=(:Photo {entity_id: $landing_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -243,7 +243,7 @@ def test_relocate_to_other_collection_at_end(db):
 
     # Verify that the resort photo is now linked to the Jamaica album, with position 20
     q = '''
-        MATCH p=(:Photo {uri:$resort_photo_uri})
+        MATCH p=(:Photo {entity_id: $resort_photo_uri})
         -[:in_album {pos: 20}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -258,18 +258,18 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Create 2 Collections : "Jamaica" and a "Brazil" photo albums
     GraphSchema.create_namespace(name="ALBUMS", prefix="album-")
-    jamaica_uri = GraphSchema.reserve_next_uri(namespace="ALBUMS")
-    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_uri=jamaica_uri)
-    brazil_uri = GraphSchema.reserve_next_uri(namespace="ALBUMS")
+    jamaica_uri = GraphSchema.reserve_next_entity_id(namespace="ALBUMS")
+    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_entity_id=jamaica_uri)
+    brazil_uri = GraphSchema.reserve_next_entity_id(namespace="ALBUMS")
     GraphSchema.create_data_node(class_name="Photo Album",
-                                 properties ={"name": "Winter in Brazil"}, new_uri=brazil_uri)
+                                 properties ={"name": "Winter in Brazil"}, new_entity_id=brazil_uri)
 
     # Create a Collection Item : a Carnaval photo "accidentally" placed in the Jamaica album
     create_sample_collection_item_class()
     GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
-    carnaval_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS", prefix="photo-")
+    carnaval_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS", prefix="photo-")
     GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "Dancers at Carnaval"}, new_uri=carnaval_photo_uri)
+                                 properties ={"caption": "Dancers at Carnaval"}, new_entity_id=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
                                           collection_uri=jamaica_uri,
@@ -303,7 +303,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Verify that the carnaval photo is STILL linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        MATCH p=(:Photo {entity_id: $carnaval_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -318,7 +318,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Verify that the carnaval photo is now linked to the Brazil album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$carnaval_photo_uri})
+        MATCH p=(:Photo {entity_id: $carnaval_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Winter in Brazil"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -328,13 +328,13 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Create 2 other Collection Items : a photo of landing in Jamaica and a photo at a Jamaica resort,
     # both "accidentally" placed in the Brazil album
-    landing_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    landing_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "Landing in Jamaica"}, new_uri=landing_photo_uri)
+                                 properties ={"caption": "Landing in Jamaica"}, new_entity_id=landing_photo_uri)
 
-    resort_photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+    resort_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "At the resort in Jamaica"}, new_uri=resort_photo_uri)
+                                 properties ={"caption": "At the resort in Jamaica"}, new_entity_id=resort_photo_uri)
 
     Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
                                           membership_link_name="in_album")
@@ -352,7 +352,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Verify that the landing photo is now linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {uri:$landing_photo_uri})
+        MATCH p=(:Photo {entity_id: $landing_photo_uri})
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -361,7 +361,7 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Verify that the resort photo is now linked to the Jamaica album, with position 20
     q = '''
-        MATCH p=(:Photo {uri:$resort_photo_uri})
+        MATCH p=(:Photo {entity_id: $resort_photo_uri})
         -[:in_album {pos: 20}]->(:`Photo Album` {name: "Jamaica vacation"}) 
         RETURN COUNT(p) AS number_paths
         '''
@@ -372,10 +372,10 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     # Add 2 photos to the Brazil album
     all_photo_uris = [0, 0]
     for i in range(2):
-        photo_uri = GraphSchema.reserve_next_uri(namespace="PHOTOS")
+        photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
         all_photo_uris[i] = photo_uri
         GraphSchema.create_data_node(class_name="Photo",
-                                     properties ={"caption": f"photo_{i}"}, new_uri=photo_uri)
+                                     properties ={"caption": f"photo_{i}"}, new_entity_id=photo_uri)
         Collections.link_to_collection_at_end(item_uri=photo_uri, collection_uri=brazil_uri,
                                               membership_link_name="in_album")
 

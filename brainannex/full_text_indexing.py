@@ -309,10 +309,10 @@ class FullTextIndexing:
         if GraphSchema.class_name_exists(content_item_class_name):
             content_item_class_id = GraphSchema.get_class_internal_id(class_name=content_item_class_name)
         else:
-            content_item_class_id, _ = GraphSchema.create_class(name=content_item_class_name, strict=False)
+            content_item_class_id = GraphSchema.create_class(name=content_item_class_name, strict=False)
 
 
-        indexer_class_id, _ = GraphSchema.create_class(name="Indexer", strict=True)
+        indexer_class_id = GraphSchema.create_class(name="Indexer", strict=True)
 
         GraphSchema.create_class_with_properties(name="Word", strict=True,
                                                  properties=["name"],
@@ -550,8 +550,8 @@ class FullTextIndexing:
             data_binding = {"internal_id": internal_id}
         elif uri:
             assert type(uri) == str, "number_of_indexed_words(): argument `uri` must be a string"
-            clause = "WHERE ci.uri = $uri"
-            data_binding = {"uri": uri}
+            clause = "WHERE ci.entity_id = $uri"
+            data_binding = {"entity_id": uri}
         else:
             raise Exception("number_of_indexed_words(): at least one argument must be specified")
 
@@ -725,7 +725,7 @@ class FullTextIndexing:
         if search_category:
             #print("Restricting search to Content Items under Category with URI: ", search_category)
             additional_matching = "-[:BA_in_category]->(:Category)-[:BA_subcategory_of*0..]->(cat:Category)"
-            where_additional_clause += " AND cat.uri = $search_category"
+            where_additional_clause += " AND cat.entity_id = $search_category"
             data_binding["search_category"] = search_category
 
 

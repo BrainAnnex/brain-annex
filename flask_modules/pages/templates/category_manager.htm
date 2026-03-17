@@ -11,11 +11,11 @@
         category_name       EXAMPLE: "French"
         category_remarks    EXAMPLE: "Notes from class"
 
-        all_categories      EXAMPLE: [{'name': 'Language', 'uri': '544'}]
+        all_categories      EXAMPLE: [{'name': 'Language', 'entity_id': '544'}]
         subcategories       A list with data about all the sub-categories of this Category
-        parent_categories   EXAMPLE: [{'name': 'Language', 'uri': '544', 'schema_code': 'cat'}]
+        parent_categories   EXAMPLE: [{'name': 'Language', 'entity_id': '544', 'schema_code': 'cat'}]
         see_also_categories A list with data about all the "see also" links originating from this Category
-                            EXAMPLE:  [{'name': 'Quotes', 'uri': '823', 'remarks': None}]
+                            EXAMPLE:  [{'name': 'Quotes', 'entity_id': '823', 'remarks': None}]
 
         pin_status          True if this Category is "pinned"; otherwise, False
 #}
@@ -54,7 +54,7 @@
         <br><br>
         Or go to one of its <i>parent</i> categories: &nbsp; &nbsp;
         <span v-for="parent_category in parent_categories" style='font-size:18px; margin-right:30px'>
-            <a v-bind:href="'/BA/pages/category_manager/' + [[ parent_category['uri'] ]]">[[ parent_category['name'] ]]</a>
+            <a v-bind:href="'/BA/pages/category_manager/' + [[ parent_category['entity_id'] ]]">[[ parent_category['name'] ]]</a>
         </span>
     </div>
 </div>
@@ -118,15 +118,15 @@
                     <select id = 'menu_0' name = 'newParentID' style = 'width:180px'>
                         <option value='-1'>[Select parent category]</option>
                         {% for s in subcategories %}
-                            {% if s['uri'] != category_uri %}
-                                <option value="{{s['uri']}}">{{s['name']}}</option>
+                            {% if s['entity_id'] != category_uri %}
+                                <option value="{{s['entity_id']}}">{{s['name']}}</option>
                             {% endif %}
                         {% endfor %}
                     </select>
                 </form>
 
                 <!-- Icon to detach this category from one of its parents [TODO: gray out if only one parent] -->
-                <img @click="sever_relationship(p.uri , {{category_uri}} , 'parent')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                <img @click="sever_relationship(p.entity_id , {{category_uri}} , 'parent')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
                      class='clickable-icon' style="margin-left:8px"
                      v-bind:title="'SEVER the sub-category relationship between `' + p.name + '` and `{{category_name}}`\n\
 It does *NOT* delete `' + p.name + '`'"
@@ -134,7 +134,7 @@ It does *NOT* delete `' + p.name + '`'"
                 <br>
 
                 <span style='font-weight:bold; font-size:11px'>
-                    <a v-bind:href="'/BA/pages/category_manager/' + p.uri"
+                    <a v-bind:href="'/BA/pages/category_manager/' + p.entity_id"
                        v-bind:title="'Re-Center the Editor on this Category (&ldquo;'+ p.name + '&rdquo;)'"
                     >
                         [[p.name]]
@@ -150,7 +150,7 @@ It does *NOT* delete `' + p.name + '`'"
         <div style='width:105px'>&nbsp;</div>
 
 
-        <!-- Add an existing Category as an additional parent Category -->
+        <!-- Turn an existing Category as an additional parent Category -->
         <div style='width:180px; text-align:center'>
             <span style='font-style:italic; color:#666666'>Make &ldquo;{{category_name}}&rdquo; also a Sub-category of:</span>
             <br>
@@ -159,8 +159,8 @@ It does *NOT* delete `' + p.name + '`'"
                 <option disabled value=''>[Select parent category]</option>
 
                 {% for c in all_categories %}
-                    {% if c['uri'] != category_uri %}
-                        <option value="{{c['uri']}}">{{c['name']}}</option>
+                    {% if c['entity_id'] != category_uri %}
+                        <option value="{{c['entity_id']}}">{{c['name']}}</option>
                     {% endif %}
                 {% endfor %}
             </select>
@@ -231,7 +231,7 @@ It does *NOT* delete `' + p.name + '`'"
     <div style="width:250px; font-size:12px">
         <template v-for='cat in this.see_also_categories'>
             &diams; [[cat.name]]
-            <img @click="remove_see_also(cat.uri)"  class="clickable-icon" src='/BA/pages/static/graphics/delete_12_1493279.png' style="margin-left:5px"
+            <img @click="remove_see_also(cat.entity_id)"  class="clickable-icon" src='/BA/pages/static/graphics/delete_12_1493279.png' style="margin-left:5px"
                  title='SEVER the "see also" relationship betw. &ldquo;{{category_name}}&rdquo; and this category'
             >
             <br>
@@ -244,8 +244,8 @@ It does *NOT* delete `' + p.name + '`'"
             <option disabled value=''>[Select 'see-also' category]</option>
 
             {% for c in all_categories %}
-                {% if c.uri != category_uri %}
-                    <option value="{{c.uri}}">
+                {% if c.entity_id != category_uri %}
+                    <option value="{{c.entity_id}}">
                         {{c.name}}
                     </option>
                 {% endif %}
@@ -289,8 +289,8 @@ It does *NOT* delete `' + p.name + '`'"
                     <option disabled value=''>[Select sub-category]</option>
 
                     {% for c in all_categories %}
-                        {% if c['uri'] != category_uri %}
-                            <option value="{{c['uri']}}">{{c['name']}}</option>
+                        {% if c['entity_id'] != category_uri %}
+                            <option value="{{c['entity_id']}}">{{c['name']}}</option>
                         {% endif %}
                     {% endfor %}
                 </select>
@@ -313,7 +313,7 @@ It does *NOT* delete `' + p.name + '`'"
             <div style='width:73px; border-left:1px solid #CCC; text-align:center'>
 
                 <span style='font-weight:bold; font-size:10px'>
-                    <a v-bind:href="'/BA/pages/category_manager/' + s.uri"
+                    <a v-bind:href="'/BA/pages/category_manager/' + s.entity_id"
                        v-bind:title="'Re-Center the Editor on this Category (&ldquo;'+ s.name + '&rdquo;)'"
                     >
                         [[s.name]]
@@ -322,7 +322,7 @@ It does *NOT* delete `' + p.name + '`'"
 
 
                 <!-- Icon to detach this category from one of its children -->
-                <img @click="sever_relationship({{category_uri}} , s.uri , 'child')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
+                <img @click="sever_relationship({{category_uri}} , s.entity_id , 'child')"  src="/BA/pages/static/graphics/scissors_16_15275.png"
                      class='clickable-icon' style="margin-left:8px"
                      v-bind:title="'SEVER the sub-category relationship between `{{category_name}}` and &ldquo;' + s.name + '&rdquo;\n\
 It does *NOT* delete `' + s.name + '`'"
@@ -344,8 +344,8 @@ It does *NOT* delete `' + s.name + '`'"
                     <select id = 'menu_6' name = 'newChildID' style = 'width:180px'>
                         <option value='-1'>[Select sub-category]</option>
                         {% for c in all_categories %}
-                            {% if c['uri'] != category_uri %}
-                                <option value="{{c['uri']}}">{{c['name']}}</option>
+                            {% if c['entity_id'] != category_uri %}
+                                <option value="{{c['entity_id']}}">{{c['name']}}</option>
                             {% endif %}
                         {% endfor %}
                     </select>
@@ -372,11 +372,6 @@ It does *NOT* delete `' + s.name + '`'"
 <p style="font-size:16px">
     <span v-if="waiting" class="waiting">Performing the requested operation...</span>
     <span v-bind:class="{'error-message': error, 'status-message-success': !error }">[[status_message]]</span>
-</p>
-
-
-<p style="margin-top:0; padding: 5px; width: 50%">
-    <span style="font-size:12px; background-color: #eeeeaf">Note:  <i>a few functions aren't yet implemented.</i></span>
 </p>
 
 <br>
@@ -407,9 +402,9 @@ new Vue({
         // The DATA HANDOVER from Flask to Vue
         category_uri: {{category_uri}},
         all_categories: {{all_categories | tojson}},       // List of all categories, each of which is an object
-                                                           // Eg: [{uri: '888', name: 'Greek'}]
+                                                           // Eg: [{entity_id: '888', name: 'Greek'}]
         parent_categories: {{parent_categories | tojson}}, // List of parent categories, each of which is an object
-                                                           // Eg: [{uri: '544', name: 'Language', schema_code: 'cat'}]
+                                                           // Eg: [{entity_id: '544', name: 'Language', schema_code: 'cat'}]
         subcategories: {{subcategories | tojson}},         // List of sub-categories, each of which is an object
                                                            //       (same format as for parent_categories)
         see_also_categories: {{see_also_categories | tojson}},   // List of related Categories, each an object
@@ -473,7 +468,7 @@ new Vue({
             to the just-selected category (specified by this.uri_see_also_child_to_add)
          */
         {
-            console.log(`Attempting to create a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the just-selected Category URI '${this.uri_see_also_child_to_add}'`);
+            console.log(`Attempting to create a 'SEE ALSO' link from the current Category (Entity ID '${this.category_uri}') to the just-selected Category Entity ID '${this.uri_see_also_child_to_add}'`);
 
             let url_server = "/BA/api/see_also";
 
@@ -497,7 +492,7 @@ new Vue({
 
         finish_add_see_also(success, server_payload, error_message, custom_data)
         // Callback function to wrap up the action of add_see_also() upon getting a response from the server
-        // custom_data contains the uri of the Category pointed to by the newly-added SEE_ALSO link
+        // custom_data contains the entity ID of the Category pointed to by the newly-added SEE_ALSO link
         {
             console.log(`Finalizing the add_see_also operation...  custom_data: ${custom_data}`);
             if (success)  {     // Server reported SUCCESS
@@ -510,11 +505,11 @@ new Vue({
                 const item_index = Utilities.find_item_by_uri(custom_data, this.all_categories);
                 if (item_index != 1)  {      // If found
                     const category_data = this.all_categories[item_index];
-                    this.see_also_categories.push({uri: custom_data, name: category_data.name, remarks: category_data.remarks});
+                    this.see_also_categories.push({entity_id: custom_data, name: category_data.name, remarks: category_data.remarks});
                 }
                 else  {                         // Not found
-                    alert(`Unable to locate Category with URI: '${custom_data}'; try refreshing the page`);
-                    this.see_also_categories.push({uri: custom_data});
+                    alert(`Unable to locate Category with Entity ID: '${custom_data}'; try refreshing the page`);
+                    this.see_also_categories.push({entity_id: custom_data});
                 }
             }
             else  {             // Server reported FAILURE
@@ -530,9 +525,9 @@ new Vue({
 
 
         remove_see_also(uri)
-        // Remove the 'SEE ALSO' link from the current Category to the Category with the given uri
+        // Remove the 'SEE ALSO' link from the current Category to the Category with the given Entity ID
         {
-            console.log(`Attempting to remove a 'SEE ALSO' link from the current Category (URI '${this.category_uri}') to the Category with URI '${uri}'`);
+            console.log(`Attempting to remove a 'SEE ALSO' link from the current Category (Entity ID '${this.category_uri}') to the Category with URI '${uri}'`);
 
             // Send the request to the server, using a POST
             const url_server_api = "/BA/api/see_also";
@@ -590,7 +585,7 @@ new Vue({
         add_parent_category()
         // Link up the just-selected parent category (specified by this.uri_parent_to_add) to the current category
         {
-            console.log(`Attempting to make the just-selected Category (URI '${this.uri_parent_to_add}') a parent of the current Category (URI '${this.category_uri}')`);
+            console.log(`Attempting to make the just-selected Category (Entity ID '${this.uri_parent_to_add}') a parent of the current Category (Entity ID '${this.category_uri}')`);
 
             //let url_server = "/BA/api/add_relationship";
             let url_server = "/BA/api/add_subcategory_relationship";
@@ -624,7 +619,7 @@ new Vue({
 
         finish_add_parent_category(success, server_payload, error_message, custom_data)
         // Callback function to wrap up the action of add_parent_category() upon getting a response from the server
-        // custom_data contains the uri of the requested new Parent Category
+        // custom_data contains the Entity ID of the requested new Parent Category
         {
             console.log(`Finalizing the add_parent_category operation...  custom_data: ${custom_data}`);
             if (success)  {     // Server reported SUCCESS
@@ -654,7 +649,7 @@ new Vue({
         add_child_category()
         // Link up the just-selected child category (specified by this.uri_child_to_add) to the current category
         {
-            console.log(`Attempting to make the just-selected Category (URI '${this.uri_child_to_add}') a sub-category of the current Category (URI '${this.category_uri}')`);
+            console.log(`Attempting to make the just-selected Category (Entity ID '${this.uri_child_to_add}') a sub-category of the current Category (Entity ID '${this.category_uri}')`);
 
             //let url_server = "/BA/api/add_relationship";
             let url_server = "/BA/api/add_subcategory_relationship";
@@ -688,7 +683,7 @@ new Vue({
 
         finish_add_child_category(success, server_payload, error_message, custom_data)
         // Callback function to wrap up the action of add_child_category() upon getting a response from the server
-        // custom_data contains the uri of the requested new Parent Category
+        // custom_data contains the Entity ID of the requested new Parent Category
         {
             console.log(`Finalizing the add_child_category operation...  custom_data: ${custom_data}`);
             if (success)  {     // Server reported SUCCESS
@@ -791,7 +786,7 @@ new Vue({
 
 
         locate_item(arr, uri)
-        // Locate an item in an array of object, specified by its "uri" field
+        // Locate an item in an array of object, specified by its "entity_id" field
         // The array index of the first match is returned; if not found, -1 is returned
         // TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
         {
@@ -799,7 +794,7 @@ new Vue({
 
             // Loop over the array
             for (var i = 0; i < number_items; i++) {
-                if (arr[i].uri == uri)
+                if (arr[i].entity_id == uri)
                     return i;          //  Found it
             }
 
@@ -832,7 +827,7 @@ new Vue({
             }
 
             let url_server = "/BA/api/update_content_item";
-            let post_obj = {uri: this.category_uri,
+            let post_obj = {entity_id: this.category_uri,
                             class_name: "Category",
                             name: this.category_name_current_data,
                             remarks: this.category_remarks_current_data};
@@ -953,14 +948,14 @@ new Vue({
 
         finish_add_subcategory(success, server_payload, error_message)
         /*  Callback function to wrap up the action of add_subcategory() upon getting a response from the server.
-            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned URI
+            If a new Subcategory is successfully added, the server_payload will contain the newly-assigned Entity ID
          */
         {
             console.log("Finalizing the Add Subcategory operation...");
             if (success)  {     // Server reported SUCCESS
-                this.status_message = `New sub-category successfully added (assigned URI '${server_payload}')`;
+                this.status_message = `New sub-category successfully added (assigned Entity ID '${server_payload}')`;
                 // Update the data of the root component, to refresh some displays
-                let new_subcategory = {uri: server_payload, name: this.new_subcategory_name};
+                let new_subcategory = {entity_id: server_payload, name: this.new_subcategory_name};
                 this.subcategories.push(new_subcategory);
                 this.all_categories.push(new_subcategory);      // TODO: sort alphabetically
             }

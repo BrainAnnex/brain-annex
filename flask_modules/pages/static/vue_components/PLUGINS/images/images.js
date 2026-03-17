@@ -5,13 +5,13 @@
 Vue.component('vue-plugin-i',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:  EXAMPLE: {"uri":52,"pos":10,"schema_code":"i","basename":"my pic","suffix":"jpg","class_name":"Image",
-                                                    "caption":"my 1st pic", width:450, height:760}
-                                 (if uri is -1, it means that it's a newly-created header, not yet registered with the server)
+        /*  item_data:  EXAMPLE: {"entity_id":52,"pos":10,"schema_code":"i","basename":"my pic","suffix":"jpg","class_name":"Image",
+                                    "caption":"my 1st pic", width:450, height:760}
+                                 (if entity_id is -1, it means that it's a newly-created header, not yet registered with the server)
                                  TODO: take "pos" and "class_name" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The URI of the Category page where this document is displayed (used when creating new documents)
+            category_id:    The Entity ID of the Category page where this document is displayed (used when creating new documents)
             index:          The zero-based position of this Image on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */
@@ -112,13 +112,13 @@ Vue.component('vue-plugin-i',
             image_url(item_data)
             // Return the URL of the full image
             {
-                return '/BA/api/serve_media/Image/' + item_data.uri;           // Invoke the file server
+                return '/BA/api/serve_media/Image/' + item_data.entity_id;           // Invoke the file server
             },
 
             image_url_thumb(item_data)
             // Return the URL of the thumbnail version of the image
             {
-                return '/BA/api/serve_media/Image/' + item_data.uri + '/th';  // Invoke the file server, with the thumbnail option
+                return '/BA/api/serve_media/Image/' + item_data.entity_id + '/th';  // Invoke the file server, with the thumbnail option
             },
 
 
@@ -145,11 +145,11 @@ Vue.component('vue-plugin-i',
             save_edit()
             // Send a request to the server, to update the image's metadata
             {
-                console.log(`In save_edit(): attempting to save the new metadata , for image with URI '${this.item_data.uri}'`);
+                console.log(`In save_edit(): attempting to save the new metadata , for image with Entity ID '${this.item_data.entity_id}'`);
 
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item";
-                const post_obj = {uri: this.item_data.uri,
+                const post_obj = {entity_id: this.item_data.entity_id,
                                   class_name: "Image",
                                   basename: this.current_metadata.basename,
                                   caption: this.current_metadata.caption,

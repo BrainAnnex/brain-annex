@@ -13,7 +13,7 @@ Vue.component('vue-plugin-timer',
     {
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_data:      An object with the relevant data about this Content Item;
-                                if the "uri" attribute is negative,
+                                if the "entity_id" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
                                 (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
 
@@ -22,7 +22,7 @@ Vue.component('vue-plugin-timer',
                                         "pos":0,
                                         "ringtone":"dreamscape-alarm-clock-117680.mp3",
                                         "schema_code":"timer",
-                                        "uri":"8809"
+                                        "entity_id":"8809"
                                         }
 
                                 TODO: separate regular properties from control values
@@ -32,7 +32,7 @@ Vue.component('vue-plugin-timer',
                             TODO: possibly add a new parameter "create_mode" that won't show the usual
                                   delete/tag/move controls
 
-            category_id:    The URI of the Category page where this recordset is displayed (used when creating new recordsets)
+            category_id:    The entity_id of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Recordset on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names, in Schema order.
@@ -98,7 +98,7 @@ Vue.component('vue-plugin-timer',
                         <tr style='height:40px'>
                             <td align="center" colspan="3">
                                 <!-- preload="none"  -->
-                                <audio v-bind:id="'my_audio' + item_data.uri" controls style="display:none">
+                                <audio v-bind:id="'my_audio' + item_data.entity_id" controls style="display:none">
                                     <source v-bind:src="'/BA/pages/static/vue_components/PLUGINS/timer/alarms/' + current_data.audio_file" type="audio/mpeg">
                                 </audio>
                                 <button @click="play_audio('stop')" class='alarmButtons' style="color:red">SILENCE ALARM</button>
@@ -153,14 +153,14 @@ Vue.component('vue-plugin-timer',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: this.item_data.uri < 0 ? true : false,   // Negative URI means "new Item" (automatically placed in editing mode)
+                editing_mode: this.item_data.entity_id < 0 ? true : false,   // Negative entity_id means "new Item" (automatically placed in editing mode)
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
                 //      Note: for new Content Items, it only contains
-                //              `class_name`, `schema_code`, `uri`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
+                //              `class_name`, `schema_code`, `entity_id`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
                 //            For existing Content Items, it contains
-                //              `class_name`, `schema_code`, `uri`, `pos`, and Content-specific fields
+                //              `class_name`, `schema_code`, `entity_id`, `pos`, and Content-specific fields
                 current_data:   Object.assign({}, this.item_data),
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
@@ -224,7 +224,7 @@ Vue.component('vue-plugin-timer',
             {
                 console.log(`In play_audio(): task = "${task}"`);
 
-                var audio = document.getElementById("my_audio"+ this.item_data.uri);    // HTML DOM Audio Object.  It inherits from HTMLMediaElement
+                var audio = document.getElementById("my_audio"+ this.item_data.entity_id);    // HTML DOM Audio Object.  It inherits from HTMLMediaElement
                                                                     // https://www.w3schools.com/jsref/dom_obj_audio.asp
 
                 if (task == 'play')  {
@@ -443,16 +443,16 @@ Vue.component('vue-plugin-timer',
                 // Start the body of the POST to send to the server
                 var post_obj = {class_name: this.item_data.class_name};
 
-                if (this.item_data.uri < 0)  {     // Negative uri is a convention indicating a new Content Item to create,
+                if (this.item_data.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
                      post_obj.category_id = this.category_id;
-                     post_obj.insert_after_uri = this.item_data.insert_after_uri;       // URI of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                     post_obj.insert_after_uri = this.item_data.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                      post_obj.insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
 
                      url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING Content Item
-                    post_obj.uri = this.item_data.uri;
+                    post_obj.entity_id = this.item_data.entity_id;
 
                     url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
@@ -487,7 +487,7 @@ Vue.component('vue-plugin-timer',
 
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned URI
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
              */
             {
                 console.log("Finalizing the Timer Widget save() operation...");
@@ -495,9 +495,9 @@ Vue.component('vue-plugin-timer',
                     //console.log("    server call was successful");
                     this.status_message = `Successful edit`;
 
-                    // If this was a new item (with the temporary negative URI), update its URI with the value assigned by the server
-                    if (this.item_data.uri < 0)
-                        this.current_data.uri = server_payload;
+                    // If this was a new item (with the temporary negative entity_id), update its entity_id with the value assigned by the server
+                    if (this.item_data.entity_id < 0)
+                        this.current_data.entity_id = server_payload;
 
                     // Inform the parent component of the new state of the data
                     console.log("Timer Widget component sending `updated-item` signal to its parent");
@@ -524,7 +524,7 @@ Vue.component('vue-plugin-timer',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.uri < 0) {
+                if (this.current_data.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Timer Widget sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');

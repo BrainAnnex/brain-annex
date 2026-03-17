@@ -1,15 +1,25 @@
 /* LEFT SIDEBAR (used to host the Table of Contents)
  */
 
-div.sidebar-left {              /* LEFT sidebar, in its expanded state */
-	box-sizing: border-box;     /* The assigned width will now incorporate padding and border */
-	position:fixed;
-	top:20px;
-	left:0;
-	width:15%;
-	background:#f5f2f0;                 /* Best if it matches that of page body */
+
+
+div.sidebar-toc-left {          /* Common parts to the "expanded" and "collapsed" states */
+    position:fixed;
+    top:20px;
+    left:0;
+
 	border-right:1px solid #d5d2d0;
+	background:#f5f2f0;                 /* Best if it matches that of page body */
+}
+
+
+div.sidebar-left-expanded {     /* LEFT sidebar, in its EXPANDED state */
+	box-sizing: border-box;             /* The assigned width will now incorporate padding and border */
+
+	width:15%;
+
 	border-bottom:1px solid #0084AD;    /* Light blue */
+	padding-left:3px;
 
 	overflow:auto;
 	max-height:100%;
@@ -18,18 +28,11 @@ div.sidebar-left {              /* LEFT sidebar, in its expanded state */
 	font-size: 11px;
 	line-height: 20px;
 	color: #333;
-	padding-left:3px;
 }
 
-/*  TODO: factor out common parts in "sidebar-left" and "sidebar-left-collapsed" */
 
-div.sidebar-left-collapsed {    /* LEFT sidebar, in its collapsed state */
-	position:fixed;
-	top:20px;
-	left:0;
+div.sidebar-left-collapsed {    /* LEFT sidebar, in its COLLAPSED state */
 	width:3%;
-	background:#f5f2f0;
-	border-right:1px solid #d5d2d0;
 	padding-left:0px;
 	padding-right:0px;
 	padding-top:5px;
@@ -37,10 +40,11 @@ div.sidebar-left-collapsed {    /* LEFT sidebar, in its collapsed state */
 
 
 /*
- *  Table of Contents (TOC) for the page (hosted inside sidebar-left)
+ *  Table of Contents (TOC) for the page (hosted inside sidebar-left-expanded)
  */
 
-div.page-toc  p  {     /* For paragraphs inside DIV's of class "page-toc" (Table of Contents) */
+
+div.page-toc  p  {     /* For all paragraphs inside DIV's of class "page-toc" (Table of Contents) */
     font-family: Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     font-size:11px;
     line-height: 20px;
@@ -48,7 +52,18 @@ div.page-toc  p  {     /* For paragraphs inside DIV's of class "page-toc" (Table
     margin: 0;
 }
 
-div.page-toc  p.header  {
+
+p.toc-header {          /* The top part of the TOC, to always keep at the very top (un-scrollable) */
+    position: sticky;
+    top: 0;
+    background: white;
+
+    margin-top: 0;
+    margin-bottom: 3px;
+}
+
+
+div.page-toc  p.header  {   /* Used for section headers in the TOC */
     font-size:14px;
     font-weight:bold;
 }
@@ -58,6 +73,34 @@ div.page-toc  p.header  {
 /*
     Hyperlink styles for the "page-toc" DIV  [TODO: is this needed, given link style for div.sidebar-left ?]
  */
+
+
+
+
+/* Hyperlink styles for the page-toc */
+
+p.toc-header  a:link  {
+	color: #547698;					/* A shade of blue */
+	text-decoration:none;
+}
+
+p.toc-header  a:visited  {
+	color: #547698;					/* A shade of blue */
+	text-decoration:none;
+}
+
+p.toc-header  a:hover {
+	color:red;
+	text-decoration:none;
+}
+
+p.toc-header  a:active {
+	color:red;
+	text-decoration:none;
+}
+
+
+/* Hyperlink styles for the page-toc */
 
 div.page-toc  a:link  {
 	color:#222;					/* Dark gray */
@@ -75,30 +118,6 @@ div.page-toc  a:hover {
 }
 
 div.page-toc  a:active {
-	color:red;
-	text-decoration:none;
-}
-
-
-
-/* Hyperlink styles for the sidebar-left */
-
-div.sidebar-left  a:link  {
-	color:#222;					/* Dark gray */
-	text-decoration:none;
-}
-
-div.sidebar-left  a:visited  {
-	color:#222;
-	text-decoration:none;
-}
-
-div.sidebar-left  a:hover {
-	color:red;
-	text-decoration:none;
-}
-
-div.sidebar-left  a:active {
 	color:red;
 	text-decoration:none;
 }

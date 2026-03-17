@@ -12,9 +12,9 @@
 
         all_categories      A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
                                 EXAMPLE:
-                                    [{"uri": "1",   "name": "HOME", "remarks": "ROOT NODE"},
+                                    [{"entity_id": "1",   "name": "HOME", "remarks": "ROOT NODE"},
                                      {"uri: "123",  "name": "Calculus"},
-                                     {"uri": "523", "name": "Work at Acme", "pinned": True}]
+                                     {"entity_id": "523", "name": "Work at Acme", "pinned": True}]
  #}
 
 <html lang="en">
@@ -67,7 +67,7 @@
             <select name='search_category'  style='font-size:14px'>
                 <option value=''>[OPTIONALLY, select Category to restrict search under]</option>
                 {% for category in all_categories %}
-                <option value='{{category.uri}}'>
+                <option value='{{category.entity_id}}'>
                     {{category.name}}
                     {% if category.remarks %} [{{category.remarks}}] {% endif %}
                 </option>
