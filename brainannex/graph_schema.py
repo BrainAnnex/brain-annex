@@ -1467,7 +1467,7 @@ class GraphSchema:
             '''
         data_binding={"class_name": class_name, "prop_name": prop_name, "attribute_value": attribute_value}
 
-        cls.db.debug_print_query(q, data_binding)
+        #cls.db.debug_print_query(q, data_binding)
         result = cls.db.update_query(q, data_binding=data_binding)
         # EXAMPLE:  {'_contains_updates': True, 'properties_set': 1, 'returned_data': []}
         #print(result)
