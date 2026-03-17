@@ -42,6 +42,9 @@ class Timer:
 
             # Set up the auto-increment namespace
             namespace="timer"
-            GraphSchema.create_namespace(name=namespace, prefix="timer-", suffix="")
-            match_to = GraphSchema.db.match(labels="Schema Autoincrement", key_name="namespace", key_value=namespace)
-            GraphSchema.db.add_links(match_from=db_id, match_to=match_to, rel_name="HAS_URI_GENERATOR")
+            if not GraphSchema.namespace_exists(name=namespace):
+                GraphSchema.create_namespace(name=namespace, prefix="timer-", suffix="")
+
+            GraphSchema.assign_namespace_to_class(class_name=cls.SCHEMA_CLASS_NAME, namespace=namespace)
+            #match_to = GraphSchema.db.match(labels="Schema Autoincrement", key_name="namespace", key_value=namespace)
+            #GraphSchema.db.add_links(match_from=db_id, match_to=match_to, rel_name="HAS_URI_GENERATOR")

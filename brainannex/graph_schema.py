@@ -5783,8 +5783,8 @@ class GraphSchema:
         """
         Return True if the specified namespace already exists, or False otherwise
 
-        :param name:
-        :return:
+        :param name:    A string used to maintain completely separate groups of auto-increment values
+        :return:        True if the specified namespace already exists, or False otherwise
         """
         return cls.db.exists_by_key(labels="Schema Autoincrement",
                                     key_name="namespace", key_value=name)
@@ -5953,13 +5953,15 @@ class GraphSchema:
     @classmethod
     def assign_namespace_to_class(cls, class_name :str, namespace :str) -> None:
         """
-        Link up a Class node to the node of a namespace to be used for data nodes of that Class
+        Link up a Class node
+        to the node of an existing namespace to be used to assign auto-increment Entity ID's
+        to data nodes of that Class
 
         :param class_name:
-        :param namespace:
+        :param namespace:   A string used to maintain completely separate groups of auto-increment values
         :return:            None
         """
-        #TODO: pytest
+        #TODO: change the relationship name "HAS_URI_GENERATOR"
 
         #TODO: verify that the match is unique
         q = '''
