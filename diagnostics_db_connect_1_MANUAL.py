@@ -2,10 +2,10 @@
 
 from brainannex import GraphAccess
 
-print("About to test the database connection...  Enter the host IP, but leave out the port number: (EXAMPLES:  bolt://1.2.3.4  OR  neo4j://localhost )\n")
+print("About to test the database connection...  Enter the host IP, but leave out the port number: (EXAMPLES:  bolt://1.2.3.4  OR  bolt://localhost )\n")
 host = input()
 host += ":7687"
-print("Enter the password:")        # TODO: change to getpass.getpass()
+print("Enter the DATABASE password:")        # TODO: change to getpass.getpass()
 password = input()
 
 print(f"Attempting to connect as host='{host}', username='neo4j', with the password just entered...")
