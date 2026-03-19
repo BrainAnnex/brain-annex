@@ -897,8 +897,8 @@ Vue.component('vue-cytoscape-5',
                         name: 'preset',
                         positions: n =>
                                     {
-                                        const x = n.data('_node_x');
-                                        const y = n.data('_node_y');
+                                        const x = n.data('node_x');
+                                        const y = n.data('node_y');
 
                                         if (Number.isFinite(x) && Number.isFinite(y))
                                             return { x, y };
