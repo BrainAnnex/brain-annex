@@ -10,7 +10,7 @@ class DisplayNetwork:
     """
     Used to create an HTML file that graphically displays an interactive version
     of graph-network data.
-    This HTML file is a scaffold for one or move Vue components that provide the desired functionality
+    This HTML file is a scaffold for one or move Vue components that provide the desired interactive functionality
     """
 
     @classmethod
@@ -134,7 +134,7 @@ class DisplayNetwork:
                     filename :str, caption="<h1>Interactive network plot</h1>",
                     vue_comps_dir="https://life123.science/libraries/vue_components/") -> None:
         """
-        Send to the given file the HTML data to create a Vue-based display of a network.
+        Write into the given file the HTML data needed to create a Vue-based display of a network.
 
         This is meant to work alongside a Vue.js component that expects 2 arguments ("props"):
             1) graph_data
@@ -162,7 +162,7 @@ class DisplayNetwork:
         :param graphic_component:   The basename of a existing JavaScript and CSS files a
                                         that provides the interactive visualization functionality.
                                         The JS file is expected to implement a Vue.js component by the same name
-                                        (but with hyphens in lieu of any underscore in the name, if applicable.)
+                                        (BUT with hyphens in lieu of any underscore in the name, if applicable.)
                                         EXAMPLE: "vue_cytoscape_5" (assuming that a "vue_cytoscape_5.js" file
                                                  and a "vue_cytoscape_5.css" file
                                                  exist in the directory specified by the argument `vue_comps_dir`,

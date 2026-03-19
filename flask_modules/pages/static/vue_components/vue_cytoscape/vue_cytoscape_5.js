@@ -59,7 +59,7 @@ Vue.component('vue-cytoscape-5',
                 </div>
 
 
-                <!-- SIDE BOX, to the right of the main plot : COLLAPSED STATE -->
+                <!-- SIDE BOX, to the right of the main plot : version for COLLAPSED STATE -->
                 <div v-if="!sidebox_expanded" class="cytoscape-legend-collapsed">
                     <img @click='sidebox_expanded = !sidebox_expanded'
                         src='https://life123.science/libraries/vue_components/graphics/thin_left_arrow_32.png'
@@ -69,7 +69,7 @@ Vue.component('vue-cytoscape-5',
                 </div>
 
 
-                <!-- SIDE BOX, to the right of the main plot : NORMAL STATE -->
+                <!-- SIDE BOX, to the right of the main plot : version for NORMAL STATE -->
                 <div v-if="sidebox_expanded" class="cytoscape-legend">
                     <img @click='sidebox_expanded = !sidebox_expanded'
                         src='https://life123.science/libraries/vue_components/graphics/thin_right_arrow_32.png'
@@ -197,9 +197,9 @@ Vue.component('vue-cytoscape-5',
 
                     <br><br><br><br>
                     <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">
-                        vue-cytoscape-5 , rev. 4
+                        vue-cytoscape-5 , rev. 5
                     </span>
-                </div>      <!-- End of side box -->
+                </div>      <!-- END OF SIDE BOX (normal-state version) -->
 
             </div>		<!-- End of outer container -->
             `,
@@ -283,12 +283,13 @@ Vue.component('vue-cytoscape-5',
              *  Note: the "immediate" option cannot be used (presumably because too early in mount cycle)
              */
             graph_data(newVal, oldVal)
+            // Note: the arguments are not being used
             {
                 console.log(`In 'vue-cytoscape-5': the "watch" on the prop "graph_data" reveals that it has changed`);
 
                 this.nodes = this.graph_data.nodes;
                 this.edges = this.graph_data.edges;
-                this.extract_names();          // Extract the label names and the edge names
+                this.extract_names();                       // Extract the label names and the edge names
 
                 const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given
@@ -328,7 +329,7 @@ Vue.component('vue-cytoscape-5',
         {
             console.log(`The 'vue-cytoscape-5' component is now mounted`);
 
-            this.extract_names();              // Extract the label names and the edge names
+            this.extract_names();                           // Extract the label names and the edge names
 
             const cy_object = this.create_graph('cy_' + this.component_id);   // MAIN CALL : this will let Cytoscape.js do its thing!
                                                             // EXAMPLE :  "cy_1"  (this name needs to match the ID given
@@ -351,6 +352,7 @@ Vue.component('vue-cytoscape-5',
             /*  From the current node and edge data, 
                 create and return the graph structure needed by Cytoscape.js
                 (an array of objects, each with a key named "data")
+
                 EXAMPLE:
                     [
                         {data: {'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']}
@@ -364,10 +366,13 @@ Vue.component('vue-cytoscape-5',
             {
                 var cyto_arr = [];      // Array of graph data (nodes + edges) in the format that Cytoscape expects
 
-                for (i in this.nodes) {   // Note:  i will be an integer, not an array element!!
+                // Prepare the nodes
+                for (i in this.nodes)  {   // Note:  i will be an integer, not an array element!!
                     el = {data: this.nodes[i]};
                     cyto_arr.push(el);
                 }
+
+                // Prepare the edges
                 for (i in this.edges) {   // Note:  i will be an integer, not an array element!!
                     el = {data: this.edges[i]};
                     cyto_arr.push(el);
@@ -551,18 +556,18 @@ Vue.component('vue-cytoscape-5',
 
                     layout: {
                         name: this.plot_layout_style,   // For example, "circle", "random", etc
-                        rows: 3,                        // Applicable to the "grid" layout
+                        //rows: 3,                        // Applicable to the "grid" layout
                         positions: {
                             // The Y-axis points DOWNWARD
                             // ALTERNATIVE:
                             //       position {x: 0, y: 0}  // In node definitions; can also use renderedPosition
                             // TEST
-                            '1': {x: 0,    y: 0},       // Julian
-                            '2': {x: 0,    y: 200},     // Toyota
-                            '3': {x: -200, y: 0},       // Berkeley
-                            '4': {x: 200,  y: 0},       // Bayer
-                            '5': {x: 0,    y: -200},    // USA
-                            '6': {x: 200,  y: 200}      // Germany
+                            //'1': {x: 0,    y: 0},       // Julian
+                            //'2': {x: 0,    y: 200},     // Toyota
+                            //'3': {x: -200, y: 0},       // Berkeley
+                            //'4': {x: 200,  y: 0},       // Bayer
+                            //'5': {x: 0,    y: -200},    // USA
+                            //'6': {x: 200,  y: 200}      // Germany
                         }
                     }
 
@@ -869,14 +874,51 @@ Vue.component('vue-cytoscape-5',
                 SUPPORT FUNCTIONS
              */
 
-            change_plot_style()
-            /*  Invoked as soon as the user selects an entry from the menu of plot styles.
-                Re-render the graph with the new plot style
+
+
+            /**  Invoked as soon as the user selects an entry from the menu of plot styles.
+             *   The chosen value is bound to the Vue variable `plot_layout_style`
+             *   Re-render the graph with the new plot style
              */
+            change_plot_style()
             {
+                /*
+                // OLD way of doing it, destroying and re-building the object
                 const cy_object = this.create_graph('cy_' + this.component_id);     // This will let Cytoscape.js re-render the plot
                 this.$options.cy_object = cy_object;        // Save the new object.   TODO: could this be done inside create_graph() ?
                 this.clear_legend();
+                */
+
+                const cy = this.$options.cy_object;
+                const layout_name = this.plot_layout_style
+                if (layout_name === 'preset')
+                    cy.layout({
+                        name: 'preset',
+                        positions: n =>
+                                    {
+                                        const x = n.data('_node_x');
+                                        const y = n.data('_node_y');
+
+                                        if (Number.isFinite(x) && Number.isFinite(y))
+                                            return { x, y };
+
+                                        return n.position();   // keep existing layout position
+                                    }
+
+                        }).run();
+                else if (layout_name === 'grid')
+                    cy.layout({ name: layout_name , rows: 4 }).run();
+                else
+                    cy.layout({ name: layout_name }).run();
+
+                /*
+                        positions: n => ({
+                            x: n.data('_node_x'),
+                            y: n.data('_node_y')
+                            })
+                 */
+
+                //this.clear_legend();
             },
 
 
@@ -1207,25 +1249,25 @@ Vue.component('vue-cytoscape-5',
                 const default_caption_field_name = "id";
 
                 if (labels === undefined)  {
-                    console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Using a default value")
+                    //console.log("map_labels_to_caption_field(): invoked with `undefined` argument.  Using a default value")
                 }
                 else  {
-                    console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
+                    //console.log("map_labels_to_caption_field().  labels: ", labels);    // Example: ["PERSON"]
                     //console.log(this.graph_data.caption_mapping);
 
                     for (single_label of labels) {
                         // Consider each label in turn
-                        console.log(`Searching for default caption for label "${single_label}"`);
+                        //console.log(`Searching for default caption for label "${single_label}"`);
                         if (single_label in this.caption_mapping)  {
                             const caption_field_name = this.caption_mapping[single_label];
-                            console.log(`Using the field '${caption_field_name}' for the caption of this node`);
+                            //console.log(`Using the field '${caption_field_name}' for the caption of this node`);
                             return caption_field_name;
                         }
                     }
                 }
 
                 // If we get here, no mapping information was available.  Try some typical names
-                console.log(`map_labels_to_caption_field(): no mapping information was available. Trying common names for node with id ${node_id}...`);
+                //console.log(`map_labels_to_caption_field(): no mapping information was available. Trying common names for node with id ${node_id}...`);
 
                 const node_index = this.locate_node_by_id(node_id);
                 //console.log(node_index);
@@ -1245,7 +1287,7 @@ Vue.component('vue-cytoscape-5',
                         if (labels.length == 1)  {
                             // If there's just 1 label, associate it with this assumed field name, for future reference
                             let single_label = labels[0];
-                            console.log(`map_labels_to_caption_field(): Assigning field "${field_name}" for the captions of nodes with label "${single_label}"`);
+                            //console.log(`map_labels_to_caption_field(): Assigning field "${field_name}" for the captions of nodes with label "${single_label}"`);
                             this.caption_mapping[single_label] = field_name;
                         }
                         return field_name;
