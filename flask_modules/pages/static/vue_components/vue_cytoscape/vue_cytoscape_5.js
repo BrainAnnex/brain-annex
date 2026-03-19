@@ -883,14 +883,15 @@ Vue.component('vue-cytoscape-5',
             change_plot_style()
             {
                 /*
-                // OLD way of doing it, destroying and re-building the object
+                // OLD way of doing it, destroying and re-building the Cytoscape object
                 const cy_object = this.create_graph('cy_' + this.component_id);     // This will let Cytoscape.js re-render the plot
                 this.$options.cy_object = cy_object;        // Save the new object.   TODO: could this be done inside create_graph() ?
                 this.clear_legend();
                 */
 
                 const cy = this.$options.cy_object;
-                const layout_name = this.plot_layout_style
+                const layout_name = this.plot_layout_style;
+
                 if (layout_name === 'preset')
                     cy.layout({
                         name: 'preset',
@@ -904,21 +905,11 @@ Vue.component('vue-cytoscape-5',
 
                                         return n.position();   // keep existing layout position
                                     }
-
                         }).run();
                 else if (layout_name === 'grid')
                     cy.layout({ name: layout_name , rows: 4 }).run();
                 else
                     cy.layout({ name: layout_name }).run();
-
-                /*
-                        positions: n => ({
-                            x: n.data('_node_x'),
-                            y: n.data('_node_y')
-                            })
-                 */
-
-                //this.clear_legend();
             },
 
 
