@@ -2291,7 +2291,7 @@ class ApiRouting:
                 #   This is done to remove "bytes" values (for example, encoded passwords) and other quantities
                 #   that aren't serializable with JSON
                 sanitized_recordset = [{k: v for k, v in record.items()
-                                            if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list) }
+                                            if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list or type(v) == float) }
                                        for record in recordset]
 
                 response = {"status": "ok",
