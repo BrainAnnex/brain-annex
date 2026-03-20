@@ -2201,7 +2201,7 @@ class ApiRouting:
         
         @bp.route('/get_filtered')
         @login_required
-        def get_filtered():
+        def get_filtered_api():
             """
             Perform a database search for particular NODES, and return their properties,
             as well as a total count.
@@ -2288,10 +2288,11 @@ class ApiRouting:
 
                 # Build a list from the original database-query result; for each "record" (list element which is a dict),
                 #   take only its key/value pairs where the value has an acceptable type.
-                #   This is done to remove "bytes" values (for example, encoded passwords) and other quantities
+                #   This is done to remove "bytes" values (for example, encoded passwords)
+                #   and other quantities (such as database datetime values)
                 #   that aren't serializable with JSON
                 sanitized_recordset = [{k: v for k, v in record.items()
-                                            if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list) }
+                                            if (type(v) == str or type(v) == int or type(v) == bool or type(v) == list or type(v) == float) }
                                        for record in recordset]
 
                 response = {"status": "ok",
