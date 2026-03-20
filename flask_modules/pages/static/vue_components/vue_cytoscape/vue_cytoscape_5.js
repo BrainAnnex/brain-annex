@@ -197,7 +197,7 @@ Vue.component('vue-cytoscape-5',
 
                     <br><br><br><br>
                     <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">
-                        vue-cytoscape-5 , rev. 5
+                        vue-cytoscape-5 , rev. 6
                     </span>
                 </div>      <!-- END OF SIDE BOX (normal-state version) -->
 
@@ -266,8 +266,13 @@ Vue.component('vue-cytoscape-5',
 
                 sidebox_expanded: true,             // Flag indicating whether to show the plot legend
 
-                plot_layout_style: "breadthfirst"   // CHOICES: 'grid', 'circle', 'random',
+                plot_layout_style: "breadthfirst",  // CHOICES: 'grid', 'circle', 'random',
                                                     //          'concentric', 'breadthfirst', 'cose'
+
+                min_X: null,
+                max_X: null,
+                min_Y: null,
+                max_Y: null
             }
         },
 
@@ -364,15 +369,35 @@ Vue.component('vue-cytoscape-5',
                     ]
              */
             {
-                var cyto_arr = [];      // Array of graph data (nodes + edges) in the format that Cytoscape expects
+                let cyto_arr = [];      // Array of graph data (nodes + edges) in the format that Cytoscape expects
 
-                // Prepare the nodes
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+
+                // Prepare the NODES
                 for (i in this.nodes)  {   // Note:  i will be an integer, not an array element!!
-                    el = {data: this.nodes[i]};
+                    let n = this.nodes[i];
+                    let el = {data: n};
                     cyto_arr.push(el);
+
+                    const x = n['node_x'];
+                    const y = n['node_y'];
+
+                    if (Number.isFinite(x) && Number.isFinite(y)) {
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                    }
                 }
 
-                // Prepare the edges
+                this.min_X = minX;
+                this.max_X = maxX;
+                this.min_Y = minY;
+                this.max_Y = maxY;
+
+
+                // Prepare the EDGES
                 for (i in this.edges) {   // Note:  i will be an integer, not an array element!!
                     el = {data: this.edges[i]};
                     cyto_arr.push(el);
@@ -392,91 +417,22 @@ Vue.component('vue-cytoscape-5',
         // ---------------------  METHODS  ----------------------
         methods: {
 
-            /**
-             *  Invoked as soon as user selects an entry
-             *  from the menu to change the default caption for a particular label
-             */
-            change_caption()
-            {
-                console.log(`Just selected caption "${this.caption_selected_option}" for label "${this.label_to_inspect}"`);
 
-                // Update the default label->caption mapping
-                this.caption_mapping[this.label_to_inspect] = this.caption_selected_option;
-
-                // Re-apply the stylesheet.  This: re-evaluates styles for all elements,
-                // but doesn't re-run the layout (in particular, it preserves the positions)
-                // Note:  Cytoscape caches the computed style, and does not re-run
-                //        the styling functions, such as our node_caption_funct(), unless it knows something changed
-                this.$options.cy_object.style().update();
-            },
-
-
-
-            /**
-             *  Invoked when the user click on the icon (tag) of a particular node label name
-             */
-            edit_label_info(label)
-            {
-                if (label != this.label_to_inspect)  {
-                    this.show_label_box = true;
-                    this.label_to_inspect = label;
-                    this.caption_selected_option = this.caption_mapping[label];
-                }
-                else {
-                    // If the user re-clicks on the same label, toggle the display of the box
-                    this.show_label_box = !this.show_label_box;
-                }
-            },
-
-
-
-            /**
-             * Assemble an array of typical captions associated to the given node label.
-             * Note that the node properties used for the captions,
-             * aren't required to be consistent in a graph database.
+            /** Let Cytoscape.js render (or re-render) the requested plot.
              *
-             * @param {string} label    - The name of a node label
+             *  This function needs to be invoked whenever any of the following holds:
              *
-             * @returns {string[]}      - An array of caption names previously used in nodes with the given label
+             *   1) this Vue component is first created
+             *   2) its input graph data changes
+             *
+             *   Replace the contents of the desired HTML element (whose id is specified by the given `element_id`)
+             *   with the graphic structure created by Cytoscape
+             *
+             *   @param {string} element_id     - The name to match the ID of the Cytoscape DIV element containing the graph.
+             *                                    EXAMPLE: "cy_1"
+             *   @returns                       - The newly-created Cytoscape object
              */
-            possible_captions(label)
-            {
-                //console.log(`In possible_captions(): generating caption options for label "${label}"`);
-
-                let candidate_captions = [];
-
-                // Loop over all the nodes in the graph, and locate node with a match in label
-                for (let n of this.nodes) {
-                    // EXAMPLE of n :   {'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']}
-
-                    if (n._node_labels.includes(label))
-                        for (let key of Object.keys(n))   // Consider each key of the node
-                            if ((key !== "_node_labels") && (!candidate_captions.includes(key)))
-                                // Collect any key not already seen, EXCEPT for "_node_labels"
-                                candidate_captions.push(key);
-                }
-
-                return candidate_captions;  // EXAMPLE:  ['id', 'name']
-            },
-
-
-
             create_graph(element_id)
-            /*  Let Cytoscape.js render (or re-render) the requested plot.
-
-                This function needs to be invoked whenever any of the following holds:
-
-                1) this Vue component is first created
-                2) its input graph data changes
-                3) the user asks for a different layout -> TODO - alternative not tested: cy.layout({ name: 'cose' }).run();
-
-                Replace the contents of the desired HTML element (whose id is specified by the given `element_id`)
-                with the graphic structure created by Cytoscape
-
-                :param element_id:  The name to match the ID of the Cytoscape DIV element containing the graph.
-                                        EXAMPLE: "cy_1"
-                :return:            The newly-created Cytoscape object
-             */
             {
                 console.log(`Running create_graph() to replace the page element with ID '${element_id}'`);
 
@@ -605,6 +561,75 @@ Vue.component('vue-cytoscape-5',
 
 
 
+            /**
+             *  Invoked as soon as user selects an entry
+             *  from the menu to change the default caption for a particular label
+             */
+            change_caption()
+            {
+                console.log(`Just selected caption "${this.caption_selected_option}" for label "${this.label_to_inspect}"`);
+
+                // Update the default label->caption mapping
+                this.caption_mapping[this.label_to_inspect] = this.caption_selected_option;
+
+                // Re-apply the stylesheet.  This: re-evaluates styles for all elements,
+                // but doesn't re-run the layout (in particular, it preserves the positions)
+                // Note:  Cytoscape caches the computed style, and does not re-run
+                //        the styling functions, such as our node_caption_funct(), unless it knows something changed
+                this.$options.cy_object.style().update();
+            },
+
+
+
+            /**
+             *  Invoked when the user click on the icon (tag) of a particular node label name
+             */
+            edit_label_info(label)
+            {
+                if (label != this.label_to_inspect)  {
+                    this.show_label_box = true;
+                    this.label_to_inspect = label;
+                    this.caption_selected_option = this.caption_mapping[label];
+                }
+                else {
+                    // If the user re-clicks on the same label, toggle the display of the box
+                    this.show_label_box = !this.show_label_box;
+                }
+            },
+
+
+
+            /**
+             * Assemble an array of typical captions associated to the given node label.
+             * Note that the node properties used for the captions,
+             * aren't required to be consistent in a graph database.
+             *
+             * @param {string} label    - The name of a node label
+             *
+             * @returns {string[]}      - An array of caption names previously used in nodes with the given label
+             */
+            possible_captions(label)
+            {
+                //console.log(`In possible_captions(): generating caption options for label "${label}"`);
+
+                let candidate_captions = [];
+
+                // Loop over all the nodes in the graph, and locate node with a match in label
+                for (let n of this.nodes) {
+                    // EXAMPLE of n :   {'id': 1, 'name': 'Julian', '_node_labels': ['PERSON']}
+
+                    if (n._node_labels.includes(label))
+                        for (let key of Object.keys(n))   // Consider each key of the node
+                            if ((key !== "_node_labels") && (!candidate_captions.includes(key)))
+                                // Collect any key not already seen, EXCEPT for "_node_labels"
+                                candidate_captions.push(key);
+                }
+
+                return candidate_captions;  // EXAMPLE:  ['id', 'name']
+            },
+
+
+
            node_caption_funct(ele)
             /*  Function to generate the caption to show on the graph, for a given node.
                 The caption is based on the node's labels; in the absence of a user-specified mapping,
@@ -617,7 +642,7 @@ Vue.component('vue-cytoscape-5',
                 :param ele: An object representing a node element;
                                 ele.data is a function to which one can pass a field name as argument
                                 (such as "id", and will typically "_node_labels")
-                :return:    The name of a field who value will be used as node caption in the graph
+                @returns    The name of a field who value will be used as node caption in the graph
              */
             {
                 //console.log("Determining node caption for node with the following element:");
@@ -860,19 +885,11 @@ Vue.component('vue-cytoscape-5',
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    //...
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                //...
             },
-
-
-
-            /*
-                SUPPORT FUNCTIONS
-             */
 
 
 
@@ -901,7 +918,8 @@ Vue.component('vue-cytoscape-5',
                                         const y = n.data('node_y');
 
                                         if (Number.isFinite(x) && Number.isFinite(y))
-                                            return { x, y };
+                                            return this.rescale(x, y);
+                                            //return { x, y };
 
                                         return n.position();   // keep existing layout position
                                     }
@@ -910,6 +928,27 @@ Vue.component('vue-cytoscape-5',
                     cy.layout({ name: layout_name , rows: 4 }).run();
                 else
                     cy.layout({ name: layout_name }).run();
+            },
+
+
+
+            /*
+                SUPPORT FUNCTIONS
+             */
+
+
+
+            rescale(x, y)
+            {
+                const TARGET_SIZE = 1000;
+
+                const scaleX = this.max_X - this.min_X  ||  1;  // If the values are identical, return 1
+                const scaleY = this.max_Y - this.min_Y  ||  1;  // If the values are identical, return 1
+
+                return {
+                    x: ((x - this.min_X) / scaleX) * TARGET_SIZE,
+                    y: ((y - this.min_Y) / scaleY) * TARGET_SIZE
+                };
             },
 
 
