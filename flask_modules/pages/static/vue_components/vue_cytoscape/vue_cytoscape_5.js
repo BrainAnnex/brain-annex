@@ -379,7 +379,7 @@ Vue.component('vue-cytoscape-5',
                     let n = this.nodes[i];
                     let el = {data: n};
                     cyto_arr.push(el);
-
+                    /*
                     const x = n['node_x'];
                     const y = n['node_y'];
 
@@ -389,13 +389,14 @@ Vue.component('vue-cytoscape-5',
                         minY = Math.min(minY, y);
                         maxY = Math.max(maxY, y);
                     }
+                    */
                 }
-
+                /*
                 this.min_X = minX;
                 this.max_X = maxX;
                 this.min_Y = minY;
                 this.max_Y = maxY;
-
+                */
 
                 // Prepare the EDGES
                 for (i in this.edges) {   // Note:  i will be an integer, not an array element!!
@@ -533,10 +534,14 @@ Vue.component('vue-cytoscape-5',
                 /*
                     Detect all click of interest, and register their handlers
                  */
-                cy_object.on('click', this.handle_background_click);                   // A click on the empty space of the graph (the Cytoscape core)
+                cy_object.on('click', this.handle_background_click);        // A click on the empty space of the graph (the Cytoscape core)
                 cy_object.on('click', 'node', this.show_node_info);         // A click on a node on the graph
                 cy_object.on('click', 'edge', this.show_edge_info);         // A click on an edge
                 cy_object.on('dblclick', 'node', this.handle_double_click);// A double-click on a node on the graph
+
+                const nodes = cy_object.nodes();
+                this.determine_xy_bounds(nodes);
+
 
                 /*
                 // EXAMPLES of adding individual nodes
@@ -693,16 +698,17 @@ Vue.component('vue-cytoscape-5',
 
 
 
+
             /*
-                ------  EVENT HANDLERS  ------
+                ------------  EVENT HANDLERS  ------------
              */
 
 
+            /** Invoked when clicking anywhere - including the image background.
+             *  Clear the plot legend (note: if clicking on a node or edge, the legend
+             *  will get set again by the next handler)
+             */
             handle_background_click(ev)
-            /*  Invoked when clicking anywhere - including the image background.
-                Clear the plot legend (note: if clicking on a node or edge, the legend
-                will get set again by the next handler)
-            */
             {
                 this.clear_legend();
 
@@ -893,8 +899,8 @@ Vue.component('vue-cytoscape-5',
 
 
 
-            /**  Invoked as soon as the user selects an entry from the menu of plot styles.
-             *   The chosen value is bound to the Vue variable `plot_layout_style`
+            /**  Invoked when the user selects an entry from the menu of plot styles.
+             *   The selected value is bound to the Vue variable `plot_layout_style`.
              *   Re-render the graph with the new plot style
              */
             change_plot_style()
@@ -909,7 +915,12 @@ Vue.component('vue-cytoscape-5',
                 const cy = this.$options.cy_object;
                 const layout_name = this.plot_layout_style;
 
-                if (layout_name === 'preset')
+
+                // Change the layout, with a call to the layout() method
+                if (layout_name === 'preset')  {
+                    const nodes = cy.nodes();
+                    this.determine_xy_bounds(nodes);
+
                     cy.layout({
                         name: 'preset',
                         positions: n =>
@@ -924,6 +935,7 @@ Vue.component('vue-cytoscape-5',
                                         return n.position();   // keep existing layout position
                                     }
                         }).run();
+                }
                 else if (layout_name === 'grid')
                     cy.layout({ name: layout_name , rows: 4 }).run();
                 else
@@ -935,6 +947,36 @@ Vue.component('vue-cytoscape-5',
             /*
                 SUPPORT FUNCTIONS
              */
+
+
+
+            /** Determine the largest and smallest x- and y- values
+             *  for all the nodes that carry such information,
+             *  and set accordingly the Vue variables min_X, max_X, min_Y, max_Y
+             */
+            determine_xy_bounds(nodes)
+            {
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+
+                nodes.forEach(n => {
+                        const x = n.data('node_x');
+                        const y = n.data('node_y');
+
+                        if (Number.isFinite(x) && Number.isFinite(y)) {
+                            minX = Math.min(minX, x);
+                            maxX = Math.max(maxX, x);
+                            minY = Math.min(minY, y);
+                            maxY = Math.max(maxY, y);
+                        }
+                    }
+                );
+
+                this.min_X = minX;
+                this.max_X = maxX;
+                this.min_Y = minY;
+                this.max_Y = maxY;
+            },
 
 
 
