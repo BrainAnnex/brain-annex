@@ -379,24 +379,7 @@ Vue.component('vue-cytoscape-5',
                     let n = this.nodes[i];
                     let el = {data: n};
                     cyto_arr.push(el);
-                    /*
-                    const x = n['node_x'];
-                    const y = n['node_y'];
-
-                    if (Number.isFinite(x) && Number.isFinite(y)) {
-                        minX = Math.min(minX, x);
-                        maxX = Math.max(maxX, x);
-                        minY = Math.min(minY, y);
-                        maxY = Math.max(maxY, y);
-                    }
-                    */
                 }
-                /*
-                this.min_X = minX;
-                this.max_X = maxX;
-                this.min_Y = minY;
-                this.max_Y = maxY;
-                */
 
                 // Prepare the EDGES
                 for (i in this.edges) {   // Note:  i will be an integer, not an array element!!
