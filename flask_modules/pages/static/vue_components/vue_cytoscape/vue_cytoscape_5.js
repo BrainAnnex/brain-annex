@@ -31,13 +31,17 @@ Vue.component('vue-cytoscape-5',
                         EXAMPLE (edge between the two earlier nodes):
                             [{'id': 'edge-1', 'source': '1', 'target': '2', 'name': 'OWNS'}]
 
-                3) "color_mapping"
-                        Map of node labels to color names
+                3) "color_mapping" [OPTIONAL]
+                        Map from node labels to color names
                         EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
 
-                4) "caption_mapping"
-                        Map of node labels to node field (property) names to use for the node's caption
+                4) "caption_mapping" [OPTIONAL]
+                        Map from node labels to node field (property) names to use for the node's caption
                         EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
+
+                5) "shape_mapping" [OPTIONAL]
+                        Map from node labels to shape names to use for the node's depiction
+                        EXAMPLE:  {'PERSON': 'ellipse', 'CAR': 'diamond'}
              */
 
             component_id: {
@@ -146,20 +150,27 @@ Vue.component('vue-cytoscape-5',
                         <!-- Pulldown menu to show the current caption, and all other available choices.
                              The handler function change_caption() gets invoked as soon as user selects an entry from the menu
                           -->
-                        <select @change='change_caption' v-model="caption_selected_option">
+                        <select @change='change_caption'  v-model="caption_selected_option">
                             <option v-for="item in possible_captions(label_to_inspect)" v-bind:value="item">
                                 {{item}}
                             </option>
                         </select>
 
                         <br><br>
-                        <i>Shape:</i> circle<br>
+                        <i>Shape:</i><br>
+                        <select @change='change_shape(label_to_inspect)'  v-model="shape_selected_option">
+                            <option v-for="item in available_shapes" v-bind:value="item">
+                                {{item}}
+                            </option>
+                        </select>
+
+                        <br><br>
                         <i>Size:</i> medium<br>
                         <button @click="hide_nodes_by_label(label_to_inspect)"
-                            style="background-color:rgb(191, 47, 47); color:white"
+                            style="background-color:rgb(191, 47, 47); color:white; margin-top:5px"
                             v-bind:title="'Hide all nodes with label \`' + label_to_inspect + '\`'"
                         >
-                            Hide all
+                            HIDE nodes with this label
                         </button>
                     </div>
 
@@ -197,7 +208,7 @@ Vue.component('vue-cytoscape-5',
 
                     <br><br><br><br>
                     <span style="color:rgb(187, 187, 187); font-size:13px; margin-left:5px">
-                        vue-cytoscape-5 , rev. 6
+                        vue-cytoscape-5 , rev. 7
                     </span>
                 </div>      <!-- END OF SIDE BOX (normal-state version) -->
 
@@ -230,8 +241,13 @@ Vue.component('vue-cytoscape-5',
                          */
 
                 caption_mapping: this.graph_data.caption_mapping,
-                        /*  Map of node labels to node field (property) names to use for the node's caption
+                        /*  Map from node labels to node field (property) names to use for the node's caption
                             EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
+                         */
+
+                shape_mapping: this.graph_data.shape_mapping,
+                        /*  Map from node labels to shape names to use for the node's depiction
+                            EXAMPLE:  {'PERSON': 'ellipse', 'CAR': 'diamond'}
                          */
 
                 label_names: [],        // Array of unique label names throughout the graph
@@ -240,8 +256,13 @@ Vue.component('vue-cytoscape-5',
 
                 show_label_box: false,          // Whether or not to show a box where to edit the label-specific mappings
                 label_to_inspect: null,         // Name of label featured in the above box
-                caption_selected_option:  "",   // This will determine the default selection in the menu to change the caption
+                caption_selected_option:  "",   // This is used to determine the default selection in the menu to change the node caption
+                shape_selected_option:  "",     // This is used to determine the default selection in the menu to change the node shape
 
+                available_shapes: ['concave-hexagon', 'diamond', 'ellipse', 'hexagon', 'octagon', 'pentagon',
+                                   'rhomboid', 'square', 'star', 'tag', 'triangle', 'vee',
+                                   'round-diamond', 'round-hexagon', 'round-octagon', 'round-pentagon',
+                                   'round-rectangle', 'round-tag', 'round-triangle'],
 
                 // Data about the currently-selected node or edge
                 selected_node_labels: null,     // Array of labels of the currently-selected node
@@ -434,6 +455,8 @@ Vue.component('vue-cytoscape-5',
                                 'width': 75,
                                 'height': 75,
                                 //'shape': 'ellipse',   // Adjust width/height as desired
+                                'shape': this.node_shape_funct,
+
                                 //'label': 'data(name)',
                                 //'label': 'data(display_label)',     // [UNTESTED] Where `display_label` is a data field set accordingly
                                 'label': this.node_caption_funct,
@@ -555,12 +578,13 @@ Vue.component('vue-cytoscape-5',
              */
             change_caption()
             {
+                // TODO: maybe pass `label` as argument, as done in change_shape(label)
                 console.log(`Just selected caption "${this.caption_selected_option}" for label "${this.label_to_inspect}"`);
 
                 // Update the default label->caption mapping
                 this.caption_mapping[this.label_to_inspect] = this.caption_selected_option;
 
-                // Re-apply the stylesheet.  This: re-evaluates styles for all elements,
+                // Re-apply the stylesheet.  This re-evaluates styles for all elements,
                 // but doesn't re-run the layout (in particular, it preserves the positions)
                 // Note:  Cytoscape caches the computed style, and does not re-run
                 //        the styling functions, such as our node_caption_funct(), unless it knows something changed
@@ -568,9 +592,26 @@ Vue.component('vue-cytoscape-5',
             },
 
 
+            /**
+             *  Invoked as soon as user selects an entry
+             *  from the menu to change the default shape for a particular label
+             */
+            change_shape(label)
+            {
+                console.log(`Just selected caption "${this.shape_selected_option}" for label "${label}"`);
+
+                // Update the default label->shape mapping
+                this.shape_mapping[label] = this.shape_selected_option;
+
+                // Re-apply the stylesheet.  This re-evaluates styles for all elements,
+                // but doesn't re-run the layout (in particular, it preserves the positions)
+                // Note:  Cytoscape caches the computed style, and does not re-run
+                //        the styling functions, such as our node_caption_funct(), unless it knows something changed
+                this.$options.cy_object.style().update();
+            },
 
             /**
-             *  Invoked when the user click on the icon (tag) of a particular node label name
+             *  Invoked when the user clicks on the icon (tag) of a particular node label name
              */
             edit_label_info(label)
             {
@@ -578,9 +619,10 @@ Vue.component('vue-cytoscape-5',
                     this.show_label_box = true;
                     this.label_to_inspect = label;
                     this.caption_selected_option = this.caption_mapping[label];
+                    this.shape_selected_option = this.shape_mapping[label];
                 }
                 else {
-                    // If the user re-clicks on the same label, toggle the display of the box
+                    // If the user re-clicks on the same label, toggle the display of the info box for the label
                     this.show_label_box = !this.show_label_box;
                 }
             },
@@ -630,7 +672,7 @@ Vue.component('vue-cytoscape-5',
                 :param ele: An object representing a node element;
                                 ele.data is a function to which one can pass a field name as argument
                                 (such as "id", and will typically "_node_labels")
-                @returns    The name of a field who value will be used as node caption in the graph
+                @returns    The name of a field whose value will be used as node caption in the graph
              */
             {
                 //console.log("Determining node caption for node with the following element:");
@@ -680,6 +722,30 @@ Vue.component('vue-cytoscape-5',
             },
 
 
+           node_shape_funct(ele)
+            /*  Function to generate the name of the geometric shape to show on the graph, for a given node.
+                The shape is based on the node's labels; in the absence of a user-specified mapping,
+                a default value is used.
+
+                Note: the various fields of the node may be extracted from the argument ele (representing a node element)
+                      as ele.data(field_name).  For example: ele.data("id")
+
+                :param ele: An object representing a node element;
+                                ele.data is a function to which one can pass a field name as argument
+                                (such as "id", and will typically "_node_labels")
+                @returns    The name of a field whose value will be used as node caption in the graph
+             */
+            {
+                //console.log("Determining node caption for node with the following element:");
+                //console.log(ele);
+                //console.log("    which has id: ", ele.data("id"));
+                //console.log("    and labels: ", ele.data("_node_labels"));
+
+                const shape = this.map_labels_to_shape(ele.data("_node_labels"));
+                //console.log(`Name of shape to use for node: '${shape}'`);
+
+                return shape;
+            },
 
 
             /*
@@ -1253,7 +1319,7 @@ Vue.component('vue-cytoscape-5',
                 The label "BA" is (at least for now) skipped - being a special label.
                 TODO: introduce "low-priority" labels.
                 If no mapping information is present for any of the labels,
-                or if invoked with an undefined value,
+                or if the function is invoked with an undefined value,
                 use the color white by default
 
                 :param labels:  Array of strings (the labels of a database node)
@@ -1261,7 +1327,7 @@ Vue.component('vue-cytoscape-5',
              */
             {
                 // The default value, in case no mapping info found for any of the labels
-                const default_color = '#FFFFFF';
+                const default_color = '#FFFFFF';    // White
 
                 if (labels === undefined)  {
                     console.log("map_labels_to_color(): invoked with `undefined` argument.  Returning default value")
@@ -1272,6 +1338,7 @@ Vue.component('vue-cytoscape-5',
                 //console.log(this.color_mapping);
 
                 for (single_label of labels) {
+                    // Consider each label in turn
                     if ((single_label in this.color_mapping) && (single_label != "BA"))  {
                         const color = this.color_mapping[single_label];
                         //console.log(`Using the color '${color}' for the inside of this node`);
@@ -1280,6 +1347,46 @@ Vue.component('vue-cytoscape-5',
                 }
 
                 return default_color;
+            },
+
+
+            map_labels_to_shape(labels)
+            /*  Given the labels of a node (an array of strings),
+                return the shape to use for the node,
+                based on what was specified in "shape_mapping" variable.
+
+                In case of multiple labels, try them sequentially, until a mapping is found.
+                The label "BA" is (at least for now) skipped - being a special label.
+
+                If no mapping information is present for any of the labels,
+                or if the function is invoked with an undefined value,
+                use a round shape by default
+
+                :param labels:  Array of strings (the labels of a database node)
+                :return:        String with a standard Cytoscape shape name
+             */
+            {
+                // The default value, in case no mapping info found for any of the labels
+                const default_shape = 'ellipse';    // This will create a circle, if width = height, as they are by default
+
+                if (labels === undefined)  {
+                    //console.log("map_labels_to_shape(): invoked with `undefined` argument.  Returning default value")
+                    return default_shape;
+                }
+
+                //console.log("map_labels_to_shape(): labels: ", labels);    // Example: ["PERSON"]
+                //console.log(this.shape_mapping);
+
+                for (single_label of labels) {
+                    // Consider each label in turn
+                    if ((single_label in this.shape_mapping) && (single_label != "BA"))  {
+                        const shape = this.shape_mapping[single_label];
+                        //console.log(`Using the shape '${shape}' for the inside of this node`);
+                        return shape;
+                    }
+                }
+
+                return default_shape;
             },
 
 
