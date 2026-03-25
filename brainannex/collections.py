@@ -129,7 +129,7 @@ class Collections:
 
         EXAMPLE:  new_entity_id = add_to_collection_at_beginning(collection_id=708, membership_rel_name="BA_in_category",
                                                         item_class_name="Header", item_properties={"text": "New Caption, at the end"})
-        <SEE add_to_collection_at_end>
+        [SEE add_to_collection_at_end]
 
         :return:                    The auto-increment "entity_id" assigned to the newly-created data node
         """

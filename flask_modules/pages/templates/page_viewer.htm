@@ -428,7 +428,7 @@
 
     <br>
     <span v-if="waiting" class="waiting">Performing the bulk operation...</span>
-    <span v-bind:class="{'error-message': error, 'status-message': !error }">[[status_message]]</span>
+    <span v-bind:class="{'error-message': error, 'status-message-success': !error }">[[status_message]]</span>
     <br><br>
 </template>
 

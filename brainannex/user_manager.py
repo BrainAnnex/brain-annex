@@ -12,6 +12,8 @@ class UserManager:
     IMPORTANT: prior to use, its class variable "db" must be set, by calling set_database()
     """
 
+    SCHEMA_CLASS_NAME = "User"
+
     db = None   # "GraphAccess" object.  MUST be set before using this class!
                 # Note: this database-interface object is a CLASS variable, accessible as cls.db
 
