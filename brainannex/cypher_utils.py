@@ -424,7 +424,7 @@ class CypherUtils:
     """
 
     @classmethod
-    def process_match_structure(cls, handle :Union[int, str, CypherBuilder],
+    def process_match_structure(cls, handle :int|str|CypherBuilder,
                                 dummy_node_name=None, caller_method=None) -> CypherBuilder:
         """
         Accept either a valid internal database node ID, or a "CypherBuilder" object,
@@ -713,44 +713,52 @@ class CypherUtils:
 
 
     @classmethod
-    def avoid_links_in_path(cls, avoid_links=None, avoid_label=None,
-                            path_dummy_name="p", prefix_and=False) -> str:
+    def avoid_in_path(cls, avoid_links=None, avoid_label=None,
+                      path_dummy_name="p", prefix_and=False) -> str:
         """
         Create a clause for a Cypher query to traverse a graph
         while avoiding links with any of the specified names,
-        as well as avoiding node that contain the specified label.
+        as well as avoiding nodes that contain the specified label.
 
         EXAMPLE of usage:
                     MATCH p=(:start_Label)-[*]->(:end_label)
                     WHERE {here insert the clause returned by this function}
                     RETURN ...
 
-        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal
-        :param avoid_label:     [OPTIONAL] Name of a node label to be avoided on any of the nodes in the graph traversal
+        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal.
+                                    Blank strings, as well as blank leading/trailing characters, are ignored
+        :param avoid_label:     [OPTIONAL] Name of a node label to be avoided in any of the nodes in the graph traversal
         :param path_dummy_name: [OPTIONAL] Whatever dummy name is being used in the overall Cypher query,
                                     to refer to the paths; by default, "p"
         :param prefix_and:      [OPTIONAL] If True, prefix "AND " in cases where the returned value isn't a blank string;
-                                    by default, False
+                                    by default, False (nothing prefixed)
         :return:                A Cypher clause fragment
         """
         if (avoid_links is None) and (avoid_label is None):
             return ""       # No restrictions
 
         match avoid_links:
-            case None:
+            case None  |  ""  |  [] :      # No links to avoid
                 clause_from_links = ""
+
             case str():     # Note: `str()` is a class pattern
                 avoid_links = avoid_links.strip()
-                assert avoid_links != "", \
-                    "avoid_links_in_path(): the argument `avoid_links`, if provided as a string, cannot be blank"
+                if avoid_links == "":
+                    clause_from_links = ""
+                else:
+                    clause_from_links = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{avoid_links}')"
 
-                clause_from_links = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{avoid_links}')"
-            case list() | tuple():
-                # TODO: zap leading/trailing blanks from all names
-                substring = "' OR type(r) = '".join(avoid_links)    # EXAMPLE, if avoid_links is ["l1", "l2", "l3"]:
-                                                                    #       "l1' OR type(r) = 'l2' OR type(r) = 'l3"
-                clause_from_links = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{substring}')"
-                # EXAMPLE of clause:  "NONE(r IN relationships(p) WHERE type(r) = 'l1' OR type(r) = 'l2' OR type(r) = 'l3')"
+            case list()  |  tuple():
+                substring = "' OR type(r) = '".join(s.strip() for s in avoid_links if s.strip())
+                # Ditch leading/trailing blanks, as well as string with just blanks
+                # EXAMPLE, if avoid_links is [" l1  ", "  l2  ", "   ", " l3 "] then it produces:
+                #       "l1' OR type(r) = 'l2' OR type(r) = 'l3"
+                if substring == "":     # If there was nothing of substance after ditching the blanks!
+                    clause_from_links = ""
+                else:
+                    clause_from_links = f"NONE(r IN relationships({path_dummy_name}) WHERE type(r) = '{substring}')"
+                    # EXAMPLE of clause:  "NONE(r IN relationships(p) WHERE type(r) = 'l1' OR type(r) = 'l2' OR type(r) = 'l3')"
+
             case _ :
                 raise Exception(f"avoid_links_in_path(): the argument `avoid_links`, if provided, "
                                 f"must be a string, or list/tuple of strings. The type passed was {type(avoid_links)}")

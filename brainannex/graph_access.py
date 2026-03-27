@@ -1907,7 +1907,7 @@ class GraphAccess(InterGraph):
             raise Exception(f"explore_neighborhood(): cannot pass both arguments `avoid_links` and `follow_links`")
 
 
-        path_clause = CypherUtils.avoid_links_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
+        path_clause = CypherUtils.avoid_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
 
         cypher_rel_str = ""
         if follow_links:
