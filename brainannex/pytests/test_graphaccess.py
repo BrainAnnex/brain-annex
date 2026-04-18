@@ -820,6 +820,265 @@ def test_explore_neighborhood(db):
 
 
 
+def test_find_paths(db):
+    db.empty_dbase()
+
+    #result = db.find_paths(start_id=123, end_id=456)  # Non-existent nodes
+    #assert result == []
+
+    julian_id = db.create_node(labels="Person", properties={"name": "Julian"})
+
+    #result = db.find_paths(start_id=julian_id, end_id=julian_id)
+    #assert result == []
+
+    rese_id = db.create_node_with_links(labels="Person", properties={"name": "Rese"},
+                                        links=[{"internal_id": julian_id, "rel_name": "FRIENDS OF"}])
+
+    result = db.find_paths(start_id=rese_id, end_id=julian_id)
+    assert len(result) == 1
+    assert result == [
+                        [ {'name': 'Rese'},
+                          "FRIENDS OF",
+                          {'name': 'Julian'}
+                        ]
+                     ]
+    return
+    result = db.find_paths(start_id=julian_id, end_id=rese_id)      # Reverse direction
+    assert result == [
+                        [ {'name': 'Julian'},
+                          "FRIENDS OF",
+                          {'name': 'Rese'}
+                        ]
+                     ]
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, follow_link="FRIENDS OF")    # Limit to that link name
+    assert result == [
+                        [ {'name': 'Julian'},
+                          "FRIENDS OF",
+                          {'name': 'Rese'}
+                        ]
+                     ]
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, follow_link="UNKNOWN")
+    assert result == []         # No path when only following that link
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_links="  FRIENDS OF        ")
+    assert result == []         # No path if we never follow that link
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_links=["  FRIENDS OF   "])
+    assert result == []         # No path if we never follow that link
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_links="IRRELEVANT")
+    assert result == [
+                        [ {'name': 'Julian'},
+                          "FRIENDS OF",
+                          {'name': 'Rese'}
+                        ]
+                     ]
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_label="  Person   ")
+    assert result == []         # No path if we avoid node of that label
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_label="Of no significance")
+    assert result == [
+                        [ {'name': 'Julian'},
+                          "FRIENDS OF",
+                          {'name': 'Rese'}
+                        ]
+                     ]
+
+
+    return      # TODO: adapt the code below, for more testing
+
+    val_id = db.create_node_with_links(labels="Person", properties={"name": "Val"},
+                                    links=[{"internal_id": julian_id, "rel_name": "FRIENDS OF"}])
+    result = db.find_paths(start_id=julian_id)
+    expected = [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
+                {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=julian_id, include_start_node=True)
+    expected = [{'name': 'Rese',   '_internal_id': rese_id, '_node_labels': ['Person']},
+                {'name': 'Val',    '_internal_id': val_id, '_node_labels': ['Person']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+
+    car_id = db.create_node_with_links(labels="Car", properties={"color": "red"},
+                                    links=[{"internal_id": val_id, "rel_name": "IS OWNED BY"}])
+    result = db.find_paths(start_id=julian_id)
+    expected = [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
+                {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']},
+                {'color': 'red', '_internal_id': car_id, '_node_labels': ['Car']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=julian_id, include_start_node=True)
+    expected = [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
+                {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']},
+                {'color': 'red', '_internal_id': car_id, '_node_labels': ['Car']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=julian_id, avoid_links="IS OWNED BY") # Won't reach the `Car` node
+    expected = [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
+                {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=julian_id, max_hops=1)    # Won't reach the `Car` node
+    expected = [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
+                {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id)  # Start at the `Car` node (Val's car); only doing default 2 hops max
+    expected = [{'name': 'Val',   '_internal_id': val_id,           '_node_labels': ['Person']},
+                {'name': 'Julian','_internal_id': julian_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=3)  # Start at the `Car` node (Val's car)
+    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_links="FRIENDS OF")  # Start at Val's car
+    expected = [{'name': 'Val', '_internal_id': val_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_links=["FRIENDS OF", "IRRELEVANT NAME"])  # Start at Val's car
+    expected = [{'name': 'Val', '_internal_id': val_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_links=["FRIENDS OF", "IS OWNED BY"])  # Start at Val's car
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, max_hops=3,
+                           avoid_links=["FRIENDS OF", "IS OWNED BY"], include_start_node=True)  # Start at Val's car
+    assert result == [{'color': 'red', '_internal_id': car_id, '_node_labels': ['Car']}]
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_label="Car")       # Start at the `Car` node (Val's car)
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_label="Person")    # Start at the `Car` node (Val's car)
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_label="Nonexistent")  # Start at the `Car` node (Val's car)
+    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+
+    db.add_links(match_from=rese_id, match_to=car_id, rel_name="LIKES")
+
+    # Now there are 2 paths of length 2 from the red Car (Val's) to the Person "Julian"; we'll always be starting at the Car
+    result = db.find_paths(start_id=car_id, max_hops=2)
+    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=2, avoid_links="IS OWNED BY")
+    expected = [{'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_links="IS OWNED BY")
+    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_links=["IS OWNED BY", "FRIENDS OF"])
+    expected = [{'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=3, avoid_links=["IS OWNED BY", "FRIENDS OF", "LIKES"])
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, max_hops=2, avoid_label="Person")
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, max_hops=4)   # Loop around back to the Car node
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']},
+                {'color': 'red',   '_internal_id': car_id,    '_node_labels': ['Car']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=4, include_start_node=True)   # Loop around back to the Car node (but only shows up once)
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']},
+                {'color': 'red',   '_internal_id': car_id,    '_node_labels': ['Car']}]
+    assert compare_recordsets(result, expected)
+
+
+    result = db.find_paths(start_id=car_id, max_hops=3, follow_links="NON_EXISTENT")
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, max_hops=3, follow_links ="LIKES")
+    assert result == [{'name': 'Rese', '_internal_id': rese_id,   '_node_labels': ['Person']}]
+
+    result = db.find_paths(start_id=car_id, max_hops=3, follow_links ="   IS OWNED BY  ")
+    assert result == [{'name': 'Val',   '_internal_id': val_id,    '_node_labels': ['Person']}]
+
+    result = db.find_paths(start_id=car_id, max_hops=3, follow_links ="IS OWNED BY", avoid_label="Junk")
+    assert result == [{'name': 'Val',   '_internal_id': val_id,    '_node_labels': ['Person']}]
+
+    result = db.find_paths(start_id=car_id, max_hops=3, follow_links ="IS OWNED BY", avoid_label="Car")
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, max_hops=3, follow_links ="IS OWNED BY", avoid_label="Person")
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, max_hops=3, follow_links = ["LIKES", "IS OWNED BY"])
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=car_id, max_hops=3, follow_links = ["LIKES", "IS OWNED BY", "FRIENDS OF"])
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']},
+                {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+
+
+    # Remove the Person node "Julian"; now the only link from "Val" to "Red" is thru the Car node
+    db.delete_nodes(julian_id)
+
+    result = db.find_paths(start_id=rese_id, max_hops=2)
+    expected= [{'color': 'red', '_internal_id': car_id, '_node_labels': ['Car']},
+               {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']}]
+    assert compare_recordsets(result, expected)
+
+    result = db.find_paths(start_id=rese_id, max_hops=2, avoid_label='Person')
+    assert result == []
+
+    result = db.find_paths(start_id=rese_id, max_hops=2, avoid_label='Car')
+    assert result == []
+
+
+    with pytest.raises(Exception):
+        db.find_paths(start_id=car_id, max_hops=0)
+
+    with pytest.raises(Exception):
+        db.find_paths(start_id=car_id, max_hops=1, follow_links="    ")
+
+    with pytest.raises(Exception):
+        db.find_paths(start_id=car_id, max_hops=1, avoid_links="    ")
+
+    with pytest.raises(Exception):
+        db.find_paths(start_id=car_id, max_hops=1, avoid_label="   ")
+
+    with pytest.raises(Exception):
+        db.find_paths(start_id=car_id, max_hops=1, follow_links="l1", avoid_links="l2")
+
+
+
+
+
+
 #########   ~ CREATE NODES ~
 
 def test_create_node(db):

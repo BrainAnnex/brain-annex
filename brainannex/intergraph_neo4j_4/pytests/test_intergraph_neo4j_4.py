@@ -191,6 +191,110 @@ def test_query_2(db):
 
 
 
+def test_query_path(db):
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+
+    # Start with 2 isolated nodes
+    julian_id = db.query("CREATE (n :Person {name: 'Julian'}) RETURN id(n) AS id",
+                         single_cell="id")
+    rese_id =   db.query("CREATE (n :Person {name: 'Rese'}) RETURN id(n) AS id",
+                         single_cell="id")
+
+    path_query = '''
+        MATCH  p = (n1)-[*..4]-(n2)   
+        WHERE (n1.name = "Julian")   
+        AND   (n2.name = "Rese")          
+        RETURN p
+        '''
+
+    result = db.query_path(path_query)
+    assert result == []         # No path found
+
+
+    # Add a link
+    q = '''
+        MATCH (n1 {name: 'Julian'}), (n2 {name: 'Rese'})
+        MERGE (n1)-[r:`FRIENDS OF`]->(n2)
+        RETURN id(r) AS rel_id
+        '''
+    value = db.update_query(q)  # EXAMPLE of value:  {'returned_data': [{'rel_id': 123}]}
+    #print(value['returned_data'])
+    rel_id = value['returned_data'][0]['rel_id']
+
+    result = db.query_path(path_query)
+    assert len(result) == 1
+    p = result[0]
+    n1, e, n2 = p   # Unpack
+    assert n1 == {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']}
+    assert n2 == {'name': 'Rese',   '_internal_id': rese_id, '_node_labels': ['Person']}
+    assert e == {'_kind': 'LINK', '_internal_id': rel_id,
+                 'name': 'FRIENDS OF', '_start': julian_id, '_end': rese_id,
+                 '_properties': {}}
+
+
+    with pytest.raises(Exception):
+        # Bad dummy name
+        db.query_path(q, dummy_name="some_path_name")
+
+    q = "MATCH (p) RETURN p"
+    with pytest.raises(Exception):
+        # Query isn't returning a path
+        db.query_path(q, dummy_name="p")
+
+
+    # Add another node, and links to it
+    sf_id = db.query("CREATE (n :City {name: 'San Francisco'}) RETURN id(n) AS id",
+                         single_cell="id")
+
+    q = '''
+        MATCH (p :Person {name: 'Julian'}), (c :City)
+        MERGE (p)-[r :`LIVES IN`]->(c)
+        RETURN id(r) AS rel_id
+        '''
+    value = db.update_query(q)  # EXAMPLE of value:  {'returned_data': [{'rel_id': 123}]}
+    julian_city_link_id = value['returned_data'][0]['rel_id']
+
+    q = '''
+        MATCH (p :Person {name: 'Rese'}), (c :City)
+        MERGE (p)-[r :`LIVES IN` {since: 2026}]->(c)
+        RETURN id(r) AS rel_id
+        '''
+    value = db.update_query(q)  # EXAMPLE of value:  {'returned_data': [{'rel_id': 123}]}
+    #print(value['returned_data'])
+    rese_city_link_id = value['returned_data'][0]['rel_id']
+
+    result = db.query_path(path_query)
+    assert len(result) == 2     # 2 paths now available
+
+    if len(result[0]) == 3:
+        short_path, long_path = result  # Unpack
+        assert len(long_path) == 5
+
+    else:
+        long_path, short_path  = result  # Unpack
+        assert len(short_path) == 3
+
+    # The short path should be just like before
+    n1, e, n2 = short_path      # Unpack
+    assert n1 == {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']}
+    assert n2 == {'name': 'Rese',   '_internal_id': rese_id, '_node_labels': ['Person']}
+    assert e == {'_kind': 'LINK', '_internal_id': rel_id,
+                 'name': 'FRIENDS OF', '_start': julian_id, '_end': rese_id,
+                 '_properties': {}}
+
+    n1, e1, n2, e2, n3 = long_path      # Unpack
+    assert n1 == {'name': 'Julian',         '_internal_id': julian_id, '_node_labels': ['Person']}
+    assert e1 == {'_kind': 'LINK', '_internal_id': julian_city_link_id,
+                 'name': 'LIVES IN', '_start': julian_id, '_end': sf_id,
+                 '_properties': {}}
+    assert n2 == {'name': 'San Francisco',  '_internal_id': sf_id, '_node_labels': ['City']}
+    assert e2 == {'_kind': 'LINK', '_internal_id': rese_city_link_id,
+                 'name': 'LIVES IN', '_start': rese_id, '_end': sf_id,
+                 '_properties': {'since': 2026}}
+    assert n3 == {'name': 'Rese',           '_internal_id': rese_id, '_node_labels': ['Person']}
+
+
+
 def test_query_extended(db):
     db.empty_dbase(drop_indexes=True, drop_constraints=True)
 

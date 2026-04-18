@@ -1950,6 +1950,139 @@ class GraphAccess(InterGraph):
 
 
 
+    def find_paths(self, start_id : int | str, end_id : int | str,
+                   follow_link=None, max_hops=4,
+                   avoid_links=None, avoid_label=None) -> [list]:
+        """
+        Find and return all the paths between the 2 given nodes, of at most the requested length (`max_hops`),
+        by means of the relationship specified by `follow_link` (or any link, if unspecified.)
+        The directions of the links is NOT considered.
+        Paths thru links with a particular name, or list of names, will be avoided.
+        Paths thru nodes that contain the specified label, will also be avoided.
+
+        :param start_id:        The value of the internal database ID of the starting node
+        :param end_id:          The value of the internal database ID of the end node
+
+        :param follow_link:     [OPTIONAL] The name of the links to follow;
+                                    if not specified, any link name will be followed (within the restrictions, if any,
+                                    imposed by `avoid_links`)
+        :param max_hops:        [OPTIONAL] The max length of any returned path
+
+        :param avoid_links:     [OPTIONAL] The name or names of links to avoid (no path will go thru any of them)
+                                    Name, or list/tuple of names, of links to avoid in the graph traversal.
+                                    Blank strings, as well as blank leading/trailing characters, are ignored
+        :param avoid_label:     [OPTIONAL] Name of a node label to be avoided in any of the nodes in the graph traversal
+
+        :return:                A list of paths.
+                                *Each* path is a list whose elements are alternately node data and link name.
+                                    EXAMPLE: [
+                                                {'some_property': 'some value'},
+                                                'CONNECTED_TO',
+                                                {'some_property': 'some value'}
+                                             ]
+                                Note: internal database IDs and labels are NOT included in the return values
+        """
+        # TODO: pytest
+
+        clause = CypherUtils.avoid_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
+        # A string to insert into a Cypher query, below
+
+        if follow_link:
+            path = f"(e1)-[:`{follow_link}`*..{max_hops}]-(e2)"
+        else:
+            path = f"(e1)-[*..{max_hops}]-(e2)"
+
+
+        q = f'''
+            MATCH  p = {path}   
+            WHERE (id(e1) = $start_id)   
+            AND   (id(e2) = $end_id)    
+            {clause}   
+            RETURN p
+            '''
+
+        data_dict={"start_id": start_id, "end_id": end_id}
+
+        #self.debug_query_print(q=q, data_binding=data_dict)
+        result = self.query(q, data_binding=data_dict)
+
+        print(f"{len(result)} path(s) found")
+
+        l = [path["p"] for path in result]      # Turn the values of the "p" keys into a list
+
+        '''
+        This list is inadequate for many purposes - because of many unreported elements; in particular
+            * The nodes' internal ID's
+            * The edges' internal ID's
+        '''
+
+        self.query_path(q=q, data_binding=data_dict)
+
+        return l
+
+
+        # Alt. experimental round
+        # Start a new session, use it, and then immediately close it
+        with self.driver.session() as new_session:
+            result = new_session.run(q, data_dict)
+
+            #print(type(result))    # <class 'neo4j.work.result.Result'>
+
+            for record in result:
+                #print(type(record))    # <class 'neo4j.data.Record'>
+                                        # Immutable, ordered collection of key-value pairs.
+                                        # Iteration of the collection will yield values rather than keys.
+                #print(record)
+                path = record["p"]
+                #print(type(path))      # <class 'neo4j.graph.Path'>
+                                        # https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.graph.Path
+                                        # https://neo4j.com/docs/api/python-driver/5.28/api.html#neo4j.graph.Path
+                #print(path)
+
+                '''
+                for element in path:
+                    print("\nProcessing path element:")
+                    print(element.__class__.__name__)
+                    print(type(element))
+                    print(element)
+                '''
+
+                #interleave path
+                nodes = path.nodes
+                rels = path.relationships
+
+                result = []
+
+                for i, node in enumerate(nodes):
+                    #result.append(node)
+
+                    n=dict(node)
+                    n["_internal_id"] = node.id
+                    n["_node_labels"] = list(node.labels)
+                    result.append(n)
+
+                    if i < len(rels):
+                        rel = rels[i]
+                        r = {
+                            "_kind": "LINK",
+                            "_internal_id": rel.id,
+                            "name": rel.type,
+                            "start": rel.start_node.id,
+                            "end": rel.end_node.id,
+                            "properties": dict(rel)
+                        }
+                        #result.append(rels[i])
+                        result.append(r)
+                        # Explore simplified format:  ("NAME", "IN", {})   i.e. triplet (link_name, link_direction, link_properties)
+
+                for item in result:
+                    print(item)
+
+        return l
+
+
+
+
 
 
     #####################################################################################################
