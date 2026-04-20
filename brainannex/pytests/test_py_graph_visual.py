@@ -158,39 +158,6 @@ def test_assign_color_mapping():
 
 
 
-def test_prepare_recordset():
-    graph = PyGraphVisual()
-
-    with pytest.raises(Exception):
-        graph.prepare_recordset(id_list=[1, 2, 3])     # Missing db handle when initializing PyGraphVisual()
-
-    db = GraphAccess(debug=False)
-
-    graph = PyGraphVisual(db=db)
-    db.empty_dbase()
-
-    with pytest.raises(Exception):
-        graph.prepare_recordset(id_list="I'm not a list")
-
-    result = graph.prepare_recordset(id_list=[1, 2, 3])    # Non-existent nodes
-    assert result == []
-
-
-    # Start populating the database
-    p_1 = db.create_node(labels="Person", properties={'name': 'Julian'})
-
-    result = graph.prepare_recordset(id_list=[p_1])
-    assert result == [{'_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'}]
-
-
-    p_2 = db.create_node(labels="Person", properties={'name': 'Val'})
-    result = graph.prepare_recordset(id_list=[p_1, p_2])
-    expected = [{'_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
-                {'_internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'}]
-    assert compare_recordsets(result, expected)
-
-
-
 def test_prepare_graph_1():
     db = GraphAccess(debug=False)
 

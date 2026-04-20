@@ -142,10 +142,12 @@ class GraphAccess(InterGraph):
                   single_row=False, single_cell=""):
         """
         By default, it returns a list of the records (as dictionaries of ALL the key/value node properties)
-        corresponding to all the Neo4j nodes specified by the given match data.
-        However, if the flags "single_row" or "single_cell" are set, simpler data structures are returned
+        corresponding to all the database nodes specified by the given match data.
 
-        :param match:           EITHER an integer or string with an internal database node id,
+        HOWEVER, if the flags "single_row" or "single_cell" are set,
+        then simpler data structures are returned
+
+        :param match:           EITHER an integer or string with an internal database node id (to identify a singles node),
                                     OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
 
         :param return_internal_id:  Flag indicating whether to also include the internal database node ID in the returned data
@@ -231,13 +233,13 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_df(self, match: Union[int, CypherBuilder], order_by=None, limit=None) -> pd.DataFrame:
+    def get_df(self, match :int|str|CypherBuilder, order_by=None, limit=None) -> pd.DataFrame:
         """
         Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
 
         [See get_nodes() for more information about the arguments]
 
-        :param match:       EITHER an integer with an internal database node id,
+        :param match:       EITHER an integer or string with an internal database node id (to identify a singles node),
                                 OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param order_by:    Optional string with the key (field) name to order by, in ascending order
                                 Note: lower and uppercase names are treated differently in the sort order
@@ -247,6 +249,37 @@ class GraphAccess(InterGraph):
         """
         result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
         return pd.DataFrame(result_list)
+
+
+
+    def get_recordset(self, id_list :[int|str]) -> [dict]:
+        """
+        Given a list of internal id's of database nodes,
+        construct and return a "dataset" (list of dictionaries) of their properties,
+        also including the special fields `_internal_id` and `_node_labels`
+
+        :param id_list: A list of internal id's of database nodes
+
+        :return:        A list of dicts, with the node properties
+                            plus the special fields `_internal_id` and `_node_labels`
+                            EXAMPLE:
+                            [{'_internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
+        """
+        # TODO: also accept tuples of ID's
+        assert type(id_list) == list, \
+            f"prepare_recordset(): argument `id_list` must be a list; it is of type {type(id_list)}"
+
+        if id_list == []:
+            return []       # No data was passed
+
+        q = f'''
+            MATCH (n)
+            WHERE ID(n) IN $id_list
+            RETURN n
+            '''
+
+        #self.db.debug_print_query(q, {"id_list": id_list})
+        return self.query_extended(q, {"id_list": id_list}, flatten=True)
 
 
 

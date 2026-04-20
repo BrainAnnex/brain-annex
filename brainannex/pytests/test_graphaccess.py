@@ -303,6 +303,31 @@ def test_get_df(db):
 
 
 
+def test_get_recordset(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        db.get_recordset(id_list="I'm not a list")
+
+    result = db.get_recordset(id_list=[1, 2, 3])    # Non-existent nodes
+    assert result == []
+
+
+    # Start populating the database
+    p_1 = db.create_node(labels="Person", properties={'name': 'Julian'})
+
+    result = db.get_recordset(id_list=[p_1])
+    assert result == [{'_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'}]
+
+
+    p_2 = db.create_node(labels="Person", properties={'name': 'Val'})
+    result = db.get_recordset(id_list=[p_1, p_2])
+    expected = [{'_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
+                {'_internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'}]
+    assert compare_recordsets(result, expected)
+
+
+
 def test_get_node_labels(db):
     db.empty_dbase()
 

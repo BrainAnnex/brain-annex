@@ -485,38 +485,6 @@ class PyGraphVisual:
     ############   The methods below require a database connection   ############
 
 
-    def prepare_recordset(self, id_list :[int|str]) -> [dict]:
-        """
-        Given a list of node internal id's, construct and return a dataset of their properties,
-        plus the special fields `internal_id` and `_node_labels`
-
-        :param id_list: A list of internal id's of database nodes
-
-        :return:        A list of dicts, with the node properties plus the special fields `internal_id` and `_node_labels`
-                            EXAMPLE:
-                            [{'_internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
-        """
-        # TODO: move to GraphAccess
-        assert type(id_list) == list, \
-            f"prepare_recordset(): argument `id_list` must be a list; it is of type {type(id_list)}"
-
-        assert self.db, \
-            "prepare_recordset(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
-
-        if id_list == []:
-            return []       # No data was passed
-
-        q = f'''
-            MATCH (n)
-            WHERE ID(n) IN $id_list
-            RETURN n
-            '''
-
-        #self.db.debug_print_query(q, {"id_list": id_list})
-        return self.db.query_extended(q, {"id_list": id_list}, flatten=True)
-
-
-
     def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
@@ -534,7 +502,7 @@ class PyGraphVisual:
         :param result_dataset:  A list of dictionary data about graph-database nodes;
                                     each dict must contain an entry with the key "_internal_id".
                                     No problem if duplicates in "_internal_id" are present;
-                                    only the fist of one duplicates gets processed
+                                    only the fist one of the duplicates gets processed
         :param cumulative:      If False (default) then any previous call to this function will get ignored,
                                     and a new graph is appended
         :param add_edges:       If True, all existing edges among the displayed nodes
@@ -650,7 +618,7 @@ class PyGraphVisual:
                             1) list of dicts defining nodes
                             2) list of dicts defining edges
         """
-        recordset = self.prepare_recordset(id_list)
+        recordset = self.db.get_recordset(id_list)
         self.prepare_graph(result_dataset=recordset, cumulative=False, add_edges=True)
         return (self.nodes , self.edges)
 
