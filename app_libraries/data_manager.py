@@ -1356,7 +1356,7 @@ class DataManager:
         """
         cls.db.assert_valid_internal_id(node_internal_id)
 
-        # Two other approaches considered but not utilized:
+        # Two other approaches were considered but not utilized:
         #neighbors = cls.db.get_parents_and_children(internal_id=node_internal_id)
         #neighbors_alt = cls.db.explore_neighborhood(start_id=node_internal_id, max_hops=1, include_start_node=False)
 
@@ -1402,6 +1402,7 @@ class DataManager:
             n["id"] = str(n["id"])
 
         trimmed_nodes = [n for n in nodes if n["_internal_id"] != node_internal_id]  # Drop the original node
+
         # Make an adjustment to all the elements of the `edges` list
         for e in edges:
             e["source"] = str(e["source"])

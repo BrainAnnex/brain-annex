@@ -2951,6 +2951,8 @@ class GraphAccess(InterGraph):
     def sanitize_date_times(self, record :dict, drop_time=False,
                             date_format="%Y/%m/%d", time_format="%H:%M:%S") -> dict:
         """
+        Take a dictionary with data that might contain Neo4j "Date" or "DateTime" data types,
+        and return a derived dictionary with all the Date/DateTime values converted to strings.
 
         :param record:      A python dictionary whose values might include Neo4j "Date" or "DateTime" data types;
                                 this dictionary does NOT get altered
@@ -2960,7 +2962,7 @@ class GraphAccess(InterGraph):
                                 See https://strftime.org/
         :param time_format: [OPTIONAL] String with format information for times
 
-        :return:            A new dictionary, based on `record` but will all the Date/DateTime values converted to strings.
+        :return:            A new dictionary, based on `record` but with all the Date/DateTime values converted to strings.
                                 By default, a format of the type "2019/01/31 , 18:59:35" is used for datetimes.
         """
         # TODO: this (database-specific) method belongs to the InterGraph class
@@ -2991,36 +2993,48 @@ class GraphAccess(InterGraph):
 
 
 
-    def flatten_recordset(self, recordset :[dict], dummy_name=None) -> [dict]:
+    def flatten_structured_dataset(self, dataset :[dict], dummy_name=None) -> [dict]:
         """
-        Transform a list such as  [{"n": {"name": "Julian", "city": "Berkeley"}},
-                                   {"n": {"name": "Val",   "city": "Emeryville"}}]
+        Transform a list such as  [ {"n": {"name": "Julian", "city": "Berkeley"}},
+                                    {"n": {"name": "Val",    "city": "Emeryville"}},
+                                    {"n: {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+                                  ]
         (as typically returned by Cypher queries that match entire nodes, in this example with a dummy name of "n")
 
         into the flattened list (without the outermost layer) such as:
-                         [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
+                         [ {"name": "Julian", "city": "Berkeley"} ,
+                           {"name": "Val", "city": "Emeryville"} ,
+                           {"field1": 1, "field2": "x", "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+                         ]
 
-        :param recordset:   A list whose elements are python dictionaries
+        :param dataset:     A list whose elements are python dictionaries, each with just 1 key, and a corresponding value
+                                that is a dictionary
         :param dummy_name:  [OPTIONAL] If not specified, ANY key name will be matched
         :return:            A flattened list where individual items are no longer "indexed" by "dummy variables"
         """
-        assert type(recordset) == list, \
-            "flatten_recordset(): argument `recordset` must be a list"
+        assert type(dataset) == list, \
+            "flatten_structured_dataset(): argument `dataset` must be a list"
 
         flattened = []
 
-        for record in recordset:
+        for record in dataset:
             assert type(record) == dict, \
-                "flatten_recordset(): each element in the list passed by `recordset` must be a dictionary"
+                "flatten_structured_dataset(): each element in the list passed by `dataset` must be a dictionary"
+
+            assert len(record) == 1, \
+                f'flatten_structured_dataset(): each element in the list passed by `dataset` must be a dictionary with exactly 1 key. ' \
+                f'The following entry has more than 1 key: {record}'
 
             if dummy_name:
                 assert dummy_name in record, \
-                    f'flatten_recordset(): each element in the list passed by `recordset` must have a key named "{dummy_name}"'
+                    f'flatten_structured_dataset(): each element in the list passed by `dataset` must have a key named "{dummy_name}"'
                 value = record[dummy_name]
             else:
-                assert len(record) == 1, \
-                    f'flatten_recordset(): each element in the list passed by `recordset` must be a dictionary with exactly 1 key'
                 value = next(iter(record.values()))     # Extract the single value in the `record` dict
+
+            assert type(value) == dict, \
+                f'flatten_structured_dataset(): each element in the list passed by `dataset` must be a dictionary with a single key whose value is a dict. ' \
+                f'The following value is not a dictionary: {value}'
 
             flattened.append(value)
 
@@ -3044,8 +3058,10 @@ class GraphAccess(InterGraph):
         EXAMPLES of queries that generate recordsets in the expected formats, when passed to query():
                 "MATCH (n) RETURN n"
                 "MATCH (n) RETURN n, id(n) AS _internal_id"
+                "MATCH (n) RETURN n, id(n) AS _internal_id, labels(n) AS _node_labels"
 
-        :param recordset:   A list of dict's that contain the key "n" and optionally the key "_internal_id".
+        :param recordset:   A list of dict's that contain the key "n" (or as specified by the argument `dummy_name`)
+                                and optionally the keys "_internal_id" and "_node_labels"
                                 EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]},
                                            {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "_internal_id": 4},
                                            {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "_internal_id": 53},

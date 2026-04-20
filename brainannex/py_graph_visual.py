@@ -488,8 +488,8 @@ class PyGraphVisual:
     def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
-        as returned by GraphAccess.get_nodes() - construct, and save inside this pyhon object,
-        the visualization data for them.
+        as returned by GraphAccess.get_nodes() or by GraphAccess.get_recordset() - construct,
+        and save inside this pyhon object, the visualization data for them.
 
         Each passed dictionary entry MUST have a key named "_internal_id".
         If any key named "id" is found, it get automatically renamed "_id_original" (since "id" is used by the visualization software);
@@ -509,7 +509,7 @@ class PyGraphVisual:
                                     will also be part of the visualization
         :param avoid_links:     Name or list of name of links to avoid including
 
-        :return:                A list of values with the internal databased IDs
+        :return:                A list of the internal databased IDs
                                     of all the nodes added to the graph structure
         """
         assert self.db, \
@@ -606,7 +606,7 @@ class PyGraphVisual:
 
     def assemble_graph(self, id_list :[int|str]) -> ([dict],[dict]):
         """
-        Given a list of node internal id's, construct and return
+        Given a list of internal id's of database nodes, construct and return
         the data needed by the Cytoscape graph visualization (including all properties).
 
         Any date/datetime value found in the database will first be "sanitized"

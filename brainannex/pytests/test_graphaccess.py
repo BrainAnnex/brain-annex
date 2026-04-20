@@ -2642,25 +2642,36 @@ def test_sanitize_dates(db):
 
 
 
-def test_flatten_recordset(db):
+def test_flatten_structured_dataset(db):
+    with pytest.raises(Exception):
+        db.flatten_structured_dataset(123)
+
+    with pytest.raises(Exception):
+        db.flatten_structured_dataset([123])
+
+    with pytest.raises(Exception):
+        db.flatten_structured_dataset(dataset=[{"A": 1, "B": 2}])
+
+    with pytest.raises(Exception):
+        db.flatten_structured_dataset(dataset=[{"n": 123}])
+
+    with pytest.raises(Exception):
+        db.flatten_structured_dataset(dataset=[{"n": 123}], dummy_name="n")
+
     rs = [{"n": {"name": "Julian", "city": "Berkeley"}},
           {"n": {"name": "Val",   "city": "Emeryville"}}
         ]
 
-    assert db.flatten_recordset(rs) == \
-        [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
+    assert db.flatten_structured_dataset(rs) == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"} ]
 
-    assert db.flatten_recordset(rs, dummy_name="n") == \
-        [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
-
-    with pytest.raises(Exception):
-        db.flatten_recordset(rs, dummy_name="unknown")
-
-    with pytest.raises(Exception):
-        db.flatten_recordset(123)
+    assert db.flatten_structured_dataset(rs, dummy_name="n") == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"} ]
 
     with pytest.raises(Exception):
-        db.flatten_recordset([123])
+        db.flatten_structured_dataset(rs, dummy_name="unknown")
 
 
 
