@@ -1985,11 +1985,12 @@ class GraphAccess(InterGraph):
         :return:                A list of paths.
                                 *Each* path is a list whose elements are alternately node data and link name.
                                     EXAMPLE: [
-                                                {'some_property': 'some value'},
-                                                'CONNECTED_TO',
-                                                {'some_property': 'some value'}
+                                                {'name': 'Val', '_internal_id': 'p1', '_node_labels': ['Person']},
+                                                {'_kind': 'LINK', 'name': 'FRIENDS OF', '_internal_id': 'l1', '_start': 'p1', '_end': 'p2', '_properties': {}},
+                                                {'name': 'Julian', '_internal_id': 'p2', '_node_labels': ['Person']}
                                              ]
-                                Note: internal database IDs and labels are NOT included in the return values
+                                Note: Leading underscores indicate system variable.
+                                      The links dictionaries also contain the special key/property  '_kind': 'LINK'
         """
         if follow_link:
             assert not avoid_links, \
