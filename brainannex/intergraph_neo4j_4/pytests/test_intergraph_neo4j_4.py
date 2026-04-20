@@ -215,11 +215,10 @@ def test_query_path(db):
     q = '''
         MATCH (n1 {name: 'Julian'}), (n2 {name: 'Rese'})
         MERGE (n1)-[r:`FRIENDS OF`]->(n2)
-        RETURN id(r) AS rel_id
+        RETURN id(r) AS link_id
         '''
-    value = db.update_query(q)  # EXAMPLE of value:  {'returned_data': [{'rel_id': 123}]}
-    #print(value['returned_data'])
-    rel_id = value['returned_data'][0]['rel_id']
+    rel_id = db.query(q, single_cell="link_id")
+
 
     result = db.query_path(path_query)
     assert len(result) == 1
@@ -249,10 +248,9 @@ def test_query_path(db):
     q = '''
         MATCH (p :Person {name: 'Julian'}), (c :City)
         MERGE (p)-[r :`LIVES IN`]->(c)
-        RETURN id(r) AS rel_id
+        RETURN id(r) AS link_id
         '''
-    value = db.update_query(q)  # EXAMPLE of value:  {'returned_data': [{'rel_id': 123}]}
-    julian_city_link_id = value['returned_data'][0]['rel_id']
+    julian_city_link_id = db.query(q, single_cell="link_id")
 
     q = '''
         MATCH (p :Person {name: 'Rese'}), (c :City)

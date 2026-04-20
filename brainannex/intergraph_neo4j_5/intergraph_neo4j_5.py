@@ -479,7 +479,6 @@ class InterGraph:
                 result.append(path_list)
 
 
-
         return result
 
 

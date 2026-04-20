@@ -844,7 +844,7 @@ class GraphAccess(InterGraph):
         """
         Create a new node, with the given labels and optional properties,
         and link it up to all the EXISTING nodes that are specified
-        in the (possibly empty) list of link nodes, identified by their Neo4j internal ID's.
+        in the (possibly empty) list of link nodes, identified by their internal database ID's.
 
         The list of link nodes also contains the names to give to each link,
         as well as their directions (by default OUT-bound from the newly-created node)
@@ -886,6 +886,7 @@ class GraphAccess(InterGraph):
         :return:            An integer or string with the internal database ID of the newly-created node
         """
         # TODO:  test more the `merge` arg
+        # TODO: maybe also return the internal ID's of the links???
 
         assert properties is None or type(properties) == dict, \
             f"GraphAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
@@ -1888,8 +1889,13 @@ class GraphAccess(InterGraph):
         :param start_id:        The value of the internal database ID of the starting node
         :param max_hops:        [OPTIONAL] Integer >= 1 with the maximum number of links to follow in the graph traversal;
                                     i.e. the max distance to travel away from the starting node
-        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal
         :param follow_links:    [OPTIONAL] Name, or list/tuple of names, of the links that we're allowed to follow in the traversal
+                                    If not specified, any link name will be followed (within the restrictions, if any,
+                                    imposed by `avoid_links` will prevail)
+                                    If this argument is used, cannot use `avoid_links`
+        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal
+                                    Blank strings, as well as blank leading/trailing characters, are ignored
+                                    If this argument is used, cannot use `follow_link`
         :param avoid_label:     [OPTIONAL] Name of a node label to be avoided on any of the nodes in the graph traversal
         :param include_start_node: [OPTIONAL] If True, include the start node as well in the returned result
 
@@ -1950,8 +1956,8 @@ class GraphAccess(InterGraph):
 
 
 
-    def find_paths(self, start_id : int | str, end_id : int | str,
-                   follow_link=None, max_hops=4,
+    def find_paths(self, start_id :int|str, end_id :int|str,
+                   max_hops=4, follow_link=None,
                    avoid_links=None, avoid_label=None) -> [list]:
         """
         Find and return all the paths between the 2 given nodes, of at most the requested length (`max_hops`),
@@ -1963,14 +1969,17 @@ class GraphAccess(InterGraph):
         :param start_id:        The value of the internal database ID of the starting node
         :param end_id:          The value of the internal database ID of the end node
 
-        :param follow_link:     [OPTIONAL] The name of the links to follow;
-                                    if not specified, any link name will be followed (within the restrictions, if any,
-                                    imposed by `avoid_links`)
         :param max_hops:        [OPTIONAL] The max length of any returned path
 
-        :param avoid_links:     [OPTIONAL] The name or names of links to avoid (no path will go thru any of them)
-                                    Name, or list/tuple of names, of links to avoid in the graph traversal.
+        :param follow_link:     [OPTIONAL] The name of the links to follow; Leading/trailing characters are ignored.
+                                    If not specified, any link name will be followed (within the restrictions, if any,
+                                    imposed by `avoid_links` will prevail)
+                                    If this argument is used, cannot use `avoid_links`
+
+        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal.
                                     Blank strings, as well as blank leading/trailing characters, are ignored
+                                    If this argument is used, cannot use `follow_link`
+
         :param avoid_label:     [OPTIONAL] Name of a node label to be avoided in any of the nodes in the graph traversal
 
         :return:                A list of paths.
@@ -1982,21 +1991,23 @@ class GraphAccess(InterGraph):
                                              ]
                                 Note: internal database IDs and labels are NOT included in the return values
         """
-        # TODO: pytest
+        if follow_link:
+            assert not avoid_links, \
+                "find_paths(): Cannot specify both arguments `follow_link` and `avoid_links`"
+
+            follow_link = follow_link.strip()
+            path = f"(n1)-[:`{follow_link}`*..{max_hops}]-(n2)"
+        else:
+            path = f"(n1)-[*..{max_hops}]-(n2)"
+
 
         clause = CypherUtils.avoid_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
         # A string to insert into a Cypher query, below
 
-        if follow_link:
-            path = f"(e1)-[:`{follow_link}`*..{max_hops}]-(e2)"
-        else:
-            path = f"(e1)-[*..{max_hops}]-(e2)"
-
-
         q = f'''
             MATCH  p = {path}   
-            WHERE (id(e1) = $start_id)   
-            AND   (id(e2) = $end_id)    
+            WHERE (id(n1) = $start_id)   
+            AND   (id(n2) = $end_id)    
             {clause}   
             RETURN p
             '''
@@ -2004,81 +2015,21 @@ class GraphAccess(InterGraph):
         data_dict={"start_id": start_id, "end_id": end_id}
 
         #self.debug_query_print(q=q, data_binding=data_dict)
+
+        '''
         result = self.query(q, data_binding=data_dict)
-
         print(f"{len(result)} path(s) found")
-
         l = [path["p"] for path in result]      # Turn the values of the "p" keys into a list
-
-        '''
-        This list is inadequate for many purposes - because of many unreported elements; in particular
-            * The nodes' internal ID's
-            * The edges' internal ID's
-        '''
-
-        self.query_path(q=q, data_binding=data_dict)
-
+        for item in l:
+            print("    ", item)
         return l
+        
+        # The above list is inadequate for many purposes - because of many unreported elements; in particular
+        #    * The nodes' internal ID's
+        #    * The edges' internal ID's
+        '''
 
-
-        # Alt. experimental round
-        # Start a new session, use it, and then immediately close it
-        with self.driver.session() as new_session:
-            result = new_session.run(q, data_dict)
-
-            #print(type(result))    # <class 'neo4j.work.result.Result'>
-
-            for record in result:
-                #print(type(record))    # <class 'neo4j.data.Record'>
-                                        # Immutable, ordered collection of key-value pairs.
-                                        # Iteration of the collection will yield values rather than keys.
-                #print(record)
-                path = record["p"]
-                #print(type(path))      # <class 'neo4j.graph.Path'>
-                                        # https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.graph.Path
-                                        # https://neo4j.com/docs/api/python-driver/5.28/api.html#neo4j.graph.Path
-                #print(path)
-
-                '''
-                for element in path:
-                    print("\nProcessing path element:")
-                    print(element.__class__.__name__)
-                    print(type(element))
-                    print(element)
-                '''
-
-                #interleave path
-                nodes = path.nodes
-                rels = path.relationships
-
-                result = []
-
-                for i, node in enumerate(nodes):
-                    #result.append(node)
-
-                    n=dict(node)
-                    n["_internal_id"] = node.id
-                    n["_node_labels"] = list(node.labels)
-                    result.append(n)
-
-                    if i < len(rels):
-                        rel = rels[i]
-                        r = {
-                            "_kind": "LINK",
-                            "_internal_id": rel.id,
-                            "name": rel.type,
-                            "start": rel.start_node.id,
-                            "end": rel.end_node.id,
-                            "properties": dict(rel)
-                        }
-                        #result.append(rels[i])
-                        result.append(r)
-                        # Explore simplified format:  ("NAME", "IN", {})   i.e. triplet (link_name, link_direction, link_properties)
-
-                for item in result:
-                    print(item)
-
-        return l
+        return self.query_path(q=q, data_binding=data_dict, dummy_name="p")
 
 
 
