@@ -235,17 +235,17 @@ Vue.component('vue-cytoscape-5',
                                                    EXAMPLE: [{'name': 'OWNS', 'source': '1', 'target': '2', 'id': 'edge-1'}]
                                                  */
 
-                color_mapping: this.graph_data.color_mapping  || {} ,
+                color_mapping: this.graph_data.color_mapping  ||  {} ,
                         /*  Map of node labels to color names.  Default value: empty map
                             EXAMPLE:  {'PERSON': 'cyan', 'CAR': 'orange'}
                          */
 
-                caption_mapping: this.graph_data.caption_mapping  || {} ,
+                caption_mapping: this.graph_data.caption_mapping  ||  {} ,
                         /*  Map from node labels to node field (property) names to use for the node's caption
                             EXAMPLE:  {'PERSON': 'name', 'CAR': 'color'}
                          */
 
-                shape_mapping: this.graph_data.shape_mapping  || {} ,
+                shape_mapping: this.graph_data.shape_mapping  ||  {} ,
                         /*  Map from node labels to shape names to use for the node's depiction
                             EXAMPLE:  {'PERSON': 'ellipse', 'CAR': 'diamond'}
                          */

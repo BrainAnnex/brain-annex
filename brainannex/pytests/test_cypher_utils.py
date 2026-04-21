@@ -502,35 +502,56 @@ def test_dict_to_cypher():
 
 
 
-def test_avoid_links_in_path():
-    assert CypherUtils.avoid_links_in_path(avoid_links=None) == ""
+def test_avoid_in_path():
+    assert CypherUtils.avoid_in_path(avoid_links=None) == ""
+
+    assert CypherUtils.avoid_in_path(avoid_links="") == ""
+
+    assert CypherUtils.avoid_in_path(avoid_links=[]) == ""
+
+    assert CypherUtils.avoid_in_path(avoid_links=[], prefix_and=True) == ""
+
 
     with pytest.raises(Exception):
-        assert CypherUtils.avoid_links_in_path(avoid_links="") == ""
+        CypherUtils.avoid_in_path(avoid_links=123)
 
-    assert CypherUtils.avoid_links_in_path(avoid_links="  bad_rel  ") == "NONE(r IN relationships(p) WHERE type(r) = 'bad_rel')"
+    assert CypherUtils.avoid_in_path(avoid_links="  bad_rel  ") == "NONE(r IN relationships(p) WHERE type(r) = 'bad_rel')"
 
-    assert CypherUtils.avoid_links_in_path(avoid_links="bad_rel", path_dummy_name="path1") \
+    assert CypherUtils.avoid_in_path(avoid_links="bad_rel", path_dummy_name="path1") \
                                                 == "NONE(r IN relationships(path1) WHERE type(r) = 'bad_rel')"
 
-    assert CypherUtils.avoid_links_in_path(avoid_links=["r1", "r2"]) \
+    assert CypherUtils.avoid_in_path(avoid_links=["  r1  ", "   ", "   r2      "]) \
             == "NONE(r IN relationships(p) WHERE type(r) = 'r1' OR type(r) = 'r2')"
 
-    assert CypherUtils.avoid_links_in_path(avoid_links=["r1", "r2"], path_dummy_name="path1") \
+    assert CypherUtils.avoid_in_path(avoid_links=["  r1    "]) \
+            == "NONE(r IN relationships(p) WHERE type(r) = 'r1')"
+
+    assert CypherUtils.avoid_in_path(avoid_links=["     "]) == ""
+
+    assert CypherUtils.avoid_in_path(avoid_links=["r1", "r2"], path_dummy_name="path1") \
             == "NONE(r IN relationships(path1) WHERE type(r) = 'r1' OR type(r) = 'r2')"
 
-    with pytest.raises(Exception):
-        CypherUtils.avoid_links_in_path(avoid_links=123)
+    assert CypherUtils.avoid_in_path(avoid_links=["r1", "r2"], path_dummy_name="path1", prefix_and=True) \
+            == "AND NONE(r IN relationships(path1) WHERE type(r) = 'r1' OR type(r) = 'r2')"
+
 
     with pytest.raises(Exception):
-        CypherUtils.avoid_links_in_path(avoid_label="")
+        CypherUtils.avoid_in_path(avoid_label="")
 
     with pytest.raises(Exception):
-        CypherUtils.avoid_links_in_path(avoid_label=123)
+        CypherUtils.avoid_in_path(avoid_label=123)
 
-    assert CypherUtils.avoid_links_in_path(avoid_label="   Bad Wolf  ") \
+    assert CypherUtils.avoid_in_path(avoid_label="   Bad Wolf  ") \
         == "NONE(node_to_avoid IN nodes(p) WHERE 'Bad Wolf' IN labels(node_to_avoid))"
 
-    assert CypherUtils.avoid_links_in_path(avoid_label="Bad Wolf", avoid_links="l1") \
+    assert CypherUtils.avoid_in_path(avoid_label="Bad Wolf", avoid_links="l1") \
         == "NONE(r IN relationships(p) WHERE type(r) = 'l1')" \
+           " AND NONE(node_to_avoid IN nodes(p) WHERE 'Bad Wolf' IN labels(node_to_avoid))"
+
+    assert CypherUtils.avoid_in_path(avoid_label="Bad Wolf", avoid_links=["r1", "r2"]) \
+        == "NONE(r IN relationships(p) WHERE type(r) = 'r1' OR type(r) = 'r2')" \
+           " AND NONE(node_to_avoid IN nodes(p) WHERE 'Bad Wolf' IN labels(node_to_avoid))"
+
+    assert CypherUtils.avoid_in_path(avoid_label="Bad Wolf", avoid_links=["r1", "r2"], prefix_and=True) \
+        == "AND NONE(r IN relationships(p) WHERE type(r) = 'r1' OR type(r) = 'r2')" \
            " AND NONE(node_to_avoid IN nodes(p) WHERE 'Bad Wolf' IN labels(node_to_avoid))"
