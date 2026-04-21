@@ -490,29 +490,32 @@ class PyGraphVisual:
     ############   The methods below require a database connection   ############
 
 
-    def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
+    def prepare_graph(self, result_dataset :list, cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
         as returned by GraphAccess.get_nodes() or by GraphAccess.get_recordset() - construct,
         and save inside this pyhon object, the visualization data for them.
 
         Each passed dictionary entry MUST have a key named "_internal_id".
-        If any key named "id" is found, it get automatically renamed "_id_original" (since "id" is used by the visualization software);
-        if "_id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
+        If any key named "id" is found,
+        it gets automatically renamed "_id_original" (since "id" is used by the visualization software);
+        if "_id_original" already exists, an Exception is raised.
+        (Copies are made; the original data object isn't affected.)
         Though not required, a key named "_node_labels" is typically present as well.
 
         Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
         the time portion, if present, will get dropped
 
-        :param result_dataset:  A list of dictionary data about graph-database nodes;
-                                    each dict must contain an entry with the key "_internal_id".
+        :param result_dataset:  EITHER a list of dictionary data about nodes in the database;
+                                OR a list of paths, as returned by GraphAccess.find_paths()
+                                    Each dict of node data must contain an entry with the key "_internal_id".
                                     No problem if duplicates in "_internal_id" are present;
                                     only the fist one of the duplicates gets processed
         :param cumulative:      If False (default) then any previous call to this function will get ignored,
                                     and a new graph is appended
         :param add_edges:       If True, all existing edges among the displayed nodes
                                     will also be part of the visualization
-        :param avoid_links:     Name or list of name of links to avoid including
+        :param avoid_links:     Name, or list of names, of links to avoid including in the visualization data
 
         :return:                A list of the internal databased IDs
                                     of all the nodes added to the graph structure
@@ -521,10 +524,21 @@ class PyGraphVisual:
             "prepare_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
 
         assert type(result_dataset) == list, \
-            f"prepare_graph(): argument `id_list` must be a list; it is of type {type(result_dataset)}"
+            f"prepare_graph(): argument `result_dataset` must be a list; it's of type {type(result_dataset)}"
 
         if len(result_dataset) == 0:
             return []       # No data was passed
+
+        if type(result_dataset[0]) == list:
+            print("prepare_graph(): detected PATH data")
+            # For now, we're simply gathering all node data from all paths, and discarding edge data
+            node_data = []
+            for path in result_dataset:     # `path` is a list of dict's
+                for record in path:         # `record` is a dict
+                    if '_kind' not in record:
+                        node_data.append(record)
+        else:
+            node_data = result_dataset
 
 
         if not cumulative:
@@ -534,16 +548,16 @@ class PyGraphVisual:
             self._all_node_ids = []
 
 
-        id_key_renaming = False
-        node_list = []      # Running list of internal databased IDs, for nodes in `result_dataset`
-        for node in result_dataset:
+        id_key_renaming = False # This will be used for a possible warning messag
+        node_list = []          # Running list of internal databased IDs, for nodes in `node_data`
+        for node in node_data:
             internal_id = node.get("_internal_id")
             assert internal_id is not None, \
                 f"prepare_graph() - the following record lacks the required `internal_id` key: {node}"
 
             if internal_id in node_list:
                 # Ignore records already seen (duplicates in `internal_id`)
-                print(f"prepare_graph(): ignoring duplicate record with `internal_id` = {internal_id}")
+                #print(f"prepare_graph(): ignoring duplicate record with `internal_id` = {internal_id}")
                 continue
 
             node_clone = node.copy()

@@ -740,9 +740,9 @@ def test_explore_neighborhood(db):
 
     # Now there are 2 paths of length 2 from the red Car (Val's) to the Person "Julian"; we'll always be starting at the Car
     result = db.explore_neighborhood(start_id=car_id, max_hops=2)
-    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
                 {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
-                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=2, avoid_links="IS OWNED BY")
@@ -751,13 +751,13 @@ def test_explore_neighborhood(db):
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links="IS OWNED BY")
-    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
                 {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
-                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["IS OWNED BY", "FRIENDS OF"])
-    expected = [{'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+    expected = [{'name': 'Rese',   '_internal_id': rese_id,  '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["IS OWNED BY", "FRIENDS OF", "LIKES"])
@@ -1201,7 +1201,7 @@ def test_create_node_with_relationships(db):
                  "rel_name": "OWNS", "rel_attrs": {"since": 2021} }
             ]
         )
-    print("ID of the newly-created node: ", new_id)
+    #print("ID of the newly-created node: ", new_id)
 
     q = '''
     MATCH (:DEPARTMENT {dept_name:'IT'})-[:EMPLOYS]

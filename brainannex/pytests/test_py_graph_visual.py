@@ -308,7 +308,7 @@ def test_prepare_graph_2():
 
 def test_prepare_graph_3():
     # Prepare the database with nodes and links that contain date(time) fields
-    db = GraphAccess(debug=False)
+    db = GraphAccess()
     db.empty_dbase()
 
     car_id = db.create_node(labels="Car", properties={"color": "red",
@@ -366,6 +366,62 @@ def test_prepare_graph_3():
 
     assert compare_recordsets(internal_nodes , expected_nodes)
     assert compare_recordsets(internal_edges , expected_edges)
+
+
+def test_prepare_graph_4():
+    # Prepare the database with 4 nodes, in a cycle of links
+    db = GraphAccess()
+    db.empty_dbase()
+
+    q = '''
+        CREATE (val    :Person {name: 'Val'}), 
+               (julian :Person {name: 'Julian'}), 
+               (rese   :Person {name: 'Rese'}),
+               (c      :Car    {color: 'red'})
+               
+        MERGE 
+            (c)<-[:`OWNS`]-
+            (val)-[:`FRIENDS OF`]->(julian)-[:`FRIENDS OF`]->(rese)
+            -[r2:`BORROWS`]->(c)
+            
+        RETURN id(c) AS car_id, id(rese) AS rese_id, id(julian) AS julian_id, id(val) AS val_id
+        '''
+
+    result = db.query(q, single_row=True)
+    (car_id, rese_id, julian_id, val_id) = [result.get(key)
+                                                for key in ("car_id", "rese_id", "julian_id", "val_id")]
+
+
+    dataset = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3)
+    # This returns 2 paths from car to Rese:
+    #           (1) car <-(OWNS)- Val -(FRIENDS OF)-> Julian -(FRIENDS OF)-> Rese
+    #           (2) car <-(BORROWS)- Rese
+    assert len(dataset) == 2
+
+    graph = PyGraphVisual(db=db)
+    result = graph.prepare_graph(result_dataset=dataset, add_edges=True)
+    assert compare_unordered_lists(result, [car_id, val_id, julian_id, rese_id])
+
+    nodes = graph.get_graph_data().get("nodes")
+    edges = graph.get_graph_data().get("edges")
+
+    assert len(nodes) == 4
+    expected_nodes = [  {'color':'red',  '_internal_id': car_id,    '_node_labels': ['Car'],    'id': str(car_id)},
+                        {'name': 'Val',  '_internal_id': val_id,    '_node_labels': ['Person'], 'id': str(val_id)},
+                        {'name': 'Julian','_internal_id': julian_id,'_node_labels': ['Person'], 'id': str(julian_id)},
+                        {'name': 'Rese',  '_internal_id': rese_id,  '_node_labels': ['Person'], 'id': str(rese_id)}
+                     ]
+    assert compare_recordsets(nodes , expected_nodes)
+
+    assert len(edges) == 4
+    expected_edges = [
+                        {'name': 'OWNS',       'source': str(val_id),    'target': str(car_id),    'id': f'{val_id}--OWNS--{car_id}'},
+                        {'name': 'FRIENDS OF', 'source': str(val_id),    'target': str(julian_id), 'id': f'{val_id}--FRIENDS OF--{julian_id}'},
+                        {'name': 'FRIENDS OF', 'source': str(julian_id), 'target': str(rese_id),   'id': f'{julian_id}--FRIENDS OF--{rese_id}'},
+                        {'name': 'BORROWS',    'source': str(rese_id),   'target': str(car_id),    'id': f'{rese_id}--BORROWS--{car_id}'}
+                     ]
+    assert compare_recordsets(edges , expected_edges)
+
 
 
 
