@@ -284,8 +284,6 @@ class PyGraphVisual:
         self._all_node_ids = []         # List of all the node id's added to the graph so far;
                                         #   used for optional prevention of duplicates
 
-        self._next_available_edge_id = 1 # An auto-increment value
-
 
         self.EXTRA_COLORS =  {          # Convenient extra colors, not available thru standard CSS names
             "graph_green": '#8DCC92',
@@ -425,10 +423,8 @@ class PyGraphVisual:
         if edge_id is not None:
             d["id"] = edge_id   # Use the provided value
         else:
-            # Use an auto-increment value of the form "edge-n" for some n
-            d["id"] = f"edge-{self._next_available_edge_id}"
-            self._next_available_edge_id += 1       # Maintain an auto-increment value for edge ID's
-                                                    # TODO: auto-increment might cause conflict with other edges
+            d["id"] = f"{from_node}--{name}--{to_node}"    # EXAMPLE:  "n1--FRIENDS OF--n2"
+
 
         if properties:
             if "name" in properties:
@@ -536,7 +532,6 @@ class PyGraphVisual:
             self.nodes = []
             self.edges = []
             self._all_node_ids = []
-            self._next_available_edge_id = 1
 
 
         id_key_renaming = False

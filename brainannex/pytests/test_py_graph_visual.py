@@ -108,7 +108,7 @@ def test_add_edge():
     assert result["nodes"] == [ {'id': '123', 'name': 'Julian', '_node_labels': ['Person']},
                                 {'id': '456', 'name': 'Val', '_node_labels': ['Person']}
                                ]
-    assert result["edges"] == [ {'id': 'edge-1', 'name': 'KNOWS', 'source': '123', 'target': '456'} ]
+    assert result["edges"] == [ {'id': '123--KNOWS--456', 'name': 'KNOWS', 'source': '123', 'target': '456'} ]
 
 
     graph.add_node(node_id="car-1", labels=["Car", "Vehicle"], properties={"color": "white"})
@@ -122,8 +122,8 @@ def test_add_edge():
                                     {'id': 'car-1', 'color': 'white', '_node_labels': ["Car", "Vehicle"]}
                               ]
     assert result["edges"] == [
-                                {'id': 'edge-1', 'name': 'KNOWS', 'source': '123', 'target': '456'},
-                                {'id': 'edge-2', 'name': 'OWNS', 'source': '123', 'target': 'car-1', 'paid':100}
+                                {'id': '123--KNOWS--456', 'name': 'KNOWS', 'source': '123', 'target': '456'},
+                                {'id': '123--OWNS--car-1', 'name': 'OWNS', 'source': '123', 'target': 'car-1', 'paid':100}
                               ]
 
 
@@ -131,9 +131,9 @@ def test_add_edge():
                   properties={"source": "source name conflict!", "target": "target name conflict!", "name": "name conflict!", "id": "id name conflict!"})
     result = graph.get_graph_data()
     assert result["edges"] == [
-                                {'id': 'edge-1', 'name': 'KNOWS', 'source': '123', 'target': '456'},
-                                {'id': 'edge-2', 'name': 'OWNS',  'source': '123', 'target': 'car-1', 'paid':100},
-                                {'id': 'edge-3', 'name': 'OWNS',  'source': '456', 'target': 'car-1',
+                                {'id': '123--KNOWS--456', 'name': 'KNOWS', 'source': '123', 'target': '456'},
+                                {'id': '123--OWNS--car-1', 'name': 'OWNS',  'source': '123', 'target': 'car-1', 'paid':100},
+                                {'id': '456--OWNS--car-1', 'name': 'OWNS',  'source': '456', 'target': 'car-1',
                                  '_name': 'name conflict!', '_source': 'source name conflict!', '_target': 'target name conflict!', '_id': 'id name conflict!'}
                               ]
 
@@ -254,19 +254,12 @@ def test_prepare_graph_2():
 
     assert compare_recordsets(internal_nodes , expected_nodes)
 
-    expected_edges_1 = [
-                          {'name': 'OWNS', 'source': str(p_1), 'target': str(c_1), 'id': 'edge-1', 'paid':100},
-                          {'name': 'KNOWS', 'source': str(p_1), 'target': str(p_2), 'id': 'edge-2'}
-                       ]
+    expected_edges = [
+                          {'name': 'OWNS',  'source': str(p_1), 'target': str(c_1), 'id': f'{p_1}--OWNS--{c_1}', 'paid':100},
+                          {'name': 'KNOWS', 'source': str(p_1), 'target': str(p_2), 'id': f'{p_1}--KNOWS--{p_2}'}
+                     ]
 
-    # Make allowance for the fact that the edges could be returned in any order (and thus have reversed id's)
-    expected_edges_2 = [
-                          {'name': 'OWNS', 'source': str(p_1), 'target': str(c_1), 'id': 'edge-2', 'paid':100},
-                          {'name': 'KNOWS', 'source': str(p_1), 'target': str(p_2), 'id': 'edge-1'}
-                       ]
-
-    assert compare_recordsets(internal_edges , expected_edges_1) \
-                or compare_recordsets(internal_edges , expected_edges_2)
+    assert compare_recordsets(internal_edges , expected_edges)
 
 
     # Now exclude some edges by name
@@ -276,15 +269,14 @@ def test_prepare_graph_2():
 
     # Same as before
     assert compare_recordsets(internal_nodes , expected_nodes)
-    assert compare_recordsets(internal_edges , expected_edges_1) \
-                or compare_recordsets(internal_edges , expected_edges_2)
+    assert compare_recordsets(internal_edges , expected_edges)
 
 
     graph.prepare_graph(result_dataset=dataset, add_edges=True, avoid_links="OWNS")
     internal_nodes = graph.get_graph_data().get("nodes")
     internal_edges = graph.get_graph_data().get("edges")
     expected_edges = [
-                        {'name': 'KNOWS', 'source': str(p_1), 'target': str(p_2), 'id': 'edge-1'}
+                        {'name': 'KNOWS', 'source': str(p_1), 'target': str(p_2), 'id': f'{p_1}--KNOWS--{p_2}'}
                      ]  # We have now lost en edge
     assert compare_recordsets(internal_nodes , expected_nodes)
     assert compare_recordsets(internal_edges , expected_edges)
@@ -294,7 +286,7 @@ def test_prepare_graph_2():
     internal_nodes = graph.get_graph_data().get("nodes")
     internal_edges = graph.get_graph_data().get("edges")
     expected_edges = [
-                        {'name': 'OWNS', 'source': str(p_1), 'target': str(c_1), 'id': 'edge-1', 'paid':100},
+                        {'name': 'OWNS', 'source': str(p_1), 'target': str(c_1), 'id': f'{p_1}--OWNS--{c_1}', 'paid':100},
                      ]
     assert compare_recordsets(internal_nodes , expected_nodes)
     assert compare_recordsets(internal_edges , expected_edges)
@@ -370,7 +362,7 @@ def test_prepare_graph_3():
                 {'name': 'Julian', 'id': str(person_id), '_internal_id': person_id, '_node_labels': ['Person']}
             ]
 
-    expected_edges  = [{'name': 'OWNS', 'source': str(person_id), 'target': str(car_id), 'id': 'edge-1', 'bought': '2025/11/13'}]
+    expected_edges  = [{'name': 'OWNS', 'source': str(person_id), 'target': str(car_id), 'id': f'{person_id}--OWNS--{car_id}', 'bought': '2025/11/13'}]
 
     assert compare_recordsets(internal_nodes , expected_nodes)
     assert compare_recordsets(internal_edges , expected_edges)
@@ -405,8 +397,6 @@ def test_assemble_graph():
     p_2 = db.create_node(labels="Person", properties={'name': 'Val'})
 
     result = graph.assemble_graph(id_list=[p_1, p_2])
-    #print(result)
-    #return
     expected_nodes = [{'id': str(p_1), '_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
                       {'id': str(p_2), '_internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'}
                     ]
@@ -443,7 +433,7 @@ def test_assemble_graph():
 
     result = graph.assemble_graph(id_list=[p_1, p_2, c_1])
 
-    expected_edges = [{'name': 'OWNS', 'source': str(p_2), 'target': str(c_1), 'id': 'edge-1', 'bought': '2025/11/13'}]
+    expected_edges = [{'name': 'OWNS', 'source': str(p_2), 'target': str(c_1), 'id': f'{p_2}--OWNS--{c_1}', 'bought': '2025/11/13'}]
 
     assert compare_recordsets(result[0], expected_nodes)    # Same nodes as before
     assert compare_recordsets(result[1], expected_edges)
