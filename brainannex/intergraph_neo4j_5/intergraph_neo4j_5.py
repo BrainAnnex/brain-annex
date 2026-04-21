@@ -312,7 +312,7 @@ class InterGraph:
             if self.block_query_execution:
                 return
 
-        # Start a new session, use it, and then immediately close it
+        # Start a new session, use it, and then immediately close it.  Suppress some annoying warning messages
         with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
@@ -377,8 +377,8 @@ class InterGraph:
                                  '_start': INTERNAL_ID_OF_START_NODE, '_end': INTERNAL_ID_OF_END_NODE
                                  }
         """
-        # Start a new session, use it, and then immediately close it
-        with self.driver.session() as new_session:
+        # Start a new session, use it, and then immediately close it.  Suppress some annoying warning messages
+        with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             all_paths = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
             #print(type(result))        # <class 'neo4j.work.result.Result'>
             # https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.Result
@@ -553,7 +553,7 @@ class InterGraph:
             if self.block_query_execution:
                 return []
 
-        # Start a new session, use it, and then immediately close it
+        # Start a new session, use it, and then immediately close it.  Suppress some annoying warning messages
         with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
@@ -664,7 +664,7 @@ class InterGraph:
             if self.block_query_execution:
                  return {}
 
-        # Start a new session, use it, and then immediately close it
+        # Start a new session, use it, and then immediately close it.  Suppress some annoying warning messages
         with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
