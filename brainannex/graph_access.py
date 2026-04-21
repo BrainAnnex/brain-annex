@@ -1713,7 +1713,7 @@ class GraphAccess(InterGraph):
 
         result = self.query(q, data_binding)        # , single_column='neighbor'
 
-        return self.standardize_recordset(recordset=result, dummy_name="neighbor")
+        return self.standardize_recordset(recordset=result)
 
 
 
@@ -1985,7 +1985,7 @@ class GraphAccess(InterGraph):
 
         #print(f"{len(result)} neighbor node(s) found")
 
-        return self.standardize_recordset(recordset=result, dummy_name="e")
+        return self.standardize_recordset(recordset=result)
 
 
 
@@ -2993,57 +2993,61 @@ class GraphAccess(InterGraph):
 
 
 
-    def flatten_structured_dataset(self, dataset :[dict], dummy_name=None) -> [dict]:
+    def flatten_structured_dataset(self, dataset :[dict]) -> [dict]:
         """
-        Transform a list such as  [ {"n": {"name": "Julian", "city": "Berkeley"}},
-                                    {"n": {"name": "Val",    "city": "Emeryville"}},
+        Transform a list such as  [ {"name": "Julian", "city": "Berkeley"},
+                                    {"r": {"name": "Val", "city": "Emeryville"}},
                                     {"n: {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
                                   ]
-        (as typically returned by Cypher queries that match entire nodes, in this example with a dummy name of "n")
 
-        into the flattened list (without the outermost layer) such as:
+        into the flattened list (without the "indexing dummy names") such as:
                          [ {"name": "Julian", "city": "Berkeley"} ,
                            {"name": "Val", "city": "Emeryville"} ,
                            {"field1": 1, "field2": "x", "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
                          ]
 
-        :param dataset:     A list whose elements are python dictionaries, each with just 1 key, and a corresponding value
-                                that is a dictionary
-        :param dummy_name:  [OPTIONAL] If not specified, ANY key name will be matched
-        :return:            A flattened list where individual items are no longer "indexed" by "dummy variables"
+        NOTE: there can be at most 1 dictionary value inside all the value in each dictionary entries
+
+        EXAMPLES of Cypher queries that generate datasets like in the above examples, when passed to query():
+                "MATCH (n) RETURN n.name, n.city"
+                "MATCH (r) RETURN r
+                "MATCH (n) RETURN n, id(n) AS _internal_id, labels(n) AS _node_labels"
+
+        :param dataset: A list whose elements are python dictionaries, each with at most 1 value that is a dictionary
+        :return:        A flattened list of dictionaries where individual values are no longer "indexed" by "dummy variables"
         """
         assert type(dataset) == list, \
             "flatten_structured_dataset(): argument `dataset` must be a list"
 
-        flattened = []
+        new_list = []
 
-        for record in dataset:
+        for record in dataset:      # We shall refer to each element of the outer list as a "record"
             assert type(record) == dict, \
                 "flatten_structured_dataset(): each element in the list passed by `dataset` must be a dictionary"
 
-            assert len(record) == 1, \
-                f'flatten_structured_dataset(): each element in the list passed by `dataset` must be a dictionary with exactly 1 key. ' \
-                f'The following entry has more than 1 key: {record}'
+            flattened_record = {}
 
-            if dummy_name:
-                assert dummy_name in record, \
-                    f'flatten_structured_dataset(): each element in the list passed by `dataset` must have a key named "{dummy_name}"'
-                value = record[dummy_name]
-            else:
-                value = next(iter(record.values()))     # Extract the single value in the `record` dict
+            # Loop over all the key/value pairs in this record
+            number_of_dict_values = 0
+            for k, v in record.items():
+                if type(v) == dict:
+                    number_of_dict_values += 1
+                    assert number_of_dict_values <= 1, \
+                        f"flatten_structured_dataset(): at most 1 dictionary value may be contained in each record.  " \
+                        f"The record in question: {record}"
 
-            assert type(value) == dict, \
-                f'flatten_structured_dataset(): each element in the list passed by `dataset` must be a dictionary with a single key whose value is a dict. ' \
-                f'The following value is not a dictionary: {value}'
+                    flattened_record |= v           # Update the dictionary `flattened_record` in place:
+                else:
+                     flattened_record[k] = v
 
-            flattened.append(value)
-
-
-        return flattened
+            new_list.append(flattened_record)
 
 
+        return new_list
 
-    def standardize_recordset(self, recordset :[dict], dummy_name="n"):
+
+
+    def standardize_recordset(self, recordset :[dict], already_flat=False, drop_time=True):
         """
         Sanitize and standardize the given recordset, typically as returned by a call to query(),
         obtained from a Cypher query that returned a group of nodes (using the dummy name "n"),
@@ -3066,8 +3070,10 @@ class GraphAccess(InterGraph):
                                            {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "_internal_id": 4},
                                            {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "_internal_id": 53},
                                          ]
-        :param dummy_name:  [OPTIONAL] If not present, a flattened data structure is assumed - and this function
-                                will just sanitize the date/datetime fields
+        :param already_flat:[OPTIONAL] If True, the flattening step will be skipped; no harm if repeated
+                                Use the default False if in doubt
+
+        :param drop_time:   [OPTIONAL]  If True, any time part in datetime fields will get dropped
 
         :return:            A list of dict's that contain all the node properties - sanitized as needed - and,
                                 optionally, an extra key named "_internal_id"
@@ -3078,24 +3084,17 @@ class GraphAccess(InterGraph):
         """
         # TODO: perhaps add a flag to query(), to automatically invoke this function at the end;
         #       alternatively, perhaps create a new query_recordset() method that contains query() plus this function.
-        result = []
-        for record in recordset:
-            if dummy_name:
-                data = record[dummy_name]   # A dict of field names and values, comprising the properties of the node n.
-                                            # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
-            else:
-                data = record               # A flattened data structure is assumed
 
-            # Convert any DateTime or Date values to strings; the time part is dropped
-            data = self.sanitize_date_times(data, drop_time=True)   # TODO: make the time dropping optional
+        if not already_flat:
+            data = self.flatten_structured_dataset(recordset)
+        else:
+            data = recordset
 
-            if "_internal_id" in record:
-                data["_internal_id"] = record["_internal_id"]     # Integrate the internal database ID, if provided, into the record
 
-            if "_node_labels" in record:
-                data["_node_labels"] = record["_node_labels"]     # Integrate the node labels (a list of strings), if provided, into the record
-
-            result.append(data)
+        # Convert any DateTime or Date values in any record to strings; the time part is optionally dropped
+        # EXAMPLE of individual record: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+        result = [self.sanitize_date_times(record, drop_time=drop_time)
+                            for record in data]
 
         return result
 

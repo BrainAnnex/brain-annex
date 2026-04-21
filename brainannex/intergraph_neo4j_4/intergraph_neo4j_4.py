@@ -531,7 +531,7 @@ class InterGraph:
                         EXAMPLE with flatten=False for that same query returning nodes "MATCH n RETURN n":
                                 [
                                     {"n": {'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']}},
-                                    {"n": {'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}}
+                                    {"n": {'year': 2013, 'make': 'Toyota', '_internal_id': 4, '_node_labels': ['Motor Vehicle']}}
                                 ]
 
                         EXAMPLE of *individual items* - for a returned NODE
@@ -548,7 +548,7 @@ class InterGraph:
         #TODO: rename neo4j_start_node to start_node, etc
         #TODO: perhaps merge with query()
         #TODO:  Scenario to test:
-        #       if b1 == b2, would that still be [b1, c1, b1(b2), c2] or [b1, c1, c2] - i.e. would we remove the duplicates?
+        #       if b1 == b2, would that still be [b1, c1, b1 (SAME AS b2), c2] or [b1, c1, c2] - i.e. would we remove the duplicates?
         #       Try running with flatten=True "MATCH (b:boat), (c:car) RETURN b, c" on data like "CREATE (b:boat), (c1:car1), (c2:car2)"
         #TODO: test on queries that return paths - the line  dict(item.items())  may fail on records that contain relationship names
 

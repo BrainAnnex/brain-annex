@@ -57,30 +57,33 @@ def test_add_node():
 
     result = graph.get_graph_data()
 
-    assert result == {'nodes': [{'name': 'Julian', 'id': 123, '_node_labels': ['Person']}],
+    assert result == {'nodes': [{'name': 'Julian', 'id': '123', '_node_labels': ['Person']}],
                       'edges' : [],
                       'color_mapping': {}, 'caption_mapping': {}}
-    assert graph._all_node_ids == [123]
+    assert graph._all_node_ids == ['123']
 
 
-    graph.add_node(node_id=456, labels="Person", properties={"name": "Val"})
+    with pytest.raises(Exception):
+        graph.add_node(node_id='       ', labels="Person", properties={"name": "Val"})
+
+    graph.add_node(node_id='456', labels="Person", properties={"name": "Val"})
 
     result = graph.get_graph_data().get("nodes")
 
-    expected = [{'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
-                {'id': 456, 'name': 'Val', '_node_labels': ['Person']}]
+    expected = [{'id': '123', 'name': 'Julian', '_node_labels': ['Person']},
+                {'id': '456', 'name': 'Val', '_node_labels': ['Person']}]
 
     assert compare_recordsets(result , expected)
-    assert graph._all_node_ids == [123, 456]
+    assert graph._all_node_ids == ['123', '456']
 
 
-    # Duplicate node_id
+    # Duplicate node_id (note: int's are first turned into strings)
     graph.add_node(node_id=456, labels="Person", properties={"name": "it doesn't matter"})
 
     result = graph.get_graph_data().get("nodes")
 
     assert compare_recordsets(result , expected)    # No change from before
-    assert graph._all_node_ids == [123, 456]
+    assert graph._all_node_ids == ['123', '456']
 
 
     with pytest.raises(Exception):
@@ -102,25 +105,25 @@ def test_add_edge():
     result = graph.get_graph_data()
     assert result["color_mapping"] == {}
     assert result["caption_mapping"] == {}
-    assert result["nodes"] == [ {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
-                                {'id': 456, 'name': 'Val', '_node_labels': ['Person']}
+    assert result["nodes"] == [ {'id': '123', 'name': 'Julian', '_node_labels': ['Person']},
+                                {'id': '456', 'name': 'Val', '_node_labels': ['Person']}
                                ]
-    assert result["edges"] == [ {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456} ]
+    assert result["edges"] == [ {'id': 'edge-1', 'name': 'KNOWS', 'source': '123', 'target': '456'} ]
 
 
     graph.add_node(node_id="car-1", labels=["Car", "Vehicle"], properties={"color": "white"})
-    graph.add_edge(from_node=123, to_node="car-1", name="OWNS", properties={"paid": 100})
+    graph.add_edge(from_node='123', to_node="car-1", name="OWNS", properties={"paid": 100})
 
     result = graph.get_graph_data()
     assert result["color_mapping"] == {}
     assert result["caption_mapping"] == {}
-    assert result["nodes"] == [     {'id': 123, 'name': 'Julian', '_node_labels': ['Person']},
-                                    {'id': 456, 'name': 'Val', '_node_labels': ['Person']},
+    assert result["nodes"] == [     {'id': '123', 'name': 'Julian', '_node_labels': ['Person']},
+                                    {'id': '456', 'name': 'Val', '_node_labels': ['Person']},
                                     {'id': 'car-1', 'color': 'white', '_node_labels': ["Car", "Vehicle"]}
                               ]
     assert result["edges"] == [
-                                {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456},
-                                {'id': 'edge-2', 'name': 'OWNS', 'source': 123, 'target': 'car-1', 'paid':100}
+                                {'id': 'edge-1', 'name': 'KNOWS', 'source': '123', 'target': '456'},
+                                {'id': 'edge-2', 'name': 'OWNS', 'source': '123', 'target': 'car-1', 'paid':100}
                               ]
 
 
@@ -128,9 +131,10 @@ def test_add_edge():
                   properties={"source": "source name conflict!", "target": "target name conflict!", "name": "name conflict!", "id": "id name conflict!"})
     result = graph.get_graph_data()
     assert result["edges"] == [
-                                {'id': 'edge-1', 'name': 'KNOWS', 'source': 123, 'target': 456},
-                                {'id': 'edge-2', 'name': 'OWNS', 'source': 123, 'target': 'car-1', 'paid':100},
-                                {'id': 'edge-3', 'name': 'OWNS', 'source': 456, 'target': 'car-1', '_name': 'name conflict!', '_source': 'source name conflict!', '_target': 'target name conflict!', '_id': 'id name conflict!'}
+                                {'id': 'edge-1', 'name': 'KNOWS', 'source': '123', 'target': '456'},
+                                {'id': 'edge-2', 'name': 'OWNS',  'source': '123', 'target': 'car-1', 'paid':100},
+                                {'id': 'edge-3', 'name': 'OWNS',  'source': '456', 'target': 'car-1',
+                                 '_name': 'name conflict!', '_source': 'source name conflict!', '_target': 'target name conflict!', '_id': 'id name conflict!'}
                               ]
 
 

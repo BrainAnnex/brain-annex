@@ -1398,16 +1398,13 @@ class DataManager:
 
         nodes, edges = graph.assemble_graph(id_list = list(subgraph))
         # Make an adjustment to all the elements of the `nodes` list
-        for n in nodes:
-            n["id"] = str(n["id"])
-
         trimmed_nodes = [n for n in nodes if n["_internal_id"] != node_internal_id]  # Drop the original node
 
         # Make an adjustment to all the elements of the `edges` list
         for e in edges:
-            e["source"] = str(e["source"])
-            e["target"] = str(e["target"])
             e["id"] = f"edge-{e['source']}--{e['target']}"  # TODO: manage in PyGraphVisual
+                                                            # TODO: not guaranteed to be unique! (there might be
+                                                            #       multiple edges between existing nodes)
 
         return {"nodes": trimmed_nodes, "edges": edges}
 

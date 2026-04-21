@@ -2649,29 +2649,53 @@ def test_flatten_structured_dataset(db):
     with pytest.raises(Exception):
         db.flatten_structured_dataset([123])
 
-    with pytest.raises(Exception):
-        db.flatten_structured_dataset(dataset=[{"A": 1, "B": 2}])
+    assert db.flatten_structured_dataset(dataset=[{"A": 1, "B": 2}]) == \
+        [{"A": 1, "B": 2}]
 
     with pytest.raises(Exception):
-        db.flatten_structured_dataset(dataset=[{"n": 123}])
+        db.flatten_structured_dataset(dataset=[{"x": {"name": "Jack"}, "y": {"surname": "Jill"}}])
 
-    with pytest.raises(Exception):
-        db.flatten_structured_dataset(dataset=[{"n": 123}], dummy_name="n")
 
-    rs = [{"n": {"name": "Julian", "city": "Berkeley"}},
+    ds = [{"name": "Julian", "city": "Berkeley"},
+          {"name": "Val",   "city": "Emeryville"}
+        ]
+
+    assert db.flatten_structured_dataset(ds) == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"} ]
+
+
+    ds = [{"n": {"name": "Julian", "city": "Berkeley"}},
           {"n": {"name": "Val",   "city": "Emeryville"}}
         ]
 
-    assert db.flatten_structured_dataset(rs) == \
+    assert db.flatten_structured_dataset(ds) == \
            [ {"name": "Julian", "city": "Berkeley"} ,
              {"name": "Val", "city": "Emeryville"} ]
 
-    assert db.flatten_structured_dataset(rs, dummy_name="n") == \
-           [ {"name": "Julian", "city": "Berkeley"} ,
-             {"name": "Val", "city": "Emeryville"} ]
 
-    with pytest.raises(Exception):
-        db.flatten_structured_dataset(rs, dummy_name="unknown")
+    ds = [  {"n": {"name": "Julian", "city": "Berkeley"}} ,
+            {"m": {"name": "Val", "city": "Emeryville"}} ,
+            {"p": {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+          ]
+
+    assert db.flatten_structured_dataset(ds) == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"},
+             {"field1": 1, "field2": "x", "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+           ]
+
+
+    ds = [  {"name": "Julian", "city": "Berkeley"} ,
+            {"name": "Val", "city": "Emeryville"} ,
+            {"dummy_name": {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+          ]
+
+    assert db.flatten_structured_dataset(ds) == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"},
+             {"field1": 1, "field2": "x", "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+           ]
 
 
 

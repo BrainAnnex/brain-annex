@@ -347,11 +347,13 @@ class PyGraphVisual:
 
         EXAMPLE:    given a call to:  add_node(node_id=1, labels=['PERSON'], data={'name': 'Julian'})
                     then the internal format, cumulatively added to self.nodes, will be:
-                    {'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'}
+                    {'id': '1', '_node_labels': ['PERSON'], 'name': 'Julian'}
 
         :param node_id:     Either an integer or a string to uniquely identify this node in the graph;
-                                it will be used to specify the start/end nodes of edges.
-                                Typically, use either the internal database ID, or some URI.
+                                it will be converted to a string,
+                                and used to specify the start/end nodes of edges.
+                                Typically, use either the node's internal database ID,
+                                or some entity ID to uniquely identify it.
                                 Records with a duplicate node_id are silently disregarded
         :param labels:      A string, or list of strings, with the node's label(s) used in the graph database;
                                 if not used, pass an empty string
@@ -362,7 +364,11 @@ class PyGraphVisual:
             "add_node(): the argument `node_id` must be an integer or a string"
 
         if type(node_id) == str:
-            assert node_id != "", "add_node(): cannot use an empty string for the argument `node_id`"
+            node_id = node_id.strip()   # Zap leading/trailing blanks
+            assert node_id  != "", \
+                "add_node(): cannot use an empty string for the argument `node_id`"
+        else:
+            node_id = str(node_id)
 
 
         if node_id in self._all_node_ids:
@@ -393,33 +399,36 @@ class PyGraphVisual:
 
         EXAMPLE:    given a call to:  add_edge(from_node=1, to_node=2, name='OWNS', edge_id='edge-1')
                     then the internal format, cumulatively added to self.edges, will be:
-                    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
+                    {'name': 'OWNS', 'source': '1', 'target': '2', 'id': 'edge-1'}
 
         Note that the id's, in this context, is whatever we pass to the visualization module for the nodes;
         not necessarily related to the internal database ID's
 
         :param from_node:   Integer or a string uniquely identify the "id" of the node where the edge originates
+                                (it will be turned into a string)
         :param to_node:     Integer or a string uniquely identify the "id" of the node where the edge ends
+                                (it will be turned into a string)
         :param name:        Name of the relationship
         :param edge_id:     [OPTIONAL]  If not provided, strings such as "edge-123" are used,
                                 with auto-generated consecutive integers
         :param properties:  [OPTIONAL]  A dict with all the edge properties of interest.
-                                If keys with conflicting names are present ('name', 'source', 'target', 'id'),
-                                an underscore is prefixed to them
+                                If keys with names conflicting to standard ones ('name', 'source', 'target', 'id')
+                                are present, an underscore is prefixed to them.
 
         :return:            None
         """
         # TODO: check if the edge already exists, with same name
         # TODO: unclear if edge id's are really needed by Cytoscape.js
 
-        d = {"name": name, "source": from_node, "target": to_node}
+        d = {"name": name, "source": str(from_node), "target": str(to_node)}
 
         if edge_id is not None:
-            d["id"] = edge_id
+            d["id"] = edge_id   # Use the provided value
         else:
             # Use an auto-increment value of the form "edge-n" for some n
             d["id"] = f"edge-{self._next_available_edge_id}"
-            self._next_available_edge_id += 1        # Maintain an auto-increment value for edge ID's
+            self._next_available_edge_id += 1       # Maintain an auto-increment value for edge ID's
+                                                    # TODO: auto-increment might cause conflict with other edges
 
         if properties:
             if "name" in properties:
@@ -619,6 +628,8 @@ class PyGraphVisual:
                             2) list of dicts defining edges
         """
         recordset = self.db.get_recordset(id_list)
+        # EXAMPLE:  [{'_internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
+
         self.prepare_graph(result_dataset=recordset, cumulative=False, add_edges=True)
         return (self.nodes , self.edges)
 
