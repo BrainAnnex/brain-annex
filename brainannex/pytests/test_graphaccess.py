@@ -303,6 +303,31 @@ def test_get_df(db):
 
 
 
+def test_get_recordset(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        db.get_recordset(id_list="I'm not a list")
+
+    result = db.get_recordset(id_list=[1, 2, 3])    # Non-existent nodes
+    assert result == []
+
+
+    # Start populating the database
+    p_1 = db.create_node(labels="Person", properties={'name': 'Julian'})
+
+    result = db.get_recordset(id_list=[p_1])
+    assert result == [{'_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'}]
+
+
+    p_2 = db.create_node(labels="Person", properties={'name': 'Val'})
+    result = db.get_recordset(id_list=[p_1, p_2])
+    expected = [{'_internal_id': p_1, '_node_labels': ['Person'], 'name': 'Julian'},
+                {'_internal_id': p_2, '_node_labels': ['Person'], 'name': 'Val'}]
+    assert compare_recordsets(result, expected)
+
+
+
 def test_get_node_labels(db):
     db.empty_dbase()
 
@@ -662,7 +687,7 @@ def test_explore_neighborhood(db):
                 {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=julian_id, avoid_links="IS OWNED BY") # Won't reach the `Car` node
+    result = db.explore_neighborhood(start_id=julian_id, avoid_links="   IS OWNED BY   ") # Won't reach the `Car` node
     expected = [{'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
                 {'name': 'Val',  '_internal_id': val_id, '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
@@ -677,10 +702,10 @@ def test_explore_neighborhood(db):
                 {'name': 'Julian','_internal_id': julian_id, '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=car_id, max_hops=3)  # Start at the `Car` node (Val's car)
-    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links="    ")  # Start at the `Car` node (Val's car)
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
                 {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
-                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links="FRIENDS OF")  # Start at Val's car
@@ -691,7 +716,7 @@ def test_explore_neighborhood(db):
     expected = [{'name': 'Val', '_internal_id': val_id, '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
-    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["FRIENDS OF", "IS OWNED BY"])  # Start at Val's car
+    result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["  FRIENDS OF  ", "   IS OWNED BY   "])  # Start at Val's car
     assert result == []
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=3,
@@ -715,9 +740,9 @@ def test_explore_neighborhood(db):
 
     # Now there are 2 paths of length 2 from the red Car (Val's) to the Person "Julian"; we'll always be starting at the Car
     result = db.explore_neighborhood(start_id=car_id, max_hops=2)
-    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
                 {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
-                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=2, avoid_links="IS OWNED BY")
@@ -726,13 +751,13 @@ def test_explore_neighborhood(db):
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links="IS OWNED BY")
-    expected = [{'name': 'Val',    '_internal_id': val_id,           '_node_labels': ['Person']},
+    expected = [{'name': 'Val',    '_internal_id': val_id,    '_node_labels': ['Person']},
                 {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
-                {'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+                {'name': 'Rese',   '_internal_id': rese_id,   '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["IS OWNED BY", "FRIENDS OF"])
-    expected = [{'name': 'Rese',   '_internal_id': rese_id,           '_node_labels': ['Person']}]
+    expected = [{'name': 'Rese',   '_internal_id': rese_id,  '_node_labels': ['Person']}]
     assert compare_recordsets(result, expected)
 
     result = db.explore_neighborhood(start_id=car_id, max_hops=3, avoid_links=["IS OWNED BY", "FRIENDS OF", "LIKES"])
@@ -809,9 +834,6 @@ def test_explore_neighborhood(db):
         db.explore_neighborhood(start_id=car_id, max_hops=1, follow_links="    ")
 
     with pytest.raises(Exception):
-        db.explore_neighborhood(start_id=car_id, max_hops=1, avoid_links="    ")
-
-    with pytest.raises(Exception):
         db.explore_neighborhood(start_id=car_id, max_hops=1, avoid_label="   ")
 
     with pytest.raises(Exception):
@@ -819,8 +841,270 @@ def test_explore_neighborhood(db):
 
 
 
+def test_find_paths(db):
+    db.empty_dbase()
 
-#########   ~ CREATE NODES ~
+    result = db.find_paths(start_id=123, end_id=456)    # Non-existent nodes
+    assert result == []
+
+    julian_id = db.create_node(labels="Person", properties={"name": "Julian"})
+
+    result = db.find_paths(start_id=julian_id, end_id=julian_id)
+    assert result == []
+
+    rese_id = db.create_node(labels="Person", properties={"name": "Rese"})
+
+    # ADD A LINK BETWEEN OUR TWO FIRST NODES
+    q = '''
+        MATCH (n1 {name: 'Julian'}), (n2 {name: 'Rese'})
+        MERGE (n1)-[r:`FRIENDS OF`]->(n2)
+        RETURN id(r) AS link_id
+        '''
+    julian_rese_link_id = db.query(q, single_cell="link_id")
+
+
+    result = db.find_paths(start_id=rese_id, end_id=julian_id)
+    assert len(result) == 1
+    assert result[0] == [
+                            {'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
+                            {'_kind': 'LINK', 'name': 'FRIENDS OF', '_internal_id': julian_rese_link_id, '_start': julian_id, '_end': rese_id, '_properties': {}},
+                            {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']}
+                        ]
+
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id)      # Reverse direction
+    assert len(result) == 1
+    julian_to_rese = [  {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                        {'_kind': 'LINK', 'name': 'FRIENDS OF', '_internal_id': julian_rese_link_id, '_start': julian_id, '_end': rese_id, '_properties': {}},
+                        {'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']},
+                     ]
+    assert result[0] == julian_to_rese
+
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, follow_link="   FRIENDS OF  ")    # Limit to that link name (there will be no change)
+    assert len(result) == 1
+    assert result[0] == julian_to_rese
+
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, follow_link="UNKNOWN")
+    assert result == []         # No path when only following that link
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_links="  FRIENDS OF        ")
+    assert result == []         # No path if we never follow that link (whitespace ignored)
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_links=["  FRIENDS OF   "])
+    assert result == []         # No path if we never follow that link
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_links="IRRELEVANT_LINK")        # Will still be the same
+    assert len(result) == 1
+    assert result[0] == julian_to_rese
+
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_label="  Person   ")
+    assert result == []         # No path if we avoid nodes with that label!
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, avoid_label="Of no significance")        # Will still be the same
+    assert len(result) == 1
+    assert result[0] == julian_to_rese
+
+    result = db.find_paths(start_id=julian_id, end_id=rese_id, max_hops=1)        # Will still be the same
+    assert len(result) == 1
+    assert result[0] == julian_to_rese
+
+
+    # ADD A NODE AND A LINK: now we'll have a chain of friendship Val -> Julian -> Rese
+    val_id = db.create_node(labels="Person", properties={"name": "Val"})
+    q = '''
+        MATCH (n1 {name: 'Val'}), (n2 {name: 'Julian'})
+        MERGE (n1)-[r:`FRIENDS OF`]->(n2)
+        RETURN id(r) AS link_id
+        '''
+    val_julian_link_id = db.query(q, single_cell="link_id")
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id)
+    assert len(result) == 1
+    val_to_rese = [
+                        {'name': 'Val', '_internal_id': val_id, '_node_labels': ['Person']},
+                        {'_kind': 'LINK', 'name': 'FRIENDS OF', '_internal_id': val_julian_link_id, '_start': val_id, '_end': julian_id, '_properties': {}},
+                        {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                        {'_kind': 'LINK', 'name': 'FRIENDS OF', '_internal_id': julian_rese_link_id, '_start': julian_id, '_end': rese_id, '_properties': {}},
+                        {'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']}
+                  ]
+
+    assert result[0] == val_to_rese
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, max_hops=2)
+    assert len(result) == 1
+    assert result[0] == val_to_rese
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, max_hops=1)     # Not enough hops to traverse
+    assert result == []
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, follow_link="  FRIENDS OF   ")
+    assert len(result) == 1
+    assert result[0] == val_to_rese
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, follow_link="JUNK")
+    assert result == []
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, avoid_links="FRIENDS OF")
+    assert result == []
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, avoid_links=["FRIENDS OF"])
+    assert result == []
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, avoid_links="IRRELEVANT")
+    assert len(result) == 1
+    assert result[0] == val_to_rese
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, avoid_label="Person")
+    assert result == []
+
+    result = db.find_paths(start_id=val_id, end_id=rese_id, avoid_label="IRRELEVANT")
+    assert len(result) == 1
+    assert result[0] == val_to_rese
+
+
+    # ADD A NODE AND A LINK: now, let's give a red car to Val
+    car_id = db.create_node(labels="Car", properties={"color": "red"})
+    q = '''
+        MATCH (n1 {name: 'Val'}), (n2 :Car)
+        MERGE (n1)-[r:`OWNS` {since: 2026}]->(n2)
+        RETURN id(r) AS link_id
+        '''
+    car_own_link_id = db.query(q, single_cell="link_id")
+
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id)
+
+    assert len(result) == 1
+    car_own_to_rese = [ {'color': 'red', '_internal_id': car_id, '_node_labels': ['Car']},
+                        {'_kind': 'LINK', 'name': 'OWNS', '_internal_id': car_own_link_id, '_start': val_id, '_end': car_id, '_properties': {'since': 2026}},
+                        {'name': 'Val', '_internal_id': val_id, '_node_labels': ['Person']},
+                        {'_kind': 'LINK', 'name': 'FRIENDS OF', '_internal_id': val_julian_link_id, '_start': val_id, '_end': julian_id, '_properties': {}},
+                        {'name': 'Julian', '_internal_id': julian_id, '_node_labels': ['Person']},
+                        {'_kind': 'LINK', 'name': 'FRIENDS OF', '_internal_id': julian_rese_link_id, '_start': julian_id, '_end': rese_id, '_properties': {}},
+                        {'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']}
+                      ]
+    assert result[0] == car_own_to_rese
+
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=2)     # Not enough hops
+    assert result == []
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3)
+    assert len(result) == 1
+    assert result[0] == car_own_to_rese
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, follow_link="OWNS")
+    assert result == []         # No path if follow just that link
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, follow_link="FRIENDS OF")
+    assert result == []         # No path if follow just that link
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, avoid_links="OWNS")
+    assert result == []         # No path if we never follow that link
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, avoid_links="FRIENDS OF")
+    assert result == []         # No path if we never follow that link
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, avoid_links=["FRIENDS OF", "OWNS"])
+    assert result == []         # No path if we never follow that link
+
+    with pytest.raises(Exception):
+        # Contradictory instructions
+        db.find_paths(start_id=car_id, end_id=rese_id, follow_link="FRIENDS OF", avoid_links="OWNS")
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, avoid_label="Car")
+    assert result == []         # No path if we avoid nodes with that label
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, avoid_label="Person")
+    assert result == []         # No path if we avoid nodes with that label
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, avoid_label="Irrelevant")
+    assert len(result) == 1
+    assert result[0] == car_own_to_rese
+
+
+    # ADD ALINK: now, let's let Rese borrow Val's car
+    q = '''
+        MATCH (n1 {name: 'Rese'}), (n2 :Car)
+        MERGE (n1)-[r:`BORROWS`]->(n2)
+        RETURN id(r) AS link_id
+        '''
+    car_borrow_link_id = db.query(q, single_cell="link_id")
+
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3)
+    assert len(result) == 2         # Now, there are two paths from the car to Rese
+
+    # One path is the earlier, longer, car_own_to_rese ; the other part is the shorter one below
+    car_borrow_to_rese = [  {'color': 'red', '_internal_id': car_id, '_node_labels': ['Car']},
+                            {'_kind': 'LINK', 'name': 'BORROWS', '_internal_id': car_borrow_link_id, '_start': rese_id, '_end': car_id, '_properties': {}},
+                            {'name': 'Rese', '_internal_id': rese_id, '_node_labels': ['Person']}
+                         ]
+
+    # The result array must contain the 2 paths, in either order
+    if result[0] == car_own_to_rese:
+        assert result[1] == car_borrow_to_rese
+    else:
+        assert result[0] == car_borrow_to_rese
+        assert result[1] == car_own_to_rese
+
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=2)
+    assert len(result) == 1         # The restriction of `max_hops` eliminates the longer path
+    assert result[0] == car_borrow_to_rese
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=1)
+    assert len(result) == 1         # The restriction of `max_hops` eliminates the longer path
+    assert result[0] == car_borrow_to_rese
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, follow_link="BORROWS")
+    assert len(result) == 1         # The restriction of `follow_link` eliminates the longer path
+    assert result[0] == car_borrow_to_rese
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, follow_link="OWNS")
+    assert result == []             # No path from just following this link name
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, follow_link="FRIENDS OF")
+    assert result == []             # No path from just following this link name
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_links="OWNS")
+    assert len(result) == 1         # The restriction of `avoid_links` eliminates the longer path
+    assert result[0] == car_borrow_to_rese
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_links="FRIENDS OF")
+    assert len(result) == 1         # The restriction of `avoid_links` eliminates the longer path
+    assert result[0] == car_borrow_to_rese
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_links=["OWNS", "FRIENDS OF"])
+    assert len(result) == 1         # The restriction of `avoid_links` eliminates the longer path
+    assert result[0] == car_borrow_to_rese
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_links="BORROWS")
+    assert len(result) == 1         # The restriction of `avoid_links` eliminates the shorter path (Rese borrows the car)
+    assert result[0] == car_own_to_rese
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_links=["OWNS", "BORROWS"])
+    assert result == []             # No path remaining
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_links="IRRELEVANT")
+    assert len(result) == 2
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_label="IRRELEVANT")
+    assert len(result) == 2
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_label="Person")
+    assert result == []             # No path remaining
+
+    result = db.find_paths(start_id=car_id, end_id=rese_id, max_hops=3, avoid_label="Car")
+    assert result == []             # No path remaining
+
+
+
+
+#########   ~~~ CREATE NODES ~~~
 
 def test_create_node(db):
     """
@@ -917,7 +1201,7 @@ def test_create_node_with_relationships(db):
                  "rel_name": "OWNS", "rel_attrs": {"since": 2021} }
             ]
         )
-    print("ID of the newly-created node: ", new_id)
+    #print("ID of the newly-created node: ", new_id)
 
     q = '''
     MATCH (:DEPARTMENT {dept_name:'IT'})-[:EMPLOYS]
@@ -2358,25 +2642,60 @@ def test_sanitize_dates(db):
 
 
 
-def test_flatten_recordset(db):
-    rs = [{"n": {"name": "Julian", "city": "Berkeley"}},
+def test_flatten_structured_dataset(db):
+    with pytest.raises(Exception):
+        db.flatten_structured_dataset(123)
+
+    with pytest.raises(Exception):
+        db.flatten_structured_dataset([123])
+
+    assert db.flatten_structured_dataset(dataset=[{"A": 1, "B": 2}]) == \
+        [{"A": 1, "B": 2}]
+
+    with pytest.raises(Exception):
+        db.flatten_structured_dataset(dataset=[{"x": {"name": "Jack"}, "y": {"surname": "Jill"}}])
+
+
+    ds = [{"name": "Julian", "city": "Berkeley"},
+          {"name": "Val",   "city": "Emeryville"}
+        ]
+
+    assert db.flatten_structured_dataset(ds) == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"} ]
+
+
+    ds = [{"n": {"name": "Julian", "city": "Berkeley"}},
           {"n": {"name": "Val",   "city": "Emeryville"}}
         ]
 
-    assert db.flatten_recordset(rs) == \
-        [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
+    assert db.flatten_structured_dataset(ds) == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"} ]
 
-    assert db.flatten_recordset(rs, dummy_name="n") == \
-        [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
 
-    with pytest.raises(Exception):
-        db.flatten_recordset(rs, dummy_name="unknown")
+    ds = [  {"n": {"name": "Julian", "city": "Berkeley"}} ,
+            {"m": {"name": "Val", "city": "Emeryville"}} ,
+            {"p": {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+          ]
 
-    with pytest.raises(Exception):
-        db.flatten_recordset(123)
+    assert db.flatten_structured_dataset(ds) == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"},
+             {"field1": 1, "field2": "x", "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+           ]
 
-    with pytest.raises(Exception):
-        db.flatten_recordset([123])
+
+    ds = [  {"name": "Julian", "city": "Berkeley"} ,
+            {"name": "Val", "city": "Emeryville"} ,
+            {"dummy_name": {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+          ]
+
+    assert db.flatten_structured_dataset(ds) == \
+           [ {"name": "Julian", "city": "Berkeley"} ,
+             {"name": "Val", "city": "Emeryville"},
+             {"field1": 1, "field2": "x", "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+           ]
 
 
 

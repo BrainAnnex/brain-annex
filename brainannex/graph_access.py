@@ -142,10 +142,12 @@ class GraphAccess(InterGraph):
                   single_row=False, single_cell=""):
         """
         By default, it returns a list of the records (as dictionaries of ALL the key/value node properties)
-        corresponding to all the Neo4j nodes specified by the given match data.
-        However, if the flags "single_row" or "single_cell" are set, simpler data structures are returned
+        corresponding to all the database nodes specified by the given match data.
 
-        :param match:           EITHER an integer or string with an internal database node id,
+        HOWEVER, if the flags "single_row" or "single_cell" are set,
+        then simpler data structures are returned
+
+        :param match:           EITHER an integer or string with an internal database node id (to identify a singles node),
                                     OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
 
         :param return_internal_id:  Flag indicating whether to also include the internal database node ID in the returned data
@@ -231,13 +233,13 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_df(self, match: Union[int, CypherBuilder], order_by=None, limit=None) -> pd.DataFrame:
+    def get_df(self, match :int|str|CypherBuilder, order_by=None, limit=None) -> pd.DataFrame:
         """
         Similar to get_nodes(), but with fewer arguments - and the result is returned as a Pandas dataframe
 
         [See get_nodes() for more information about the arguments]
 
-        :param match:       EITHER an integer with an internal database node id,
+        :param match:       EITHER an integer or string with an internal database node id (to identify a singles node),
                                 OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
         :param order_by:    Optional string with the key (field) name to order by, in ascending order
                                 Note: lower and uppercase names are treated differently in the sort order
@@ -247,6 +249,37 @@ class GraphAccess(InterGraph):
         """
         result_list = self.get_nodes(match=match, order_by=order_by, limit=limit)
         return pd.DataFrame(result_list)
+
+
+
+    def get_recordset(self, id_list :[int|str]) -> [dict]:
+        """
+        Given a list of internal id's of database nodes,
+        construct and return a "dataset" (list of dictionaries) of their properties,
+        also including the special fields `_internal_id` and `_node_labels`
+
+        :param id_list: A list of internal id's of database nodes
+
+        :return:        A list of dicts, with the node properties
+                            plus the special fields `_internal_id` and `_node_labels`
+                            EXAMPLE:
+                            [{'_internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
+        """
+        # TODO: also accept tuples of ID's
+        assert type(id_list) == list, \
+            f"prepare_recordset(): argument `id_list` must be a list; it is of type {type(id_list)}"
+
+        if id_list == []:
+            return []       # No data was passed
+
+        q = f'''
+            MATCH (n)
+            WHERE ID(n) IN $id_list
+            RETURN n
+            '''
+
+        #self.db.debug_print_query(q, {"id_list": id_list})
+        return self.query_extended(q, {"id_list": id_list}, flatten=True)
 
 
 
@@ -844,7 +877,7 @@ class GraphAccess(InterGraph):
         """
         Create a new node, with the given labels and optional properties,
         and link it up to all the EXISTING nodes that are specified
-        in the (possibly empty) list of link nodes, identified by their Neo4j internal ID's.
+        in the (possibly empty) list of link nodes, identified by their internal database ID's.
 
         The list of link nodes also contains the names to give to each link,
         as well as their directions (by default OUT-bound from the newly-created node)
@@ -886,6 +919,7 @@ class GraphAccess(InterGraph):
         :return:            An integer or string with the internal database ID of the newly-created node
         """
         # TODO:  test more the `merge` arg
+        # TODO: maybe also return the internal ID's of the links???
 
         assert properties is None or type(properties) == dict, \
             f"GraphAccess.create_node_with_links(): The argument `properties` must be a dictionary or None; instead, it's of type {type(properties)}"
@@ -1679,7 +1713,7 @@ class GraphAccess(InterGraph):
 
         result = self.query(q, data_binding)        # , single_column='neighbor'
 
-        return self.standardize_recordset(recordset=result, dummy_name="neighbor")
+        return self.standardize_recordset(recordset=result)
 
 
 
@@ -1888,8 +1922,13 @@ class GraphAccess(InterGraph):
         :param start_id:        The value of the internal database ID of the starting node
         :param max_hops:        [OPTIONAL] Integer >= 1 with the maximum number of links to follow in the graph traversal;
                                     i.e. the max distance to travel away from the starting node
-        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal
         :param follow_links:    [OPTIONAL] Name, or list/tuple of names, of the links that we're allowed to follow in the traversal
+                                    If not specified, any link name will be followed (within the restrictions, if any,
+                                    imposed by `avoid_links` will prevail)
+                                    If this argument is used, cannot use `avoid_links`
+        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal
+                                    Blank strings, as well as blank leading/trailing characters, are ignored
+                                    If this argument is used, cannot use `follow_link`
         :param avoid_label:     [OPTIONAL] Name of a node label to be avoided on any of the nodes in the graph traversal
         :param include_start_node: [OPTIONAL] If True, include the start node as well in the returned result
 
@@ -1907,7 +1946,7 @@ class GraphAccess(InterGraph):
             raise Exception(f"explore_neighborhood(): cannot pass both arguments `avoid_links` and `follow_links`")
 
 
-        path_clause = CypherUtils.avoid_links_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
+        path_clause = CypherUtils.avoid_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
 
         cypher_rel_str = ""
         if follow_links:
@@ -1946,7 +1985,86 @@ class GraphAccess(InterGraph):
 
         #print(f"{len(result)} neighbor node(s) found")
 
-        return self.standardize_recordset(recordset=result, dummy_name="e")
+        return self.standardize_recordset(recordset=result)
+
+
+
+    def find_paths(self, start_id :int|str, end_id :int|str,
+                   max_hops=4, follow_link=None,
+                   avoid_links=None, avoid_label=None) -> [list]:
+        """
+        Find and return all the paths between the 2 given nodes, of at most the requested length (`max_hops`),
+        by means of the relationship specified by `follow_link` (or any link, if unspecified.)
+        The directions of the links is NOT considered.
+        Paths thru links with a particular name, or list of names, will be avoided.
+        Paths thru nodes that contain the specified label, will also be avoided.
+
+        :param start_id:        The value of the internal database ID of the starting node
+        :param end_id:          The value of the internal database ID of the end node
+
+        :param max_hops:        [OPTIONAL] The max length of any returned path
+
+        :param follow_link:     [OPTIONAL] The name of the links to follow; Leading/trailing characters are ignored.
+                                    If not specified, any link name will be followed (within the restrictions, if any,
+                                    imposed by `avoid_links` will prevail)
+                                    If this argument is used, cannot use `avoid_links`
+
+        :param avoid_links:     [OPTIONAL] Name, or list/tuple of names, of links to avoid in the graph traversal.
+                                    Blank strings, as well as blank leading/trailing characters, are ignored
+                                    If this argument is used, cannot use `follow_link`
+
+        :param avoid_label:     [OPTIONAL] Name of a node label to be avoided in any of the nodes in the graph traversal
+
+        :return:                A list of paths.
+                                *Each* path is a list whose elements are alternately node data and link name.
+                                    EXAMPLE of a single path: [
+                                                {'name': 'Val', '_internal_id': 'p1', '_node_labels': ['Person']},
+                                                {'_kind': 'LINK', 'name': 'FRIENDS OF', '_internal_id': 'l1', '_start': 'p1', '_end': 'p2', '_properties': {}},
+                                                {'name': 'Julian', '_internal_id': 'p2', '_node_labels': ['Person']}
+                                             ]
+                                Note: Leading underscores indicate system variable.
+                                      The links dictionaries also contain the special key/property  '_kind': 'LINK'
+        """
+        if follow_link:
+            assert not avoid_links, \
+                "find_paths(): Cannot specify both arguments `follow_link` and `avoid_links`"
+
+            follow_link = follow_link.strip()
+            path = f"(n1)-[:`{follow_link}`*..{max_hops}]-(n2)"
+        else:
+            path = f"(n1)-[*..{max_hops}]-(n2)"
+
+
+        clause = CypherUtils.avoid_in_path(avoid_links=avoid_links, avoid_label=avoid_label, prefix_and=True)
+        # A string to insert into a Cypher query, below
+
+        q = f'''
+            MATCH  p = {path}   
+            WHERE (id(n1) = $start_id)   
+            AND   (id(n2) = $end_id)    
+            {clause}   
+            RETURN p
+            '''
+
+        data_dict={"start_id": start_id, "end_id": end_id}
+
+        #self.debug_query_print(q=q, data_binding=data_dict)
+
+        '''
+        result = self.query(q, data_binding=data_dict)
+        print(f"{len(result)} path(s) found")
+        l = [path["p"] for path in result]      # Turn the values of the "p" keys into a list
+        for item in l:
+            print("    ", item)
+        return l
+        
+        # The above list is inadequate for many purposes - because of many unreported elements; in particular
+        #    * The nodes' internal ID's
+        #    * The edges' internal ID's
+        '''
+
+        return self.query_path(q=q, data_binding=data_dict, dummy_name="p")
+
 
 
 
@@ -2833,6 +2951,8 @@ class GraphAccess(InterGraph):
     def sanitize_date_times(self, record :dict, drop_time=False,
                             date_format="%Y/%m/%d", time_format="%H:%M:%S") -> dict:
         """
+        Take a dictionary with data that might contain Neo4j "Date" or "DateTime" data types,
+        and return a derived dictionary with all the Date/DateTime values converted to strings.
 
         :param record:      A python dictionary whose values might include Neo4j "Date" or "DateTime" data types;
                                 this dictionary does NOT get altered
@@ -2842,7 +2962,7 @@ class GraphAccess(InterGraph):
                                 See https://strftime.org/
         :param time_format: [OPTIONAL] String with format information for times
 
-        :return:            A new dictionary, based on `record` but will all the Date/DateTime values converted to strings.
+        :return:            A new dictionary, based on `record` but with all the Date/DateTime values converted to strings.
                                 By default, a format of the type "2019/01/31 , 18:59:35" is used for datetimes.
         """
         # TODO: this (database-specific) method belongs to the InterGraph class
@@ -2873,45 +2993,61 @@ class GraphAccess(InterGraph):
 
 
 
-    def flatten_recordset(self, recordset :[dict], dummy_name=None) -> [dict]:
+    def flatten_structured_dataset(self, dataset :[dict]) -> [dict]:
         """
-        Transform a list such as  [{"n": {"name": "Julian", "city": "Berkeley"}},
-                                   {"n": {"name": "Val",   "city": "Emeryville"}}]
-        (as typically returned by Cypher queries that match entire nodes, in this example with a dummy name of "n")
+        Transform a list such as  [ {"name": "Julian", "city": "Berkeley"},
+                                    {"r": {"name": "Val", "city": "Emeryville"}},
+                                    {"n: {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+                                  ]
 
-        into the flattened list (without the outermost layer) such as:
-                         [ {"name": "Julian", "city": "Berkeley"} , {"name": "Val", "city": "Emeryville"} ]
+        into the flattened list (without the "indexing dummy names") such as:
+                         [ {"name": "Julian", "city": "Berkeley"} ,
+                           {"name": "Val", "city": "Emeryville"} ,
+                           {"field1": 1, "field2": "x", "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]}
+                         ]
 
-        :param recordset:   A list whose elements are python dictionaries
-        :param dummy_name:  [OPTIONAL] If not specified, ANY key name will be matched
-        :return:            A flattened list where individual items are no longer "indexed" by "dummy variables"
+        NOTE: there can be at most 1 dictionary value inside all the value in each dictionary entries
+
+        EXAMPLES of Cypher queries that generate datasets like in the above examples, when passed to query():
+                "MATCH (n) RETURN n.name, n.city"
+                "MATCH (r) RETURN r
+                "MATCH (n) RETURN n, id(n) AS _internal_id, labels(n) AS _node_labels"
+
+        :param dataset: A list whose elements are python dictionaries, each with at most 1 value that is a dictionary
+        :return:        A flattened list of dictionaries where individual values are no longer "indexed" by "dummy variables"
         """
-        assert type(recordset) == list, \
-            "flatten_recordset(): argument `recordset` must be a list"
+        assert type(dataset) == list, \
+            "flatten_structured_dataset(): argument `dataset` must be a list"
 
-        flattened = []
+        new_list = []
 
-        for record in recordset:
+        for record in dataset:      # We shall refer to each element of the outer list as a "record"
             assert type(record) == dict, \
-                "flatten_recordset(): each element in the list passed by `recordset` must be a dictionary"
+                "flatten_structured_dataset(): each element in the list passed by `dataset` must be a dictionary"
 
-            if dummy_name:
-                assert dummy_name in record, \
-                    f'flatten_recordset(): each element in the list passed by `recordset` must have a key named "{dummy_name}"'
-                value = record[dummy_name]
-            else:
-                assert len(record) == 1, \
-                    f'flatten_recordset(): each element in the list passed by `recordset` must be a dictionary with exactly 1 key'
-                value = next(iter(record.values()))     # Extract the single value in the `record` dict
+            flattened_record = {}
 
-            flattened.append(value)
+            # Loop over all the key/value pairs in this record
+            number_of_dict_values = 0
+            for k, v in record.items():
+                if type(v) == dict:
+                    number_of_dict_values += 1
+                    assert number_of_dict_values <= 1, \
+                        f"flatten_structured_dataset(): at most 1 dictionary value may be contained in each record.  " \
+                        f"The record in question: {record}"
+
+                    flattened_record |= v           # Update the dictionary `flattened_record` in place:
+                else:
+                     flattened_record[k] = v
+
+            new_list.append(flattened_record)
 
 
-        return flattened
+        return new_list
 
 
 
-    def standardize_recordset(self, recordset :[dict], dummy_name="n"):
+    def standardize_recordset(self, recordset :[dict], already_flat=False, drop_time=True):
         """
         Sanitize and standardize the given recordset, typically as returned by a call to query(),
         obtained from a Cypher query that returned a group of nodes (using the dummy name "n"),
@@ -2926,14 +3062,18 @@ class GraphAccess(InterGraph):
         EXAMPLES of queries that generate recordsets in the expected formats, when passed to query():
                 "MATCH (n) RETURN n"
                 "MATCH (n) RETURN n, id(n) AS _internal_id"
+                "MATCH (n) RETURN n, id(n) AS _internal_id, labels(n) AS _node_labels"
 
-        :param recordset:   A list of dict's that contain the key "n" and optionally the key "_internal_id".
+        :param recordset:   A list of dict's that contain the key "n" (or as specified by the argument `dummy_name`)
+                                and optionally the keys "_internal_id" and "_node_labels"
                                 EXAMPLE: [ {"n: {"field1": 1, "field2": "x"}, "_internal_id": 88, "_node_labels": ["Car", "Vehicle"]},
                                            {"n": {"PatientID": 123, "DOB": neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}, "_internal_id": 4},
                                            {"n: {"timestamp": neo4j.time.DateTime(2003, 7, 15, 18, 59, 35)}, "_internal_id": 53},
                                          ]
-        :param dummy_name:  [OPTIONAL] If not present, a flattened data structure is assumed - and this function
-                                will just sanitize the date/datetime fields
+        :param already_flat:[OPTIONAL] If True, the flattening step will be skipped; no harm if repeated
+                                Use the default False if in doubt
+
+        :param drop_time:   [OPTIONAL]  If True, any time part in datetime fields will get dropped
 
         :return:            A list of dict's that contain all the node properties - sanitized as needed - and,
                                 optionally, an extra key named "_internal_id"
@@ -2944,24 +3084,17 @@ class GraphAccess(InterGraph):
         """
         # TODO: perhaps add a flag to query(), to automatically invoke this function at the end;
         #       alternatively, perhaps create a new query_recordset() method that contains query() plus this function.
-        result = []
-        for record in recordset:
-            if dummy_name:
-                data = record[dummy_name]   # A dict of field names and values, comprising the properties of the node n.
-                                            # EXAMPLE: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
-            else:
-                data = record               # A flattened data structure is assumed
 
-            # Convert any DateTime or Date values to strings; the time part is dropped
-            data = self.sanitize_date_times(data, drop_time=True)   # TODO: make the time dropping optional
+        if not already_flat:
+            data = self.flatten_structured_dataset(recordset)
+        else:
+            data = recordset
 
-            if "_internal_id" in record:
-                data["_internal_id"] = record["_internal_id"]     # Integrate the internal database ID, if provided, into the record
 
-            if "_node_labels" in record:
-                data["_node_labels"] = record["_node_labels"]     # Integrate the node labels (a list of strings), if provided, into the record
-
-            result.append(data)
+        # Convert any DateTime or Date values in any record to strings; the time part is optionally dropped
+        # EXAMPLE of individual record: {'PatientID': 123, 'DOB': neo4j.time.DateTime(2000, 01, 31, 0, 0, 0)}
+        result = [self.sanitize_date_times(record, drop_time=drop_time)
+                            for record in data]
 
         return result
 

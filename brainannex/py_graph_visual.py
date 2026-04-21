@@ -284,8 +284,6 @@ class PyGraphVisual:
         self._all_node_ids = []         # List of all the node id's added to the graph so far;
                                         #   used for optional prevention of duplicates
 
-        self._next_available_edge_id = 1 # An auto-increment value
-
 
         self.EXTRA_COLORS =  {          # Convenient extra colors, not available thru standard CSS names
             "graph_green": '#8DCC92',
@@ -347,11 +345,13 @@ class PyGraphVisual:
 
         EXAMPLE:    given a call to:  add_node(node_id=1, labels=['PERSON'], data={'name': 'Julian'})
                     then the internal format, cumulatively added to self.nodes, will be:
-                    {'id': 1, '_node_labels': ['PERSON'], 'name': 'Julian'}
+                    {'id': '1', '_node_labels': ['PERSON'], 'name': 'Julian'}
 
         :param node_id:     Either an integer or a string to uniquely identify this node in the graph;
-                                it will be used to specify the start/end nodes of edges.
-                                Typically, use either the internal database ID, or some URI.
+                                it will be converted to a string,
+                                and used to specify the start/end nodes of edges.
+                                Typically, use either the node's internal database ID,
+                                or some entity ID to uniquely identify it.
                                 Records with a duplicate node_id are silently disregarded
         :param labels:      A string, or list of strings, with the node's label(s) used in the graph database;
                                 if not used, pass an empty string
@@ -362,7 +362,11 @@ class PyGraphVisual:
             "add_node(): the argument `node_id` must be an integer or a string"
 
         if type(node_id) == str:
-            assert node_id != "", "add_node(): cannot use an empty string for the argument `node_id`"
+            node_id = node_id.strip()   # Zap leading/trailing blanks
+            assert node_id  != "", \
+                "add_node(): cannot use an empty string for the argument `node_id`"
+        else:
+            node_id = str(node_id)
 
 
         if node_id in self._all_node_ids:
@@ -393,33 +397,34 @@ class PyGraphVisual:
 
         EXAMPLE:    given a call to:  add_edge(from_node=1, to_node=2, name='OWNS', edge_id='edge-1')
                     then the internal format, cumulatively added to self.edges, will be:
-                    {'name': 'OWNS', 'source': 1, 'target': 2, 'id': 'edge-1'}
+                    {'name': 'OWNS', 'source': '1', 'target': '2', 'id': 'edge-1'}
 
         Note that the id's, in this context, is whatever we pass to the visualization module for the nodes;
         not necessarily related to the internal database ID's
 
         :param from_node:   Integer or a string uniquely identify the "id" of the node where the edge originates
+                                (it will be turned into a string)
         :param to_node:     Integer or a string uniquely identify the "id" of the node where the edge ends
+                                (it will be turned into a string)
         :param name:        Name of the relationship
         :param edge_id:     [OPTIONAL]  If not provided, strings such as "edge-123" are used,
                                 with auto-generated consecutive integers
         :param properties:  [OPTIONAL]  A dict with all the edge properties of interest.
-                                If keys with conflicting names are present ('name', 'source', 'target', 'id'),
-                                an underscore is prefixed to them
+                                If keys with names conflicting to standard ones ('name', 'source', 'target', 'id')
+                                are present, an underscore is prefixed to them.
 
         :return:            None
         """
         # TODO: check if the edge already exists, with same name
         # TODO: unclear if edge id's are really needed by Cytoscape.js
 
-        d = {"name": name, "source": from_node, "target": to_node}
+        d = {"name": name, "source": str(from_node), "target": str(to_node)}
 
         if edge_id is not None:
-            d["id"] = edge_id
+            d["id"] = edge_id   # Use the provided value
         else:
-            # Use an auto-increment value of the form "edge-n" for some n
-            d["id"] = f"edge-{self._next_available_edge_id}"
-            self._next_available_edge_id += 1        # Maintain an auto-increment value for edge ID's
+            d["id"] = f"{from_node}--{name}--{to_node}"    # EXAMPLE:  "n1--FRIENDS OF--n2"
+
 
         if properties:
             if "name" in properties:
@@ -485,73 +490,55 @@ class PyGraphVisual:
     ############   The methods below require a database connection   ############
 
 
-    def prepare_recordset(self, id_list :[int|str]) -> [dict]:
-        """
-        Given a list of node internal id's, construct and return a dataset of their properties,
-        plus the special fields `internal_id` and `_node_labels`
-
-        :param id_list: A list of internal id's of database nodes
-
-        :return:        A list of dicts, with the node properties plus the special fields `internal_id` and `_node_labels`
-                            EXAMPLE:
-                            [{'_internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
-        """
-        # TODO: move to GraphAccess
-        assert type(id_list) == list, \
-            f"prepare_recordset(): argument `id_list` must be a list; it is of type {type(id_list)}"
-
-        assert self.db, \
-            "prepare_recordset(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
-
-        if id_list == []:
-            return []       # No data was passed
-
-        q = f'''
-            MATCH (n)
-            WHERE ID(n) IN $id_list
-            RETURN n
-            '''
-
-        #self.db.debug_print_query(q, {"id_list": id_list})
-        return self.db.query_extended(q, {"id_list": id_list}, flatten=True)
-
-
-
-    def prepare_graph(self, result_dataset :[dict], cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
+    def prepare_graph(self, result_dataset :list, cumulative=False, add_edges=True, avoid_links=None) -> [int|str]:
         """
         Given a list of dictionary data containing the properties of graph-database nodes - for example,
-        as returned by GraphAccess.get_nodes() - construct, and save inside this pyhon object,
-        the visualization data for them.
+        as returned by GraphAccess.get_nodes() or by GraphAccess.get_recordset() - construct,
+        and save inside this pyhon object, the visualization data for them.
 
         Each passed dictionary entry MUST have a key named "_internal_id".
-        If any key named "id" is found, it get automatically renamed "_id_original" (since "id" is used by the visualization software);
-        if "_id_original" already exists, an Exception is raised.  (Copies are made; the original data object isn't affected.)
+        If any key named "id" is found,
+        it gets automatically renamed "_id_original" (since "id" is used by the visualization software);
+        if "_id_original" already exists, an Exception is raised.
+        (Copies are made; the original data object isn't affected.)
         Though not required, a key named "_node_labels" is typically present as well.
 
         Any date/datetime value found in the database will first be "sanitized" into a string representation of the date;
         the time portion, if present, will get dropped
 
-        :param result_dataset:  A list of dictionary data about graph-database nodes;
-                                    each dict must contain an entry with the key "_internal_id".
+        :param result_dataset:  EITHER a list of dictionary data about nodes in the database;
+                                OR a list of paths, as returned by GraphAccess.find_paths()
+                                    Each dict of node data must contain an entry with the key "_internal_id".
                                     No problem if duplicates in "_internal_id" are present;
-                                    only the fist of one duplicates gets processed
+                                    only the fist one of the duplicates gets processed
         :param cumulative:      If False (default) then any previous call to this function will get ignored,
                                     and a new graph is appended
         :param add_edges:       If True, all existing edges among the displayed nodes
                                     will also be part of the visualization
-        :param avoid_links:     Name or list of name of links to avoid including
+        :param avoid_links:     Name, or list of names, of links to avoid including in the visualization data
 
-        :return:                A list of values with the internal databased IDs
+        :return:                A list of the internal databased IDs
                                     of all the nodes added to the graph structure
         """
         assert self.db, \
             "prepare_graph(): missing database handle; did you pass it when instantiating PyGraphVisual(db=...) ?"
 
         assert type(result_dataset) == list, \
-            f"prepare_graph(): argument `id_list` must be a list; it is of type {type(result_dataset)}"
+            f"prepare_graph(): argument `result_dataset` must be a list; it's of type {type(result_dataset)}"
 
         if len(result_dataset) == 0:
             return []       # No data was passed
+
+        if type(result_dataset[0]) == list:
+            print("prepare_graph(): detected PATH data")
+            # For now, we're simply gathering all node data from all paths, and discarding edge data
+            node_data = []
+            for path in result_dataset:     # `path` is a list of dict's
+                for record in path:         # `record` is a dict
+                    if '_kind' not in record:
+                        node_data.append(record)
+        else:
+            node_data = result_dataset
 
 
         if not cumulative:
@@ -559,19 +546,18 @@ class PyGraphVisual:
             self.nodes = []
             self.edges = []
             self._all_node_ids = []
-            self._next_available_edge_id = 1
 
 
-        id_key_renaming = False
-        node_list = []      # Running list of internal databased IDs, for nodes in `result_dataset`
-        for node in result_dataset:
+        id_key_renaming = False # This will be used for a possible warning messag
+        node_list = []          # Running list of internal databased IDs, for nodes in `node_data`
+        for node in node_data:
             internal_id = node.get("_internal_id")
             assert internal_id is not None, \
                 f"prepare_graph() - the following record lacks the required `internal_id` key: {node}"
 
             if internal_id in node_list:
                 # Ignore records already seen (duplicates in `internal_id`)
-                print(f"prepare_graph(): ignoring duplicate record with `internal_id` = {internal_id}")
+                #print(f"prepare_graph(): ignoring duplicate record with `internal_id` = {internal_id}")
                 continue
 
             node_clone = node.copy()
@@ -638,7 +624,7 @@ class PyGraphVisual:
 
     def assemble_graph(self, id_list :[int|str]) -> ([dict],[dict]):
         """
-        Given a list of node internal id's, construct and return
+        Given a list of internal id's of database nodes, construct and return
         the data needed by the Cytoscape graph visualization (including all properties).
 
         Any date/datetime value found in the database will first be "sanitized"
@@ -650,7 +636,9 @@ class PyGraphVisual:
                             1) list of dicts defining nodes
                             2) list of dicts defining edges
         """
-        recordset = self.prepare_recordset(id_list)
+        recordset = self.db.get_recordset(id_list)
+        # EXAMPLE:  [{'_internal_id': 123, '_node_labels': ['Person'], 'name': 'Julian'}]
+
         self.prepare_graph(result_dataset=recordset, cumulative=False, add_edges=True)
         return (self.nodes , self.edges)
 

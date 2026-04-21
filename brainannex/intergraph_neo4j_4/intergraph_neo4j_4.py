@@ -80,7 +80,8 @@ class InterGraph:
 
         self.apoc = apoc
 
-        self.driver = None
+        self.driver = None          # Object to connect to Neo4j's Bolt driver for Python
+                                    # https://neo4j.com/docs/api/python-driver/4.4/api.html#driver
 
         assert host, "Cannot instantiate the GraphAccess object with an undefined argument`host`; " \
                      "unable to obtain a default value from getenv('NEO4J_HOST') . You need to pass a value, " \
@@ -122,7 +123,7 @@ class InterGraph:
 
             self.driver = GraphDatabase.driver(self.host,
                                                auth=(user, password))   # Object to connect to Neo4j's Bolt driver for Python
-            # https://neo4j.com/docs/api/python-driver/4.3/api.html#driver
+            # https://neo4j.com/docs/api/python-driver/4.4/api.html#driver
         except Exception as ex:
             error_msg = f"CHECK WHETHER NEO4J IS RUNNING! While instantiating the Intergraph object, it failed to create the driver: {ex}"
             # In case of sluggish server connection, a ConnectionResetError seems to be generated;
@@ -220,6 +221,34 @@ class InterGraph:
     #####################################################################################################
 
 
+    def run_cypher_query(self, q :str, data_binding :dict, session):
+        """
+        Single entry point for ALL Cypher query executions
+
+        :param q:           A string with a Cypher query
+        :param data_binding:An optional Cypher dictionary
+        :param session:
+        :return:            A neo4j.Result object (type "neo4j.work.result.Result")
+                            See https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.Result
+        """
+        if self.debug or self.block_query_execution:
+            self.debug_query_print(q, data_binding, method="run_cypher_query")
+            if self.block_query_execution:
+                return
+
+        try:
+            result = session.run(q, data_binding)
+        except ServiceUnavailable:
+            print("*** NOTICE - ServiceUnavailable condition: attempting to reconnect to the database...")
+            self.connect()
+            #  Details: {ex}
+            raise Exception(f"ServiceUnavailable signal received, probably from a timeout.\n"
+                            f"Automatically re-connected.  Please RE-RUN your last command")
+
+        return result
+
+
+
     def query(self, q :str, data_binding=None, single_row=False, single_cell="", single_column=""):
         """
         Run a Cypher query.  Best suited for Cypher queries that return individual values
@@ -291,11 +320,9 @@ class InterGraph:
 
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
-            result = new_session.run(q, data_binding)
-
-
+            result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
             # Note: A neo4j.Result object (printing it, shows an object of type "neo4j.work.result.Result")
-            #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
+            #       See https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.Result
             if result is None:
                 return []
 
@@ -329,6 +356,136 @@ class InterGraph:
 
 
 
+    def query_path(self, q :str, data_binding = None, dummy_name="p"):
+        """
+        Run a Cypher query that returns a path.
+        For other types of queries, use instead query() or query_extended() or update_query().
+        If the query doesn't return a path, an Exception is raised.
+
+        :param q:           A string with a Cypher query that returns a path.
+                                EXAMPLE: "MATCH  p = (n1)-[*..4]-(n2) WHERE ... RETURN p"
+        :param data_binding:[OPTIONAL] A dictionary for the Cypher query
+                                EXAMPLE, assuming that the Cypher string contains the substring "$age":
+                                        {'age': 20}
+        :param dummy_name:  [OPTIONAL] The name used in the Cypher query to identify the path.
+                                Default: "p"
+
+        :return:            A list of paths.
+                            Each path is in turn a list of dictionaries, of alternating nodes and edges,
+                            starting and ending at nodes.
+                            The nodes dicts contain the node's properties, plus the 2 special keys  '_internal_id' and '_node_labels'
+                            The edge dicts are of the form
+                                {'name': 'NAME OF LINK', '_properties': {},
+                                 '_kind': 'LINK', '_internal_id': SOME_VALUE,
+                                 '_start': INTERNAL_ID_OF_START_NODE, '_end': INTERNAL_ID_OF_END_NODE
+                                 }
+        """
+        # Start a new session, use it, and then immediately close it
+        with self.driver.session() as new_session:
+            all_paths = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
+            #print(type(result))        # <class 'neo4j.work.result.Result'>
+            # https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.Result
+            #data_as_list = all_paths.data()
+            #print(data_as_list)
+            #return
+
+            result = []     # A list of paths
+
+            for record in all_paths:
+                #print("--- PROCESSING path")
+                #print(type(record))    # <class 'neo4j.data.Record'>
+                                        # Immutable, ordered collection of key-value pairs
+                                        # https://neo4j.com/docs/api/python-driver/4.4/api.html#record
+
+                #print(record)
+                # EXAMPLE (abridged):    <Record p=<
+                #                                   Path start=<...> end=<...> size=1>
+                #                                  >
+
+                path = record.get(dummy_name)   # This will return None if the given dummy name isn't found
+                assert path is not None, \
+                    f"Unable to find any path named '{dummy_name}'; if you used a " \
+                    f"different dummy name in your Cypher query, pass it as argument to `dummy_name`\n" \
+                    f"EXAMPLE of Cypher query:  MATCH p=(your path definition here) RETURN p"
+
+                #print(type(path))      # <class 'neo4j.graph.Path'>
+                                        # https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.graph.Path
+                                        # https://neo4j.com/docs/api/python-driver/5.28/api.html#neo4j.graph.Path
+                assert type(path) == neo4j.graph.Path, \
+                    f"The Cypher query that you provided does NOT return a path; " \
+                    f"it's returning an object of type {type(path)}\nYour Cypher query:\n{q}"
+
+                #print(path)
+                # EXAMPLE:
+                # <Path   start=<Node id=22 labels=frozenset({'Person'}) properties={'name': 'Val'}>
+                #         end=  <Node id=18 labels=frozenset({'Person'}) properties={'name': 'Julian'}>
+                #         size=1>
+
+                '''
+                for element in path:
+                    # This only iterates over the relationships
+                    print("    Processing link in the path:")
+                    print("       ", element)                       # EXAMPLE (abridged):
+                                                                    #   <Relationship id=5 nodes=(...) type='FRIENDS OF' properties={}>
+                    print("       ", element.__class__.__name__)    # EXAMPLE: "FRIENDS OF"
+                    print("       ", type(element))                 # EXAMPLE: <class 'abc.FRIENDS OF'>
+                '''
+
+                # Extract the nodes and the relationships (links)
+                nodes = path.nodes
+                #print("    Nodes: ", nodes)
+                # This will be a tuple of nodes. EXAMPLE:
+                # (<Node id=22 labels=frozenset({'Person'}) properties={'name': 'Val'}>,
+                #  <Node id=18 labels=frozenset({'Person'}) properties={'name': 'Julian'}>
+                #  )
+
+                rels = path.relationships
+                #print("    Links: ", rels)
+                # This will be a tuple of links.  EXAMPLE:
+                #( <Relationship id=5
+                #        nodes=(<Node id=22 labels=frozenset({'Person'}) properties={'name': 'Val'}>,
+                #               <Node id=18 labels=frozenset({'Person'}) properties={'name': 'Julian'}>)
+                #        type='FRIENDS OF' properties={}
+                #  >
+                #  ,)
+
+                path_list = []
+
+                for i, node in enumerate(nodes):
+                    n=dict(node)
+                    #n["_kind"] = "NODE"
+                    n["_internal_id"] = node.id
+                    n["_node_labels"] = list(node.labels)
+                    #print(n)   # EXAMPLE: {'name': 'Val', '_internal_id': 22, '_node_labels': ['Person']}
+
+                    path_list.append(n)
+
+                    if i < len(rels):
+                        rel = rels[i]
+                        r = {
+                            "_kind": "LINK",
+                            "_internal_id": rel.id,
+                            "name": rel.type,
+                            "_start": rel.start_node.id,
+                            "_end": rel.end_node.id,
+                            "_properties": dict(rel)
+                        }
+                        #print(r)
+                        # EXAMPLE: {'_kind': 'LINK', '_internal_id': 7, 'name': 'FRIENDS OF', '_start': 22, '_end': 18, '_properties': {}}
+                        path_list.append(r)
+
+                '''
+                print("PATH:")
+                for item in path_list:
+                    print(item)
+                '''
+                result.append(path_list)
+
+
+        return result
+
+
+
     def query_extended(self, q: str, data_binding = None, flatten = False, fields_to_exclude = None) -> [dict]:
         """
         Extended version of query(), meant to extract additional info
@@ -342,14 +499,16 @@ class InterGraph:
         and/or node labels (using the key "_node_labels") are desired -
         in addition to all the properties and their values.
 
+        If your query returns a path, consider using query_path() instead.
+
         Unless the flatten flag is True, individual records are kept as separate lists.
             For example, "MATCH (b:boat), (c:car) RETURN b, c"
             will return a structure such as [ [b1, c1] , [b2, c2] ]  if flatten is False,
             vs.  [b1, c1, b2, c2]  if  flatten is True.  (Note: each b1, c1, etc, is a dictionary.)
 
-        :param q:                   A Cypher query : typically, one returning nodes, relationships or paths
+        :param q:                   A Cypher query ; typically, one returning nodes, relationships or paths
         :param data_binding:        An optional Cypher dictionary
-                                    EXAMPLE, assuming that the cypher string contains the substring "$age":
+                                    EXAMPLE, assuming that the Cypher string contains the substring "$age":
                                             {'age': 20}
         :param flatten:             Flag indicating whether the Graph Data Types need to remain clustered by record,
                                         or all placed in a single flattened list
@@ -372,7 +531,7 @@ class InterGraph:
                         EXAMPLE with flatten=False for that same query returning nodes "MATCH n RETURN n":
                                 [
                                     {"n": {'year': 2023, 'make': 'Ford', '_internal_id': 123, '_node_labels': ['Motor Vehicle']}},
-                                    {"n": {'year': 2013, 'make': 'Toyota', 'internal_id': 4, '_node_labels': ['Motor Vehicle']}}
+                                    {"n": {'year': 2013, 'make': 'Toyota', '_internal_id': 4, '_node_labels': ['Motor Vehicle']}}
                                 ]
 
                         EXAMPLE of *individual items* - for a returned NODE
@@ -389,7 +548,7 @@ class InterGraph:
         #TODO: rename neo4j_start_node to start_node, etc
         #TODO: perhaps merge with query()
         #TODO:  Scenario to test:
-        #       if b1 == b2, would that still be [b1, c1, b1(b2), c2] or [b1, c1, c2] - i.e. would we remove the duplicates?
+        #       if b1 == b2, would that still be [b1, c1, b1 (SAME AS b2), c2] or [b1, c1, c2] - i.e. would we remove the duplicates?
         #       Try running with flatten=True "MATCH (b:boat), (c:car) RETURN b, c" on data like "CREATE (b:boat), (c1:car1), (c2:car2)"
         #TODO: test on queries that return paths - the line  dict(item.items())  may fail on records that contain relationship names
 
@@ -401,10 +560,10 @@ class InterGraph:
 
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
-            result = new_session.run(q, data_binding)
+            result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
+            # Note: A neo4j.Result object (printing it, shows an object of type "neo4j.work.result.Result")
+            #       See https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.Result
 
-            # Note: A neo4j.Result iterable object (printing it, shows an object of type "neo4j.work.result.Result")
-            #       See https://neo4j.com/docs/api/python-driver/current/api.html#neo4j.Result
             if result is None:
                 return []
 
@@ -511,9 +670,8 @@ class InterGraph:
 
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
-            result = new_session.run(q, data_binding)
-
-            # Note: result is a neo4j.Result iterable object
+            result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
+            # Note: A neo4j.Result object (printing it, shows an object of type "neo4j.work.result.Result")
             #       See https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.Result
 
             data_as_list = result.data()    # Fetch any data returned by the query, as a (possibly-empty) list of dictionaries
