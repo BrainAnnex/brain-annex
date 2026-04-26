@@ -16,7 +16,7 @@
 
 Vue.component('vue-content-items',
     {
-        props: ['item', 'item_properties', 'item_metadata',
+        props: ['item', 'item_fields', 'item_metadata',
                 'expose_controls', 'category_uri', 'index', 'item_count',
                 'registered_plugins', 'records_types', 'schema_data', 'all_categories'],
         /*  item:           EXAMPLE: {entity_id:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Header"}
@@ -28,11 +28,11 @@ Vue.component('vue-content-items',
 
                             TODO: Rename to item_data
 
-            item_properties: EXPERIMENTAL, being phased in!
+            item_fields:    EXPERIMENTAL, being phased in!
                                 An object with the properties of this Content item
                                 EXAMPLE: {"German":"Tier", "English":"animal"}
 
-            item_metadata: EXPERIMENTAL, being phased in!
+            item_metadata:  EXPERIMENTAL, being phased in!
 
             expose_controls:    Flag indicating whether in edit mode
             category_uri:       A string indicating which Category-viewer page is using this component
@@ -75,7 +75,7 @@ Vue.component('vue-content-items',
 
                 v-bind:item_data="item"
 
-                v-bind:item_properties="item_properties"
+                v-bind:item_fields="item_fields"
                 v-bind:item_metadata="item_metadata"
 
                 v-bind:edit_mode="expose_controls"

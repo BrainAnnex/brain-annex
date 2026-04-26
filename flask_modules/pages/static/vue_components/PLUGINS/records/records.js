@@ -10,7 +10,7 @@
 
 Vue.component('vue-plugin-r',
     {
-        props: ['item_data', 'item_properties', 'item_metadata',
+        props: ['item_data', 'item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_data:  An object with the relevant data about this Record item;
                             if the "entity_id" attribute is negative,
@@ -27,7 +27,7 @@ Vue.component('vue-plugin-r',
                                   not yet registered with the server)
                                   TODO (IN-PROGRESS): take "pos", "class_name", "class_handler" out of item_data !
 
-            item_properties: EXPERIMENTAL, being phased in!  An object with the properties of this Record item.
+            item_fields:    EXPERIMENTAL, being phased in!  An object with the properties of this Record item.
                                 Those are the editable fields.
                                 EXAMPLE: {"German":"Tier", "English":"animal"}
 

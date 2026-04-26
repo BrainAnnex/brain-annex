@@ -7,7 +7,8 @@
 
 Vue.component('vue-plugin-h',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
+        props: ['item_data', 'item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count'],
         /*  item_data:      An object with the relevant data about this Header item;
                                 if the "entity_id" attribute is negative,
                                 it means that it's a newly-created header, not yet registered with the server
@@ -18,6 +19,16 @@ Vue.component('vue-plugin-h',
                                                              "text":"SOME SECTION"}
                                 TODO: separate regular properties from control values
                                      (`class_name`, `schema_code`, `insert_after_uri`, `insert_after_class`, `pos`)
+
+            item_fields:    EXPERIMENTAL, being phased in!  An object with the properties of this Record item.
+                                Those are the editable fields.
+                                EXAMPLE: {"text":"SOME SECTION"}
+
+            item_metadata:  EXPERIMENTAL, being phased in!
+                                EXAMPLE of existing Header:
+                                    {"entity_id":"h-7", "pos":10, "schema_code":"h", "class_name":"Header"}
+                                EXAMPLE of newly-created Header:
+                                    {"entity_id":-2, "insert_after_uri":"i-7", "insert_after_class":"Image", "schema_code":"h", "class_name":"Header"}
 
             edit_mode:      A boolean indicating whether in editing mode
                             TODO: possibly add a new parameter "create_mode" that won't show the usual

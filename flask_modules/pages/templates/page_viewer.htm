@@ -42,7 +42,8 @@
                                   "Site Link": ["url", "name", "date", "comments", "rating", "read"]
                                  }
 
-        content_items:  A list of dictionaries with the data for each the Content Items on this page
+        content_items:  [TODO - Being phased out]
+                        A list of dictionaries with the data for each the Content Items on this page
                         EXAMPLE:
                             [{'schema_code': 'i', 'entity_id': 'i-1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
                              {'schema_code': 'h', 'entity_id': 'h-23', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
@@ -50,6 +51,10 @@
                              {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'entity_id': '6965', 'pos': 86,
                                                          'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
+
+        item_fields_array:  A list of dictionaries with the field data for each the Content Items on this page
+        item_metadata_array:A list of dictionaries with the metadata for each the Content Items on this page
+
 
         upload_directories: A list of folders registered with BrainAnnex
                             EXAMPLE:
@@ -191,6 +196,24 @@
 {#  Uncomment for DEBUGGING! (to view some of the Flask-passed parameters)
     <br><b>siblings_categories</b>:<br>{{siblings_categories}}<br><br>
     <br><b>all_categories</b>:<br>{{all_categories}}<br><br>
+
+    <b>content_items</b>:<br>
+    {% for el in content_items %}
+        {{el}}<br>
+    {% endfor %}
+
+    <br><br>
+    <b>item_fields_array</b>:<br>
+    {% for el in item_fields_array %}
+        {{el}}<br>
+    {% endfor %}
+
+    <br><br>
+    <b>item_metadata_array</b>:<br>
+    {% for el in item_metadata_array %}
+        {{el}}<br>
+    {% endfor %}
+    <br><br>
  #}
 
 
@@ -321,8 +344,8 @@
 
         v-bind:item="item"
 
-        v-bind:item_properties="item_properties"
-        v-bind:item_metadata="item_metadata"
+        v-bind:item_fields="item_fields_array[index]"
+        v-bind:item_metadata="item_metadata_array[index]"
 
         v-bind:expose_controls="expose_controls"
         v-bind:category_uri="category_uri"
@@ -371,8 +394,8 @@
 
             v-bind:item="item"
 
-            v-bind:item_properties="item_properties"
-            v-bind:item_metadata="item_metadata"
+            v-bind:item_fields="item_fields_array[index]"
+            v-bind:item_metadata="item_metadata_array[index]"
 
             v-bind:expose_controls="false"
             v-bind:category_uri="category_uri"
@@ -456,7 +479,7 @@
 
             v-bind:item="item"
 
-            v-bind:item_properties="item_properties_array[index]"
+            v-bind:item_fields="item_fields_array[index]"
             v-bind:item_metadata="item_metadata_array[index]"
 
             v-bind:expose_controls="expose_controls"
@@ -681,21 +704,19 @@ new Vue({
                                     //            flask_modules/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
+                                    // TODO: Being phased out
                                     // Array of objects with the data for each of the Content Items on this page
                                     // EXAMPLE: [{pos:0,"entity_id":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
                                     //           {pos:50,"entity_id":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Image"}
                                     //          ]
-                                    // TODO (IN-PROGRESS): component-editable fields
-                                    //       and non-editable ones ("pos", "entity_id", "schema_code", "class_name")
-                                    //       ought to be treated differently
 
-        item_properties_array:  {{item_properties_array | tojson(indent=4)}},
+        item_fields_array:      {{item_fields_array | tojson(indent=4)}},
                                     // EXAMPLE:[{"German":"Tier", "English":"animal"},
-                                                {"French":"fille", "English":"girl/daughter"}]
+                                    //          {"French":"fille", "English":"girl/daughter"}]
         item_metadata_array:    {{item_metadata_array | tojson(indent=4)}},
-
-        item_properties: "NOT YET IMPLEMENTED",
-        item_metadata: "NOT YET IMPLEMENTED",
+                                    // EXAMPLE: [{class_name: "Header",pos:0,"entity_id":"h-5",class_handler:"headers",schema_code:"h"},
+                                    //           {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i",}
+                                    //          ]
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 

@@ -157,7 +157,13 @@ class PagesRouting:
             # EXAMPLE: [{'name': 'Quotes', 'entity_id': '823', 'remarks': None}]
 
             # Fetch the data for all the Content Items attached to this Category
-            content_items = Categories.get_content_items_by_category_OLD(category_uri)
+            content_items_split = Categories.get_content_items_by_category(category_uri)
+            #A list of dictionaries, whose entries are dictionaries of the form
+            #                    { "fields": {...} , "metadata": {...} }
+
+
+            content_items = [ rec["fields"] | rec["metadata"]
+                                for rec in content_items_split]          # TODO: being phased out
             #   List of dictionaries.  EXAMPLE:
             #       [
             #           {'schema_code': 'h', 'entity_id': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
@@ -183,7 +189,11 @@ class PagesRouting:
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
+
                                    content_items=content_items,
+                                   item_fields_array=[rec["fields"] for rec in content_items_split],
+                                   item_metadata_array=[rec["metadata"] for rec in content_items_split],
+
                                    category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    all_categories=all_categories,
                                    subcategories=subcategories, parent_categories=parent_categories,
