@@ -157,7 +157,7 @@ class PagesRouting:
             # EXAMPLE: [{'name': 'Quotes', 'entity_id': '823', 'remarks': None}]
 
             # Fetch the data for all the Content Items attached to this Category
-            content_items = Categories.get_content_items_by_category(category_uri)
+            content_items = Categories.get_content_items_by_category_OLD(category_uri)
             #   List of dictionaries.  EXAMPLE:
             #       [
             #           {'schema_code': 'h', 'entity_id': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
@@ -178,6 +178,8 @@ class PagesRouting:
                                   "documents/Ebooks & Articles/Languages/Portuguese"
                                   ]
             '''
+
+
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
@@ -201,7 +203,7 @@ class PagesRouting:
             """
             template = "md_file_generator.htm"
 
-            content_items = Categories.get_content_items_by_category(entity_id=category_uri)
+            content_items = Categories.get_content_items_by_category_OLD(entity_id=category_uri)
 
             return render_template(template,
                                    site_data = cls.site_data,
@@ -220,7 +222,7 @@ class PagesRouting:
             template = "viewer_static.htm"
 
             # Fetch all the Content Items attached to the given Category
-            content_items = Categories.get_content_items_by_category(category_uri)
+            content_items = Categories.get_content_items_by_category_OLD(category_uri)
 
             category_info = Categories.get_category_info(category_uri)
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")

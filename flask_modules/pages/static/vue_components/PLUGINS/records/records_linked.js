@@ -1,5 +1,5 @@
 /*  Vue component to display and edit the "sub-records" (linked records) of a given record.
-    This is a simplified, and specialized, version of its parent component, 'vue-plugin-r'
+    This is a simplified, and specialized, version of its PARENT component, 'vue-plugin-r'
  */
 
 Vue.component('vue-plugin-r-linked',

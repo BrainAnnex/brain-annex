@@ -320,6 +320,10 @@
         v-bind:key="item.schema_code + '_' + item.entity_id + '_' + index"
 
         v-bind:item="item"
+
+        v-bind:item_properties="item_properties"
+        v-bind:item_metadata="item_metadata"
+
         v-bind:expose_controls="expose_controls"
         v-bind:category_uri="category_uri"
         v-bind:index="index"
@@ -366,6 +370,10 @@
             v-bind:key="item.entity_id + '_bulk'"
 
             v-bind:item="item"
+
+            v-bind:item_properties="item_properties"
+            v-bind:item_metadata="item_metadata"
+
             v-bind:expose_controls="false"
             v-bind:category_uri="category_uri"
             v-bind:index="index"
@@ -435,9 +443,9 @@
 
 
 
-<!-- ---------------  SCENARIO 3 : editing controls HIDDEN)  ---------------
+<!-- ---------------  SCENARIO 3 : VIEWING MODE  (editing controls HIDDEN)  ---------------
 
-    To be used when the EDITING CONTROLS are HIDDEN (i.e. in viewing mode.)
+    To be used when the EDITING CONTROLS are HIDDEN (i.e. in VIEWING MODE)
   -->
 
 <template v-if="!expose_controls"  v-for="(item, index) in content_array">
@@ -447,6 +455,10 @@
             v-bind:key="index + '_' + item.entity_id"
 
             v-bind:item="item"
+
+            v-bind:item_properties="item_properties_array[index]"
+            v-bind:item_metadata="item_metadata_array[index]"
+
             v-bind:expose_controls="expose_controls"
             v-bind:category_uri="category_uri"
             v-bind:index="index"
@@ -673,7 +685,17 @@ new Vue({
                                     // EXAMPLE: [{pos:0,"entity_id":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
                                     //           {pos:50,"entity_id":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Image"}
                                     //          ]
-                                    // TODO: component-editable fields and non-editable ones ("pos", "entity_id", "schema_code", "class_name") ought to be treated differently
+                                    // TODO (IN-PROGRESS): component-editable fields
+                                    //       and non-editable ones ("pos", "entity_id", "schema_code", "class_name")
+                                    //       ought to be treated differently
+
+        item_properties_array:  {{item_properties_array | tojson(indent=4)}},
+                                    // EXAMPLE:[{"German":"Tier", "English":"animal"},
+                                                {"French":"fille", "English":"girl/daughter"}]
+        item_metadata_array:    {{item_metadata_array | tojson(indent=4)}},
+
+        item_properties: "NOT YET IMPLEMENTED",
+        item_metadata: "NOT YET IMPLEMENTED",
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 

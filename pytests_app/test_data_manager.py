@@ -138,7 +138,7 @@ def test_switch_category(db):
     DataManager.switch_category({"items": ['photo-1', 'photo-2'], "from": root_entity_id, "to": greece_entity_id})
 
     # Verify that those 2 photos are now linked to the "Greece" Category, at the expected positions
-    result = Categories.get_content_items_by_category(entity_id=greece_entity_id)
+    result = Categories.get_content_items_by_category_OLD(entity_id=greece_entity_id)
 
     internal_ids = [GraphSchema.get_data_node_internal_id(class_name="Photo", entity_id=f"photo-{n}")
                         for n in range(1, 5)]       # internal_ids[0] will correspond to 'photo-1', etc.
@@ -162,7 +162,7 @@ def test_switch_category(db):
     DataManager.switch_category({"items": ['photo-3', 'photo-4'], "from": root_entity_id, "to": greece_entity_id})
 
     # Verify that those 2 photos are now linked to the "Greece" Category, at the expected positions
-    result = Categories.get_content_items_by_category(entity_id=greece_entity_id)
+    result = Categories.get_content_items_by_category_OLD(entity_id=greece_entity_id)
     # Concatenate two dicts
     expected += [{'caption': 'photo_extra', 'entity_id': 'photo-5', 'pos': 2 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[4]},
                  {'caption': 'photo_3', 'entity_id': 'photo-3',     'pos': 3 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[2]},
@@ -206,7 +206,7 @@ def test_extract_node_neighborhood(db):
     # Neighbors of the Car node
     result = DataManager.extract_node_neighborhood(node_internal_id=car_node, known_neighbors=None)
     assert result == {'nodes': [{'_node_labels': ['Person'], 'name': 'Julian', '_internal_id': owner_1, 'id': str(owner_1)}],
-                      'edges': [{'name': 'OWNS', 'source': str(owner_1), 'target': str(car_node), 'id': f'edge-{owner_1}--{car_node}'}]}
+                      'edges': [{'name': 'OWNS', 'source': str(owner_1), 'target': str(car_node), 'id': f'{owner_1}--OWNS--{car_node}'}]}
 
     result = DataManager.extract_node_neighborhood(node_internal_id=car_node, known_neighbors=[owner_1])
     assert result == {'nodes': [], 'edges': []}
@@ -215,7 +215,7 @@ def test_extract_node_neighborhood(db):
     # Neighbors of the owner_1 node
     result = DataManager.extract_node_neighborhood(node_internal_id=owner_1, known_neighbors=None)
     assert result == {'nodes': [{'_node_labels': ['Car'], 'color': 'white', '_internal_id': car_node, 'id': str(car_node)}],
-                      'edges': [{'name': 'OWNS', 'source': str(owner_1), 'target': str(car_node), 'id': f'edge-{owner_1}--{car_node}'}]}
+                      'edges': [{'name': 'OWNS', 'source': str(owner_1), 'target': str(car_node), 'id': f'{owner_1}--OWNS--{car_node}'}]}
 
     result = DataManager.extract_node_neighborhood(node_internal_id=owner_1, known_neighbors=[car_node])
     assert result == {'nodes': [], 'edges': []}

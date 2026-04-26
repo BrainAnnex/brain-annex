@@ -16,7 +16,8 @@
 
 Vue.component('vue-content-items',
     {
-        props: ['item', 'expose_controls', 'category_uri', 'index', 'item_count',
+        props: ['item', 'item_properties', 'item_metadata',
+                'expose_controls', 'category_uri', 'index', 'item_count',
                 'registered_plugins', 'records_types', 'schema_data', 'all_categories'],
         /*  item:           EXAMPLE: {entity_id:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Header"}
 
@@ -26,6 +27,12 @@ Vue.component('vue-content-items',
                             EXAMPLE: {entity_id: -2, insert_after_uri: "i-123", "insert_after_class": "Image"}
 
                             TODO: Rename to item_data
+
+            item_properties: EXPERIMENTAL, being phased in!
+                                An object with the properties of this Content item
+                                EXAMPLE: {"German":"Tier", "English":"animal"}
+
+            item_metadata: EXPERIMENTAL, being phased in!
 
             expose_controls:    Flag indicating whether in edit mode
             category_uri:       A string indicating which Category-viewer page is using this component
@@ -38,6 +45,7 @@ Vue.component('vue-content-items',
             schema_data:        Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
                                     EXAMPLE: ["French", "English", "notes"]
             all_categories:     A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
+                                    NOTE: not always present.  Only used in editing and bulk-editing modes
                                     EXAMPLE:
                                       [{"entity_id": "1", "name": "HOME"},
                                        {"entity_id": "523", "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]
@@ -66,6 +74,10 @@ Vue.component('vue-content-items',
                 v-bind:is="plugin_component_name(item, registered_plugins)"
 
                 v-bind:item_data="item"
+
+                v-bind:item_properties="item_properties"
+                v-bind:item_metadata="item_metadata"
+
                 v-bind:edit_mode="expose_controls"
                 v-bind:category_id="category_uri"
                 v-bind:index="index"

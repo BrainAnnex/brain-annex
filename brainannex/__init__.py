@@ -1,4 +1,4 @@
-__version__ = "5.0.0rc9_INTERIM_5"
+__version__ = "5.0.0rc9_INTERIM_6"  # IN-PROGRESS
 
 
 # IMPORTANT: ONLY 1 of the following small group of InterGraph imports

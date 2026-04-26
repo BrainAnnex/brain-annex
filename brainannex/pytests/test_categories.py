@@ -434,8 +434,55 @@ def test_is_pinned(db):
 def test_get_categories_linked_to_content_item(db):
     pass
 
+
+
 def test_get_content_items_by_category(db):
-    pass
+    _, root_entity_id  = initialize_categories(db)
+
+    result = Categories.get_content_items_by_category(entity_id=root_entity_id)
+    assert result == []     # No Content Items yet attached to the root Category
+
+    GraphSchema.create_class_with_properties(name="Note", properties=["basename", "suffix"], strict=False)
+
+    Categories.add_content_at_end(category_uri=root_entity_id,
+                                  item_class_name="Note",
+                                  item_properties={'basename': 'overview', 'suffix': 'htm'},
+                                  new_uri="n-1", namespace="data_node")
+    note_internal_id = GraphSchema.get_data_node_internal_id(class_name="Note", entity_id="n-1")
+
+
+    result = Categories.get_content_items_by_category(entity_id=root_entity_id)
+    assert result == [
+                        {'fields': {'basename': 'overview', 'suffix': 'htm'},
+                        'metadata': {'entity_id': 'n-1', 'pos': 0, 'class_name': 'Note', 'internal_id': note_internal_id}}
+                     ]
+
+    #TODO: more tests
+
+
+def test_get_content_items_by_category_OLD(db):
+    _, root_entity_id  = initialize_categories(db)
+
+    result = Categories.get_content_items_by_category(entity_id=root_entity_id)
+    assert result == []     # No Content Items yet attached to the root Category
+
+    GraphSchema.create_class_with_properties(name="Note", properties=["basename", "suffix"], strict=False)
+
+    Categories.add_content_at_end(category_uri=root_entity_id,
+                                  item_class_name="Note",
+                                  item_properties={'basename': 'overview', 'suffix': 'htm'},
+                                  new_uri="n-1", namespace="data_node")
+    note_internal_id = GraphSchema.get_data_node_internal_id(class_name="Note", entity_id="n-1")
+
+
+    result = Categories.get_content_items_by_category_OLD(entity_id=root_entity_id)
+    assert result == [
+                        {'basename': 'overview', 'suffix': 'htm',
+                         'entity_id': 'n-1', 'pos': 0, 'class_name': 'Note', 'internal_id': note_internal_id
+                        }
+                     ]
+
+
 
 def test_add_content_at_beginning(db):
     pass
@@ -443,7 +490,7 @@ def test_add_content_at_beginning(db):
 
 
 def test_link_content_at_end(db):
-    _, root_uri = initialize_categories(db)
+    _, root_entity_id = initialize_categories(db)
     #print("root URI is: ", root_uri)
 
     GraphSchema.create_class_with_properties(name="Image",
@@ -455,14 +502,15 @@ def test_link_content_at_end(db):
     GraphSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
                                  new_entity_id="i-100")
 
-    Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
+    Categories.link_content_at_end(category_entity_id=root_entity_id,
+                                   item_class_name="Image", item_entity_id="i-100")
 
     # Verify that all nodes and links are in place
     q = f'''
         MATCH p=
         (:Image {{caption:"my_pic", entity_id:"i-100", `_CLASS`:"Image"}})
         -[:BA_in_category]->
-        (:Category {{entity_id: "{root_uri}", `_CLASS`:"Category"}})
+        (:Category {{entity_id: "{root_entity_id}", `_CLASS`:"Category"}})
         RETURN COUNT(p) AS path_count
         '''
     result = db.query(q, single_cell="path_count")
@@ -470,7 +518,8 @@ def test_link_content_at_end(db):
 
     with pytest.raises(Exception):
         # Link already exists
-        Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
+        Categories.link_content_at_end(category_entity_id=root_entity_id,
+                                       item_class_name="Image", item_entity_id="i-100")
 
     # TODO: additional testing
 
@@ -583,7 +632,7 @@ def test_detach_from_category(db):
     img = GraphSchema.create_data_node(class_name="Image", properties={"caption": "my_pic"},
                                  new_entity_id="i-100")
 
-    Categories.link_content_at_end(category_uri=root_uri, item_uri="i-100")
+    Categories.link_content_at_end(category_entity_id=root_uri, item_class_name="Image", item_entity_id="i-100")
 
     with pytest.raises(Exception):
         # It would leave the Content Item "stranded"
@@ -592,7 +641,7 @@ def test_detach_from_category(db):
 
     # Create a 2nd Category, and link up the Content Item to it
     new_cat_uri = Categories.add_subcategory({"category_uri":root_uri,  "subcategory_name": "math"})
-    Categories.link_content_at_end(category_uri=new_cat_uri, item_uri="i-100")
+    Categories.link_content_at_end(category_entity_id=new_cat_uri, item_class_name="Image", item_entity_id="i-100")
 
     # Now, the detachment of the Content Item from the initial (root) Category is possible
     Categories.detach_from_category(category_entity_id=root_uri, item_internal_id=img)

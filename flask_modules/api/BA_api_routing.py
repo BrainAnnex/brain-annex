@@ -1914,7 +1914,7 @@ class ApiRouting:
 
         @bp.route('/link_content_at_end/<category_uri>/<item_uri>')
         @login_required
-        def link_content_at_end(category_uri, item_uri):
+        def link_content_at_end_api(category_uri, item_uri):
             """
             Link an existing Content Item at the end of an existing Category
 
@@ -1928,7 +1928,7 @@ class ApiRouting:
             """
             # TODO: maybe switch to a query string, to avoid errors in order of arguments
             try:
-                Categories.link_content_at_end(category_uri=category_uri, item_uri=item_uri)
+                Categories.link_content_at_end(category_entity_id=category_uri, item_entity_id=item_uri)
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
                 err_details = f"Unable to attach Content Item (URI '{item_uri}') to the end of Category (URI '{category_uri}') .  " \

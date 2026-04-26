@@ -7,8 +7,10 @@ Vue.component('vue-plugin-rs',
         props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_data:      An object with the relevant data about this Recordset item;
                                 if the "entity_id" attribute is negative,
-                                it means that it's a newly-created header, not yet registered with the server
-                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+                                it means that it's a newly-created header,
+                                not yet registered with the server
+                                (and there will be additional fields
+                                 such as `insert_after_uri` and `insert_after_class`)
 
                                 EXAMPLE of item_data:
                                         {   class_name: "Recordset",
@@ -29,14 +31,15 @@ Vue.component('vue-plugin-rs',
                                             clause_key: "city",
                                             clause_value: "Berkeley"
                                         }
-                                      (if entity_id is negative, it means that it's a newly-created header, not yet registered with the server)
+                                      (if entity_id is negative, it means that it's a newly-created header,
+                                      not yet registered with the server)
                                       TODO: take "pos", "class_name", "class_handler", "schema_code" out of item_data !
 
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The entity_id of the Category page where this recordset is displayed (used when creating new recordsets)
+            category_id:    The entity ID of the Category page where this recordset is displayed (used when creating new recordsets)
             index:          The zero-based position of this Recordset on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    A list of field names (for the Recordset entity, not its records!), in Schema order.
+            schema_data:    An array of field names (for the Recordset entity, not its records!), in Schema order.
                                 EXAMPLE: ["class", "order_by", "clause", "n_group", "caption"]
          */
 

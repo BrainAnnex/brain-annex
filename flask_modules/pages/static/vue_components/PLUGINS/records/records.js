@@ -1,29 +1,44 @@
 /*  Vue component to display and edit Content Items that lack any ah-hoc handler.
 
-    Historically, these Content Items are referred as being of type "r" (generic Records)
+    Historically, these Content Items are sometimes referred as being of type "r" (generic Records);
+    the new terminology is class_handler:"records"
 
     At present, this is used in the Category Page Viewer.
+
+    TODO: rename 'vue-plugin-records'
  */
 
 Vue.component('vue-plugin-r',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+        props: ['item_data', 'item_properties', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_data:  An object with the relevant data about this Record item;
-                                if the "entity_id" attribute is negative,
-                                it means that it's a newly-created Content Item, not yet registered with the server
-                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+                            if the "entity_id" attribute is negative,
+                            it means that it's a newly-created Content Item,
+                            not yet registered with the server
+                            (and there will be additional fields
+                             such as `insert_after_uri` and `insert_after_class`)
 
                         EXAMPLE: {"class_name":"German Vocabulary",
-                                  "entity_id":"52", "pos":10, "schema_code":"r",
+                                  "entity_id":"52", "pos":10,
                                   "German":"Tier", "English":"animal",
-                                  "internal_id": 123}}
+                                  "internal_id": 123}
+                                  (if entity_id is negative, it means that it's a newly-created header,
+                                  not yet registered with the server)
+                                  TODO (IN-PROGRESS): take "pos", "class_name", "class_handler" out of item_data !
+
+            item_properties: EXPERIMENTAL, being phased in!  An object with the properties of this Record item.
+                                Those are the editable fields.
+                                EXAMPLE: {"German":"Tier", "English":"animal"}
+
+            item_metadata:  EXPERIMENTAL, being phased in!
 
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The ID of the Category page where this record is displayed (used when creating new records)
-            index:          The zero-based position of the Record on the page
+            category_id:    The entity ID of the Category page where this record is displayed (used when creating new records)
+            index:          The zero-based position of this Record on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    A list of field names, in Schema order.
-                                EXAMPLE: ["French", "English", "notes"]
+            schema_data:    An array of field names, in Schema order.
+                                EXAMPLE: ["German", "English", "notes"]
          */
 
         template: `
@@ -158,7 +173,7 @@ Vue.component('vue-plugin-r',
         data: function() {
             return {
                 editing_mode: (this.item_data.entity_id < 0  ? true : false), // Flag indicating whether this record is being edited
-                                                                        // Negative entity_id means "new Item"
+                                                                              // Negative entity_id means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 
@@ -177,7 +192,6 @@ Vue.component('vue-plugin-r',
                             "English": "Love",
                             "German": "Liebe",
                             "entity_id": "61",
-                            "schema_code": "r",
                             "class_name": "German Vocabulary",
                             "pos": 0    <- BEING PHASED OUT
                         }
@@ -194,7 +208,7 @@ Vue.component('vue-plugin-r',
                 current_data: this.clone_and_standardize(this.item_data),
                 original_data: this.clone_and_standardize(this.item_data),
                 // Scrub some data, so that it won't show up in the tabular format.
-                //     `entity_id`, `schema_code`, `class_name`, `insert_after_uri` and `pos` get scrubbed out
+                //     `entity_id`, `class_name`, `insert_after_class`, `insert_after_uri` and `pos` get scrubbed out
                 //      TODO: separate display and control data!
                 // NOTE: clone_and_standardize() gets called twice
 
@@ -343,10 +357,10 @@ Vue.component('vue-plugin-r',
                 // Scrub some data, so that it won't show up in the tabular format
                 delete clone_obj.entity_id;
                 delete clone_obj.internal_id;
+                delete clone_obj.insert_after_class;
                 delete clone_obj.insert_after_uri;
-                delete clone_obj.schema_code;   // TODO: in the process of getting phased out
                 delete clone_obj.class_name;
-                delete clone_obj.pos;          // TODO: this might be getting phased out
+                delete clone_obj.pos;               // TODO: this might be getting phased out
 
                 return clone_obj;
             },
@@ -404,8 +418,8 @@ Vue.component('vue-plugin-r',
                     console.log("    server call was successful; it returned: " , server_payload);
                     /*  EXAMPLE:
                             [
-                                {entity_id: "100", name: "mushrooms pie", eval: "+", schema_code: "r"},
-                                {entity_id: "180", name: "Margherita pie", eval: "OK", schema_code: "r"}
+                                {entity_id: "100", name: "mushrooms pie", eval: "+"},
+                                {entity_id: "180", name: "Margherita pie", eval: "OK"}
                             ]
                      */
                     this.linked_records = server_payload;
@@ -548,7 +562,7 @@ Vue.component('vue-plugin-r',
 
             edit_content_item(item)
             {
-                console.log(`'Records' component received Event to edit content item of type '${item.schema_code}' , id ${item.entity_id}`);
+                console.log(`'Records' component received Event to edit content item with entity id ${item.entity_id}`);
                 this.editing_mode = true;
 
                 this.get_fields_from_server(item);      // Consult the schema
@@ -570,7 +584,6 @@ Vue.component('vue-plugin-r',
                             "English": "Love",
                             "German": "Liebe",
                             "entity_id": 61,
-                            "schema_code": "r",
                             "insert_after_uri": 123,
                             "class_name": "German Vocabulary",
                             "pos": 0
@@ -578,14 +591,14 @@ Vue.component('vue-plugin-r',
                 */
 
                 // Start the body of the POST to send to the server
-                var post_obj = {schema_code: this.item_data.schema_code};
+                var post_obj = {};
 
                 if (this.item_data.entity_id < 0)  {     // The negative entity_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
                     post_obj["class_name"] = this.item_data.class_name;
-                    post_obj["insert_after_uri"] = this.item_data.insert_after_uri;     // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                     post_obj["insert_after_class"] = this.item_data.insert_after_class; // Class of Content Item to insert after
+                    post_obj["insert_after_uri"] = this.item_data.insert_after_uri;     // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data)  {
@@ -661,7 +674,7 @@ Vue.component('vue-plugin-r',
                     console.log("Records component sending `updated-item` signal to its parent");
                     //console.log(this.current_data);
                     // Note: the signal below ONLY include DISPLAY data, not control data such as
-                    //       `entity_id`, `schema_code`, `class_name`, `insert_after_uri`, `pos`
+                    //       `entity_id`, `class_name`, `insert_after_class`, `insert_after_uri`, `pos`
                     //        WITH THE SINGLE EXCEPTION of `entity_id` field on newly-added records
                     //        TODO: separate display and control data!
                     this.$emit('updated-item', this.current_data);
@@ -671,7 +684,7 @@ Vue.component('vue-plugin-r',
 
                     this.editing_mode = false;      // Exit the editing mode
                 }
-                else  {             // Server reported FAILURE
+                else  {                     // Server reported FAILURE
                     this.status = `FAILED edit`;
                     this.error_indicator = true;
                     this.cancel_edit();     // Restore the data to how it was prior to the failed changes
