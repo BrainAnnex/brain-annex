@@ -42,7 +42,7 @@
                                   "Site Link": ["url", "name", "date", "comments", "rating", "read"]
                                  }
 
-        content_items:  [TODO - Being phased out]
+        content_items:  [TODO - Being phased out by `item_array`]
                         A list of dictionaries with the data for each the Content Items on this page
                         EXAMPLE:
                             [{'schema_code': 'i', 'entity_id': 'i-1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
@@ -52,8 +52,11 @@
                                                          'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
 
-        item_fields_array:  A list of dictionaries with the field data for each the Content Items on this page
-        item_metadata_array:A list of dictionaries with the metadata for each the Content Items on this page
+        item_array:     [TODO: this will replace `content_array`]
+                        A list with the data for each the Content Items on this page
+                        Each element is an object with 2 keys: `fields` and `metadata`
+                            EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
+                            EXAMPLE of value of `metadata`: {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
 
 
         upload_directories: A list of folders registered with BrainAnnex
@@ -202,15 +205,8 @@
         {{el}}<br>
     {% endfor %}
 
-    <br><br>
-    <b>item_fields_array</b>:<br>
-    {% for el in item_fields_array %}
-        {{el}}<br>
-    {% endfor %}
-
-    <br><br>
-    <b>item_metadata_array</b>:<br>
-    {% for el in item_metadata_array %}
+    <b>item_array</b>:<br>
+    {% for el in item_array %}
         {{el}}<br>
     {% endfor %}
     <br><br>
@@ -343,9 +339,8 @@
         v-bind:key="item.schema_code + '_' + item.entity_id + '_' + index"
 
         v-bind:item="item"
-
-        v-bind:item_fields="item_fields_array[index]"
-        v-bind:item_metadata="item_metadata_array[index]"
+        v-bind:item_fields="item_array[index].fields"
+        v-bind:item_metadata="item_array[index].metadata"
 
         v-bind:expose_controls="expose_controls"
         v-bind:category_uri="category_uri"
@@ -362,7 +357,7 @@
         v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
         v-on:relocate-content-item="relocate_content_item(item, $event)"
         v-on:cancel-edit="cancel_edit(item)"
-        v-on:updated-item="absorb_item_updates(item, $event)"
+        v-on:updated-item="absorb_item_updates(item, item_array[index], $event)"
         v-on:insert-new-item-after="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
@@ -394,8 +389,8 @@
 
             v-bind:item="item"
 
-            v-bind:item_fields="item_fields_array[index]"
-            v-bind:item_metadata="item_metadata_array[index]"
+            v-bind:item_fields="item_array[index].fields"
+            v-bind:item_metadata="item_array[index].metadata"
 
             v-bind:expose_controls="false"
             v-bind:category_uri="category_uri"
@@ -478,9 +473,8 @@
             v-bind:key="index + '_' + item.entity_id"
 
             v-bind:item="item"
-
-            v-bind:item_fields="item_fields_array[index]"
-            v-bind:item_metadata="item_metadata_array[index]"
+            v-bind:item_fields="item_array[index].fields"
+            v-bind:item_metadata="item_array[index].metadata"
 
             v-bind:expose_controls="expose_controls"
             v-bind:category_uri="category_uri"
@@ -496,7 +490,7 @@
             v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
             v-on:relocate-content-item="relocate_content_item(item, $event)"
             v-on:cancel-edit="cancel_edit(item)"
-            v-on:updated-item="absorb_item_updates(item, $event)"
+            v-on:updated-item="absorb_item_updates(item, item_array[index], $event)"
             v-on:insert-new-item-after="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
@@ -704,19 +698,19 @@ new Vue({
                                     //            flask_modules/pages/static/vue_components/PLUGINS
 
         content_array: {{content_items | tojson(indent=4)}},
-                                    // TODO: Being phased out
+                                    // TODO: Being phased out by `item_array`
                                     // Array of objects with the data for each of the Content Items on this page
                                     // EXAMPLE: [{pos:0,"entity_id":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
                                     //           {pos:50,"entity_id":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Image"}
                                     //          ]
 
-        item_fields_array:      {{item_fields_array | tojson(indent=4)}},
-                                    // EXAMPLE:[{"German":"Tier", "English":"animal"},
-                                    //          {"French":"fille", "English":"girl/daughter"}]
-        item_metadata_array:    {{item_metadata_array | tojson(indent=4)}},
-                                    // EXAMPLE: [{class_name: "Header",pos:0,"entity_id":"h-5",class_handler:"headers",schema_code:"h"},
-                                    //           {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i",}
-                                    //          ]
+        item_array:     {{item_array | tojson(indent=4)}},
+                                // TODO: this will replace `content_array`
+                                // A list with the data for each the Content Items on this page
+                                // Each element is an object with 2 keys: `fields` and `metadata`
+                                // EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
+                                // EXAMPLE of value of `metadata`: {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
+
 
         expose_controls: false,     // If true, the editing controls of the various Content Items are revealed
 
@@ -1462,11 +1456,13 @@ new Vue({
 
 
 
-        absorb_item_updates(item, new_data)
+        absorb_item_updates(item, item_original, new_data)
         /* Update the appropriate entry in this.content_array, with the new data passed by a component
            (generally done at the end of an update on the server).
 
-           item:       pre-edit record
+           item, item_original:   pre-edit record (respectively, the combined record,
+                                                                 and the record with fields and metadata separated)
+                                               [Note: `item` is being phased out]
            new_data:   post-edit record
 
            Note that the values of the special key "entity_id" on `new_data` will only appear
@@ -1474,85 +1470,168 @@ new Vue({
            if this is a newly-created Content Item,
            which was tentatively assigned an autoincr negative value as temp entity_id.
 
-           The special keys "schema_code" and "pos" are not changed.
+           Other metadata values are not changed.
 
-           EXAMPLE of `item` and `new_data`, for a NEWLY-CREATED item:
-               item:     {entity_id: -2,
-                          schema_code: "h", class_name: "Header", pos: -12}
-               new_data: {entity_id: "h-243",
-                          text: "Some Header"}    [Notice: no control fields, except for `entity_id`]
+           EXAMPLE of old values (`item`, `item_original`) and of `new_data`,
+           for a NEWLY-CREATED item:
+
+               item:            {entity_id: -2,
+                                 schema_code: "h", class_name: "Header", pos: -12,
+                                 insert_after_uri: "i-5", insert_after_class: "Image"}
+
+               item_original.fields:     {}
+               item_original.metadata:   {entity_id: -2,
+                                          schema_code: "h", class_name: "Header", pos: -12,
+                                          insert_after_uri: "i-5", insert_after_class: "Image"}
+
+               new_data:        {entity_id: "h-243",    <- Sent by the component upon receiving it from the server
+                                 schema_code: "h", class_name: "Header", pos: -12,      <- (OPTIONAL) General metadata
+                                 insert_after_uri: "i-5", insert_after_class: "Image"   <- (OPTIONAL) Metadata for new Content Items
+                                 text: "Some Header"}   <- Field data
+
+                                 IN-PROGRESS: `new_data` is being changed into an object containing
+                                        (1) item_fields
+                                        (2) item_metadata
          */
         {
-            console.log("In absorb_item_updates()");
-            console.log(`    Original data of Content Item being updated:`);
-            console.log(item);
+            console.log("In absorb_item_updates().  Root element received signal to UPDATE the Content Item:");
 
-            const old_uri = item.entity_id;               // This will be a negative number if it was a temporary value for a newly-created Content Item
+            let item_original_fields   = item_original.fields;
+            let item_original_metadata = item_original.metadata;
 
-            const schema_code = item.schema_code;   // This will never be affected by edits
-            const class_name = item.class_name;     // This will never be affected by edits
+            console.log("    Original data of Content Item being updated (next 3 lines contain `item`, `item_original_fields`, `item_original_metadata`):");
+            console.log(structuredClone(item));
+            console.log(structuredClone(item_original_fields));
+            console.log(structuredClone(item_original_metadata));
 
-            console.log(`    Root element received signal to UPDATE the Content Item that originally had entity_id: ${old_uri}`);
 
-            console.log(`    Data for the update:`);
-            console.log(new_data);
+            console.log(`    Data for the update (stored in variable new_data):`);
+            console.log(structuredClone(new_data));
+
+            if ( !('item_fields' in new_data) ) {     // Detect the OLD format, being phased out
+                console.log("    detecting the OLD format of new_data, being phased out");
+
+                // Enforce the presence of `entity_id`
+                if (new_data.entity_id !== undefined) {
+                    console.error(`    Missing required value for the entity_id`);
+                    alert("Failed to update the page display.  Save your work and refresh the page");
+                    return;
+                }
+
+                var item_fields = Object.assign({}, new_data);      // Start with a clone of the entire record
+
+                delete item_fields.entity_id;
+
+                var item_metadata = {entity_id: new_data.entity_id
+                                    };
+                if ("class_name" in new_data) {
+                    item_metadata.class_name = new_data.class_name;
+                    delete item_fields.class_name;
+                }
+                if ("internal_id" in new_data) {
+                    item_metadata.class_name = new_data.internal_id;
+                    delete item_fields.internal_id;
+                }
+                if ("pos" in new_data) {
+                    item_metadata.pos = new_data.pos;
+                    delete item_fields.pos;
+                }
+                if ("class_handler" in new_data) {
+                    item_metadata.pos = new_data.class_handler;
+                    delete item_fields.class_handler;
+                }
+                if ("schema_code" in new_data) { // TODO: phase out
+                    item_metadata.pos = new_data.schema_code;
+                    delete item_fields.schema_code;
+                }
+
+                if ("insert_after_uri" in new_data)
+                    delete item_fields.insert_after_uri;        // No attempt to re-capture this no-longer-needed field
+
+                if ("insert_after_class" in new_data)
+                    delete item_fields.insert_after_class;      // No attempt to re-capture this no-longer-needed field
+            }
+            else {
+                // TODO: in due time this branch will become the standard/only way to receive the data
+
+                // Enforce the presence of `entity_id`
+                if (new_data.item_metadata.entity_id === undefined) {
+                    console.error(`    Missing required value for the entity_id`);
+                    alert("Failed to update the page display.  Save your work and refresh the page");
+                    return;
+                }
+
+                var item_fields   = Object.assign({}, new_data.item_fields);
+
+                var item_metadata = Object.assign({}, new_data.item_metadata);
+                if ("insert_after_uri" in new_data)
+                    delete item_metadata.insert_after_uri;        // No-longer-needed metadata value
+
+                if ("insert_after_class" in new_data)
+                    delete item_metadata.insert_after_class;      // No-longer-needed metadata value
+            }
+
+
+            const old_uri = item_metadata.entity_id;    // This will be a negative number if it was a temporary value for a newly-created Content Item
+            console.log(`    Attempting to update the Content Item that originally had entity_id: ${old_uri}`);
+
 
             var uri = old_uri;
 
             if (old_uri < 0)  {
-                console.log(`    A temporary URI of ${old_uri} is being replaced by the newly-assigned permanent URI '${new_data.entity_id}'`);
-                uri = new_data.entity_id;
+                console.log(`    A temporary URI of ${old_uri} is being replaced by the newly-assigned permanent URI '${item_metadata.entity_id}'`);
+                uri = item_metadata.entity_id;
             }
-            else if (new_data.entity_id !== undefined  &&  new_data.entity_id != old_uri)  {
-                console.error(`    Unexpected attempt to update a permanent URI ('${old_uri}'), with a different value ('${new_data.entity_id}')`);
+            else if (item_metadata.entity_id !== undefined  &&  item_metadata.entity_id != old_uri)  {
+                console.error(`    Unexpected attempt to update a permanent URI ('${old_uri}'), with a different value ('${item_metadata.entity_id}')`);
                 alert("Attempting to update a permanent URI on the display.  Save your work and refresh the page");
                 return;
             }
 
             // Locate the Content Item to update
-            const index = this.locate_item(schema_code, old_uri);         // TODO: perhaps switch to internal dbase ID's
+            const index = this.locate_item(item_metadata.schema_code, old_uri);         // TODO: perhaps switch to internal dbase ID's
 
             if (index == -1)  {    // If the Item is not found on the page
-                console.log(`    Failed to locate Content Item with schema_code '${schema_code}', uri '${old_uri}'`);
+                console.log(`    Failed to locate Content Item with schema_code '${item_metadata.schema_code}', uri '${old_uri}'`);
                 alert("Unable to update the display.  Save your work and refresh the page");
                 return;
             }
 
-            // Bring the frontend up-to-date with the new data
 
-            let updated_record = Object.assign({}, new_data);      // Start with a clone of the record with the new data
-            // This object will replace the element in content_array at our index position
+            /*
+                Bring the frontend up-to-date with the new data
+             */
+
+            let updated_record = Object.assign({}, item_fields);        // Start with a clone of the field values...
+            Object.assign(updated_record, item_metadata);               // ... and then bring in the metadata
+            // This object will replace the element in `content_array` at our index position
             // (further below, we do a complete array element replacement for Vue reactivity)
 
-            // Restore the special control keys "schema_code" and "class_name"
-            // (because they were NOT returned by the `new_data` object that just got cloned)
-            updated_record["schema_code"] = schema_code;
-            updated_record["class_name"] = class_name;
+            let updated_record_NEW = {  fields: item_fields,
+                                        metadata: item_metadata
+                                     }
+            // This object will replace the element in `item_array` at our index position
+            // (further below, we do a complete array element replacement for Vue reactivity)
 
-            // Also set (in the case of new items) or restore (in the case of existing items) the control field "entity_id"
-            updated_record["entity_id"] = uri;
 
             // Note about the special key "pos":
             //      1) existing records will have a value not changed thru edits (a separate mechanism is used to reposition items)
             //      2) newly-created Items will lack it; currently, it's created in the server, but not returned to the plugin components
-            //                         (TODO: this current situation seems to create problems when attempting to cancel the creation of a new Item)
-
-            if ("pos" in item)
-                updated_record["pos"] = item.pos;
-
-            if ("insert_after_uri" in updated_record)
-                delete updated_record.insert_after_uri;     // Ditch ("insert_after_uri" is a temporary value, not to be saved)
-
-            if ("insert_after_class" in updated_record)
-                delete updated_record.insert_after_class;   // Ditch ("insert_after_class" is a temporary value, not to be saved)
+            //                      under the OLD format, which is currently being phased out
+            //                      (TODO: this current situation seems to create problems when attempting to cancel the creation of a new Item)
 
 
-            console.log(`   Updating the Content Item found in content_array at index: ${index}, with the following record:`);
-            console.log(updated_record);
+            console.log(`       - Updating the Content Item found in "this.content_array" at index: ${index}, with the following record:`);
+            console.log(structuredClone(updated_record));
+
+            console.log(`       - Updating the Content Item found in "this.item_array" at index: ${index}, with the following record:`);
+            console.log(structuredClone(updated_record_NEW));
 
             Vue.set(this.content_array, index, updated_record);     // Vue-reactive change (affecting the UI)
                                                                     // in the specified element of this.content_array
 
+            Vue.set(this.item_array, index, updated_record_NEW);    // Vue-reactive change (affecting the UI)
+                                                                    // in the specified element of this.item_array
         }, // absorb_item_updates
 
 

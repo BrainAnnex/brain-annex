@@ -102,7 +102,7 @@ class PagesRouting:
         @bp.route('/viewer')
         @bp.route('/viewer/<category_uri>')
         @login_required
-        def category_page_viewer(category_uri="1") -> str:
+        def category_page_viewer_api(category_uri="1") -> str:
             """
             General viewer/editor for the Content Items attached to the specified Category
             # EXAMPLES of invocation:
@@ -191,8 +191,8 @@ class PagesRouting:
                                    current_page=request.path, username=current_user.username,
 
                                    content_items=content_items,
-                                   item_fields_array=[rec["fields"] for rec in content_items_split],
-                                   item_metadata_array=[rec["metadata"] for rec in content_items_split],
+                                   item_array=[{"fields": rec["fields"] , "metadata": rec["metadata"]}
+                                                                        for rec in content_items_split],
 
                                    category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    all_categories=all_categories,
