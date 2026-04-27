@@ -84,6 +84,8 @@ Vue.component('vue-plugin-h',
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 original_data:  Object.assign({}, this.item_fields),
 
+                current_metadata:   Object.assign({}, this.item_metadata),
+
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -129,18 +131,18 @@ Vue.component('vue-plugin-h',
             // Conclude an EDIT operation.  TODO: maybe save/cancel should be a sub-component shared among various plugins?
             {
                 // Start the body of the POST to send to the server
-                var post_obj = {class_name: this.item_metadata.class_name};
+                var post_obj = {class_name: this.current_metadata.class_name};
 
-                if (this.item_metadata.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create,
+                if (this.current_metadata.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
                      post_obj.category_id = this.category_id;
-                     post_obj.insert_after_uri = this.item_metadata.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                     post_obj.insert_after_class = this.item_metadata.insert_after_class;   // Class of Content Item to insert after
+                     post_obj.insert_after_uri = this.current_metadata.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                     post_obj.insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
 
                      url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING Content Item
-                    post_obj.entity_id = this.item_metadata.entity_id;
+                    post_obj.entity_id = this.current_metadata.entity_id;
 
                     url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
@@ -182,17 +184,17 @@ Vue.component('vue-plugin-h',
 
                     // If this was a new item (with the temporary negative entity_id),
                     // update its entity_id with the value assigned by the server
-                    if (this.item_metadata.entity_id < 0) {
-                        this.item_metadata.entity_id = server_payload;      // Update with the value assigned by the server
-                        delete this.item_metadata.insert_after_uri;         // No longer needed
-                        delete this.item_metadata.insert_after_class;       // No longer needed
+                    if (this.current_metadata.entity_id < 0) {
+                        this.current_metadata.entity_id = server_payload;      // Update with the value assigned by the server
+                        delete this.current_metadata.insert_after_uri;         // No longer needed
+                        delete this.current_metadata.insert_after_class;       // No longer needed
                     }
 
 
                     // Inform the parent component of the new state of the data; pass clones of the relevant objects
                     const signal_data = {
                         item_fields:   Object.assign({}, this.current_data),
-                        item_metadata: Object.assign({}, this.item_metadata)
+                        item_metadata: Object.assign({}, this.current_metadata)
                     };
                     console.log("Headers component sending `updated-item` SIGNAL to its parent with the following data:");
                     console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
@@ -220,7 +222,7 @@ Vue.component('vue-plugin-h',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.item_metadata.entity_id < 0) {
+                if (this.current_metadata.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
                     console.log("Headers sending `cancel-edit` signal to its parent");
                     this.$emit('cancel-edit');

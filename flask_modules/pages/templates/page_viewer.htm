@@ -357,7 +357,7 @@
         v-on:delete-content-item-highlighted="delete_content_item(item)"
         v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
         v-on:relocate-content-item="relocate_content_item(item, $event)"
-        v-on:cancel-edit="cancel_edit(item)"
+        v-on:cancel-edit="cancel_edit(item, index)"
         v-on:updated-item="absorb_item_updates(item, item_array[index], $event)"
         v-on:insert-new-item-after="insert_new_item_after(item, $event)"
     >
@@ -490,7 +490,7 @@
             v-on:delete-content-item-highlighted="delete_content_item(item)"
             v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
             v-on:relocate-content-item="relocate_content_item(item, $event)"
-            v-on:cancel-edit="cancel_edit(item)"
+            v-on:cancel-edit="cancel_edit(item, index)"
             v-on:updated-item="absorb_item_updates(item, item_array[index], $event)"
             v-on:insert-new-item-after="insert_new_item_after(item, $event)"
     >
@@ -1225,12 +1225,16 @@ new Vue({
 
 
 
-        cancel_edit(item)
+        cancel_edit(item, index)
         {
-            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , Entity ID ${item.entity_id} , pos ${item.pos}`);
-            if (item.entity_id == -1)  {
+            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , Entity ID '${item.entity_id}', in index position ${index}`);
+            if (item.entity_id < 0)  {
                 // If we're aborting the edit of a new Content Item, delete it from the page
-                index = this.locate_item_pos(item.schema_code, item.entity_id, item.pos);
+                let located_index = this.locate_item(item.schema_code, item.entity_id);
+                if (located_index != index) {
+                    alert(`Mismatch of index position (${located_index} vs. ${index}) on page of the Content Item whose edit is to be canceled.  Refresh the page!`);
+                    return;
+                }
                 console.log(`Aborting the edit of a NEW Content Item, whose index position on the page is ${index}`);
                 this.content_array.splice(index, 1);    // It modifies the array, to take out 1 element in position index
                 this.item_array.splice(index, 1);       // It modifies the array, to take out 1 element in position index
@@ -1253,13 +1257,22 @@ new Vue({
 
         create_new_item_after(insert_after_uri, insert_after_class, schema_code, class_name)
         /*  Create an empty new record (JS object), with the given `schema_code` and `class_name`,
-            to be placed after the specified Content Item on the current Category-viewer page.
-            Insert the newly-created record in the appropriate location on the global `this.content_array` ;
+            to be placed after the Content Item specified by its uri (entity ID) and Class
+            on the current Category-viewer page.
+            Insert the newly-created record in the appropriate location on the global `this.content_array`
+            and `this.item_array` ;
             this insertion will trigger a Vue re-draw across the page and its components.
+
+            TODO: replace `schema_code` with `class_handler`
          */
         {
             console.log(`In root component, create_new_item_after().  insert_after_uri: '${insert_after_uri}' | insert_after_class: '${insert_after_class}' | schema_code: '${schema_code}' |  class_name: '${class_name}'`);
 
+            // Enforce presence of `class_name`
+            if (class_name === undefined) {
+                alert("create_new_item_after(): adding new Content Item that lacks a Class name!  Nothing added.  Refresh page");
+                return;
+            }
             const insert_after_uri_index = this.locate_item_simplified(insert_after_uri, insert_after_class);
             console.log(`    Content Item located in position ${insert_after_uri_index}`);
 
@@ -1270,20 +1283,25 @@ new Vue({
 
             // Assemble the data for a new Content Item.
             // Using an auto-incremented negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
-            let blank_record;
-            if (class_name)     // If a class name was passed, store it
-                blank_record = {entity_id: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
-            else  {               // No class name was provided.  TODO: obsolete - this branch no longer in use
-                blank_record = {entity_id: this.next_new_item_uri, schema_code: schema_code, insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};
-                alert("create_new_item_after(): adding new Content Item that lacks a Class name!");
-            }
+            let blank_record_old_format = {entity_id: this.next_new_item_uri,
+                                           schema_code: schema_code, class_name: class_name,
+                                           insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};    // TODO: phase out
+
+            let blank_record =
+                {
+                    fields:     {},
+                    metadata:   {entity_id: this.next_new_item_uri,
+                                 schema_code: schema_code,
+                                 class_name: class_name,
+                                 insert_after_uri: insert_after_uri, insert_after_class: insert_after_class}
+                };  // It's a new record; so, only metadata is present
 
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
             // Insert the newly-created record after the specified existing element.  This change will be detected by Vue,
             // and will cause the insertion of a new 'vue-content-items' component
-            this.content_array.splice(insert_after_uri_index + 1, 0, blank_record);
-            this.item_array.splice(insert_after_uri_index + 1, 0, blank_record);
+            this.content_array.splice(insert_after_uri_index + 1, 0, blank_record_old_format);
+            this.item_array.splice(   insert_after_uri_index + 1, 0, blank_record);
 
             // Note: the new Content Item will now appear in editing mode in its handler Vue component,
             //       but not yet added to the database; it will be the Vue component's responsibility to save it,
@@ -1302,14 +1320,29 @@ new Vue({
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
 
             // Assemble the data for a new Content Item.  Using a negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
-            let blank_record = {entity_id: this.next_new_item_uri, schema_code: schema_code, class_name: class_name, insert_after_uri: "BOTTOM"};
+            let blank_record_old_format = {entity_id: this.next_new_item_uri,
+                                           schema_code: schema_code, class_name: class_name,
+                                           insert_after_uri: "BOTTOM"};       // TODO: phase out
+
+            console.log("blank_record_old_format:");
+            console.log(blank_record_old_format);
+
+            let blank_record =
+                {
+                    fields:     {},
+                    metadata:   {entity_id: this.next_new_item_uri,
+                                 schema_code: schema_code,
+                                 class_name: class_name,
+                                 insert_after_uri: "BOTTOM"}
+                };  // It's a new record; so, only metadata is present
 
             console.log("blank_record:");
             console.log(blank_record);
 
+
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
-            this.content_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
+            this.content_array.push(blank_record_old_format);  // Insert a new blank Item at the end of the page's Content Items
             this.item_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
 
         }, // add_new_item_at_bottom
@@ -1576,35 +1609,31 @@ new Vue({
                 var item_fields   = Object.assign({}, new_data.item_fields);
 
                 var item_metadata = Object.assign({}, new_data.item_metadata);
-                if ("insert_after_uri" in new_data)
+
+                if ("insert_after_uri" in item_metadata)
                     delete item_metadata.insert_after_uri;        // No-longer-needed metadata value
 
-                if ("insert_after_class" in new_data)
+                if ("insert_after_class" in item_metadata)
                     delete item_metadata.insert_after_class;      // No-longer-needed metadata value
             }
 
 
-            const old_uri = item_metadata.entity_id;    // This will be a negative number if it was a temporary value for a newly-created Content Item
-            console.log(`    Attempting to update the Content Item that originally had entity_id: ${old_uri}`);
+
+            const old_uri = item.entity_id;    // This will be a negative number if it was a temporary value for a newly-created Content Item
+            if (old_uri != item_original.metadata.entity_id)
+                alert(`Discrepancy between alternate values of old_uri (${old_uri} and ${item_original.metadata.entity_id}) in absorb_item_updates().  Refresh page!`);
+
+            if (old_uri < 0)
+                console.log(`    A temporary Entity ID of '${old_uri}' is being replaced by the newly-assigned permanent Entity ID '${item_metadata.entity_id}'`);
 
 
-            var uri = old_uri;
-
-            if (old_uri < 0)  {
-                console.log(`    A temporary URI of ${old_uri} is being replaced by the newly-assigned permanent URI '${item_metadata.entity_id}'`);
-                uri = item_metadata.entity_id;
-            }
-            else if (item_metadata.entity_id !== undefined  &&  item_metadata.entity_id != old_uri)  {
-                console.error(`    Unexpected attempt to update a permanent URI ('${old_uri}'), with a different value ('${item_metadata.entity_id}')`);
-                alert("Attempting to update a permanent URI on the display.  Save your work and refresh the page");
-                return;
-            }
+            console.log(`    Attempting to update the Content Item that originally had Entity ID: ${old_uri}`);
 
             // Locate the Content Item to update
             const index = this.locate_item(item_metadata.schema_code, old_uri);         // TODO: perhaps switch to internal dbase ID's
 
             if (index == -1)  {    // If the Item is not found on the page
-                console.log(`    Failed to locate Content Item with schema_code '${item_metadata.schema_code}', uri '${old_uri}'`);
+                console.log(`    Failed to locate Content Item with schema_code '${item_metadata.schema_code}', entity ID '${old_uri}'`);
                 alert("Unable to update the display.  Save your work and refresh the page");
                 return;
             }
@@ -1787,25 +1816,6 @@ new Vue({
 
             for (var i = 0; i < number_items; i++) {
                 if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].entity_id == uri)
-                    return i;          //  Found it
-            }
-
-            return -1;    // Didn't find it
-        },
-
-
-        locate_item_pos(schema_code, uri, pos)
-        /*  Same as locate_item(), but also requiring a match on position.  ONLY USED TO DROP NEW ITEMS WHOSE ADDITION GOT CANCELLED
-         */
-        {
-            //console.log(`Attempting to locate content item of type '${schema_code}' , uri ${uri}, pos ${pos}`);
-
-            const number_items = this.content_array.length;
-
-            for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].schema_code == schema_code  &&
-                    this.content_array[i].entity_id == uri  &&
-                    this.content_array[i].pos == pos)
                     return i;          //  Found it
             }
 
