@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-{#  General viewer page for a list of Content Items (the list is specified in Flask parameter content_items)
+{#  General viewer page for a list of Content Items
+    (the list is specified in Flask parameters `content_items` and `item_array`)
     Vue.js is used for the rendering
 
 
@@ -52,7 +53,7 @@
                                                          'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
                             ]
 
-        item_array:     [TODO: this will replace `content_array`]
+        item_array:     [TODO: this will replace `content_items`]
                         A list with the data for each the Content Items on this page
                         Each element is an object with 2 keys: `fields` and `metadata`
                             EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
@@ -1131,7 +1132,7 @@ new Vue({
 
             // Final wrap-up, regardless of error or success
             this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-        },
+        }, // finish_perform_bulk_operation
 
 
 
@@ -1232,6 +1233,7 @@ new Vue({
                 index = this.locate_item_pos(item.schema_code, item.entity_id, item.pos);
                 console.log(`Aborting the edit of a NEW Content Item, whose index position on the page is ${index}`);
                 this.content_array.splice(index, 1);    // It modifies the array, to take out 1 element in position index
+                this.item_array.splice(index, 1);       // It modifies the array, to take out 1 element in position index
             }
         },
 
@@ -1281,6 +1283,7 @@ new Vue({
             // Insert the newly-created record after the specified existing element.  This change will be detected by Vue,
             // and will cause the insertion of a new 'vue-content-items' component
             this.content_array.splice(insert_after_uri_index + 1, 0, blank_record);
+            this.item_array.splice(insert_after_uri_index + 1, 0, blank_record);
 
             // Note: the new Content Item will now appear in editing mode in its handler Vue component,
             //       but not yet added to the database; it will be the Vue component's responsibility to save it,
@@ -1307,6 +1310,7 @@ new Vue({
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
             this.content_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
+            this.item_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
 
         }, // add_new_item_at_bottom
 
@@ -1339,6 +1343,7 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 console.log(`    Removing from page the element with index ${index}`);
                 this.content_array.splice(index, 1);  // It modifies the array, to take out 1 element in position index
+                this.item_array.splice(index, 1);  // It modifies the array, to take out 1 element in position index
             }
             else  {             // Server reported FAILURE
                 alert("The server could not delete the Content Item. Perhaps it was deleted on another tab... Try saving your work and reloading the page");
@@ -1397,6 +1402,9 @@ new Vue({
                 const old_value = this.content_array[i-1];                  // save item above
                 Vue.set(this.content_array, i-1, this.content_array[i]);    // the item below moves up
                 Vue.set(this.content_array, i, old_value);                  // (the saved) item above moves below
+
+                Vue.set(this.item_array, i-1, this.item_array[i]);    // the item below moves up
+                Vue.set(this.item_array, i, old_value);                  // (the saved) item above moves below
             }
         }, // finish_move_up
 
@@ -1451,13 +1459,17 @@ new Vue({
                 const old_value = this.content_array[i+1];                  // save item below
                 Vue.set(this.content_array, i+1, this.content_array[i]);    // the item above moves down
                 Vue.set(this.content_array, i, old_value);                  // (the saved) item below moves above
+
+                Vue.set(this.item_array, i+1, this.item_array[i]);    // the item above moves down
+                Vue.set(this.item_array, i, old_value);                  // (the saved) item below moves above
             }
         }, // finish_move_down
 
 
 
         absorb_item_updates(item, item_original, new_data)
-        /* Update the appropriate entry in this.content_array, with the new data passed by a component
+        /* Update the appropriate entry in this.content_array and this.item_array,
+           with the new data passed by a component
            (generally done at the end of an update on the server).
 
            item, item_original:   pre-edit record (respectively, the combined record,
@@ -1636,64 +1648,6 @@ new Vue({
 
 
 
-        absorb_updates_existing_item(new_data)
-        /* Update the appropriate entry in this.content_array, with the new data passed by a component
-           (generally done at the end of an update on the server.)
-
-           NOT to be used for newly-added records: use absorb_item_updates() for those.
-           
-           new_data: object containing the special keys "entity_id" and "schema_code" (TODO: later replace with the internal_dbase_id),
-                     used to identify the entry in this.content_array,
-                     plus keys/values will all the other properties to update.  
-                     Unaffected fields aren't expected to be included (but no harm if they are.)
-                     EXAMPLE: {entity_id: '5622', schema_code: 'r', English: 'Woman', German: 'Frau'}
-         */
-        {
-            console.log("In absorb_updates_existing_item()");
-            const schema_code = new_data.schema_code;
-            const uri = new_data.entity_id;
-
-            console.log(`    Root element received signal to UPDATE the Content Item of type '${schema_code}' , with original uri '${uri}'`);
-            console.log(`    Data for the update:`);
-            console.log(new_data);
-
-            const index = this.locate_item(schema_code, uri);         // TODO: switch to internal ID's
-
-            if (index == -1)  {    // If the Item is not found on the page
-                console.log(`    Failed to locate schema_code ${schema_code}, uri '${uri}'`);
-                alert("Unable to update the display.  Save your work and refresh the page");
-            }
-
-            // Bring the frontend up-to-date with the new data
-            //console.log(`   Updating the Content Item found in content_array at index: ${index}`);
-
-
-            let updated_record = Object.assign({}, this.content_array[index]);      // Start with a clone of the Content Item object
-                                                                                    // (to allow for a complete record replacement for Vue reactivity)
-
-            // Update all attributes, except "entity_id" and "schema_code",
-            // in the object that will replace the element in content_array at our index position
-            for (key in new_data)  {    // Loop over all the keys in the object
-                if (key != "entity_id"  &&  key != "schema_code")  {
-                    let new_value = new_data[key];
-                    if (new_value == "")  {
-                        //console.log(`    Ditching the field '${key}'`);
-                        delete updated_record[key];
-                    }
-                    else  {
-                        //console.log(`    Updating field '${key}' with new value '${new_value}'`);
-                        updated_record[key] = new_value;
-                    }
-                }
-            }
-
-            Vue.set(this.content_array, index, updated_record);     // Vue-reactive change (affecting the UI)
-                                                                    // in the specified element of this.content_array
-
-        }, // absorb_updates_existing_item
-
-
-
         relocate_content_item(item, where_to)
         /*  (At the request of another component) Relocate the specified Item within the page,
             to be placed after specified position,
@@ -1779,13 +1733,16 @@ new Vue({
             const being_moved = this.content_array[index_of_moved_item];    // The object with the data of the Content Item being moved
 
             this.content_array.splice(move_after_n, 0, being_moved);        // Insert it at the given position
+            this.item_array.splice(move_after_n, 0, being_moved);        // Insert it at the given position
 
             if (move_after_n < index_of_moved_item)
                 index_of_moved_item += 1;                                   // If the insertion took place before the element to take out, adjust its index
 
             this.content_array.splice(index_of_moved_item, 1);              // Take it out from the array of Content Items
-
                                                                             // (Note: Vue automatically detects array changes done with splice)
+            this.item_array.splice(index_of_moved_item, 1);                 // Take it out from the array of Content Items
+                                                                            // (Note: Vue automatically detects array changes done with splice)
+
             return true;
 
         }, // reposition_content
