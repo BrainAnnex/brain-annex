@@ -84,6 +84,7 @@ Vue.component('vue-plugin-h',
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 original_data:  Object.assign({}, this.item_fields),
 
+                // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
 
                 waiting: false,         // Whether any server request is still pending
@@ -124,7 +125,7 @@ Vue.component('vue-plugin-h',
 
 
             /*
-                --------  SERVER CALLS  --------
+                -------------  SERVER CALLS  -------------
              */
 
             save()
@@ -190,7 +191,6 @@ Vue.component('vue-plugin-h',
                         delete this.current_metadata.insert_after_class;       // No longer needed
                     }
 
-
                     // Inform the parent component of the new state of the data; pass clones of the relevant objects
                     const signal_data = {
                         item_fields:   Object.assign({}, this.current_data),
@@ -199,7 +199,6 @@ Vue.component('vue-plugin-h',
                     console.log("Headers component sending `updated-item` SIGNAL to its parent with the following data:");
                     console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
                     this.$emit('updated-item', signal_data);
-
 
                     // Synchronize the baseline data to the finalized current data
                     this.original_data = Object.assign({}, this.current_data);  // Clone
@@ -224,7 +223,7 @@ Vue.component('vue-plugin-h',
 
                 if (this.current_metadata.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
-                    console.log("Headers sending `cancel-edit` signal to its parent");
+                    console.log("Headers sending `cancel-edit` SIGNAL to its parent");
                     this.$emit('cancel-edit');
                 }
                 else

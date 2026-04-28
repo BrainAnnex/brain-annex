@@ -1313,7 +1313,7 @@ new Vue({
 
         /**
          * Add a new Content Item of the specified type,
-         *  placed at the bottom of the page (past the last Item)
+         *  placed at the bottom of the page (past the last Content Item)
          */
         add_new_item_at_bottom(schema_code, class_name)
         {
@@ -1343,7 +1343,7 @@ new Vue({
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
             this.content_array.push(blank_record_old_format);  // Insert a new blank Item at the end of the page's Content Items
-            this.item_array.push(blank_record);  // Insert a new blank Item at the end of the page's Content Items
+            this.item_array.push(blank_record);     // Insert a new blank Item at the end of the page's Content Items
 
         }, // add_new_item_at_bottom
 
@@ -1376,7 +1376,7 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 console.log(`    Removing from page the element with index ${index}`);
                 this.content_array.splice(index, 1);  // It modifies the array, to take out 1 element in position index
-                this.item_array.splice(index, 1);  // It modifies the array, to take out 1 element in position index
+                this.item_array.splice(index, 1);   // It modifies the array, to take out 1 element in position index
             }
             else  {             // Server reported FAILURE
                 alert("The server could not delete the Content Item. Perhaps it was deleted on another tab... Try saving your work and reloading the page");
@@ -1436,8 +1436,8 @@ new Vue({
                 Vue.set(this.content_array, i-1, this.content_array[i]);    // the item below moves up
                 Vue.set(this.content_array, i, old_value);                  // (the saved) item above moves below
 
-                Vue.set(this.item_array, i-1, this.item_array[i]);    // the item below moves up
-                Vue.set(this.item_array, i, old_value);                  // (the saved) item above moves below
+                Vue.set(this.item_array, i-1, this.item_array[i]);      // the item below moves up
+                Vue.set(this.item_array, i, old_value);                 // (the saved) item above moves below
             }
         }, // finish_move_up
 
