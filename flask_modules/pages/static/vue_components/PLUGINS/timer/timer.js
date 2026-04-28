@@ -490,6 +490,10 @@ Vue.component('vue-plugin-timer',
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
+                       
+                success:        boolean indicating whether the server call succeeded
+                server_payload: whatever the server returned (stripped of information about the success of the operation)
+                error_message:  a string only applicable in case of failure
              */
             {
                 console.log("Finalizing the Timer Widget save() operation...");
@@ -497,7 +501,8 @@ Vue.component('vue-plugin-timer',
                     //console.log("    server call was successful");
                     this.status_message = `Successful edit`;
 
-                    // If this was a new item (with the temporary negative entity_id), update its entity_id with the value assigned by the server
+                    // If this was a new item (with the temporary negative entity_id),
+                    // update its entity_id with the value assigned by the server
                     if (this.current_metadata.entity_id < 0)  {
                         this.current_metadata.entity_id = server_payload;      // Update with the value assigned by the server
                         delete this.current_metadata.insert_after_uri;         // No longer needed

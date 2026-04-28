@@ -441,8 +441,10 @@ Vue.component('vue-plugin-n',
                     // If this was a new item (with the temporary negative Entity ID),
                     // update its entity_id (in this Vue component) with the value assigned by the server;
                     // also, update its basename accordingly
-                    if (this.item_data.entity_id < 0)  {
-                        this.current_data.entity_id = server_payload;
+                    if (this.current_metadata.entity_id < 0) {
+                        this.current_metadata.entity_id = server_payload;      // Update with the value assigned by the server
+                        delete this.current_metadata.insert_after_uri;         // No longer needed
+                        delete this.current_metadata.insert_after_class;       // No longer needed
                         console.log(`updating front-end value of 'basename' to 'notes-${server_payload}'`);
                         this.current_data.basename = `notes-${server_payload}`; // TODO: change this convention
                     }

@@ -206,9 +206,13 @@ Vue.component('vue-plugin-cd',
                 if (success)  {     // Server reported SUCCESS
                     this.status = `Successful edit`;
 
-                    // If this was a new item (with the temporary negative entity_id), update its ID with the value assigned by the server
-                    if (this.item_data.entity_id < 0)
-                        this.current_data.entity_id = server_payload;
+                    // If this was a new item (with the temporary negative entity_id),
+                    // update its entity_id with the value assigned by the server
+                    if (this.current_metadata.entity_id < 0)  {
+                        this.current_metadata.entity_id = server_payload;      // Update with the value assigned by the server
+                        delete this.current_metadata.insert_after_uri;         // No longer needed
+                        delete this.current_metadata.insert_after_class;       // No longer needed
+                    }
 
                     // Inform the parent component of the new state of the data
                     console.log("Codedoc component sending `updated-item` signal to its parent");

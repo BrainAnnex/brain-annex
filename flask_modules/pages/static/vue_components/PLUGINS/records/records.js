@@ -662,10 +662,13 @@ Vue.component('vue-plugin-r',
                         }
                     }
 
-                    // If this was a new item (with the temporary negative entity_id in the prop object `item_data`),
+                    // If this was a new item (with the temporary negative entity_id),
                     // update its entity_id with the value assigned by the server
-                    if (this.item_data.entity_id < 0)
-                        this.current_data.entity_id = server_payload;
+                    if (this.current_metadata.entity_id < 0)  {
+                        this.current_metadata.entity_id = server_payload;      // Update with the value assigned by the server
+                        delete this.current_metadata.insert_after_uri;         // No longer needed
+                        delete this.current_metadata.insert_after_class;       // No longer needed
+                    }
 
                     // Inform the ancestral root component of the new state of the data
                     console.log("Records component sending `updated-item` signal to its parent");

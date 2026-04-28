@@ -176,6 +176,10 @@ Vue.component('vue-plugin-h',
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
+
+                success:        boolean indicating whether the server call succeeded
+                server_payload: whatever the server returned (stripped of information about the success of the operation)
+                error_message:  a string only applicable in case of failure
              */
             {
                 console.log("Finalizing the Header save() operation...");
