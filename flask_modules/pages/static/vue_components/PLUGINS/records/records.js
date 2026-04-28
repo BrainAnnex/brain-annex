@@ -155,7 +155,7 @@ Vue.component('vue-plugin-r',
             -->
             <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item(item_data)">
+                          v-on:edit-content-item="edit_content_item()">
             </vue-controls>
 
             </div>		<!-- End of outer container -->
@@ -166,13 +166,13 @@ Vue.component('vue-plugin-r',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.entity_id < 0  ? true : false), // Flag indicating whether this record is being edited
+                editing_mode: (this.item_metadata.entity_id < 0  ? true : false), // Flag indicating whether this record is being edited
                                                                               // Negative entity_id means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 
                     "PROP" DATA PASSED BY THE PARENT COMPONENT (NOT copied to component variables):
-                        item_data:      The FULL data passed by the parent component
+                        item_fields:      The data passed by the parent component
 
                     COMPONENT VARIABLES:
                         current_data:   Object with the values bound to the editing fields, cloned from the "prop" data;
@@ -181,13 +181,10 @@ Vue.component('vue-plugin-r',
                         original_data:  Object with pre-edit data,
                                         used to restore the data in case of an edit Cancel or failed save
 
-                    EXAMPLE of item_data (a PROP, not a variable of this component!):
+                    EXAMPLE of item_fields (a PROP, not a variable of this component!):
                         {
                             "English": "Love",
-                            "German": "Liebe",
-                            "entity_id": "61",
-                            "class_name": "German Vocabulary",
-                            "pos": 0    <- BEING PHASED OUT
+                            "German": "Liebe"
                         }
 
                     EXAMPLE of current_data and original_data:
@@ -199,8 +196,8 @@ Vue.component('vue-plugin-r',
                     Note that the objects may lack some of the fields specified by the Schema;
                         or, if the Schema is lax, extra fields might be present
                  */
-                current_data: this.clone_and_standardize(this.item_data),
-                original_data: this.clone_and_standardize(this.item_data),
+                current_data: this.clone_and_standardize(this.item_fields),
+                original_data: this.clone_and_standardize(this.item_fields),
                 // Scrub some data, so that it won't show up in the tabular format.
                 //     `entity_id`, `class_name`, `insert_after_class`, `insert_after_uri` and `pos` get scrubbed out
                 //      TODO: separate display and control data!
@@ -226,7 +223,7 @@ Vue.component('vue-plugin-r',
                 rel_dir: 'IN',
 
                 // Note that we have 2 different "wait for server" flags
-                waiting_for_server: (this.item_data.entity_id < 0) ? this.get_fields_from_server(this.item_data) : false, // Negative entity_id means "new Item"
+                waiting_for_server: (this.item_metadata.entity_id < 0) ? this.get_fields_from_server() : false, // Negative entity_id means "new Item"
 
                 waiting_mode: false,
                 status: "",
@@ -486,14 +483,14 @@ Vue.component('vue-plugin-r',
 
 
 
-            get_fields_from_server(item)
+            get_fields_from_server()
             // Initiate request to server, to get all the field and link names specified by the Schema for this Record
             {
-                console.log(`Looking up Schema info for a Content Item of type 'r', of Class '${item.class_name}'`);
+                console.log(`Looking up Schema info for a Content Item of type 'r', of Class '${item_metadata.class_name}'`);
 
                 // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
                 let url_server = "/BA/api/get_class_schema";
-                let post_obj = {class_name: item.class_name};
+                let post_obj = {class_name: item_metadata.class_name};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
                 ServerCommunication.contact_server_OLD(url_server,
@@ -557,12 +554,12 @@ Vue.component('vue-plugin-r',
 
 
 
-            edit_content_item(item)
+            edit_content_item()
             {
-                console.log(`'Records' component received Event to edit content item with entity id ${item.entity_id}`);
+                console.log(`'Records' component received Event to edit content item with entity id ${item_metadata.entity_id}`);
                 this.editing_mode = true;
 
-                this.get_fields_from_server(item);      // Consult the schema
+                this.get_fields_from_server();      // Consult the schema
                 this.waiting_for_server = true;
             },
 
@@ -576,15 +573,12 @@ Vue.component('vue-plugin-r',
                             "German": "Liebe"
                         }
 
-                    EXAMPLE of this.item_data:
+                    EXAMPLE of this.current_data:
                         {
                             "English": "Love",
-                            "German": "Liebe",
-                            "entity_id": 61,
-                            "insert_after_uri": 123,
-                            "class_name": "German Vocabulary",
-                            "pos": 0
+                            "German": "Liebe"
                         }
+
                 */
 
                 // Start the body of the POST to send to the server

@@ -332,8 +332,8 @@ Vue.component('vue-plugin-rs',
             // EXAMPLE : {"grammar": "noun"}
             const prefilled_new_record = {};
 
-            if ((this.item_data.clause_key !== null)  &&  (this.item_data.clause_key !== undefined))
-                prefilled_new_record[this.item_data.clause_key] = this.item_data.clause_value;
+            if ((this.item_fields.clause_key !== null)  &&  (this.item_fields.clause_key !== undefined))
+                prefilled_new_record[this.item_fields.clause_key] = this.item_fields.clause_value;
 
 
             return {
@@ -362,7 +362,7 @@ Vue.component('vue-plugin-rs',
                 record_being_editing: null, // The "ID" of the record currently being edited, if any;
                                             // for now, only one record at a time may be edited
 
-                editing_mode: ((this.item_data.entity_id < 0) || this.edit_mode  ? true : false), // Flag indicating whether this record is being edited
+                editing_mode: ((this.item_metadata.entity_id < 0) || this.edit_mode  ? true : false), // Flag indicating whether this record is being edited
                                                                                             // Negative entity_id means "new Item"
 
                 recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
@@ -375,11 +375,11 @@ Vue.component('vue-plugin-rs',
                       NOTE:  the property `fields_to_show` is managed separately
 
                  */
-                current_data: Object.assign({}, this.item_data),    // Initially clone from the original data passed to this component
+                current_data: Object.assign({}, this.item_fields),    // Initially clone from the original data passed to this component
 
 
                 // Clone of the above object, used to restore the original data in case of a Cancel or failed save
-                current_data: Object.assign({}, this.item_data),   // Initially clone from the original data passed to this component
+                current_data: Object.assign({}, this.item_fields),   // Initially clone from the original data passed to this component
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -432,11 +432,11 @@ Vue.component('vue-plugin-rs',
 
             let fields_array;
 
-            // Note that item_data.fields may be missing
-            if (this.item_data.fields === null || this.item_data.fields === undefined)
+            // Note that current_data.fields may be missing
+            if (this.current_data.fields === null || this.current_data.fields === undefined)
                 fields_array = [];
             else
-                fields_array = this.string_to_array(this.item_data.fields);
+                fields_array = this.string_to_array(this.current_data.fields);
 
             this.fields_to_show = fields_array;
             this.fields_to_show_pre_edit = Object.values(fields_array);     // Clone of array, to store a backup copy, in case edit is cancelled

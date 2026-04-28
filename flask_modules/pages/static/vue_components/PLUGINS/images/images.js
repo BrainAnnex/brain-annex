@@ -33,14 +33,14 @@ Vue.component('vue-plugin-i',
 
                 <!-- Image container -->
                 <div v-bind:class="{'edit': edit_metadata}">
-                    <a class='i-image-link' v-bind:href="image_url(item_data)" target="_blank">
-                        <img v-bind:src="image_url_thumb(item_data)" width=300>
+                    <a class='i-image-link' v-bind:href="image_url(current_data)" target="_blank">
+                        <img v-bind:src="image_url_thumb(current_data)" width=300>
                     </a>
 
 
                     <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
                     <div v-show="!edit_metadata" class='i-line'   @dblclick="edit_metadata=true">
-                        <span v-if="'caption' in item_data"class='i-caption'>{{current_data.caption}}</span>
+                        <span v-if="'caption' in current_data"class='i-caption'>{{current_data.caption}}</span>
 
                         <p v-if="current_data.comments" v-html="render_newlines(current_data.comments)" style="margin-left: 0; margin-bottom: 0; margin-top: 3px; color:#888"></p>
                     </div>
@@ -53,7 +53,7 @@ Vue.component('vue-plugin-i',
 
                         <span class="label">Filename</span>
                         <textarea v-model="current_data.basename" rows="2" cols="40" style="color:#666"></textarea>
-                        <b>.{{item_data.suffix}}</b>
+                        <b>.{{current_data.suffix}}</b>
                         <br><br>
 
                         <span class="label">Comments</span><br>
@@ -88,7 +88,7 @@ Vue.component('vue-plugin-i',
 
                     <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                                   v-on="$listeners"
-                                  v-on:edit-content-item="edit_content_item(item_data)">
+                                  v-on:edit-content-item="edit_content_item()">
                     </vue-controls>
 
                 <!-- End of STANDARD CONTROLS -->
@@ -105,10 +105,10 @@ Vue.component('vue-plugin-i',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+                current_data: Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                original_data: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+                original_data: Object.assign({}, this.item_fields),   // Clone from the original data passed to this component
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -136,8 +136,10 @@ Vue.component('vue-plugin-i',
             },
 
 
+            /**
+             * Enable the document edit mode
+             */
             edit_content_item()
-            // Enable the document edit mode
             {
                 //console.log(`Image component received signal to edit image's metadata'`);
                 this.edit_metadata = true;

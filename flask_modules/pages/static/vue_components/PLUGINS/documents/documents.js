@@ -44,7 +44,7 @@ Vue.component('vue-plugin-d',
                         <br><br>
 
                         <!-- Clickable link to document file -->
-                        <a href v-bind:href="document_url(item_data)"
+                        <a href v-bind:href="document_url(current_data)"
                                 v-bind:title="current_data.caption" v-bind:alt="current_data.caption"
                                 target="_blank"
                         >
@@ -94,7 +94,7 @@ Vue.component('vue-plugin-d',
 
                         <span class="label">Filename</span>
                         <textarea v-model="current_data.basename" rows="2" cols="40" style="color:#666"></textarea>
-                        <b>.{{item_data.suffix}}</b>
+                        <b>.{{current_data.suffix}}</b>
                         <br><br>
 
                         <span class="label">URL</span> <input v-model="current_data.url" size="40">
@@ -189,10 +189,10 @@ Vue.component('vue-plugin-d',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+                current_data: Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                current_data: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+                current_data: Object.assign({}, this.item_fields),   // Clone from the original data passed to this component
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -320,10 +320,8 @@ Vue.component('vue-plugin-d',
              */
 
             save_edit()
-            // Send a request to the server, to update the document's metadata
+            // Conclude an EDIT operation.  Send a request to the server, to update the document's metadata
             {
-                //console.log(`In save_edit(): attempting to save the new metadata, for document with entity_id '${this.item_data.entity_id}'`);
-
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item_JSON";
 

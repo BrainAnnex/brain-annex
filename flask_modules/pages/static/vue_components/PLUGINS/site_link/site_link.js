@@ -7,7 +7,12 @@ Vue.component('vue-plugin-sl',
         props: ['item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_fields:    An object with the editable properties of this Site Link item.
-                                EXAMPLE: {"ringtone":"dreamscape-alarm-clock-117680.mp3"}
+                                EXAMPLE: {url: "http://example.com",
+                                          name:"test",
+                                          comments: "my test site",
+                                          rating: 4.5,
+                                          read: "yes",
+                                          date: "4/2026"}
 
             item_metadata:  An object with the metadata of this Site Link item.
                                 For a newly-created Content Item, not yet registered with the server,
@@ -17,7 +22,8 @@ Vue.component('vue-plugin-sl',
                                         {"class_name":"Site Link",
                                         "pos":0,
                                         "schema_code":"timer",
-                                        "entity_id":"8809"
+                                        "entity_id":"8809",
+                                        schema_code: "sl"
                                         }
 
             edit_mode:      A boolean indicating whether in editing mode
@@ -26,17 +32,6 @@ Vue.component('vue-plugin-sl',
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names, in Schema order.
                                 EXAMPLE: ["url","name","date","comments","rating","read"]
-
-            EXAMPLE: {"item_data": {class_name:"Site Link",
-                                            entity_id: "4912", position: 20,  schema_code: "sl"
-                                            url: "http://example.com",
-                                            name:"test", rating: 4.5
-                                           },
-                              "edit_mode": false, "category_id": 123,
-                              "index": 2, "item_count": 10,
-                              "schema_data": ["url","name","date","comments","rating","read"]
-                             }
-
          */
 
         template: `
@@ -49,9 +44,9 @@ Vue.component('vue-plugin-sl',
                         <img src="/BA/pages/static/graphics/bookmark_32_60162.png">
                     </td>
 
-                    <td v-html="render_cell(item_data.url)" style="width: 25%"></td>
-                    <td class="name">{{item_data.name}}</td>
-                    <td class="small">{{item_data.read}}</td>
+                    <td v-html="render_cell(current_data.url)" style="width: 25%"></td>
+                    <td class="name">{{current_data.name}}</td>
+                    <td class="small">{{current_data.read}}</td>
                 </tr>
                 <tr v-else @dblclick="enter_editing_mode">
                     <td>
@@ -71,9 +66,9 @@ Vue.component('vue-plugin-sl',
 
 
                 <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
-                    <td class="small">{{item_data.date}}</td>
-                    <td class="comments">{{item_data.comments}}</td>
-                    <td><span v-show="item_data.rating">{{item_data.rating}}</span><span v-show="item_data.rating" class="star-yellow">&#9733;</span>
+                    <td class="small">{{current_data.date}}</td>
+                    <td class="comments">{{current_data.comments}}</td>
+                    <td><span v-show="current_data.rating">{{current_data.rating}}</span><span v-show="current_data.rating" class="star-yellow">&#9733;</span>
                     </td>
                 </tr>
                 <tr v-else @dblclick="enter_editing_mode">
@@ -131,7 +126,7 @@ Vue.component('vue-plugin-sl',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.entity_id < 0  ? true : false), // Negative entity_id means "new Item"
+                editing_mode: (this.item_metadata.entity_id < 0  ? true : false), // Negative entity_id means "new Item"
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -139,10 +134,10 @@ Vue.component('vue-plugin-sl',
                 //              `class_name`, `schema_code`, `entity_id`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
                 //            For existing Content Items, it contains
                 //              `class_name`, `schema_code`, `entity_id`, `pos`, and Content-specific fields
-                current_data:   Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+                current_data:   Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                original_data:  Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+                original_data:  Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -223,19 +218,12 @@ Vue.component('vue-plugin-sl',
             {
                 console.log(`In enter_editing_mode()`);
 
-                //this.current_data = this.clone_and_standardize(this.item_data);   // Scrub some data, so that it won't show up in the tabular format
-                //this.original_data = this.clone_and_standardize(this.item_data);
-                // NOTE: clone_and_standardize() gets called twice
-
                 // Clear any old value
                 this.waiting = false;
                 this.error = false;
                 this.status_message = "";
 
                 this.editing_mode = true;       // Enter editing mode
-
-                //this.display_all_fields();      // This will set the "current_data" property
-                //this.original_data = this.clone_and_standardize(this.item_data);
             },
 
 
@@ -342,7 +330,7 @@ Vue.component('vue-plugin-sl',
                 if (this.item_data.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj.category_id = this.category_id;
-                    post_obj.insert_after_uri = this.item_data.insert_after_uri;        // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj.insert_after_uri = this.item_data.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                     post_obj.insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
 
                     url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint

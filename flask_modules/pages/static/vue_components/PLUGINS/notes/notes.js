@@ -67,7 +67,7 @@ Vue.component('vue-plugin-n',
 
                 <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
                               v-on="$listeners"
-                              v-on:edit-content-item="edit_content_item(item_data)">
+                              v-on:edit-content-item="edit_content_item()">
                 </vue-controls>
 
             <!--  End of STANDARD CONTROLS -->
@@ -80,9 +80,9 @@ Vue.component('vue-plugin-n',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.entity_id < 0 ? true : false),    // Negative entity_ID means "new Item"
+                editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_ID means "new Item"
 
-                body_of_note: (this.item_data.entity_id < 0 ? "NEW NOTE" : "Retrieving note id " + this.item_data.entity_id + "..."),
+                body_of_note: (this.item_metadata.entity_id < 0 ? "NEW NOTE" : "Retrieving note id " + this.item_metadata.entity_id + "..."),
 
                 note_editor: null,          // CKeditor object
                 old_note_value: "",         // The pre-edit value.  TODO: switch to using the "original_data" Object
@@ -98,10 +98,10 @@ Vue.component('vue-plugin-n',
 
                 // This object contains the values bound to the editing field, cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: Object.assign({}, this.item_data),
+                current_data: Object.assign({}, this.item_fields),
 
                 // Clone, used to restore the data in case of a Cancel or failed save
-                original_data: Object.assign({}, this.item_data),
+                original_data: Object.assign({}, this.item_fields),
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -220,7 +220,7 @@ Vue.component('vue-plugin-n',
             },
 
 
-            edit_content_item(item)
+            edit_content_item()
             /*  Handler for the "edit_content_item" Event received from the child component "vue-controls"
                 (which is generated there when clicking on the Edit button)
              */

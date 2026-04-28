@@ -86,20 +86,14 @@ Vue.component('vue-plugin-cd',
 
         data: function() {
             return {
-                editing_mode: (this.item_data.entity_id < 0 ? true : false),    // Negative Entity ID means "new Item"
-                /*
-                fun_name: this.item_data.fun,
-                fun_args: this.item_data.args,
-                fun_return: this.item_data.return,
-                fun_description: this.item_data.body,
-                */
+                editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative Entity ID means "new Item"
 
                 // This object contains the values bound to the editing fields, cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: this.clone_and_standardize(this.item_data),
+                current_data: this.clone_and_standardize(this.item_fields),
 
                 // Clone, used to restore the data in case of an edit Cancel or failed save
-                original_data: Object.assign({}, this.item_data),
+                original_data: Object.assign({}, this.item_fields),
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
