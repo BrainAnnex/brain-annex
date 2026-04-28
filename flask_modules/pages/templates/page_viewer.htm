@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 {#  General viewer page for a list of Content Items
-    (the list is specified in Flask parameters `content_items` and `item_array`)
+    (the list is specified in Flask parameter `item_array`)
     Vue.js is used for the rendering
 
 
@@ -43,21 +43,11 @@
                                   "Site Link": ["url", "name", "date", "comments", "rating", "read"]
                                  }
 
-        content_items:  [TODO - Being phased out by `item_array`]
-                        A list of dictionaries with the data for each the Content Items on this page
-                        EXAMPLE:
-                            [{'schema_code': 'i', 'entity_id': 'i-1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
-                             {'schema_code': 'h', 'entity_id': 'h-23', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-                             {'schema_code': 'n', 'entity_id': 'n-41', basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
-                             {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'entity_id': '6965', 'pos': 86,
-                                                         'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
-                            ]
-
-        item_array:     [TODO: this will replace `content_items`]
-                        A list with the data for each the Content Items on this page
+        item_array:     A list with the data for each the Content Items on this page
                         Each element is an object with 2 keys: `fields` and `metadata`
                             EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
-                            EXAMPLE of value of `metadata`: {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
+                            EXAMPLE of value of `metadata`:
+                                {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
 
 
         upload_directories: A list of folders registered with BrainAnnex
@@ -154,7 +144,7 @@
      **************************************************************** -->
 
 <vue-toc-sidebar
-    v-bind:content_array="content_array"
+    v-bind:item_array="item_array"
     v-bind:show_left_sidebar="show_left_sidebar"
 
     v-on:adjust-left-sidebar="adjust_left_sidebar($event)"
@@ -200,11 +190,6 @@
 {#  Uncomment for DEBUGGING! (to view some of the Flask-passed parameters)
     <br><b>siblings_categories</b>:<br>{{siblings_categories}}<br><br>
     <br><b>all_categories</b>:<br>{{all_categories}}<br><br>
-
-    <b>content_items</b>:<br>
-    {% for el in content_items %}
-        {{el}}<br>
-    {% endfor %}
 
     <b>item_array</b>:<br>
     {% for el in item_array %}
@@ -307,7 +292,7 @@
      Handle here some UI operations common to all types, such as moves around the page.
      Type-specific operations, such as editing, are handled by the individual components
 
-     v-bind:key Used to provide unique identifiers for each Vue component (it may change if content_array changes)
+     v-bind:key Used to provide unique identifiers for each Vue component (it may change if item_array changes)
      v-bind:is  Specifies which component to use, based on the type of the Content Item
 
      Props (arguments) passed to the components [some are meant for the 'vue-controls' sub-components]
@@ -315,7 +300,7 @@
             v-bind:expose_controls="expose_controls"
             v-bind:category_uri="category_uri"
             v-bind:index="index"                        Zero-based position of the Content Item on the page
-            v-bind:item_count="content_array.length"
+            v-bind:item_count="item_array.length"
 
             v-bind:records_types="records_types"
 
@@ -334,7 +319,7 @@
             v-on:insert-new-item-after
      -->
 
-<template v-if="expose_controls && !bulk_operations"  v-for="(item, index) in content_array">
+<template v-if="expose_controls && !bulk_operations"  v-for="(item, index) in item_array">
 
     <vue-content-items
         v-bind:key="item.schema_code + '_' + item.entity_id + '_' + index"
@@ -346,7 +331,7 @@
         v-bind:expose_controls="expose_controls"
         v-bind:category_uri="category_uri"
         v-bind:index="index"
-        v-bind:item_count="content_array.length"
+        v-bind:item_count="item_array.length"
 
         v-bind:registered_plugins = "registered_plugins"
         v-bind:records_types="records_types"
@@ -383,7 +368,7 @@
 </p>
 
 
-<template v-if="bulk_operations"  v-for="(item, index) in content_array">
+<template v-if="bulk_operations"  v-for="(item, index) in item_array">
 
     <vue-content-items
             v-bind:key="item.entity_id + '_bulk'"
@@ -396,7 +381,7 @@
             v-bind:expose_controls="false"
             v-bind:category_uri="category_uri"
             v-bind:index="index"
-            v-bind:item_count="content_array.length"
+            v-bind:item_count="item_array.length"
 
             v-bind:registered_plugins = "registered_plugins"
             v-bind:records_types="records_types"
@@ -467,7 +452,7 @@
     To be used when the EDITING CONTROLS are HIDDEN (i.e. in VIEWING MODE)
   -->
 
-<template v-if="!expose_controls"  v-for="(item, index) in content_array">
+<template v-if="!expose_controls"  v-for="(item, index) in item_array">
 
     <!-- Show here the individual Content Item -->
     <vue-content-items
@@ -480,7 +465,7 @@
             v-bind:expose_controls="expose_controls"
             v-bind:category_uri="category_uri"
             v-bind:index="index"
-            v-bind:item_count="content_array.length"
+            v-bind:item_count="item_array.length"
 
             v-bind:registered_plugins = "registered_plugins"
             v-bind:records_types="records_types"
@@ -698,15 +683,7 @@ new Vue({
                                     // IMPORTANT: the items in the list MUST correspond to the folders in
                                     //            flask_modules/pages/static/vue_components/PLUGINS
 
-        content_array: {{content_items | tojson(indent=4)}},
-                                    // TODO: Being phased out by `item_array`
-                                    // Array of objects with the data for each of the Content Items on this page
-                                    // EXAMPLE: [{pos:0,"entity_id":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
-                                    //           {pos:50,"entity_id":"8",schema_code:"i",basename:"mypix",suffix:"png", class_name: "Image"}
-                                    //          ]
-
         item_array:     {{item_array | tojson(indent=4)}},
-                                // TODO: this will replace `content_array`
                                 // A list with the data for each the Content Items on this page
                                 // Each element is an object with 2 keys: `fields` and `metadata`
                                 // EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
@@ -754,7 +731,7 @@ new Vue({
                                     // (note: the sorting will preserve the positional order prior on the page, prior to sending request to server)
                                     // EXAMPLE:  [4, 0, 1, 9, 7, 8]
 
-        group_boundary: null,       // The array index (in the array content_array) of
+        group_boundary: null,       // The array index (in the array item_array) of
                                     //      the first or last Content Item selected in a contiguous group
         category_to_move_to: null,  // The Entity ID of the Category to bulk-move the selected Content Items to
 
@@ -829,7 +806,7 @@ new Vue({
         is_page_empty()
         // Return true if the page is empty of content and of sub-categories; false, otherwise
         {
-            if (this.content_array.length == 0 && this.all_subcategories.length == 0)
+            if (this.item_array.length == 0 && this.all_subcategories.length == 0)
                 return true;
             else
                 return false;
@@ -859,8 +836,8 @@ new Vue({
         clear_checkboxes()
         // Clear all the checkboxes for the bulk operations
         {
-            for (let i = 0; i < this.content_array.length; ++i)  {
-                let ci = this.content_array[i];
+            for (let i = 0; i < this.item_array.length; ++i)  {
+                let ci = this.item_array[i];
                 let uri = ci.entity_id;
                 console.log(`    resetting checkmark for Entity ID "${uri}"`);
                 let checkbox_element_arr = this.$refs[uri];         // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
@@ -983,8 +960,8 @@ new Vue({
                         continue;       // Already handled it when first selected it
                     }
 
-                    let uri = this.content_array[i].entity_id;
-                    let class_name = this.content_array[i].class_name;
+                    let uri = this.item_array[i].entity_id;
+                    let class_name = this.item_array[i].class_name;
                     console.log(`        checking box in index position ${i} for Content Item with URI ${uri} from Class '${class_name}'`);
 
                     let checkbox_element_arr = this.$refs[uri];           // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
@@ -1041,7 +1018,7 @@ new Vue({
             var uri_list_sorted = [];
 
             for (var index of this.checkboxes_selected) {     // Loop over the list of selected checkboxes
-                const {class_name, entity_id} = this.content_array[index];    // Extract some properties from this Content Item
+                const {class_name, entity_id} = this.item_array[index];    // Extract some properties from this Content Item
                 // TODO: for now, the class_name isn't being passed to the server
                 console.log(`    Readying Content Item -> class_name : "${class_name}" , Entity ID : "${entity_id}"`);
                 uri_list_sorted.push(entity_id);
@@ -1094,9 +1071,9 @@ new Vue({
                 console.log("    updating page by removing items (checkboxes_selected): ", this.checkboxes_selected);
                 // Update the page, by ditching the Content Items that were moved away, in REVERSE page order,
                 // so that index values will still be correct as Items get taken off the page!
-                //console.log("this.content_array:");
-                //console.log(this.content_array);
-                //console.log(`   length of above array: ${this.content_array.length}`);
+                //console.log("this.item_array:");
+                //console.log(this.item_array);
+                //console.log(`   length of above array: ${this.item_array.length}`);
 
                 let indexes_to_remove = [];
                 // Loop over the indexes of the checkboxes that were selected
@@ -1106,7 +1083,7 @@ new Vue({
                      let index = this.checkboxes_selected[i];
                      console.log(`    making note to remove from the page the Content Item with array index ${index}`);
                      indexes_to_remove.push(index);                                 // Save for the round of actual elimination
-                     let {class_name , entity_id} = this.content_array[index];      // Unpack some properties of this Content Item
+                     let {class_name , entity_id} = this.item_array[index];      // Unpack some properties of this Content Item
                      console.log(`       -> from that index position will be removing item with  Entity ID '${entity_id}' and Class '${class_name}'`);
                 }
 
@@ -1115,9 +1092,9 @@ new Vue({
                 for (let i in indexes_to_remove) {   // Note:  i will be an integer, not an array element!!
                     let index = indexes_to_remove[i];
                     console.log(`      * about to actually remove Content Item from index ${index}`);
-                    this.content_array.splice(index, 1);                    // Deletes 1 array element from the specified index position
+                    this.item_array.splice(index, 1);                    // Deletes 1 array element from the specified index position
                                                                             // (note: the index position of the remaining Items - earlier in
-                                                                            //        this.content_array - won't be affected)
+                                                                            //        this.item_array - won't be affected)
                 }
 
 
@@ -1236,7 +1213,6 @@ new Vue({
                     return;
                 }
                 console.log(`Aborting the edit of a NEW Content Item, whose index position on the page is ${index}`);
-                this.content_array.splice(index, 1);    // It modifies the array, to take out 1 element in position index
                 this.item_array.splice(index, 1);       // It modifies the array, to take out 1 element in position index
             }
         },
@@ -1259,7 +1235,7 @@ new Vue({
         /*  Create an empty new record (JS object), with the given `schema_code` and `class_name`,
             to be placed after the Content Item specified by its uri (entity ID) and Class
             on the current Category-viewer page.
-            Insert the newly-created record in the appropriate location on the global `this.content_array`
+            Insert the newly-created record in the appropriate location on the global `this.item_array`
             and `this.item_array` ;
             this insertion will trigger a Vue re-draw across the page and its components.
 
@@ -1283,9 +1259,6 @@ new Vue({
 
             // Assemble the data for a new Content Item.
             // Using an auto-incremented negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
-            let blank_record_old_format = {entity_id: this.next_new_item_uri,
-                                           schema_code: schema_code, class_name: class_name,
-                                           insert_after_uri: insert_after_uri, insert_after_class: insert_after_class};    // TODO: phase out
 
             let blank_record =
                 {
@@ -1300,8 +1273,7 @@ new Vue({
 
             // Insert the newly-created record after the specified existing element.  This change will be detected by Vue,
             // and will cause the insertion of a new 'vue-content-items' component
-            this.content_array.splice(insert_after_uri_index + 1, 0, blank_record_old_format);
-            this.item_array.splice(   insert_after_uri_index + 1, 0, blank_record);
+            this.item_array.splice( insert_after_uri_index + 1, 0, blank_record);
 
             // Note: the new Content Item will now appear in editing mode in its handler Vue component,
             //       but not yet added to the database; it will be the Vue component's responsibility to save it,
@@ -1320,13 +1292,6 @@ new Vue({
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
 
             // Assemble the data for a new Content Item.  Using a negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
-            let blank_record_old_format = {entity_id: this.next_new_item_uri,
-                                           schema_code: schema_code, class_name: class_name,
-                                           insert_after_uri: "BOTTOM"};       // TODO: phase out
-
-            console.log("blank_record_old_format:");
-            console.log(blank_record_old_format);
-
             let blank_record =
                 {
                     fields:     {},
@@ -1342,7 +1307,6 @@ new Vue({
 
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
 
-            this.content_array.push(blank_record_old_format);  // Insert a new blank Item at the end of the page's Content Items
             this.item_array.push(blank_record);     // Insert a new blank Item at the end of the page's Content Items
 
         }, // add_new_item_at_bottom
@@ -1375,8 +1339,7 @@ new Vue({
             console.log("Finalizing the deleting operation...");
             if (success)  {     // Server reported SUCCESS
                 console.log(`    Removing from page the element with index ${index}`);
-                this.content_array.splice(index, 1);  // It modifies the array, to take out 1 element in position index
-                this.item_array.splice(index, 1);   // It modifies the array, to take out 1 element in position index
+                this.item_array.splice(index, 1);  // It modifies the array, to take out 1 element in position index
             }
             else  {             // Server reported FAILURE
                 alert("The server could not delete the Content Item. Perhaps it was deleted on another tab... Try saving your work and reloading the page");
@@ -1394,7 +1357,7 @@ new Vue({
 
             console.log(`Root element received signal to move UP the content item of type '${schema_code}' , Entity ID ${uri}`);
 
-            const number_items = this.content_array.length;
+            const number_items = this.item_array.length;
 
             if (number_items == 1)  {
                 alert("There is only 1 item on the page!  No action taken");
@@ -1413,7 +1376,7 @@ new Vue({
             }
 
             // Request the server to perform the operation on the data
-            const swap_uri = this.content_array[i-1].entity_id;       // The ID of the Item that we're swapping with
+            const swap_uri = this.item_array[i-1].entity_id;       // The ID of the Item that we're swapping with
             const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
@@ -1432,10 +1395,7 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 // Swap the position of the current Item with the one before it
                 // Using Vue.set for the array operation to be "reactive" on the UI
-                const old_value = this.content_array[i-1];                  // save item above
-                Vue.set(this.content_array, i-1, this.content_array[i]);    // the item below moves up
-                Vue.set(this.content_array, i, old_value);                  // (the saved) item above moves below
-
+                const old_value = this.item_array[i-1];                 // save item above
                 Vue.set(this.item_array, i-1, this.item_array[i]);      // the item below moves up
                 Vue.set(this.item_array, i, old_value);                 // (the saved) item above moves below
             }
@@ -1451,7 +1411,7 @@ new Vue({
 
             console.log(`Root element received signal to move DOWN the content item of type '${item.schema_code}' , id ${item.entity_id}`);
 
-            const number_items = this.content_array.length;
+            const number_items = this.item_array.length;
 
             if (number_items == 1)  {
                 alert("There is only 1 item on the page!  No action taken");
@@ -1470,7 +1430,7 @@ new Vue({
             }
 
             // Request the server to perform the operation on the data
-            const swap_uri = this.content_array[i+1].entity_id;       // The ID of the Item that we're swapping with
+            const swap_uri = this.item_array[i+1].entity_id;       // The ID of the Item that we're swapping with
             const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
@@ -1489,19 +1449,16 @@ new Vue({
             if (success)  {     // Server reported SUCCESS
                 // Swap the position of the current Item with the one after it
                 // Using Vue.set for the array operation to be "reactive" on the UI
-                const old_value = this.content_array[i+1];                  // save item below
-                Vue.set(this.content_array, i+1, this.content_array[i]);    // the item above moves down
-                Vue.set(this.content_array, i, old_value);                  // (the saved) item below moves above
-
-                Vue.set(this.item_array, i+1, this.item_array[i]);    // the item above moves down
-                Vue.set(this.item_array, i, old_value);                  // (the saved) item below moves above
+                const old_value = this.item_array[i+1];                 // save item below
+                Vue.set(this.item_array, i+1, this.item_array[i]);      // the item above moves down
+                Vue.set(this.item_array, i, old_value);                 // (the saved) item below moves above
             }
         }, // finish_move_down
 
 
 
         absorb_item_updates(item, item_original, new_data)
-        /* Update the appropriate entry in this.content_array and this.item_array,
+        /* Update the appropriate entry in this.item_array,
            with the new data passed by a component
            (generally done at the end of an update on the server).
 
@@ -1553,70 +1510,23 @@ new Vue({
             console.log(`    Data for the update (stored in variable new_data):`);
             console.log(structuredClone(new_data));
 
-            if ( !('item_fields' in new_data) ) {     // Detect the OLD format, being phased out
-                console.log("    detecting the OLD format of new_data, being phased out");
 
-                // Enforce the presence of `entity_id`
-                if (new_data.entity_id !== undefined) {
-                    console.error(`    Missing required value for the entity_id`);
-                    alert("Failed to update the page display.  Save your work and refresh the page");
-                    return;
-                }
-
-                var item_fields = Object.assign({}, new_data);      // Start with a clone of the entire record
-
-                delete item_fields.entity_id;
-
-                var item_metadata = {entity_id: new_data.entity_id
-                                    };
-                if ("class_name" in new_data) {
-                    item_metadata.class_name = new_data.class_name;
-                    delete item_fields.class_name;
-                }
-                if ("internal_id" in new_data) {
-                    item_metadata.class_name = new_data.internal_id;
-                    delete item_fields.internal_id;
-                }
-                if ("pos" in new_data) {
-                    item_metadata.pos = new_data.pos;
-                    delete item_fields.pos;
-                }
-                if ("class_handler" in new_data) {
-                    item_metadata.pos = new_data.class_handler;
-                    delete item_fields.class_handler;
-                }
-                if ("schema_code" in new_data) { // TODO: phase out
-                    item_metadata.pos = new_data.schema_code;
-                    delete item_fields.schema_code;
-                }
-
-                if ("insert_after_uri" in new_data)
-                    delete item_fields.insert_after_uri;        // No attempt to re-capture this no-longer-needed field
-
-                if ("insert_after_class" in new_data)
-                    delete item_fields.insert_after_class;      // No attempt to re-capture this no-longer-needed field
-            }
-            else {
-                // TODO: in due time this branch will become the standard/only way to receive the data
-
-                // Enforce the presence of `entity_id`
-                if (new_data.item_metadata.entity_id === undefined) {
-                    console.error(`    Missing required value for the entity_id`);
-                    alert("Failed to update the page display.  Save your work and refresh the page");
-                    return;
-                }
-
-                var item_fields   = Object.assign({}, new_data.item_fields);
-
-                var item_metadata = Object.assign({}, new_data.item_metadata);
-
-                if ("insert_after_uri" in item_metadata)
-                    delete item_metadata.insert_after_uri;        // No-longer-needed metadata value
-
-                if ("insert_after_class" in item_metadata)
-                    delete item_metadata.insert_after_class;      // No-longer-needed metadata value
+            // Enforce the presence of `entity_id`
+            if (new_data.item_metadata.entity_id === undefined) {
+                console.error(`    Missing required value for the entity_id`);
+                alert("Failed to update the page display.  Save your work and refresh the page");
+                return;
             }
 
+            var item_fields   = Object.assign({}, new_data.item_fields);
+
+            var item_metadata = Object.assign({}, new_data.item_metadata);
+
+            if ("insert_after_uri" in item_metadata)
+                delete item_metadata.insert_after_uri;        // No-longer-needed metadata value
+
+            if ("insert_after_class" in item_metadata)
+                delete item_metadata.insert_after_class;      // No-longer-needed metadata value
 
 
             const old_uri = item.entity_id;    // This will be a negative number if it was a temporary value for a newly-created Content Item
@@ -1643,11 +1553,6 @@ new Vue({
                 Bring the frontend up-to-date with the new data
              */
 
-            let updated_record = Object.assign({}, item_fields);        // Start with a clone of the field values...
-            Object.assign(updated_record, item_metadata);               // ... and then bring in the metadata
-            // This object will replace the element in `content_array` at our index position
-            // (further below, we do a complete array element replacement for Vue reactivity)
-
             let updated_record_NEW = {  fields: item_fields,
                                         metadata: item_metadata
                                      }
@@ -1657,19 +1562,12 @@ new Vue({
 
             // Note about the special key "pos":
             //      1) existing records will have a value not changed thru edits (a separate mechanism is used to reposition items)
-            //      2) newly-created Items will lack it; currently, it's created in the server, but not returned to the plugin components
-            //                      under the OLD format, which is currently being phased out
-            //                      (TODO: this current situation seems to create problems when attempting to cancel the creation of a new Item)
+            //      2) newly-created Items will lack it; currently, it's created in the server, and returned by the plugin components
+            //              via a signal)
 
-
-            console.log(`       - Updating the Content Item found in "this.content_array" at index: ${index}, with the following record:`);
-            console.log(structuredClone(updated_record));
 
             console.log(`       - Updating the Content Item found in "this.item_array" at index: ${index}, with the following record:`);
             console.log(structuredClone(updated_record_NEW));
-
-            Vue.set(this.content_array, index, updated_record);     // Vue-reactive change (affecting the UI)
-                                                                    // in the specified element of this.content_array
 
             Vue.set(this.item_array, index, updated_record_NEW);    // Vue-reactive change (affecting the UI)
                                                                     // in the specified element of this.item_array
@@ -1689,7 +1587,7 @@ new Vue({
 
             console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , Entity id ${item.entity_id} to just after the ${where_to}-th entry, within category ${this.category_uri}`);
 
-            const number_items = this.content_array.length;
+            const number_items = this.item_array.length;
 
             if (number_items == 1)  {
                 alert("There is only 1 item on the page!  No action taken");
@@ -1742,13 +1640,13 @@ new Vue({
         {
             //console.log(`In reposition_content({$index_of_moved_item}, ${move_after_n})`);
 
-            if (index_of_moved_item < 0 || index_of_moved_item >= this.content_array.length) {
-                console.error(`index_of_moved_item ${index_of_moved_item} is out of bounds.  Expected range is [0-${this.content_array.length - 1}]`);
+            if (index_of_moved_item < 0 || index_of_moved_item >= this.item_array.length) {
+                console.error(`index_of_moved_item ${index_of_moved_item} is out of bounds.  Expected range is [0-${this.item_array.length - 1}]`);
                 return false;
             }
 
-            if (move_after_n < 0 || move_after_n > this.content_array.length) {
-                console.error(`move_after_n ${move_after_n} is out of bounds.  Expected range is [0-${this.content_array.length}]`);    // Note it's 1 longer than the range of index_of_moved_item
+            if (move_after_n < 0 || move_after_n > this.item_array.length) {
+                console.error(`move_after_n ${move_after_n} is out of bounds.  Expected range is [0-${this.item_array.length}]`);    // Note it's 1 longer than the range of index_of_moved_item
                 return false;
             }
 
@@ -1759,18 +1657,15 @@ new Vue({
 
             console.log(`Relocate the ${index_of_moved_item}-th Item on the page, to be moved after position ${move_after_n}`);
 
-            const being_moved = this.content_array[index_of_moved_item];    // The object with the data of the Content Item being moved
+            const being_moved = this.item_array[index_of_moved_item];    // The object with the data of the Content Item being moved
 
-            this.content_array.splice(move_after_n, 0, being_moved);        // Insert it at the given position
             this.item_array.splice(move_after_n, 0, being_moved);        // Insert it at the given position
 
             if (move_after_n < index_of_moved_item)
-                index_of_moved_item += 1;                                   // If the insertion took place before the element to take out, adjust its index
+                index_of_moved_item += 1;                                // If the insertion took place before the element to take out, adjust its index
 
-            this.content_array.splice(index_of_moved_item, 1);              // Take it out from the array of Content Items
-                                                                            // (Note: Vue automatically detects array changes done with splice)
-            this.item_array.splice(index_of_moved_item, 1);                 // Take it out from the array of Content Items
-                                                                            // (Note: Vue automatically detects array changes done with splice)
+            this.item_array.splice(index_of_moved_item, 1);              // Take it out from the array of Content Items
+                                                                         // (Note: Vue automatically detects array changes done with splice)
 
             return true;
 
@@ -1784,16 +1679,16 @@ new Vue({
             If found, return its index in the array (an int >= 0); otherwise, return -1
             (No check is done as to whether there might be more than one match; the first one is returned.)
             TODO: for consistency, the order should be reversed, i.e. class_name, uri
-            TODO: replace it with call to Utilities.find_item_by_uri(uri, this.content_array);
+            TODO: replace it with call to Utilities.find_item_by_uri(uri, this.item_array);
                   also include script src="/BA/pages/static/js/utilities.js"
          */
         {
             console.log(`Attempting to locate content item with uri '${uri}' and class_name '${class_name}'`);
 
-            const number_items = this.content_array.length;
+            const number_items = this.item_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].entity_id == uri  &&  this.content_array[i].class_name == class_name)
+                if ((this.item_array[i].entity_id == uri)  &&  (this.item_array[i].class_name == class_name))
                     return i;          //  Found it
             }
 
@@ -1812,10 +1707,10 @@ new Vue({
         {
             //console.log(`Attempting to locate content item of type '${schema_code}' , id ${uri}`);
 
-            const number_items = this.content_array.length;
+            const number_items = this.item_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if (this.content_array[i].schema_code == schema_code  &&  this.content_array[i].entity_id == uri)
+                if ((this.item_array[i].schema_code == schema_code)  &&  (this.item_array[i].entity_id == uri))
                     return i;          //  Found it
             }
 
