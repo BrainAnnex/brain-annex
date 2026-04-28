@@ -10,28 +10,22 @@
 
 Vue.component('vue-plugin-r',
     {
-        props: ['item_data', 'item_fields', 'item_metadata',
+        props: ['item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_data:  An object with the relevant data about this Record item;
-                            if the "entity_id" attribute is negative,
-                            it means that it's a newly-created Content Item,
-                            not yet registered with the server
-                            (and there will be additional fields
-                             such as `insert_after_uri` and `insert_after_class`)
+        /*  item_fields:    An object with the editable properties of this Record item.
+                                EXAMPLE: {"German":"Tier", "English":"animal",}
 
-                        EXAMPLE: {"class_name":"German Vocabulary",
-                                  "entity_id":"52", "pos":10,
-                                  "German":"Tier", "English":"animal",
-                                  "internal_id": 123}
-                                  (if entity_id is negative, it means that it's a newly-created header,
-                                  not yet registered with the server)
-                                  TODO (IN-PROGRESS): take "pos", "class_name", "class_handler" out of item_data !
-
-            item_fields:    EXPERIMENTAL, being phased in!  An object with the properties of this Record item.
-                                Those are the editable fields.
-                                EXAMPLE: {"German":"Tier", "English":"animal"}
-
-            item_metadata:  EXPERIMENTAL, being phased in!
+            item_metadata:  An object with the metadata of this Record item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Record item:
+                                        {"class_name":"German Vocabulary",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809",
+                                        "internal_id": 123
+                                        }
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The entity ID of the Category page where this record is displayed (used when creating new records)
@@ -211,6 +205,9 @@ Vue.component('vue-plugin-r',
                 //     `entity_id`, `class_name`, `insert_after_class`, `insert_after_uri` and `pos` get scrubbed out
                 //      TODO: separate display and control data!
                 // NOTE: clone_and_standardize() gets called twice
+
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
 
                 expanded_row: false,
 

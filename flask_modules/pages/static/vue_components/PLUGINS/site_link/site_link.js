@@ -4,15 +4,21 @@
 
 Vue.component('vue-plugin-sl',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*
-            item_data:      An object with the relevant data about this Site Link item;
-                                if the "entity_id" attribute is negative,
-                                it means that it's a newly-created Content Item, not yet registered with the server
-                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+        /*  item_fields:    An object with the editable properties of this Site Link item.
+                                EXAMPLE: {"ringtone":"dreamscape-alarm-clock-117680.mp3"}
 
-                                TODO: separate regular properties from control values
-                                     (`class_name`, `schema_code`, `insert_after_uri`, `pos`)
+            item_metadata:  An object with the metadata of this Site Link item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Site Link item:
+                                        {"class_name":"Site Link",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809"
+                                        }
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The entity ID of the Category page where this record is displayed (used when creating new records)
@@ -138,6 +144,8 @@ Vue.component('vue-plugin-sl',
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 original_data:  Object.assign({}, this.item_data),    // Clone from the original data passed to this component
 
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error

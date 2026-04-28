@@ -17,7 +17,7 @@ Vue.component('vue-plugin-timer',
                                 EXAMPLE: {"ringtone":"dreamscape-alarm-clock-117680.mp3"}
 
             item_metadata:  An object with the metadata of this Header item.
-                                For a newly-created header, not yet registered with the server,
+                                For a newly-created Content Item, not yet registered with the server,
                                 the value of `entity_id` will be a negative number (unique on the page),
                                 and there will be the additional keys `insert_after_uri` and `insert_after_class`
                                 EXAMPLE of existing Timer Widget:

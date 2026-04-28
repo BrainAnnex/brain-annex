@@ -3,11 +3,21 @@
 
 Vue.component('vue-plugin-cd',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:      An object with the relevant data about this Content Item;
-                                if the "entity_id" attribute is negative,
-                                it means that it's a newly-created Content Item, not yet registered with the server
-                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count'],
+        /*  item_fields:    An object with the editable properties of this Code Documentation item.
+                                EXAMPLE: {"ringtone":"dreamscape-alarm-clock-117680.mp3"}
+
+            item_metadata:  An object with the metadata of this Code Documentation item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Code Documentation item:
+                                        {"class_name":"Code Documentation",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809"
+                                        }
 
             index:          The zero-based position of the Record on the page
             edit_mode:      A boolean indicating whether in editing mode
@@ -90,6 +100,9 @@ Vue.component('vue-plugin-cd',
 
                 // Clone, used to restore the data in case of an edit Cancel or failed save
                 original_data: Object.assign({}, this.item_data),
+
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
 
                 waiting_mode: false,
                 status: "",

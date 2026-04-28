@@ -4,14 +4,22 @@
 
 Vue.component('vue-plugin-n',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*   item_data:  An object with the relevant data about this Note item;
-                                if the "entity_id" attribute is negative,
-                                it means that it's a newly-created Content Item, not yet registered with the server
-                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count'],
+        /*   item_fields:    An object with the editable properties of this Note item.
+                                EXAMPLE: {"basename":"notes-123","suffix":"htm","title":"My TO-DO list"}
 
-                        EXAMPLE: {"entity_id":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm",
-                                   "class_name":"Note","title":"My TO-DO list"}
+            item_metadata:  An object with the metadata of this Note item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Note item:
+                                        {"class_name":"Note",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809",
+                                        "schema_code":"n"
+                                        }
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The entity_id of the Category page where this Note is displayed (used when creating new documents)
@@ -94,6 +102,9 @@ Vue.component('vue-plugin-n',
 
                 // Clone, used to restore the data in case of a Cancel or failed save
                 original_data: Object.assign({}, this.item_data),
+
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
 
                 waiting: true,              // Whether any server request is still pending
                 save_waiting_mode: false,   // To distinguish from "waiting" (used for fetching value)
