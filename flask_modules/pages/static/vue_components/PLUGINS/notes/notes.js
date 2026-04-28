@@ -484,8 +484,10 @@ Vue.component('vue-plugin-n',
             },  // finish_save
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
-            // Invoked by clicking on the "CANCEL" link (only visible in editing mode)
             {
                 noteID = this.item_data.entity_id;    // A negative value indicates a new Note
 
@@ -504,14 +506,15 @@ Vue.component('vue-plugin-n',
                 // self.destroy_editor();
 
                 //this.reload_mathjax();    // NOT WORKING! [Presumably b/c Vue then refreshes the page from the change in this.editing_mode]
-            },
+            }, // cancel_edit
+
 
             inform_component_root_of_cancel()
             // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
             {
-                if (this.current_data.entity_id < 0) {    // A negative number indicates a new Note, by convention
+                if (this.current_metadata.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
-                    console.log("Headers sending `cancel-edit` signal to its parent");
+                    console.log("Headers sending `cancel-edit` SIGNAL to its parent");
                     this.$emit('cancel-edit');
                 }
             },

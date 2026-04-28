@@ -216,6 +216,9 @@ Vue.component('vue-plugin-h',
             }, // finish_save
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
             {
                 // Restore the data to how it was prior to the aborted changes

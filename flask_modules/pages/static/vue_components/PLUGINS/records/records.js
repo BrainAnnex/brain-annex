@@ -693,19 +693,23 @@ Vue.component('vue-plugin-r',
             }, // finish_save
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
             // Invoked when the user cancels the edit-in-progress, or when the save operation fails
             {
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.entity_id < 0) {
+                if (this.current_metadata.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
-                    console.log("Records component sending `cancel-edit` signal to its parent");
+                    console.log("Records component sending `cancel-edit` SIGNAL to its parent");
                     this.$emit('cancel-edit');
                 }
+                else
+                    this.editing_mode = false;      // Exit the editing mode
 
-                this.editing_mode = false;      // Exit the editing mode
             } // cancel_edit
 
         }  // METHODS

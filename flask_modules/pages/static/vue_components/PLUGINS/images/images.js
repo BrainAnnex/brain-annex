@@ -144,6 +144,9 @@ Vue.component('vue-plugin-i',
             },
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
             /* Invoked when the user cancels the edit-in-progress, or when the save operation fails.
                Revert any changes, and exit the edit mode
@@ -153,7 +156,7 @@ Vue.component('vue-plugin-i',
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
                 this.edit_metadata = false;      // Exit the editing mode
-            },
+            }, // cancel_edit
 
 
             save_edit()

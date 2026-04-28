@@ -576,11 +576,12 @@ Vue.component('vue-plugin-rs',
             },
 
 
-            cancel_recordset_edit()
-            /*   Invoked when the user cancels the edit-in-progress for the recordset definition,
-                or when the save operation fails.
-                Revert any changes, and exit the edit mode
+            /**
+             * Invoked when the user cancels the edit-in-progress for the recordset definition,
+             * or when the save operation fails.
+             * Revert any changes, and exit the edit mode
              */
+            cancel_recordset_edit()
             {
                 // Restore the data to how it was prior to the aborted changes
 
@@ -588,7 +589,7 @@ Vue.component('vue-plugin-rs',
                 this.fields_to_show = this.fields_to_show_pre_edit;                 // Restored from pre-edit data
 
                 this.recordset_editing = false;               // Exit the editing mode for the recordset definition
-            },
+            }, // cancel_recordset_edit
 
 
 
@@ -613,13 +614,16 @@ Vue.component('vue-plugin-rs',
             },
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link on an INDIVIDUAL record (only visible in editing mode)
+             */
             cancel_record_edit()
             {
                 this.record_being_editing = null;       // To indicate that no record is being edited
 
                 // Clear the temporary variable used for the editing
                 this.record_latest = null;
-            },
+            }, // cancel_record_edit
 
 
 
@@ -821,7 +825,7 @@ Vue.component('vue-plugin-rs',
                 if (Number.isNaN(n_group))
                     n_group = 15;   // DEFAULT value to use if missing or not a valid integer
 
-                if (this.current_data.entity_id < 0) {    // A negative entity_id is a convention to indicate a just-created Recordset
+                if (this.current_metadata.entity_id < 0) {    // A negative entity_id is a convention to indicate a just-created Recordset
                     // Create a new Recordset
                     var url_server_api = "/BA/api/add_item_to_category_JSON";
                     var post_obj = {category_uri: this.category_id,
@@ -882,7 +886,7 @@ Vue.component('vue-plugin-rs',
                 //console.log(`Custom data passed: ${custom_data}`);
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
-                    if (this.current_data.entity_id < 0)  {
+                    if (this.current_metadata.entity_id < 0)  {
                         // If this was a newly-created item (with the temporary negative ID)
                         this.status_message = `Recordset creation completed`;
                         this.current_data.entity_id = server_payload;     // Update the temporary entity_id with the value assigned by the server
