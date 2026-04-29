@@ -8,6 +8,9 @@ Vue.component('vue-plugin-r-linked',
         /*  item_data:  The "parent" record, from which we're following its links.
                         EXAMPLE: {"entity_id":52, "pos":10, "schema_code":"r"
                                   "German":"Tier", "English":"animal"}
+            TODO: switch to a split 'item_fields', 'item_metadata', like done in other plugins.
+                  Will need to first change server endpoint `/BA/api/get_records_by_link`
+
             rel_name:   Name of the relationship that the user followed to get here.
                         EXAMPLE: "sold_by"
             rel_dir:    Direction or the relationship, from the point of view of its "source".

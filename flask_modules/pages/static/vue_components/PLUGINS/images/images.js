@@ -33,8 +33,8 @@ Vue.component('vue-plugin-i',
 
                 <!-- Image container -->
                 <div v-bind:class="{'edit': edit_metadata}">
-                    <a class='i-image-link' v-bind:href="image_url(current_data)" target="_blank">
-                        <img v-bind:src="image_url_thumb(current_data)" width=300>
+                    <a class='i-image-link' v-bind:href="image_url()" target="_blank">
+                        <img v-bind:src="image_url_thumb()" width=300>
                     </a>
 
 
@@ -123,16 +123,16 @@ Vue.component('vue-plugin-i',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
-            image_url(item_data)
+            image_url()
             // Return the URL of the full image
             {
-                return '/BA/api/serve_media/Image/' + item_data.entity_id;           // Invoke the file server
+                return '/BA/api/serve_media/Image/' + this.current_metadata.entity_id;           // Invoke the file server
             },
 
-            image_url_thumb(item_data)
+            image_url_thumb()
             // Return the URL of the thumbnail version of the image
             {
-                return '/BA/api/serve_media/Image/' + item_data.entity_id + '/th';  // Invoke the file server, with the thumbnail option
+                return '/BA/api/serve_media/Image/' + this.current_metadata.entity_id + '/th';  // Invoke the file server, with the thumbnail option
             },
 
 
@@ -164,11 +164,11 @@ Vue.component('vue-plugin-i',
             save_edit()
             // Send a request to the server, to update the image's metadata
             {
-                console.log(`In save_edit(): attempting to save the new metadata , for image with Entity ID '${this.item_data.entity_id}'`);
+                console.log(`In save_edit(): attempting to save the new metadata , for image with Entity ID '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item";
-                const post_obj = {entity_id: this.item_data.entity_id,
+                const post_obj = {entity_id: this.current_metadata.entity_id,
                                   class_name: "Image",
                                   basename: this.current_data.basename,
                                   caption: this.current_data.caption,

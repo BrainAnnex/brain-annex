@@ -77,7 +77,7 @@ Vue.component('vue-plugin-cd',
             -->
             <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item(item_data)">
+                          v-on:edit-content-item="edit_content_item()">
             </vue-controls>
 
             \n</div>\n		<!-- End of outer container box -->
@@ -90,7 +90,7 @@ Vue.component('vue-plugin-cd',
 
                 // This object contains the values bound to the editing fields, cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: this.clone_and_standardize(this.item_fields),
+                current_data: Object.assign({}, this.item_fields)),
 
                 // Clone, used to restore the data in case of an edit Cancel or failed save
                 original_data: Object.assign({}, this.item_fields),
@@ -108,33 +108,9 @@ Vue.component('vue-plugin-cd',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
-            clone_and_standardize(obj)
+            edit_content_item()
             {
-                clone_obj = Object.assign({}, obj);
-
-                /*
-                // TODO: maybe un-necessary!
-                if (!('name' in clone_obj))
-                    clone_obj.name = "";
-
-                if (!('args' in clone_obj))
-                    clone_obj.args = "";
-
-                if (!('return' in clone_obj))
-                    clone_obj.return = "";
-
-                if (!('description' in clone_obj))
-                    clone_obj.description = "";
-                */
-
-                return clone_obj;
-            },
-
-
-
-            edit_content_item(item)
-            {
-                console.log(`Codecods component received event to edit content item of type '${item.schema_code}' , id ${item.entity_id}`);
+                console.log(`Codecods component received event to edit content item of type '${current_metadata.schema_code}' , id ${current_metadata.entity_id}`);
                 this.editing_mode = true;
             },
 
@@ -144,18 +120,18 @@ Vue.component('vue-plugin-cd',
                 // Start the body of the POST to send to the server
                 post_body = "class_name=" + this.current_data.class_name;
 
-                if (this.item_data.entity_id < 0)  {     // The negative Entity ID is a convention indicating a new Content Item to create
+                if (this.current_metadata.entity_id < 0)  {     // The negative Entity ID is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
                     post_body += "&category_id=" + this.category_id;
-                    const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    const insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
+                    const insert_after_uri = this.current_metadata.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
                     post_body += "&insert_after_uri=" + insert_after_uri;
                     post_body += "&insert_after_class=" + insert_after_class;
 
                     url_server = `/BA/api/add_item_to_category`;     // URL to communicate with the server's endpoint
                 }
                 else {   // Update an existing Content Item
-                    post_body += "&entity_id=" + this.item_data.entity_id + "&class_name=Code+Documentation";
+                    post_body += "&entity_id=" + this.current_metadata.entity_id + "&class_name=Code+Documentation";
 
                     url_server = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }

@@ -158,20 +158,12 @@ class PagesRouting:
 
             # Fetch the data for all the Content Items attached to this Category
             content_items_split = Categories.get_content_items_by_category(category_uri)
-            #A list of dictionaries, whose entries are dictionaries of the form
+            # A list of dictionaries, whose entries are dictionaries of the form
             #                    { "fields": {...} , "metadata": {...} }
+            #   EXAMPLE: { "fields": {'text': 'Overview'} ,
+            #              "metadata": {'class_name': 'Header', 'schema_code': 'h', 'entity_id': '1', , pos: 10}
+            #            }
 
-
-            content_items = [ rec["fields"] | rec["metadata"]
-                                for rec in content_items_split]          # TODO: being phased out
-            #   List of dictionaries.  EXAMPLE:
-            #       [
-            #           {'schema_code': 'h', 'entity_id': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-            #           {'schema_code': 'n', 'entity_id': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
-            #           {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'entity_id': '6965', 'pos': 86,
-            #                                   'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
-            #       ]
-            #print(content_items)
 
             upload_directories = DataManager.get_records_by_class(class_name="Directory",
                                                                   field_name="name", order_by="name")
@@ -190,7 +182,6 @@ class PagesRouting:
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
 
-                                   content_items=content_items,
                                    item_array=[{"fields": rec["fields"] , "metadata": rec["metadata"]}
                                                                         for rec in content_items_split],
 

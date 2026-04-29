@@ -38,7 +38,7 @@ Vue.component('vue-plugin-r',
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
-            <span style="color: gray">{{this.item_data.class_name}}</span>
+            <span style="color: gray">{{this.current_metadata.class_name}}</span>
 
             <table class='r-main'>
             <!-- Header row  -->
@@ -196,12 +196,8 @@ Vue.component('vue-plugin-r',
                     Note that the objects may lack some of the fields specified by the Schema;
                         or, if the Schema is lax, extra fields might be present
                  */
-                current_data: this.clone_and_standardize(this.item_fields),
-                original_data: this.clone_and_standardize(this.item_fields),
-                // Scrub some data, so that it won't show up in the tabular format.
-                //     `entity_id`, `class_name`, `insert_after_class`, `insert_after_uri` and `pos` get scrubbed out
-                //      TODO: separate display and control data!
-                // NOTE: clone_and_standardize() gets called twice
+                current_data: Object.assign({}, this.item_fields),     // Clone the object
+                original_data: Object.assign({}, this.item_fields),     // Clone the object
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -237,7 +233,7 @@ Vue.component('vue-plugin-r',
         methods: {
             show_linked_records(rel_name, dir)
             {
-                const record_id = this.item_data.entity_id;
+                const record_id = this.current_metadata.entity_id;
 
                 console.log(`Show the records linked to record entity_id '${record_id}' by the ${dir}-bound relationship '${rel_name}'`);
                 this.get_linked_records_from_server(record_id, rel_name, dir);
@@ -250,7 +246,7 @@ Vue.component('vue-plugin-r',
             expand_links_cell()
             {
                 this.expanded_row = true;
-                this.get_link_summary_from_server(this.item_data);
+                this.get_link_summary_from_server(this.current_metadata);
             },
 
 
@@ -339,24 +335,6 @@ Vue.component('vue-plugin-r',
                 }
                 else
                     return cell_data;
-            },
-
-
-
-            clone_and_standardize(obj)
-            // Clone the passed object; then remove some keys that shouldn't get shown nor edited
-            {
-                clone_obj = Object.assign({}, obj);     // Clone the object
-
-                // Scrub some data, so that it won't show up in the tabular format
-                delete clone_obj.entity_id;
-                delete clone_obj.internal_id;
-                delete clone_obj.insert_after_class;
-                delete clone_obj.insert_after_uri;
-                delete clone_obj.class_name;
-                delete clone_obj.pos;               // TODO: this might be getting phased out
-
-                return clone_obj;
             },
 
 
@@ -584,12 +562,12 @@ Vue.component('vue-plugin-r',
                 // Start the body of the POST to send to the server
                 var post_obj = {};
 
-                if (this.item_data.entity_id < 0)  {     // The negative entity_id is a convention indicating a new Content Item to create
+                if (this.current_metadata.entity_id < 0)  {     // The negative entity_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj["category_id"] = this.category_id;
-                    post_obj["class_name"] = this.item_data.class_name;
-                    post_obj["insert_after_class"] = this.item_data.insert_after_class; // Class of Content Item to insert after
-                    post_obj["insert_after_uri"] = this.item_data.insert_after_uri;     // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj["class_name"] = this.current_metadata.class_name;
+                    post_obj["insert_after_class"] = this.current_metadata.insert_after_class; // Class of Content Item to insert after
+                    post_obj["insert_after_uri"] = this.current_metadata.insert_after_uri;     // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data)  {
@@ -603,8 +581,8 @@ Vue.component('vue-plugin-r',
                 }
                 else  {
                     // Update an EXISTING record
-                    post_obj["entity_id"] = this.item_data.entity_id;
-                    post_obj["class_name"] = this.item_data.class_name;
+                    post_obj["entity_id"] = this.current_metadata.entity_id;
+                    post_obj["class_name"] = this.current_metadata.class_name;
 
                     // Go over each key (field name); note that keys that aren't field names were previously eliminated
                     for (key in this.current_data) {

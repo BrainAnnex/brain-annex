@@ -248,7 +248,7 @@ Vue.component('vue-plugin-d',
                 this.edit_metadata = true;
 
                 console.log("Retrieving folder location");
-                this.retrieve_document_folders(this.item_data.internal_id);
+                this.retrieve_document_folders(this.current_metadata.internal_id);
             },
 
 
@@ -325,7 +325,7 @@ Vue.component('vue-plugin-d',
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item_JSON";
 
-                const post_obj = {entity_id: this.item_data.entity_id,
+                const post_obj = {entity_id: this.current_metadata.entity_id,
                                   class_name: "Document",
                                   caption: this.current_data.caption,
                                   basename: this.current_data.basename,

@@ -415,7 +415,7 @@ Vue.component('vue-plugin-rs',
         {
             console.log(`The Recordsets component has been mounted`);
 
-            if (this.item_data.entity_id < 0)  {  // A negative entity_id is a convention to indicate a just-created Recordset
+            if (this.item_metadata.entity_id < 0)  {  // A negative entity_id is a convention to indicate a just-created Recordset
                 this.edit_recordset();
                 return;
             }
@@ -829,9 +829,9 @@ Vue.component('vue-plugin-rs',
                     // Create a new Recordset
                     var url_server_api = "/BA/api/add_item_to_category_JSON";
                     var post_obj = {category_uri: this.category_id,
-                                    class_name: this.item_data.class_name,
-                                    insert_after_uri: this.item_data.insert_after_uri,      // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                                    insert_after_class: this.item_data.insert_after_class,  // Class of Content Item to insert after
+                                    class_name: this.current_metadata.class_name,
+                                    insert_after_uri: this.current_metadata.insert_after_uri,      // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                                    insert_after_class: this.current_metadata.insert_after_class,  // Class of Content Item to insert after
 
                                     // Node properties (in particular,
                                     //     note that "class" and "label" are properties, not Schema data)
@@ -850,7 +850,7 @@ Vue.component('vue-plugin-rs',
                     var url_server_api = "/BA/api/update_content_item_JSON";
 
                     var post_obj = {entity_id: this.current_data.entity_id,
-                                    class_name: this.item_data.class_name,
+                                    class_name: this.current_metadata.class_name,
 
                                     filter_label: this.current_data.filter_label,  // Used to identify nodes considered part of  this Recordset
                                     //fields: this.current_data.fields,

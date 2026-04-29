@@ -316,7 +316,7 @@ Vue.component('vue-plugin-sl',
                 }
 
                 // Start the body of the POST to send to the server
-                let post_obj = {class_name: this.item_data.class_name,
+                let post_obj = {class_name: this.current_metadata.class_name,
 
                                 url:        this.current_data.url,
                                 name:       this.current_data.name,
@@ -327,16 +327,16 @@ Vue.component('vue-plugin-sl',
                                };
 
 
-                if (this.item_data.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create
+                if (this.current_metadata.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
                     post_obj.category_id = this.category_id;
-                    post_obj.insert_after_uri = this.item_data.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    post_obj.insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
+                    post_obj.insert_after_uri = this.current_metadata.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    post_obj.insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
 
                     url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
                 }
                 else  {     // Update an EXISTING Site Link
-                    post_obj.entity_id = this.item_data.entity_id;
+                    post_obj.entity_id = this.current_metadata.entity_id;
 
                     url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }

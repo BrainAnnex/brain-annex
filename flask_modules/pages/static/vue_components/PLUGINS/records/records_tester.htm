@@ -24,7 +24,8 @@
 
 <div id="vue-root-1">   <!-- Container for VUE COMPONENT below : ROOT element -->
 
-    <vue-plugin-r   v-bind:item_data="item_data"
+    <vue-plugin-r   v-bind:item_fields="item_fields"
+                    v-bind:item_metadata="item_metadata"
                     v-bind:edit_mode="edit_mode"
                     v-bind:category_id="category_id"
                     v-bind:index="index"
@@ -55,16 +56,17 @@
 
         data: {     // THE TEST DATA
 
-            item_data_OLD: {    "German":"Tier", "English":"animal",
+            item_fields: {  "German":"Tier", "English":"animal",
                             "class_name":"German Vocabulary",
-                            "pos":10,
-                            "entity_id":"52",
-                            "internal_id": 123},
+                         },
 
-            item_data : {"class_name":"German Vocabulary",
-                         "entity_id": -3,
-                         insert_after_class: "note",
-                         insert_after_uri: "n-33"
+            item_metadata : {"class_name":"German Vocabulary",
+                             "entity_id": -3,
+                             "pos":10,
+                             insert_after_class: "note",
+                             insert_after_uri: "n-33",
+                             "entity_id":"52",
+                             "internal_id": 123
                          },
 
             edit_mode: true,
