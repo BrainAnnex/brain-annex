@@ -894,10 +894,14 @@ Vue.component('vue-plugin-rs',
                     else
                         this.status_message = `Recordset update completed`;
 
-                    // Inform the parent component of the new state of the data
-                    //TODO: get this to work, and also manage changes in entity_id (maybe pass original negative entity_id as separate arg, or extra field in object)
-                    //console.log("Recordsets component sending `updated-item` signal to its parent, with the following data:");
-                    //this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Recordsets' component sending `updated-item` SIGNAL to its parent, with the following data:");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the current one
                     this.current_data = Object.assign({}, this.current_data);  // Clone

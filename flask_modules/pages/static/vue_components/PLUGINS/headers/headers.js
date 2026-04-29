@@ -203,7 +203,7 @@ Vue.component('vue-plugin-h',
                         item_fields:   Object.assign({}, this.current_data),
                         item_metadata: Object.assign({}, this.current_metadata)
                     };
-                    console.log("Headers component sending `updated-item` SIGNAL to its parent with the following data:");
+                    console.log("'Headers' component sending `updated-item` SIGNAL to its parent with the following data:");
                     console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
                     this.$emit('updated-item', signal_data);
 

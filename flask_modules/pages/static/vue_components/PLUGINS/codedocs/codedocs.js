@@ -193,7 +193,7 @@ Vue.component('vue-plugin-cd',
                         item_fields:   Object.assign({}, this.current_data),
                         item_metadata: Object.assign({}, this.current_metadata)
                     };
-                    console.log("Codedoc component sending `updated-item` SIGNAL to its parent");
+                    console.log("'Codedoc' component sending `updated-item` SIGNAL to its parent");
                     console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
                     this.$emit('updated-item', signal_data);
 

@@ -1363,7 +1363,7 @@ new Vue({
             const schema_code = item.metadata.schema_code;
             const uri = item.metadata.entity_id;
 
-            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , Entity ID ${uri}`);
+            console.log(`Root element received signal to move UP the content item of type '${schema_code}' , Entity ID '${uri}', Internal ID ${item.metadata.internal_id}`);
 
             const number_items = this.item_array.length;
 
@@ -1384,7 +1384,8 @@ new Vue({
             }
 
             // Request the server to perform the operation on the data
-            const swap_uri = this.item_array[i-1].entity_id;       // The ID of the Item that we're swapping with
+            // TODO: `Entity ID` is no longer unique; switch to using `internal_id` instead
+            const swap_uri = this.item_array[i-1].metadata.entity_id;       // The Entity ID of the Item that we're swapping with
             const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
@@ -1417,7 +1418,7 @@ new Vue({
             const schema_code = item.metadata.schema_code;
             const uri = item.metadata.entity_id;
 
-            console.log(`Root element received signal to move DOWN the content item of type '${item.metadata.schema_code}' , id ${item.metadata.entity_id}`);
+            console.log(`Root element received signal to move DOWN the content item of type '${schema_code}' , Entity ID '${uri}', Internal ID ${item.metadata.internal_id}`);
 
             const number_items = this.item_array.length;
 
@@ -1438,7 +1439,7 @@ new Vue({
             }
 
             // Request the server to perform the operation on the data
-            const swap_uri = this.item_array[i+1].entity_id;       // The ID of the Item that we're swapping with
+            const swap_uri = this.item_array[i+1].metadata.entity_id;       // The ID of the Item that we're swapping with
             const url_server = `/BA/api/swap/${uri}/${swap_uri}/${this.category_uri}`;
             console.log(url_server);
 
@@ -1505,7 +1506,7 @@ new Vue({
             console.log(structuredClone(item_original_metadata));
 
 
-            console.log(`    Data for the update (stored in variable new_data):`);
+            console.log("    Data for the update (stored in variable `new_data`):");
             console.log(structuredClone(new_data));
 
 

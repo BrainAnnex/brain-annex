@@ -204,9 +204,14 @@ Vue.component('vue-plugin-i',
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
 
-                    // Inform the parent component of the new state of the document's metadata
-                    console.log("Images component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Images' component sending `updated-item` signal to its parent");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the finalized current data
                     this.original_data = Object.assign({}, this.current_data);  // Clone

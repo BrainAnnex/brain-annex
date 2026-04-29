@@ -7,7 +7,9 @@ Vue.component('vue-plugin-n',
         props: ['item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count'],
         /*   item_fields:    An object with the editable properties of this Note item.
-                                EXAMPLE: {"basename":"notes-123","suffix":"htm","title":"My TO-DO list"}
+                                EXAMPLE: {  "basename":"notes-123",
+                                            "suffix":"htm",
+                                            "title":"My TO-DO list"}
 
             item_metadata:  An object with the metadata of this Note item.
                                 For a newly-created Content Item, not yet registered with the server,
@@ -451,15 +453,20 @@ Vue.component('vue-plugin-n',
                         this.current_data.basename = `notes-${server_payload}`; // TODO: change this convention
                     }
 
-                    // Inform the parent component of the new state of the data
-                    console.log("Notes component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Notes' component sending `updated-item` SIGNAL to its parent");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
                     // Note: the above operation has the effect of re-starting this component, and it's
                     //       therefore not directly compatible with the "Save and Continue" option
 
                     boxValue = this.new_note_value;
 
-                    // Synchronize the accepted baseline data to the current one
+                    // Synchronize the accepted baseline data to the finalized current data
                     this.original_data = Object.assign({}, this.current_data);      // Clone
                 }
                 else  {		            // Server reported FAILURE

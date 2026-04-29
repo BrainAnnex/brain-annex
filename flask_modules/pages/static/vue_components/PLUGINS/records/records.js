@@ -646,14 +646,14 @@ Vue.component('vue-plugin-r',
                         delete this.current_metadata.insert_after_class;       // No longer needed
                     }
 
-                    // Inform the ancestral root component of the new state of the data
-                    console.log("Records component sending `updated-item` signal to its parent");
-                    //console.log(this.current_data);
-                    // Note: the signal below ONLY include DISPLAY data, not control data such as
-                    //       `entity_id`, `class_name`, `insert_after_class`, `insert_after_uri`, `pos`
-                    //        WITH THE SINGLE EXCEPTION of `entity_id` field on newly-added records
-                    //        TODO: separate display and control data!
-                    this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Records' component sending `updated-item` signal to its parent");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the accepted baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
