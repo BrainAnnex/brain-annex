@@ -87,7 +87,7 @@ Vue.component('vue-content-items',
 
                 v-on="$listeners"
 
-                v-on:delete-content-item="highlight_item(item)"
+                v-on:delete-content-item="highlight_item()"
                 v-on:add-content="add_content_below"
                 v-on:edit-tags="edit_tags"
             >
@@ -209,7 +209,7 @@ Vue.component('vue-content-items',
                 tag_edit_box: false,    // Whether to display a box used to edit the Category tags of this Content Item
 
                 highlight: false,       // Whether to highlight this Content Item (e.g. prior to deleting it)
-                show_button: false,
+                show_button: false,     // Whether to display the "Confirm DELETE" button
                 insert_box: false,      // Whether to display, at the bottom, a box used to insert a new Content Item below this one
 
                 categories_linked_to: [],   // Array of objects representing Categories to which this Content Item is attached to;
@@ -574,9 +574,10 @@ Vue.component('vue-content-items',
             confirm_delete()
             // Invoked when the user clicks on the "Confirm DELETE" button
             {
+                // TODO: stop intercepting, and changing the name, of this signal: let the ancestor component catch it
                 // Send a signal to the Vue root component
                 console.log("Confirming delete");
-                console.log("    `vue-content-items` component is sending 'delete-content-item-highlighted' signal to its parent");
+                console.log("    `vue-content-items` component is sending a 'delete-content-item-highlighted' SIGNAL to its parent");
                 this.$emit('delete-content-item-highlighted');
             },
 
@@ -589,9 +590,13 @@ Vue.component('vue-content-items',
             },
 
 
-            highlight_item(item)
+            /**
+             * Enable the highlighting of the Content Item meant to be deleted,
+             * and the display of the "Confirm DELETE" button
+             */
+            highlight_item()
             {
-                console.log(`'vue-content-items' component received Event 'delete-content-item'`);
+                console.log(`'vue-content-items' component received SIGNAL 'delete-content-item'`);
                 this.highlight = true;
                 this.show_button = true;
             },

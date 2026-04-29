@@ -241,10 +241,12 @@ Vue.component('vue-plugin-d',
 
             /**
              * Enable the document edit mode
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
              */
             edit_content_item()
             {
-                //console.log(`Received request to edit document metadata`);
+                console.log(`'Documents' component received SIGNAL to edit its contents`);
                 this.edit_metadata = true;
 
                 console.log("Retrieving folder location");

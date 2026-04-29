@@ -322,7 +322,7 @@
 <template v-if="expose_controls && !bulk_operations"  v-for="(item, index) in item_array">
 
     <vue-content-items
-        v-bind:key="item.schema_code + '_' + item.entity_id + '_' + index"
+        v-bind:key="item.metadata.schema_code + '_' + item.metadata.entity_id + '_' + index"
 
         v-bind:item_fields="item.fields"
         v-bind:item_metadata="item.metadata"
@@ -342,7 +342,7 @@
         v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
         v-on:relocate-content-item="relocate_content_item(item, $event)"
         v-on:cancel-edit="cancel_edit(item, index)"
-        v-on:updated-item="absorb_item_updates(item, item_array[index], $event)"
+        v-on:updated-item="absorb_item_updates(item, $event)"
         v-on:insert-new-item-after="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
@@ -370,7 +370,7 @@
 <template v-if="bulk_operations"  v-for="(item, index) in item_array">
 
     <vue-content-items
-            v-bind:key="item.entity_id + '_bulk'"
+            v-bind:key="item.metadata.entity_id + '_bulk'"
 
             v-bind:item="item"
 
@@ -393,7 +393,7 @@
 
     <!-- TODO: maybe the binding to the input element should include class_name besides uri -->
     <p style="margin-top:0; margin-bottom:40px">
-        <span style="color:rgb(149, 149, 149)">[[index]]</span> <input type="checkbox"  v-bind:ref="item.entity_id"  @click="bulk_checkbox_clicked(item, index)">
+        <span style="color:rgb(149, 149, 149)">[[index]]</span> <input type="checkbox"  v-bind:ref="item.metadata.entity_id"  @click="bulk_checkbox_clicked(item, index)">
 
         <span v-if="! checkboxes_selected.includes(index)">
             <a v-if="group_boundary === null" @click.prevent="contiguous_group(item, index)" href="#" style="margin-left: 15px">
@@ -455,7 +455,7 @@
 
     <!-- Show here the individual Content Item -->
     <vue-content-items
-            v-bind:key="index + '_' + item.entity_id"
+            v-bind:key="index + '_' + item.metadata.entity_id"
 
             v-bind:item="item"
             v-bind:item_fields="item.fields"
@@ -475,7 +475,7 @@
             v-on:move-up-content-item="move_up_content_item(item)"  v-on:move-down-content-item="move_down_content_item(item)"
             v-on:relocate-content-item="relocate_content_item(item, $event)"
             v-on:cancel-edit="cancel_edit(item, index)"
-            v-on:updated-item="absorb_item_updates(item, item_array[index], $event)"
+            v-on:updated-item="absorb_item_updates(item, $event)"
             v-on:insert-new-item-after="insert_new_item_after(item, $event)"
     >
     </vue-content-items>
@@ -863,17 +863,17 @@ new Vue({
 
         bulk_checkbox_clicked(item, index)
         /* Invoked whenever the user clicks on any of the CHECKBOXES visible while in bulk-edit mode.
-            Note that that <INPUT> elements with the checkboxes contain:   v-bind:ref="item.entity_id"
+            Note that that <INPUT> elements with the checkboxes contain:   v-bind:ref="item.metadata.entity_id"
          */
         {
             // Extract the Entity ID and Class of the Content Item whose checkbox was clicked
-            const uri = item.entity_id;
-            const class_name = item.class_name;
+            const uri = item.metadata.entity_id;
+            const class_name = item.metadata.class_name;
 
             //console.log(`Clicked checkbox for Content Item with Entity ID: '${uri}' from Class '${class_name}'`);
 
             //console.log(this.$refs);                          // Shows an array whose keys are the uri's of
-                                                                // all the various <INPUT> elements that contain v-bind:ref="item.entity_id"
+                                                                // all the various <INPUT> elements that contain v-bind:ref="item.metadata.entity_id"
             const checkbox_element_arr = this.$refs[uri];       // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
                                                                 // that invoked this function
             //console.log(checkbox_element_arr);                // This reveals an array whose only entry is the <INPUT> element
@@ -911,17 +911,17 @@ new Vue({
             `item` and `index` refer to the Content Item next to the link, and its index position on the page.
          */
         {
-            console.log(`Clicking on link next to item of index ${index} for bulk operations.  Item Class name: "${item.class_name}" , URI: "${item.entity_id}"`);
+            console.log(`Clicking on link next to item of index ${index} for bulk operations.  Item Class name: "${item.metadata.class_name}" , URI: "${item.metadata.entity_id}"`);
             //console.log(`Item details:`);
             //console.log(item);
             console.log(`this.group_boundary = ${this.group_boundary}`);
 
             //console.log(this.$refs);                              // Shows an object whose keys are the uri's of
-                                                                    // all the various <INPUT> elements that contain v-bind:ref="item.entity_id"
+                                                                    // all the various <INPUT> elements that contain v-bind:ref="item.metadata.entity_id"
 
             if (this.group_boundary === null)  {
-                const uri = item.entity_id;
-                const class_name = item.class_name;
+                const uri = item.metadata.entity_id;
+                const class_name = item.metadata.class_name;
                 console.log(`    the link click is resulting in STARTING a contiguous group in index position ${index} for Content Item with URI '${uri}' from Class '${class_name}'`);
 
                 let checkbox_element_arr = this.$refs[uri];           // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
@@ -946,7 +946,7 @@ new Vue({
             }
 
             else {
-                console.log(`    the link click is resulting in **ENDING** contiguous group in index position ${index} for Content Item with URI '${item.entity_id}' from Class '${item.class_name}'`);
+                console.log(`    the link click is resulting in **ENDING** contiguous group in index position ${index} for Content Item with URI '${item.metadata.entity_id}' from Class '${item.metadata.class_name}'`);
                 // Select all Content Items, from index `this.group_boundary` to the `index` argument
                 var start_pos = Math.min(this.group_boundary, index);
                 var end_pos  =  Math.max(this.group_boundary, index);
@@ -1135,10 +1135,10 @@ new Vue({
             If the data is missing, return an empty array instead
          */
         {
-            //if (item.schema_code != "r")
+            //if (item.metadata.schema_code != "r")
                 //return [];                      // Nothing is being done for non-record Content Items (at least for now)
 
-            const item_class = item.class_name;
+            const item_class = item.metadata.class_name;
 
             return this.items_schema_data[item_class] || [];     // If the requested key doesn't exist, return an empty array instead
                                                                   // TODO: if key is missing, query the server
@@ -1232,9 +1232,9 @@ new Vue({
         {
             //console.log(item);
             console.log(`In root component, insert_new_item_after()`);
-            console.log(`    Insert after Item Entity ID '${item.entity_id}' of class '${item.class_name}'. New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
+            console.log(`    Insert after Item Entity ID '${item.metadata.entity_id}' of class '${item.metadata.class_name}'. New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
 
-            this.create_new_item_after(item.entity_id, item.class_name, schema_code, class_name);
+            this.create_new_item_after(item.metadata.entity_id, item.metadata.class_name, schema_code, class_name);
         },
 
 
@@ -1324,8 +1324,8 @@ new Vue({
         delete_content_item(item)
         // Delete from the page and from the database the specified Content Item
         {
-            console.log(`delete_content_item(): Root element received signal to delete content item of Class '${item.class_name}' , entity_id '${item.entity_id}'`);
-            const index = this.locate_item_simplified(item.entity_id, item.class_name);
+            console.log(`delete_content_item(): Root element received signal to delete content item of Class '${item.metadata.class_name}' , entity_id '${item.metadata.entity_id}'`);
+            const index = this.locate_item_simplified(item.metadata.entity_id, item.metadata.class_name);
             console.log(`delete_content_item(): Content item located in position ${index}`);
 
             if (index == -1)  {
@@ -1333,7 +1333,7 @@ new Vue({
                 return;
             }
 
-            const url_server = `/BA/api/delete/${item.entity_id}/${item.class_name}`;
+            const url_server = `/BA/api/delete/${item.metadata.entity_id}/${item.metadata.class_name}`;
             ServerCommunication.contact_server(url_server, 
                         {callback_fn: this.finish_delete, 
                          custom_data: index}
@@ -1360,8 +1360,8 @@ new Vue({
         move_up_content_item(item)
         //
         {
-            const schema_code = item.schema_code;
-            const uri = item.entity_id;
+            const schema_code = item.metadata.schema_code;
+            const uri = item.metadata.entity_id;
 
             console.log(`Root element received signal to move UP the content item of type '${schema_code}' , Entity ID ${uri}`);
 
@@ -1414,10 +1414,10 @@ new Vue({
         move_down_content_item(item)
         //
         {
-            const schema_code = item.schema_code;
-            const uri = item.entity_id;
+            const schema_code = item.metadata.schema_code;
+            const uri = item.metadata.entity_id;
 
-            console.log(`Root element received signal to move DOWN the content item of type '${item.schema_code}' , id ${item.entity_id}`);
+            console.log(`Root element received signal to move DOWN the content item of type '${item.metadata.schema_code}' , id ${item.metadata.entity_id}`);
 
             const number_items = this.item_array.length;
 
@@ -1465,15 +1465,13 @@ new Vue({
 
 
 
-        absorb_item_updates(item, item_original, new_data)
+        absorb_item_updates(item_original, new_data)
         /* Update the appropriate entry in this.item_array,
            with the new data passed by a component
            (generally done at the end of an update on the server).
 
-           item, item_original:   pre-edit record (respectively, the combined record,
-                                                                 and the record with fields and metadata separated)
-                                               [Note: `item` is being phased out]
-           new_data:   post-edit record
+           item_original:   pre-edit record (with 2 keys, "fields" and "metadata")
+           new_data:        post-edit record (with 2 keys, "item_fields", and "item_metadata")
 
            Note that the values of the special key "entity_id" on `new_data` will only appear
            (and differ from the corresponding field on `item`)
@@ -1485,23 +1483,16 @@ new Vue({
            EXAMPLE of old values (`item`, `item_original`) and of `new_data`,
            for a NEWLY-CREATED item:
 
-               item:            {entity_id: -2,
-                                 schema_code: "h", class_name: "Header", pos: -12,
-                                 insert_after_uri: "i-5", insert_after_class: "Image"}
-
                item_original.fields:     {}
                item_original.metadata:   {entity_id: -2,
                                           schema_code: "h", class_name: "Header", pos: -12,
                                           insert_after_uri: "i-5", insert_after_class: "Image"}
 
-               new_data:        {entity_id: "h-243",    <- Sent by the component upon receiving it from the server
-                                 schema_code: "h", class_name: "Header", pos: -12,      <- (OPTIONAL) General metadata
-                                 insert_after_uri: "i-5", insert_after_class: "Image"   <- (OPTIONAL) Metadata for new Content Items
-                                 text: "Some Header"}   <- Field data
-
-                                 IN-PROGRESS: `new_data` is being changed into an object containing
-                                        (1) item_fields
-                                        (2) item_metadata
+               new_data.item_fields:    {text: "Some Header"}
+               new_data.item_metadata:  {entity_id: "h-243",    <- Sent by the component upon receiving it from the server
+                                         schema_code: "h", class_name: "Header", pos: -12,      <- (OPTIONAL) General metadata
+                                         insert_after_uri: "i-5", insert_after_class: "Image"   <- (OPTIONAL) Metadata for new Content Items
+                                        }
          */
         {
             console.log("In absorb_item_updates().  Root element received signal to UPDATE the Content Item:");
@@ -1509,8 +1500,7 @@ new Vue({
             let item_original_fields   = item_original.fields;
             let item_original_metadata = item_original.metadata;
 
-            console.log("    Original data of Content Item being updated (next 3 lines contain `item`, `item_original_fields`, `item_original_metadata`):");
-            console.log(structuredClone(item));
+            console.log("    Original data of Content Item being updated (next 2 lines contain `item_original_fields` and `item_original_metadata`):");
             console.log(structuredClone(item_original_fields));
             console.log(structuredClone(item_original_metadata));
 
@@ -1526,32 +1516,29 @@ new Vue({
                 return;
             }
 
-            var item_fields   = Object.assign({}, new_data.item_fields);
+            let item_new_fields   = Object.assign({}, new_data.item_fields);
+            let item_new_metadata = Object.assign({}, new_data.item_metadata);
 
-            var item_metadata = Object.assign({}, new_data.item_metadata);
+            if ("insert_after_uri" in item_new_metadata)
+                delete item_new_metadata.insert_after_uri;        // No-longer-needed metadata value
 
-            if ("insert_after_uri" in item_metadata)
-                delete item_metadata.insert_after_uri;        // No-longer-needed metadata value
-
-            if ("insert_after_class" in item_metadata)
-                delete item_metadata.insert_after_class;      // No-longer-needed metadata value
+            if ("insert_after_class" in item_new_metadata)
+                delete item_new_metadata.insert_after_class;      // No-longer-needed metadata value
 
 
-            const old_uri = item.entity_id;    // This will be a negative number if it was a temporary value for a newly-created Content Item
-            if (old_uri != item_original.metadata.entity_id)
-                alert(`Discrepancy between alternate values of old_uri (${old_uri} and ${item_original.metadata.entity_id}) in absorb_item_updates().  Refresh page!`);
+            const old_uri = item_original_metadata.entity_id;    // This will be a negative number if it was a temporary value for a newly-created Content Item
 
             if (old_uri < 0)
-                console.log(`    A temporary Entity ID of '${old_uri}' is being replaced by the newly-assigned permanent Entity ID '${item_metadata.entity_id}'`);
+                console.log(`    A temporary Entity ID of '${old_uri}' is being replaced by the newly-assigned permanent Entity ID '${item_new_metadata.entity_id}'`);
 
 
             console.log(`    Attempting to update the Content Item that originally had Entity ID: ${old_uri}`);
 
             // Locate the Content Item to update
-            const index = this.locate_item(item_metadata.schema_code, old_uri);         // TODO: perhaps switch to internal dbase ID's
+            const index = this.locate_item(item_original_metadata.schema_code, old_uri);         // TODO: perhaps switch to internal dbase ID's
 
             if (index == -1)  {    // If the Item is not found on the page
-                console.log(`    Failed to locate Content Item with schema_code '${item_metadata.schema_code}', entity ID '${old_uri}'`);
+                console.log(`    Failed to locate Content Item with schema_code '${item_original_metadata.schema_code}', entity ID '${old_uri}'`);
                 alert("Unable to update the display.  Save your work and refresh the page");
                 return;
             }
@@ -1561,8 +1548,8 @@ new Vue({
                 Bring the frontend up-to-date with the new data
              */
 
-            let updated_record_NEW = {  fields: item_fields,
-                                        metadata: item_metadata
+            let updated_record_NEW = {  fields: item_new_fields,
+                                        metadata: item_new_metadata
                                      }
             // This object will replace the element in `item_array` at our index position
             // (further below, we do a complete array element replacement for Vue reactivity)
@@ -1571,7 +1558,7 @@ new Vue({
             // Note about the special key "pos":
             //      1) existing records will have a value not changed thru edits (a separate mechanism is used to reposition items)
             //      2) newly-created Items will lack it; currently, it's created in the server, and returned by the plugin components
-            //              via a signal)
+            //              via a signal, just like the newly-assigned entity ID)
 
 
             console.log(`       - Updating the Content Item found in "this.item_array" at index: ${index}, with the following record:`);
@@ -1590,10 +1577,10 @@ new Vue({
             Note: where_to is a 1-based index of Content Items on the page; by our convention, 0 means "move to top"
          */
         {
-            const schema_code = item.schema_code;
-            const entity_id = item.entity_id;
+            const schema_code = item.metadata.schema_code;
+            const entity_id = item.metadata.entity_id;
 
-            console.log(`Root element received signal to RELOCATE the content item of type '${item.schema_code}' , Entity id ${item.entity_id} to just after the ${where_to}-th entry, within category ${this.category_uri}`);
+            console.log(`Root element received signal to RELOCATE the content item of type '${item.metadata.schema_code}' , Entity id ${item.metadata.entity_id} to just after the ${where_to}-th entry, within category ${this.category_uri}`);
 
             const number_items = this.item_array.length;
 
@@ -1602,7 +1589,7 @@ new Vue({
                 return;
             }
 
-            const i = this.locate_item_simplified(entity_id, item.class_name);     // Locate the specified Content Item in the array of Content Items
+            const i = this.locate_item_simplified(entity_id, item.metadata.class_name);     // Locate the specified Content Item in the array of Content Items
 
             if (i == -1)  {  // Not found
                 alert(`Item type '${schema_code}' , id ${entity_id} NOT found. Maybe was deleted in another browser tab? No action taken`);

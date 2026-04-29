@@ -220,12 +220,14 @@ Vue.component('vue-plugin-n',
             },
 
 
-            edit_content_item()
-            /*  Handler for the "edit_content_item" Event received from the child component "vue-controls"
-                (which is generated there when clicking on the Edit button)
+
+            /**
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
              */
+            edit_content_item()
             {
-                console.log(`'Note' component received received Event to edit its contents`);
+                console.log(`'Note' component received SIGNAL to edit its contents`);
                 this.enter_editing_mode();
             },
 

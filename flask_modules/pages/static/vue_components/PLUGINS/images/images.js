@@ -138,10 +138,12 @@ Vue.component('vue-plugin-i',
 
             /**
              * Enable the document edit mode
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
              */
             edit_content_item()
             {
-                //console.log(`Image component received signal to edit image's metadata'`);
+                console.log(`'Images' component received SIGNAL to edit its contents`);
                 this.edit_metadata = true;
             },
 

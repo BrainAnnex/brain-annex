@@ -35,7 +35,7 @@ Vue.component('vue-plugin-h',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <div class='h-text'  @dblclick="enter_editing_mode">
+                <div class='h-text'  @dblclick="enter_editing_mode(); show_controls=true">
                     <span v-if="!editing_mode" class='h-text'>{{ current_data.text }}</span>
                     <span v-else><input type="text" size="40" v-model="current_data.text">
                         <button @click="save">SAVE</button>
@@ -60,7 +60,7 @@ Vue.component('vue-plugin-h',
                       Optional EXTRA controls may be placed before (will appear to the left)
                       or after (will appear to the right) of the standard controls
                 -->
-                    <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                    <vue-controls v-bind:edit_mode="show_controls" v-bind:index="index"  v-bind:item_count="item_count"
                                   v-bind:controls_to_hide="['tag']"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item">
@@ -76,6 +76,8 @@ Vue.component('vue-plugin-h',
         data: function() {
             return {
                 editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_id means "new Item" (automatically placed in editing mode)
+
+                show_controls: this.edit_mode,
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -104,7 +106,7 @@ Vue.component('vue-plugin-h',
             {
                 console.log(`In enter_editing_mode()`);
 
-                // Clear any old value
+                // Clear any old values
                 this.waiting = false;
                 this.error = false;
                 this.status_message = "";
@@ -113,12 +115,13 @@ Vue.component('vue-plugin-h',
             },
 
 
-            edit_content_item()
-            /*  Handler for the "edit_content_item" Event received from the child component "vue-controls"
-                (which is generated there when clicking on the Edit button)
+            /**
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
              */
+            edit_content_item()
             {
-                console.log(`'Headers' component received Event to edit its contents`);
+                console.log(`'Headers' component received SIGNAL to edit its contents`);
                 this.enter_editing_mode();
             },
 

@@ -532,9 +532,13 @@ Vue.component('vue-plugin-r',
 
 
 
+            /**
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
+             */
             edit_content_item()
             {
-                console.log(`'Records' component received Event to edit content item with entity id ${item_metadata.entity_id}`);
+                console.log(`'Records' component received SIGNAL to edit its contents`);
                 this.editing_mode = true;
 
                 this.get_fields_from_server();      // Consult the schema

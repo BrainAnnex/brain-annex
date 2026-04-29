@@ -108,9 +108,13 @@ Vue.component('vue-plugin-cd',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
+            /**
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
+             */
             edit_content_item()
             {
-                console.log(`Codecods component received event to edit content item of type '${current_metadata.schema_code}' , id ${current_metadata.entity_id}`);
+                console.log(`'Codedocs' component received Event to edit its contents`);
                 this.editing_mode = true;
             },
 
@@ -118,7 +122,7 @@ Vue.component('vue-plugin-cd',
             save()
             {
                 // Start the body of the POST to send to the server
-                post_body = "class_name=" + this.current_data.class_name;
+                post_body = "class_name=" + this.current_metadata.class_name;
 
                 if (this.current_metadata.entity_id < 0)  {     // The negative Entity ID is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
@@ -184,9 +188,14 @@ Vue.component('vue-plugin-cd',
                         delete this.current_metadata.insert_after_class;       // No longer needed
                     }
 
-                    // Inform the parent component of the new state of the data
-                    console.log("Codedoc component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("Codedoc component sending `updated-item` SIGNAL to its parent");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
