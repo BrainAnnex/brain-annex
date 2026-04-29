@@ -374,8 +374,8 @@
 
             v-bind:item="item"
 
-            v-bind:item_fields="item_array[index].fields"
-            v-bind:item_metadata="item_array[index].metadata"
+            v-bind:item_fields="item.fields"
+            v-bind:item_metadata="item.metadata"
 
             v-bind:expose_controls="false"
             v-bind:category_uri="category_uri"
@@ -458,8 +458,8 @@
             v-bind:key="index + '_' + item.entity_id"
 
             v-bind:item="item"
-            v-bind:item_fields="item_array[index].fields"
-            v-bind:item_metadata="item_array[index].metadata"
+            v-bind:item_fields="item.fields"
+            v-bind:item_metadata="item.metadata"
 
             v-bind:expose_controls="expose_controls"
             v-bind:category_uri="category_uri"
@@ -959,8 +959,8 @@ new Vue({
                         continue;       // Already handled it when first selected it
                     }
 
-                    let uri = this.item_array[i].entity_id;
-                    let class_name = this.item_array[i].class_name;
+                    let uri = this.item_array[i].metadata.entity_id;
+                    let class_name = this.item_array[i].metadata.class_name;
                     console.log(`        checking box in index position ${i} for Content Item with URI ${uri} from Class '${class_name}'`);
 
                     let checkbox_element_arr = this.$refs[uri];           // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
@@ -1201,17 +1201,25 @@ new Vue({
 
 
 
+        /**
+         * item: an element of this.item_array
+         * index: the position of the above element in its array
+         */
         cancel_edit(item, index)
         {
-            console.log(`Root module received signal to abort editing operation for item '${item.schema_code}' , Entity ID '${item.entity_id}', in index position ${index}`);
-            if (item.entity_id < 0)  {
-                // If we're aborting the edit of a new Content Item, delete it from the page
-                let located_index = this.locate_item(item.schema_code, item.entity_id);
+            console.log(`Root module received signal to abort editing operation for Content Item '${item.metadata.schema_code}' ,
+                         Entity ID '${item.metadata.entity_id}' of Class '${item.metadata.class_name}', in index position ${index}`);
+
+            if (item.metadata.entity_id < 0)  {
+                // If we're aborting the edit of a new Content Item (indicated, by our convention, by a negative Entity ID),
+                // delete it from the page
+                let located_index = this.locate_item(item.metadata.schema_code, item.metadata.entity_id);
                 if (located_index != index) {
-                    alert(`Mismatch of index position (${located_index} vs. ${index}) on page of the Content Item whose edit is to be canceled.  Refresh the page!`);
+                    alert(`Mismatch of index position (${located_index} vs. ${index}) on page of
+                           the Content Item whose edit is to be canceled.  Refresh the page!`);
                     return;
                 }
-                console.log(`Aborting the edit of a NEW Content Item, whose index position on the page is ${index}`);
+                console.log(`    the above is NEW Content Item.  Aborting its edit, by removing it from index position ${index} on the page`);
                 this.item_array.splice(index, 1);       // It modifies the array, to take out 1 element in position index
             }
         },
@@ -1688,29 +1696,29 @@ new Vue({
             const number_items = this.item_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if ((this.item_array[i].entity_id == uri)  &&  (this.item_array[i].class_name == class_name))
+                if ((this.item_array[i].metadata.entity_id == uri)  &&  (this.item_array[i].metadata.class_name == class_name))
                     return i;          //  Found it
             }
 
             return -1;    // Didn't find it
         },
 
-        locate_item(schema_code, uri)
+        locate_item(schema_code, entity_id)
         /*  TODO: maybe phase out in favor of locate_item_simplified()
             TODO: consider using Lodash library (https://lodash.com/docs/4.17.15#findIndex)
 
             Helper function, to locate the specified Content Item in the array of Content Items.
-            The item is identified by its schema_code and uri.  (Note: schema_code is redundant.)
+            The item is identified by its schema_code and entity_id.  (Note: schema_code is redundant.)
             If found, return its index in the array; otherwise, return -1
             (No check is done as to whether there might be more than one match; the first one is returned.)
          */
         {
-            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${uri}`);
+            //console.log(`Attempting to locate content item of type '${schema_code}' , id ${entity_id}`);
 
             const number_items = this.item_array.length;
 
             for (var i = 0; i < number_items; i++) {
-                if ((this.item_array[i].schema_code == schema_code)  &&  (this.item_array[i].entity_id == uri))
+                if ((this.item_array[i].metadata.schema_code == schema_code)  &&  (this.item_array[i].metadata.entity_id == entity_id))
                     return i;          //  Found it
             }
 
