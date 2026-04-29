@@ -464,11 +464,11 @@ Vue.component('vue-plugin-r',
             get_fields_from_server()
             // Initiate request to server, to get all the field and link names specified by the Schema for this Record
             {
-                console.log(`Looking up Schema info for a Content Item of type 'r', of Class '${item_metadata.class_name}'`);
+                console.log(`Looking up Schema info for a Content Item of type 'r', of Class '${this.item_metadata.class_name}'`);
 
                 // The following works whether it's a new record or an existing one (both possess a "class_name" attribute)
                 let url_server = "/BA/api/get_class_schema";
-                let post_obj = {class_name: item_metadata.class_name};
+                let post_obj = {class_name: this.item_metadata.class_name};
                 console.log(`About to contact the server at ${url_server}.  POST object:`);
                 console.log(post_obj);
                 ServerCommunication.contact_server_OLD(url_server,

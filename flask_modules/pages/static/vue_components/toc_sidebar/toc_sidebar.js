@@ -7,9 +7,15 @@ Vue.component('vue-toc-sidebar',
     {
         props: {
 
-            /*  Array containing item-data objects.  EXAMPLE:
-                        [{pos:0,"entity_id":"5",schema_code:"h",text:"GENERAL METHODS", class_name: "Header"},
-                         {pos:50,"entity_id":"8",schema_code:"i",caption:"some title",basename:"mypix",suffix:"png", class_name: "Image"}
+            /*  Array containing item-data objects that contains the keys `fields` and `metadata`.  EXAMPLE:
+                        [
+                            {fields: {text:"GENERAL METHODS",},
+                             metadata: {class_name: "Header", pos:0, entity_id:"5", schema_code:"h"}
+                            },
+
+                            {fields: {caption:"some title", basename:"mypix", suffix:"png"},
+                             metadata: {class_name: "Image", pos:50, entity_id:"8", schema_code:"i"}
+                            }
                         ]
              */
             content_array: {
@@ -58,49 +64,49 @@ Vue.component('vue-toc-sidebar',
 
                     <div class="page-toc">
                         <template v-for="item in content_array">
-                            <p v-if="item.schema_code == 'h'" class="header">
-                                <br><a v-bind:href="'#h_' + item.entity_id">{{item.text}}</a><br>
+                            <p v-if="item.metadata.schema_code == 'h'" class="header">
+                                <br><a v-bind:href="'#h_' + item.metadata.entity_id">{{item.fields.text}}</a><br>
                             </p>
 
                             <template v-if="expand_categories">
                                 <!-- Case-by-case, based on the type of Content Item -->
-                                <p v-if="item.schema_code == 'cd'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.name">{{item.name}}</a>
+                                <p v-if="item.metadata.schema_code == 'cd'">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.metadata.schema_code + '_' + item.metadata.entity_id" v-bind:title="item.fields.name">{{item.fields.name}}</a>
                                     <br>
                                 </p>
 
-                                <p v-else-if="item.schema_code == 'i'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.caption">{{item.caption}}</a>
+                                <p v-else-if="item.metadata.schema_code == 'i'">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.metadata.schema_code + '_' + item.metadata.entity_id" v-bind:title="item.fields.caption">{{item.fields.caption}}</a>
                                     <img src='/BA/pages/static/graphics/image_14_1814111.png' title="image" alt="image">
                                     <br>
                                 </p>
 
-                                <p v-else-if="item.schema_code == 'd'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.caption">{{item.caption}}</a>
+                                <p v-else-if="item.metadata.schema_code == 'd'">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.metadata.schema_code + '_' + item.metadata.entity_id" v-bind:title="item.fields.caption">{{item.fields.caption}}</a>
                                     <img src='/BA/pages/static/graphics/document_14_2124302.png' title="document" alt="document">
                                     <br>
                                 </p>
 
-                                <p v-else-if="item.schema_code == 'n' && item.title">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.caption">{{item.title}}</a>
+                                <p v-else-if="item.metadata.schema_code == 'n' && item.fields.title">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.metadata.schema_code + '_' + item.metadata.entity_id" v-bind:title="item.fields.caption">{{item.fields.title}}</a>
                                     <br>
                                 </p>
 
-                                <p v-else-if="item.schema_code == 'rs' && item.class">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.caption">{{item.class}}</a>
+                                <p v-else-if="item.metadata.schema_code == 'rs' && item.fields.class">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.metadata.schema_code + '_' + item.metadata.entity_id" v-bind:title="item.fields.caption">{{item.fields.class}}</a>
                                     <img src='/BA/pages/static/graphics/tabular_16_9040670.png' title="recordset" alt="recordset">
                                     <br>
                                 </p>
 
-                                <p v-else-if="item.schema_code == 'sl' && item.name">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" title="Bookmark (site link)">{{item.name}}</a>
+                                <p v-else-if="item.metadata.schema_code == 'sl' && item.fields.name">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.metadata.schema_code + '_' + item.metadata.entity_id" title="Bookmark (site link)">{{item.fields.name}}</a>
                                     <img src='/BA/pages/static/graphics/16_bookmark_1904655.png' title="bookmark" alt="bookmark">
                                     <br>
                                 </p>
 
-                                <p v-else-if="item.schema_code != 'h'">&nbsp; &diams;
-                                    <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id">
-                                        {{item.class_name}}
+                                <p v-else-if="item.metadata.schema_code != 'h'">&nbsp; &diams;
+                                    <a v-bind:href="'#' + item.metadata.schema_code + '_' + item.metadata.entity_id">
+                                        {{item.metadata.class_name}}
                                     </a>
                                     <img src='/BA/pages/static/graphics/13_database_record.png'>
                                 </p>

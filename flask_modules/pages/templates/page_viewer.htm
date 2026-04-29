@@ -144,7 +144,7 @@
      **************************************************************** -->
 
 <vue-toc-sidebar
-    v-bind:item_array="item_array"
+    v-bind:content_array="item_array"
     v-bind:show_left_sidebar="show_left_sidebar"
 
     v-on:adjust-left-sidebar="adjust_left_sidebar($event)"
@@ -324,9 +324,8 @@
     <vue-content-items
         v-bind:key="item.schema_code + '_' + item.entity_id + '_' + index"
 
-        v-bind:item="item"
-        v-bind:item_fields="item_array[index].fields"
-        v-bind:item_metadata="item_array[index].metadata"
+        v-bind:item_fields="item.fields"
+        v-bind:item_metadata="item.metadata"
 
         v-bind:expose_controls="expose_controls"
         v-bind:category_uri="category_uri"
@@ -1291,7 +1290,7 @@ new Vue({
         {
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
 
-            // Assemble the data for a new Content Item.  Using a negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
+            // Assemble the data for a new Content Item
             let blank_record =
                 {
                     fields:     {},
@@ -1302,10 +1301,11 @@ new Vue({
                 };  // It's a new record; so, only metadata is present
 
             console.log("blank_record:");
-            console.log(blank_record);
+            console.log(structuredClone(blank_record));      // Log a frozen deep snapshot of the object
 
 
             this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
+                                                    // Using a negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
 
             this.item_array.push(blank_record);     // Insert a new blank Item at the end of the page's Content Items
 

@@ -90,7 +90,7 @@ Vue.component('vue-plugin-cd',
 
                 // This object contains the values bound to the editing fields, cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: Object.assign({}, this.item_fields)),
+                current_data: Object.assign({}, this.item_fields),
 
                 // Clone, used to restore the data in case of an edit Cancel or failed save
                 original_data: Object.assign({}, this.item_fields),
