@@ -66,8 +66,8 @@ def test_link_to_collection_at_end(db):
     GraphSchema.create_data_node(class_name="Photo",
                                  properties ={"caption": "Dancers at Carnaval"}, new_entity_id=carnaval_photo_uri)
 
-    Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
-                                          collection_uri=brazil_album_uri,
+    Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=carnaval_photo_uri,
+                                          collection_class_name="Photo Album", collection_entity_id=brazil_album_uri,
                                           membership_link_name="in_album")
 
     # Verify that the "Dancers at Carnaval" photo is linked to the "Brazil vacation", with position 0
@@ -87,8 +87,8 @@ def test_link_to_collection_at_end(db):
     GraphSchema.create_data_node(class_name="Photo",
                                  properties ={"caption": "canoeing on the Amazon"}, new_entity_id=canoe_photo_uri)
 
-    Collections.link_to_collection_at_end(item_uri=canoe_photo_uri,
-                                          collection_uri=brazil_album_uri,
+    Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=canoe_photo_uri,
+                                          collection_class_name="Photo Album", collection_entity_id=brazil_album_uri,
                                           membership_link_name="in_album")
 
     # Repeat the earlier check for the 1st photo
@@ -152,8 +152,8 @@ def test_relocate_to_other_collection_at_end(db):
     GraphSchema.create_data_node(class_name="Photo",
                                  properties ={"caption": "Dancers at Carnaval"}, new_entity_id=carnaval_photo_uri)
 
-    Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
-                                          collection_uri=jamaica_uri,
+    Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=carnaval_photo_uri,
+                                          collection_class_name="Photo Album", collection_entity_id=jamaica_uri,
                                           membership_link_name="in_album")
 
 
@@ -214,10 +214,12 @@ def test_relocate_to_other_collection_at_end(db):
     GraphSchema.create_data_node(class_name="Photo",
                                  properties ={"caption": "At the resort in Jamaica"}, new_entity_id=resort_photo_uri)
 
-    Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
+    Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=landing_photo_uri,
+                                          collection_class_name="Photo Album", collection_entity_id=brazil_uri,
                                           membership_link_name="in_album")
 
-    Collections.link_to_collection_at_end(item_uri=resort_photo_uri, collection_uri=brazil_uri,
+    Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=resort_photo_uri,
+                                          collection_class_name="Photo Album", collection_entity_id=brazil_uri,
                                           membership_link_name="in_album")
 
     # At this point we have 3 photos ("Collection Items") - all of them in the Brazil album
@@ -271,8 +273,8 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     GraphSchema.create_data_node(class_name="Photo",
                                  properties ={"caption": "Dancers at Carnaval"}, new_entity_id=carnaval_photo_uri)
 
-    Collections.link_to_collection_at_end(item_uri=carnaval_photo_uri,
-                                          collection_uri=jamaica_uri,
+    Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=carnaval_photo_uri,
+                                          collection_class_name="Photo Album", collection_entity_id=jamaica_uri,
                                           membership_link_name="in_album")
 
 
@@ -336,10 +338,12 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     GraphSchema.create_data_node(class_name="Photo",
                                  properties ={"caption": "At the resort in Jamaica"}, new_entity_id=resort_photo_uri)
 
-    Collections.link_to_collection_at_end(item_uri=landing_photo_uri, collection_uri=brazil_uri,
+    Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=landing_photo_uri,
+                                          collection_class_name="Photo Album", collection_entity_id=brazil_uri,
                                           membership_link_name="in_album")
 
-    Collections.link_to_collection_at_end(item_uri=resort_photo_uri, collection_uri=brazil_uri,
+    Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=resort_photo_uri,
+                                          collection_class_name="Photo Album", collection_entity_id=brazil_uri,
                                           membership_link_name="in_album")
 
     # At this point we have 3 photos ("Collection Items") - all of them in the Brazil album
@@ -376,7 +380,8 @@ def test_bulk_relocate_to_other_collection_at_end(db):
         all_photo_uris[i] = photo_uri
         GraphSchema.create_data_node(class_name="Photo",
                                      properties ={"caption": f"photo_{i}"}, new_entity_id=photo_uri)
-        Collections.link_to_collection_at_end(item_uri=photo_uri, collection_uri=brazil_uri,
+        Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=photo_uri,
+                                              collection_class_name="Photo Album", collection_entity_id=brazil_uri,
                                               membership_link_name="in_album")
 
     #print("**************", all_photo_uris)

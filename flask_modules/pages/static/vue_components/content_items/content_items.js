@@ -16,16 +16,26 @@
 
 Vue.component('vue-content-items',
     {
-        props: ['item', 'expose_controls', 'category_uri', 'index', 'item_count',
+        props: ['item_fields', 'item_metadata',
+                'expose_controls', 'category_uri', 'index', 'item_count',
                 'registered_plugins', 'records_types', 'schema_data', 'all_categories'],
-        /*  item:           EXAMPLE: {entity_id:"52", pos:10, schema_code:"h", text:"MY NEW SECTION", class_name: "Header"}
+        /*  item_fields:    An object with the editable properties of this Content Item.
+                                EXAMPLE (for a Document):
+                                        {"basename": "test", "suffix": "pdf",
+                                         "caption": "My first document", "url": "https://arxiv.org/pdf/2402.09090"}
 
-                            If this is a a newly-created Content Item, not yet registered with the server,
-                            then the `entity_id` will be a negative number,
-                            and there will be additional fields such as `insert_after_uri` and `insert_after_class`
-                            EXAMPLE: {entity_id: -2, insert_after_uri: "i-123", "insert_after_class": "Image"}
-
-                            TODO: Rename to item_data
+            item_metadata:  An object with the metadata of this Content item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE for existing Document item:
+                                        {"class_name":"Document",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809",
+                                        "schema_code": "d",
+                                        "internal_id": 123
+                                        }
 
             expose_controls:    Flag indicating whether in edit mode
             category_uri:       A string indicating which Category-viewer page is using this component
@@ -38,6 +48,7 @@ Vue.component('vue-content-items',
             schema_data:        Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
                                     EXAMPLE: ["French", "English", "notes"]
             all_categories:     A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
+                                    NOTE: not always present.  Only used in editing and bulk-editing modes
                                     EXAMPLE:
                                       [{"entity_id": "1", "name": "HOME"},
                                        {"entity_id": "523", "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]
@@ -50,7 +61,7 @@ Vue.component('vue-content-items',
             <!-- Outer container, serving as Vue-required template root -->
             <div v-bind:class="{'highlight': highlight, 'content-item': !use_separate_line, 'content-item-separate-line': use_separate_line}">
 
-            <a v-bind:name="item.schema_code + '_' + item.entity_id"></a>  <!-- Anchor for page scrolling -->
+            <a v-bind:name="item_metadata.schema_code + '_' + item_metadata.entity_id"></a>  <!-- Anchor for page scrolling -->
             <!--
                  The line with "v-bind:is" dynamically dispatches to the appropriate specialized component.
 
@@ -63,9 +74,11 @@ Vue.component('vue-content-items',
                     v-on:edit-tags
             -->
             <component
-                v-bind:is="plugin_component_name(item, registered_plugins)"
+                v-bind:is="plugin_component_name()"
 
-                v-bind:item_data="item"
+                v-bind:item_fields="item_fields"
+                v-bind:item_metadata="item_metadata"
+
                 v-bind:edit_mode="expose_controls"
                 v-bind:category_id="category_uri"
                 v-bind:index="index"
@@ -74,14 +87,14 @@ Vue.component('vue-content-items',
 
                 v-on="$listeners"
 
-                v-on:delete-content-item="highlight_item(item)"
+                v-on:delete-content-item="highlight_item()"
                 v-on:add-content="add_content_below"
                 v-on:edit-tags="edit_tags"
             >
             </component>
 
             <p v-if="show_button" class="confirm-question">Confirm DELETE
-                <br><span style="font-size:18px">(item entity_id '{{item.entity_id}}' of Class '{{item.class_name}}')</span>?
+                <br><span style="font-size:18px">(item entity_id '{{item_metadata.entity_id}}' of Class '{{item_metadata.class_name}}')</span>?
                 <button button @click="confirm_delete" class='confirm-button'>OK</button>
                 <button button @click="cancel_delete" class='cancel-button'>Cancel</button>
             </p>
@@ -121,13 +134,13 @@ Vue.component('vue-content-items',
                     The "id" and the "class" attributes of the FORM element below
                     are meant for use by the JS package "Dropzone" -->
                 <form  class='dropzone'
-                       v-bind:id="'myDropzone_' + item.entity_id"
+                       v-bind:id="'myDropzone_' + item_metadata.entity_id"
                        action='/BA/api/upload_media'
                        style='padding-top:5px; margin-bottom:8px'
                 >
                     <input v-bind:value="category_uri" type='hidden' name='category_id'>
-                    <input v-bind:value="item.entity_id" type='hidden' name='insert_after_uri'>
-                    <input v-bind:value="item.class_name" type='hidden' name='insert_after_class'>
+                    <input v-bind:value="item_metadata.entity_id" type='hidden' name='insert_after_uri'>
+                    <input v-bind:value="item_metadata.class_name" type='hidden' name='insert_after_class'>
                 </form>
 
 
@@ -196,7 +209,7 @@ Vue.component('vue-content-items',
                 tag_edit_box: false,    // Whether to display a box used to edit the Category tags of this Content Item
 
                 highlight: false,       // Whether to highlight this Content Item (e.g. prior to deleting it)
-                show_button: false,
+                show_button: false,     // Whether to display the "Confirm DELETE" button
                 insert_box: false,      // Whether to display, at the bottom, a box used to insert a new Content Item below this one
 
                 categories_linked_to: [],   // Array of objects representing Categories to which this Content Item is attached to;
@@ -236,9 +249,9 @@ Vue.component('vue-content-items',
                 // TODO: make more general; store the "separate_line" flag in the Schema Class nodes
                 //       Currently, we're covering some specific class, and the general "records" (which
                 //       lack registered plugins)
-                return (this.item.class_name == "Header") || (this.item.class_name == "Site Link")
-                            || (this.item.class_name == "Recordset")
-                            || !this.registered_plugins.includes(this.item.schema_code);
+                return (this.item_metadata.class_name == "Header") || (this.item_metadata.class_name == "Site Link")
+                            || (this.item_metadata.class_name == "Recordset")
+                            || !this.registered_plugins.includes(this.item_metadata.schema_code);
             }
         },
 
@@ -254,7 +267,7 @@ Vue.component('vue-content-items',
              */
             {
                 console.log(`About to dynamically create a 'Dropzone' object, `
-                            + `immediately below Content Item entity_id '${this.item.entity_id}' of Class '${this.item.class_name}'`);
+                            + `immediately below Content Item entity_id '${this.item_metadata.entity_id}' of Class '${this.item_metadata.class_name}'`);
 
                 // Note that the ID of the Dropzone FORM element makes reference to the PREVIOUS Content Item; this ID is not actually used, but should be unique
                 // (if attempting to create it a second time, for example by closing and re-opening the add-content box,
@@ -264,7 +277,7 @@ Vue.component('vue-content-items',
                 //this.dropzone_id = "form#myDropzone_" + uuid;
                 //const dropzone_form_id = this.dropzone_id;
 
-                const dropzone_form_id = "myDropzone_" + this.item.entity_id;     // EXAMPLE: "myDropzone_h-86"   TODO: this ID might not be unique on a page; the entity_id might contain blanks
+                const dropzone_form_id = "myDropzone_" + this.item_metadata.entity_id;     // EXAMPLE: "myDropzone_h-86"   TODO: this ID might not be unique on a page; the entity_id might contain blanks
                                                                             // MUST match the value in the "v-bind:id" variable in form definition
                                                                             // TODO: try to switch to the Internal Database ID instead
 
@@ -376,7 +389,7 @@ Vue.component('vue-content-items',
             add_content_below()
             // Expose a box below the Item, to let the user enter a new Content Item
             {
-                console.log(`'vue-content-items' component received Event 'add-content'. Showing the box for adding new content below Item with entity_id: '${this.item.entity_id}' and Class '${this.item.class_name}'`);
+                console.log(`'vue-content-items' component received Event 'add-content'. Showing the box for adding new content below Item with entity_id: '${this.item_metadata.entity_id}' and Class '${this.item_metadata.class_name}'`);
                 this.insert_box = true;
                 this.insert_dropzone_element();
             },
@@ -385,7 +398,7 @@ Vue.component('vue-content-items',
             edit_tags()
             // Expose a box below the Item, to let the user view/add/remove Category tags for this Content Item
             {
-                console.log(`'vue-content-items' component received Event 'edit-tags'.  Showing editing box for the tags of Item with entity_id: ${this.item.entity_id}`);
+                console.log(`'vue-content-items' component received Event 'edit-tags'.  Showing editing box for the tags of Item with entity_id: ${this.item_metadata.entity_id}`);
                 //console.log(this.item);
                 this.tag_edit_box = true;
                 this.populate_category_links();     // Query the server, if needed
@@ -397,7 +410,7 @@ Vue.component('vue-content-items',
             {
                 const category_uri = this.category_to_add.entity_id;
                 const category_name = this.category_to_add.name;
-                const item_uri = this.item.entity_id;
+                const item_uri = this.item_metadata.entity_id;
 
                 //console.log(`add_tag(): requesting server to tag Item '${item_uri}' with Category '${category_name}' (entity_id '${category_uri}')`);
                 const url_server_api = `/BA/api/link_content_at_end/${category_uri}/${item_uri}`;
@@ -439,9 +452,9 @@ Vue.component('vue-content-items',
             untag_category(category_uri, category_name)
             // Detach the current Content Item from the specified Category
             {
-                const item_internal_id = this.item.internal_id;
+                const item_internal_id = this.item_metadata.internal_id;
 
-                console.log(`Untag Item (internal_id {$internal_id} , entity_id ${this.item.entity_id} of Class ${this.item.class_name}) from Category '${category_name}' (entity_id '${category_uri}')`);
+                console.log(`Untag Item (internal_id {$internal_id} , entity_id ${this.item_metadata.entity_id} of Class ${this.item_metadata.class_name}) from Category '${category_name}' (entity_id '${category_uri}')`);
 
                 // Send the request to the server, using a GET
                 const url_server_api = `/BA/api/detach_from_category/${category_uri}/${item_internal_id}`;
@@ -500,7 +513,7 @@ Vue.component('vue-content-items',
                 */
 
                 // Send the request to the server, using a GET
-                const url_server_api = `/BA/api/get_categories_linked_to/${this.item.entity_id}`;
+                const url_server_api = `/BA/api/get_categories_linked_to/${this.item_metadata.entity_id}`;
                 console.log(`About to contact the server at ${url_server_api}`);
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -540,7 +553,7 @@ Vue.component('vue-content-items',
             {
                 // Send a signal to the parent (the Category Page) to insert a new blank item of the specified type, below this one
                 console.log(`In 'vue-content-items' component, add_new_item_below().`);
-                console.log(`    Request to insert new Content Item below the Item with entity_id '${this.item.entity_id}' and class name '${this.item.class_name}'`);
+                console.log(`    Request to insert new Content Item below the Item with entity_id '${this.item_metadata.entity_id}' and class name '${this.item_metadata.class_name}'`);
                 console.log(`    New item - schema_code: '${schema_code}', class_name: '${class_name}'`);
                 console.log("    `vue-content-items` component is sending 'insert-new-item-after' signal to its parent");
 
@@ -561,9 +574,10 @@ Vue.component('vue-content-items',
             confirm_delete()
             // Invoked when the user clicks on the "Confirm DELETE" button
             {
+                // TODO: stop intercepting, and changing the name, of this signal: let the ancestor component catch it
                 // Send a signal to the Vue root component
                 console.log("Confirming delete");
-                console.log("    `vue-content-items` component is sending 'delete-content-item-highlighted' signal to its parent");
+                console.log("    `vue-content-items` component is sending a 'delete-content-item-highlighted' SIGNAL to its parent");
                 this.$emit('delete-content-item-highlighted');
             },
 
@@ -576,31 +590,33 @@ Vue.component('vue-content-items',
             },
 
 
-            highlight_item(item)
+            /**
+             * Enable the highlighting of the Content Item meant to be deleted,
+             * and the display of the "Confirm DELETE" button
+             */
+            highlight_item()
             {
-                console.log(`'vue-content-items' component received Event 'delete-content-item'`);
+                console.log(`'vue-content-items' component received SIGNAL 'delete-content-item'`);
                 this.highlight = true;
                 this.show_button = true;
             },
 
 
-            plugin_component_name(item, registered_plugins)
+            plugin_component_name()
             /* This is where the DISPATCHING (to specialized Vue components) gets set up.
                Compose and return the name of the plugin-provided
-               Vue component to handle the given item (based on its type, stored in item.schema_code)
+               Vue component to handle the given item (based on its type, stored in item_metadata.schema_code)
 
                IMPORTANT: if no handler is registered, default to the generic "r" (general records) handler
 
                TODO: the "schema_code" attribute ought to give way to "handler"
                      (which is stored on the Class nodes, not on the Data nodes)
 
-               :param item:                 An object representing a Content Item
-               :param registered_plugins:   A list of item codes for which a plugin exists
                :return:                     A string.   EXAMPLE:  "vue-plugin-n"
              */
             {
-                if (registered_plugins.includes(item.schema_code))
-                    return "vue-plugin-" + item.schema_code;
+                if (this.registered_plugins.includes(this.item_metadata.schema_code))
+                    return "vue-plugin-" + this.item_metadata.schema_code;
                 else
                     return "vue-plugin-r";      // Default to the generic "r" (general records) handler
             }

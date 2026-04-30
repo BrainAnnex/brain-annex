@@ -12,6 +12,7 @@ from app_libraries.PLUGINS.documents import Documents
 from app_libraries.PLUGINS import plugin_support
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories, PyGraphVisual
+from ariadne import QueryType, make_executable_schema, graphql_sync
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
@@ -66,6 +67,44 @@ class ApiRouting:
     #            curl http://localhost:5000/BA/api/add_item_to_category -d "class_name=Image&category_uri=60"
 
     # TODO: provide support for API_KEY (or API_TOKEN) authentication
+
+
+    # --- Define schema (SDL) ---   TODO: test of GraphQL
+    type_defs = """
+        type Person {
+            name: String!
+        }
+    
+        type DatabaseLabel {
+            name: String!
+        }
+        
+        type Query {
+            people: [Person!]!
+
+            labels: [DatabaseLabel!]!
+        }
+    """
+
+    # --- Resolver binding ---
+    query = QueryType()
+
+    @query.field("people")
+    def resolve_people(_, info):
+        # Call the existing data layer
+        data = [{"name": "Robert"}, {"name": "Julian"}]
+        return data  # expects list of dicts like {"name": ...}
+
+    @query.field("labels")
+    def resolve_labels(_, info):
+        # Call the existing data layer
+        label_list = GraphSchema.db.get_labels()
+        data = [{"name": label} for label in label_list]
+        return data  # expects list of dicts like {"name": ...}
+
+
+    # --- Build schema ---
+    schema = make_executable_schema(type_defs, query)
 
 
 
@@ -383,6 +422,22 @@ class ApiRouting:
         def ________SCHEMA_READ________(DIVIDER):
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
+
+
+        @bp.route("/graphql", methods=["POST"])
+        def graphql_server():
+            payload = request.get_json()
+
+            success, result = graphql_sync(
+                cls.schema,
+                payload,
+                context_value={"request": request},  # optional but useful
+                debug=True
+            )
+
+            status_code = 200 if success else 400
+            return jsonify(result), status_code
+
 
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
@@ -1914,7 +1969,7 @@ class ApiRouting:
 
         @bp.route('/link_content_at_end/<category_uri>/<item_uri>')
         @login_required
-        def link_content_at_end(category_uri, item_uri):
+        def link_content_at_end_api(category_uri, item_uri):
             """
             Link an existing Content Item at the end of an existing Category
 
@@ -1928,7 +1983,7 @@ class ApiRouting:
             """
             # TODO: maybe switch to a query string, to avoid errors in order of arguments
             try:
-                Categories.link_content_at_end(category_uri=category_uri, item_uri=item_uri)
+                Categories.link_content_at_end(category_entity_id=category_uri, item_entity_id=item_uri)
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
                 err_details = f"Unable to attach Content Item (URI '{item_uri}') to the end of Category (URI '{category_uri}') .  " \

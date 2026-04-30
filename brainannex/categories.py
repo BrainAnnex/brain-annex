@@ -924,7 +924,97 @@ class Categories:
     def get_content_items_by_category(cls, entity_id :str) -> [dict]:
         """
         Return the records for all nodes linked
-        to the Category node identified by its uri value
+        to the Category node identified by its Entity ID value
+
+        :param entity_id:   A string identifying the desired Category
+        :return:            A list of dictionaries, whose entries are dictionaries of the form
+                                { "fields": {...} , "metadata": {...} }
+
+                            EXAMPLE:
+                                [
+                                    {   "fields":   {'width': 450, 'basename': 'my_pic', 'suffix': 'PNG'} ,
+                                        "metadata": {'schema_code': 'i', 'entity_id': '1', pos: 0, 'class_name': 'Image', 'date_created': '2-18-2026'}
+                                    },
+                                    {   "fields":   {'text': 'Overview'} ,
+                                        "metadata": {'schema_code': 'h', 'entity_id': '1', pos: 10, 'class_name': 'Header'}
+                                    },
+                                    {   "fields":   {'basename': 'overview', 'suffix': 'htm'} ,
+                                        "metadata": {'schema_code': 'n', 'entity_id': '1', pos: 20, 'class_name': 'Note'}
+                                    },
+                                    {   "fields":   {'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'} ,
+                                        "metadata": {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'entity_id': '6965', 'pos': 86}
+                                    }
+                                ]
+        """
+
+        # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
+        # TODO: switch to using one of the Collections methods
+
+        q = '''
+            MATCH (n) -[r :BA_in_category]-> (:Category {entity_id: $category_id}),
+            (cl :CLASS)
+            WHERE cl.name = n.`_CLASS`
+            RETURN n, 
+                   r.pos AS pos, 
+                   cl.name AS class_name, 
+                   cl.handler AS class_handler, 
+                   cl.code AS schema_code, 
+                   id(n) AS internal_id
+            ORDER BY r.pos
+            '''
+
+        # TODO: `schema_code` is being phased out in favor of the new class_handler
+
+        result = cls.db.query(q, data_binding={"category_id": entity_id})
+        #cls.db.debug_query_print(q, data_binding={"category_id": entity_id})
+
+
+        content_item_list = []
+        for elem in result:
+            item_fields = elem["n"]                 # A dictionary with the various (potentially editable) data fields
+            item_metadata = {}
+
+            del item_fields["_CLASS"]               # This value is being placed in the metadata section
+
+            if "date_created" in item_fields:       # TODO: this is a hack, to clean up!
+                del item_fields["date_created"]     #       Datetime objects aren't serializable and lead to Flask errors
+                                                    # TODO: let GraphAccess handle the conversion to string
+                                                    # TODO: utilize a "type" attribute in the Schema Property node,
+                                                    #       to inform of the "datetime" data type
+                                                    # TODO: a value such as this should be taken out of "fields" and moved to "metadata"
+
+            if "entity_id" in item_fields:
+                # Relocate from data field to metadata
+                item_metadata["entity_id"] = item_fields["entity_id"]
+                del item_fields["entity_id"]
+
+            item_metadata["pos"] = elem["pos"]                  # Inject into the record a positional value
+            item_metadata["class_name"] = elem["class_name"]    # Inject into the record the name of its Class
+            item_metadata["internal_id"] = elem["internal_id"]  # Inject into the record the internal node ID
+
+            if elem.get("class_handler"):
+                item_metadata["class_handler"] = elem["class_handler"]  # Inject into the record the handler of its Class (not always present)
+
+            if elem.get("schema_code"):
+                item_metadata["schema_code"] = elem["schema_code"]      # Inject into the "schema_code" (not always present)
+                                                                        # TODO: temp, during phaseout of "schema_code" in favor of "class_handler"
+            #if ("schema_code" in elem) and (elem["schema_code"]) and ("schema_code" not in item_record):
+                #item_record["schema_code"] = elem["schema_code"]
+
+            content_item_list.append({"fields": item_fields , "metadata": item_metadata})
+
+
+        #print(f"****** content_item_list: ", content_item_list)
+
+        return content_item_list
+
+
+
+    @classmethod
+    def get_content_items_by_category_OLD(cls, entity_id :str) -> [dict]:
+        """
+        Return the records for all nodes linked
+        to the Category node identified by its Entity ID value
 
         :param entity_id:   A string identifying the desired Category
         :return:            A list of dictionaries
@@ -961,7 +1051,8 @@ class Categories:
             # TODO: eliminate possible conflict if the node happens to have
             #       attributes named "pos" or "class_name"!
             #       Ought to return elements that are dictionaries such as:
-            #           {"pos": 15, "class_name": "Recordset", "class_handler": "recordsets", data: {}}
+            #           {"pos": 15, "class_name": "Recordset", "class_handler": "recordsets", "properties": {...}}
+            #           OR: {"metadata": {...}, "properties": {...}}
 
             item_record["pos"] = elem["pos"]                # Inject into the record a positional value
             item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
@@ -1035,21 +1126,26 @@ class Categories:
 
 
     @classmethod
-    def link_content_at_end(cls, category_uri :str, item_uri :str) -> None:
+    def link_content_at_end(cls, category_entity_id :str, item_class_name:str, item_entity_id :str) -> None:
         """
         Given an EXISTING data node, link it to the end of the specified Category.
         If a link to that Category already exists, an Exception is raised.
 
-        :param category_uri:String to identify an existing Category
-        :param item_uri:    String to identify an existing Content Item
-        :return:            None
+        :param category_entity_id:  String to identify an existing Category
+        :param item_class_name:     Schema Class of the Content Item of interest
+        :param item_entity_id:      String to identify an existing Content Item, within its Class
+        :return:                    None
         """
-        #TODO: verify that the item_uri is not referring to a Category!
-        #      More generally, verify that its Class has a "BA_in_category" to
+        assert item_class_name != "Category", \
+            f"link_content_at_end(): Cannot treat a Category " \
+            f"(item_entity_id: '{item_entity_id}') as a Content Item " \
+            f"to link to another Category (category_entity_id: '{category_entity_id}')"
+        #TODO: More generally, verify that its Class has a "BA_in_category" to
         #      the "Category" Class; this ought to be enforced by link_to_collection_at_end()
 
         # Link the Content Item to the end of the Category
-        Collections.link_to_collection_at_end(item_uri=item_uri, collection_uri=category_uri,
+        Collections.link_to_collection_at_end(item_class_name=item_class_name, item_entity_id=item_entity_id,
+                                              collection_class_name="Category", collection_entity_id=category_entity_id,
                                               membership_link_name="BA_in_category")
 
 
@@ -1071,6 +1167,7 @@ class Categories:
         :param namespace:       Only applicable if new_uri is None : the namespace to use for automatically generating a URI
         :return:                The "entity_id" (passed or created) of the newly-created data node
         """
+        # TODO: maybe also return the internal database ID of the newly-created node
         if new_uri is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
@@ -1086,7 +1183,7 @@ class Categories:
 
         #print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_uri = '{new_uri}'")
 
-        cls.link_content_at_end(category_uri=category_uri, item_uri=new_uri)
+        cls.link_content_at_end(category_entity_id=category_uri, item_entity_id=new_uri, item_class_name=item_class_name)
 
         return new_uri
 

@@ -208,7 +208,9 @@ class Collections:
 
 
     @classmethod
-    def link_to_collection_at_end(cls, item_uri :str, collection_uri :str, membership_link_name :str) -> None:
+    def link_to_collection_at_end(cls, item_class_name:str, item_entity_id :str,
+                                  collection_class_name :str, collection_entity_id :str,
+                                  membership_link_name :str) -> None:
         """
         Given an existing Data Node (regarded as a "Collection Item"),
         link it to the end of the specified Collection data node,
@@ -218,9 +220,12 @@ class Collections:
 
         Note: a database lock is used to deal with multiple concurrent calls.
 
-        :param item_uri:            The entity_id of an existing Data Node representing a "Collection Item"
+        :param item_class_name:     Schema Class of an existing Data Node representing a "Collection Item"
                                         (for example, a "photo in an album" or a "content item in a category page")
-        :param collection_uri:      The entity_id of an existing Collection Data Node
+        :param item_entity_id:      The entity_id of an existing Data Node representing a "Collection Item"
+
+        :param collection_class_name:Schema Class of an existing Data Node representing a "Collection"
+        :param collection_entity_id:The entity_id of an existing Collection Data Node
                                         (for example, a "photo album" or "category page")
         :param membership_link_name:The name to give to the new relationship to be created
                                         in the direction from the "Collection Item" to the Collection node
@@ -231,14 +236,14 @@ class Collections:
         #       use GraphSchema.class_relationship_exists()
 
         # TODO: validate more thoroughly the entity_id's
-        assert item_uri, \
-            "link_to_collection_at_end(): Missing `item_uri` argument"
+        assert item_entity_id, \
+            "link_to_collection_at_end(): Missing argument `item_entity_id`"
 
-        assert collection_uri, \
-            "link_to_collection_at_end(): Missing `collection_uri` argument"
+        assert collection_entity_id, \
+            "link_to_collection_at_end(): Missing argument `collection_entity_id`"
 
         assert membership_link_name, \
-            "link_to_collection_at_end(): Missing `item_uri` membership_rel_name"
+            "link_to_collection_at_end(): Missing argument `membership_rel_name`"
 
         # Database update, with a DATA LOCK to protect against multiple concurrent calls,
         # that locates the next-available "pos" number, and creates a relationship using it.
@@ -247,8 +252,10 @@ class Collections:
         # https://neo4j.com/docs/operations-manual/5/database-internals/concurrent-data-access/#transactions-isolation-lostupdates
         # The "OPTIONAL MATCH" is used to compute a new positional value
         q = f'''
-            MATCH (ci), (collection) 
-            WHERE ci.entity_id = $item_uri 
+            MATCH (ci :`{item_class_name}`), (collection :`{collection_class_name}`) 
+            WHERE ci._CLASS = $item_class_name
+              AND ci.entity_id = $item_entity_id 
+              AND collection._CLASS = $collection_class_name
               AND collection.entity_id = $collection_uri
               AND NOT ( (ci) -[:`{membership_link_name}`]-> (collection) )
             SET collection._LOCK_ = true
@@ -278,7 +285,8 @@ class Collections:
                 END AS new_pos, collection, ci
         '''
 
-        data_binding={"collection_uri": collection_uri, "item_uri": item_uri}
+        data_binding={"item_class_name": item_class_name, "item_entity_id": item_entity_id,
+                      "collection_class_name": collection_class_name, "collection_uri": collection_entity_id}
 
         #cls.db.debug_query_print(q, data_binding=data_binding)
 
@@ -286,15 +294,18 @@ class Collections:
         #print("link_to_collection_at_end(): status is ", status)
         # status should be contain {'relationships_created': 1, 'properties_set': 3}
 
+        assert status.get('relationships_created') == 1, \
+            f"link_to_collection_at_end(): failed to create a new link " \
+            f"from the given Content Item (item_class_name: '{item_class_name}', item_entity_id: '{item_entity_id}') " \
+            f"to the specified Collection (collection_class_name: '{collection_class_name}', collection_entity_id: '{collection_entity_id}'). " \
+            f"Try verifying that both nodes exist"
+
         # NOTE: the 3 derives from the "pos" attribute set on the newly-created link,
         #       plus the 2 temp properties set and cleared for the lock
         assert status.get('properties_set') == 3, \
-            f"link_to_collection_at_end(): failed to set the positional value to the new link " \
-            f"to the Collection with URI '{collection_uri}'"
-
-        assert status.get('relationships_created') == 1, \
-            f"link_to_collection_at_end(): failed to create a new link " \
-            f"to a Collection with URI '{collection_uri}'"
+            f"link_to_collection_at_end(): failed to set the positional value of the new link " \
+            f"from the given Content Item (item_entity_id: '{item_entity_id}') " \
+            f"to the specified Collection (collection_entity_id: '{collection_entity_id}'). "
 
 
 

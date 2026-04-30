@@ -80,25 +80,25 @@ Vue.component('vue-controls',
 
             add_content_below() {
                 // Note: this signal will get intercepted by the `vue-content-items` ancestor component
-                console.log("`vue-controls` component is sending an 'add-content' signal to its parent");
+                console.log("`vue-controls` component is sending an 'add-content' SIGNAL to its parent");
                 this.$emit('add-content');
             },
 
             delete_item() {
                 // Note: this signal will get intercepted by any listening ancestor component
-                console.log("`vue-controls` component is sending a 'delete-content-item' signal to its parent");
+                console.log("`vue-controls` component is sending a 'delete-content-item' SIGNAL to its parent");
                 this.$emit('delete-content-item');
             },
 
             move_up() {
                 // Note: this signal gets ultimately intercepted by the GRAND-parent component
-                console.log("`vue-controls` component is sending a 'move-up-content-item' signal to its parent");
+                console.log("`vue-controls` component is sending a 'move-up-content-item' SIGNAL to its parent");
                 this.$emit('move-up-content-item');
             },
 
             move_down() {
                 // Note: this signal gets ultimately intercepted by the GRAND-parent component
-                console.log("`vue-controls` component is sending a 'move-down-content-item' signal to its parent");
+                console.log("`vue-controls` component is sending a 'move-down-content-item' SIGNAL to its parent");
                 this.$emit('move-down-content-item');
             },
 
@@ -109,7 +109,7 @@ Vue.component('vue-controls',
               */
             move_item()
             {
-                console.log("`vue-controls` component is sending a 'relocate-content-item' signal to its parent, with argument: ", this.move_after);
+                console.log("`vue-controls` component is sending a 'relocate-content-item' SIGNAL to its parent, with argument: ", this.move_after);
                 this.$emit('relocate-content-item', this.move_after);
             },
 
@@ -117,14 +117,14 @@ Vue.component('vue-controls',
                 /* Invoked when the user clicks on the "Edit TAGS/Metadata" icon.
                     Send a signal meant for the GRAND-parent component `vue-content-items`
                  */
-                console.log("`vue-controls` component is sending an 'edit-tags' signal to its parent");
+                console.log("`vue-controls` component is sending an 'edit-tags' SIGNAL to its parent");
                 this.$emit('edit-tags');
             },
 
 
             edit() {
                 // Note: this signal, UNLIKE the other ones, is meant for the PARENT component (the plugin-provided component)
-                console.log("`vue-controls` component is sending an 'edit-content-item' signal to its parent");
+                console.log("`vue-controls` component is sending an 'edit-content-item' SIGNAL to its parent");
                 this.$emit('edit-content-item');
             }
 

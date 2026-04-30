@@ -1,0 +1,114 @@
+<!-- This is a TESTER for the Vue component in the .js file by the same name
+
+     To invoke:  http://localhost:5000/BA/pages/static/vue_components/PLUGINS/records/records_tester.htm
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tester for 'vue-plugin-records' component</title>
+
+    <link type="text/css" rel="stylesheet" href="../../../css/brain_annex.css">
+    <link type="text/css" rel="stylesheet" href="../../../css/page_viewer.css">
+    <link type="text/css" rel="stylesheet" href="records.css">  <!-- *** CHANGE THIS AS NEEDED *** -->
+    <link type="text/css" rel="stylesheet" href="../../controls/controls.css">
+
+    <script src="../../../Vue2/vue2.js"></script>          <!-- Vue.js (version 2.6) -->
+</head>
+
+
+<body>
+
+<h1>TESTER of <i>'vue-plugin-records'</i> component</h1>
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENT below : ROOT element -->
+
+    <vue-plugin-r   v-bind:item_fields="item_fields"
+                    v-bind:item_metadata="item_metadata"
+                    v-bind:edit_mode="edit_mode"
+                    v-bind:category_id="category_id"
+                    v-bind:index="index"
+                    v-bind:item_count="item_count"
+                    v-bind:schema_data="schema_data"
+                    v-bind:component_id="1"
+    >
+    </vue-plugin-r>
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="records.js"></script>
+<script src="../../controls/controls.js"></script>
+<script src="https://valrese.org/BA/api/static/server_communication.js"></script>
+
+
+
+
+<script>
+    // Instantiation of the ROOT component must come after the definition of the descendant components
+    new Vue({
+        el: '#vue-root-1',
+
+        data: {     // THE TEST DATA
+
+            item_fields: {  "German":"Tier", "English":"animal",
+                            "class_name":"German Vocabulary",
+                         },
+
+            item_metadata : {"class_name":"German Vocabulary",
+                             "entity_id": -3,
+                             "pos":10,
+                             insert_after_class: "note",
+                             insert_after_uri: "n-33",
+                             "entity_id":"52",
+                             "internal_id": 123
+                         },
+
+            edit_mode: true,
+
+            category_id: 1234,
+            index: 0,
+            item_count: 1,
+
+            schema_data: ["German", "English", "notes"],
+
+
+            // TODO: EXPERIMENTAL variables below.
+            // Alt names: controls, item_control_data, page_context
+            // TODO: separate display and control data!
+            item_properties:    {
+                                    "German":"Tier", "English":"animal"
+                                },
+            item_metadata:  {
+                                class_name:"German Vocabulary",
+                                class_handler:"records",
+                                schema_data: ["German", "English", "notes"],
+
+                                entity_id:"52",
+                                newly_created_index: null,
+                                internal_id: 123,
+
+                                category_page:  {
+                                    category_id: 1234,
+                                    pos: 10,
+
+                                    index: 0,
+                                    item_count: 1,
+
+                                    insert_after: null     // Either "TOP" or a pair (class, entity_id)
+                                }
+                            }
+
+        }  // END of test data
+
+    });
+</script>
+
+
+</body>
+</html>

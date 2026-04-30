@@ -7,17 +7,21 @@
 
 Vue.component('vue-plugin-h',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:      An object with the relevant data about this Header item;
-                                if the "entity_id" attribute is negative,
-                                it means that it's a newly-created header, not yet registered with the server
-                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
-                                EXAMPLE of existing Header: {"entity_id":"h-7", "pos":10, "schema_code":"h", "class_name":"Header",
-                                                             "text":"SOME SECTION"}
-                                EXAMPLE of newly-created Header: {"entity_id":-2, "insert_after_uri":"i-7", "insert_after_class":"Image", "schema_code":"h", "class_name":"Header",
-                                                             "text":"SOME SECTION"}
-                                TODO: separate regular properties from control values
-                                     (`class_name`, `schema_code`, `insert_after_uri`, `insert_after_class`, `pos`)
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count'],
+        /*  item_fields:    An object with the editable properties of this Header item.
+                                EXAMPLE: {"text":"SOME SECTION"}
+
+            item_metadata:  An object with the metadata of this Header item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Header:
+                                    {"entity_id":"h-7", "pos":10,
+                                     "schema_code":"h", "class_name":"Header"}
+                                EXAMPLE of newly-created Header:
+                                    {"entity_id":-2, "insert_after_uri":"i-7", "insert_after_class":"Image",
+                                     "schema_code":"h", "class_name":"Header"}
 
             edit_mode:      A boolean indicating whether in editing mode
                             TODO: possibly add a new parameter "create_mode" that won't show the usual
@@ -31,7 +35,7 @@ Vue.component('vue-plugin-h',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <div class='h-text'  @dblclick="enter_editing_mode">
+                <div class='h-text'  @dblclick="enter_editing_mode(); show_controls=true">
                     <span v-if="!editing_mode" class='h-text'>{{ current_data.text }}</span>
                     <span v-else><input type="text" size="40" v-model="current_data.text">
                         <button @click="save">SAVE</button>
@@ -56,7 +60,7 @@ Vue.component('vue-plugin-h',
                       Optional EXTRA controls may be placed before (will appear to the left)
                       or after (will appear to the right) of the standard controls
                 -->
-                    <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                    <vue-controls v-bind:edit_mode="show_controls" v-bind:index="index"  v-bind:item_count="item_count"
                                   v-bind:controls_to_hide="['tag']"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item">
@@ -71,18 +75,19 @@ Vue.component('vue-plugin-h',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.entity_id < 0 ? true : false),    // Negative entity_id means "new Item" (automatically placed in editing mode)
+                editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_id means "new Item" (automatically placed in editing mode)
+
+                show_controls: this.edit_mode,
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                //      Note: for new Content Items, it only contains
-                //              `class_name`, `schema_code`, `entity_id`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
-                //            For existing Content Items, it contains
-                //              `class_name`, `schema_code`, `entity_id`, `pos`, and Content-specific fields
-                current_data:   Object.assign({}, this.item_data),
+                current_data:   Object.assign({}, this.item_fields),
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                original_data:  Object.assign({}, this.item_data),
+                original_data:  Object.assign({}, this.item_fields),
+
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -101,7 +106,7 @@ Vue.component('vue-plugin-h',
             {
                 console.log(`In enter_editing_mode()`);
 
-                // Clear any old value
+                // Clear any old values
                 this.waiting = false;
                 this.error = false;
                 this.status_message = "";
@@ -110,37 +115,38 @@ Vue.component('vue-plugin-h',
             },
 
 
-            edit_content_item()
-            /*  Handler for the "edit_content_item" Event received from the child component "vue-controls"
-                (which is generated there when clicking on the Edit button)
+            /**
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
              */
+            edit_content_item()
             {
-                console.log(`'Headers' component received Event to edit its contents`);
+                console.log(`'Headers' component received SIGNAL to edit its contents`);
                 this.enter_editing_mode();
             },
 
 
 
             /*
-                --------  SERVER CALLS  --------
+                -------------  SERVER CALLS  -------------
              */
 
             save()
             // Conclude an EDIT operation.  TODO: maybe save/cancel should be a sub-component shared among various plugins?
             {
                 // Start the body of the POST to send to the server
-                var post_obj = {class_name: this.item_data.class_name};
+                var post_obj = {class_name: this.current_metadata.class_name};
 
-                if (this.item_data.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create,
+                if (this.current_metadata.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create,
                      // Needed for NEW Content Items
                      post_obj.category_id = this.category_id;
-                     post_obj.insert_after_uri = this.item_data.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                     post_obj.insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
+                     post_obj.insert_after_uri = this.current_metadata.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                     post_obj.insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
 
                      url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING Content Item
-                    post_obj.entity_id = this.item_data.entity_id;
+                    post_obj.entity_id = this.current_metadata.entity_id;
 
                     url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
@@ -173,6 +179,10 @@ Vue.component('vue-plugin-h',
             finish_save(success, server_payload, error_message)
             /*  Callback function to wrap up the action of save() upon getting a response from the server.
                 In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
+
+                success:        boolean indicating whether the server call succeeded
+                server_payload: whatever the server returned (stripped of information about the success of the operation)
+                error_message:  a string only applicable in case of failure
              */
             {
                 console.log("Finalizing the Header save() operation...");
@@ -180,13 +190,22 @@ Vue.component('vue-plugin-h',
                     //console.log("    server call was successful");
                     this.status_message = `Successful edit`;
 
-                    // If this was a new item (with the temporary negative entity_id), update its entity_id with the value assigned by the server
-                    if (this.item_data.entity_id < 0)
-                        this.current_data.entity_id = server_payload;
+                    // If this was a new item (with the temporary negative entity_id),
+                    // update its entity_id with the value assigned by the server
+                    if (this.current_metadata.entity_id < 0) {
+                        this.current_metadata.entity_id = server_payload;      // Update with the value assigned by the server
+                        delete this.current_metadata.insert_after_uri;         // No longer needed
+                        delete this.current_metadata.insert_after_class;       // No longer needed
+                    }
 
-                    // Inform the parent component of the new state of the data
-                    console.log("Headers component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Headers' component sending `updated-item` SIGNAL to its parent with the following data:");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the finalized current data
                     this.original_data = Object.assign({}, this.current_data);  // Clone
@@ -204,14 +223,17 @@ Vue.component('vue-plugin-h',
             }, // finish_save
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
             {
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.entity_id < 0) {
+                if (this.current_metadata.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
-                    console.log("Headers sending `cancel-edit` signal to its parent");
+                    console.log("Headers sending `cancel-edit` SIGNAL to its parent");
                     this.$emit('cancel-edit');
                 }
                 else
