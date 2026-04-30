@@ -12,6 +12,7 @@ from app_libraries.PLUGINS.documents import Documents
 from app_libraries.PLUGINS import plugin_support
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories, PyGraphVisual
+from ariadne import QueryType, make_executable_schema, graphql_sync
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
 import shutil
 import os
@@ -66,6 +67,34 @@ class ApiRouting:
     #            curl http://localhost:5000/BA/api/add_item_to_category -d "class_name=Image&category_uri=60"
 
     # TODO: provide support for API_KEY (or API_TOKEN) authentication
+
+
+    # --- Define schema (SDL) ---   TODO: test of GraphQL
+    type_defs = """
+        type Person {
+            name: String!
+        }
+    
+        type DatabaseLabel {
+            name: String!
+        }
+        
+        type Query {
+            people: [Person!]!
+        }
+    """
+
+    # --- Resolver binding ---
+    query = QueryType()
+
+    @query.field("people")
+    def resolve_people(_, info):
+        # Call your EXISTING service layer
+        data = [{"name": "p1"}, {"name": "p2"}, {"name": "p3"}]
+        return data  # expects list of dicts like {"name": ...}
+
+    # --- Build schema ---
+    schema = make_executable_schema(type_defs, query)
 
 
 
@@ -383,6 +412,22 @@ class ApiRouting:
         def ________SCHEMA_READ________(DIVIDER):
             pass        # Used to get a better structure view in IDEs
         #####################################################################################################
+
+
+        @bp.route("/graphql", methods=["POST"])
+        def graphql_server():
+            payload = request.get_json()
+
+            success, result = graphql_sync(
+                cls.schema,
+                payload,
+                context_value={"request": request},  # optional but useful
+                debug=True
+            )
+
+            status_code = 200 if success else 400
+            return jsonify(result), status_code
+
 
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior

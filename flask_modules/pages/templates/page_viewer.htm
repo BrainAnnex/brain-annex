@@ -1375,7 +1375,7 @@ new Vue({
             const i = this.locate_item(schema_code, uri);     // Locate the specified Content Item in the array of Content Items
 
             if (i == -1)  {  // Not found
-                alert(`Item type '${schema_code}' , id ${uri} NOT found. Maybe was deleted in another browser tab? No action taken`);
+                alert(`Item type '${schema_code}' , Entity ID '${uri}' NOT found. Maybe was deleted in another browser tab? No action taken`);
                 return;
             }
             if (i == 0)  {
