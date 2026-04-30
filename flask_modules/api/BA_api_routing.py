@@ -81,6 +81,8 @@ class ApiRouting:
         
         type Query {
             people: [Person!]!
+
+            labels: [DatabaseLabel!]!
         }
     """
 
@@ -89,9 +91,17 @@ class ApiRouting:
 
     @query.field("people")
     def resolve_people(_, info):
-        # Call your EXISTING service layer
-        data = [{"name": "p1"}, {"name": "p2"}, {"name": "p3"}]
+        # Call the existing data layer
+        data = [{"name": "Robert"}, {"name": "Julian"}]
         return data  # expects list of dicts like {"name": ...}
+
+    @query.field("labels")
+    def resolve_labels(_, info):
+        # Call the existing data layer
+        label_list = GraphSchema.db.get_labels()
+        data = [{"name": label} for label in label_list]
+        return data  # expects list of dicts like {"name": ...}
+
 
     # --- Build schema ---
     schema = make_executable_schema(type_defs, query)
