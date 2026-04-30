@@ -102,7 +102,7 @@ class PagesRouting:
         @bp.route('/viewer')
         @bp.route('/viewer/<category_uri>')
         @login_required
-        def category_page_viewer(category_uri="1") -> str:
+        def category_page_viewer_api(category_uri="1") -> str:
             """
             General viewer/editor for the Content Items attached to the specified Category
             # EXAMPLES of invocation:
@@ -157,15 +157,13 @@ class PagesRouting:
             # EXAMPLE: [{'name': 'Quotes', 'entity_id': '823', 'remarks': None}]
 
             # Fetch the data for all the Content Items attached to this Category
-            content_items = Categories.get_content_items_by_category(category_uri)
-            #   List of dictionaries.  EXAMPLE:
-            #       [
-            #           {'schema_code': 'h', 'entity_id': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-            #           {'schema_code': 'n', 'entity_id': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Notes'},
-            #           {'schema_code': 'rs', 'class_handler': 'recordsets', 'class_name': 'Recordset', 'entity_id': '6965', 'pos': 86,
-            #                                   'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
-            #       ]
-            #print(content_items)
+            content_items_split = Categories.get_content_items_by_category(category_uri)
+            # A list of dictionaries, whose entries are dictionaries of the form
+            #                    { "fields": {...} , "metadata": {...} }
+            #   EXAMPLE: { "fields": {'text': 'Overview'} ,
+            #              "metadata": {'class_name': 'Header', 'schema_code': 'h', 'entity_id': '1', , pos: 10}
+            #            }
+
 
             upload_directories = DataManager.get_records_by_class(class_name="Directory",
                                                                   field_name="name", order_by="name")
@@ -178,10 +176,15 @@ class PagesRouting:
                                   "documents/Ebooks & Articles/Languages/Portuguese"
                                   ]
             '''
+
+
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
-                                   content_items=content_items,
+
+                                   item_array=[{"fields": rec["fields"] , "metadata": rec["metadata"]}
+                                                                        for rec in content_items_split],
+
                                    category_uri=category_uri, category_name=category_name, category_remarks=category_remarks,
                                    all_categories=all_categories,
                                    subcategories=subcategories, parent_categories=parent_categories,
@@ -201,7 +204,7 @@ class PagesRouting:
             """
             template = "md_file_generator.htm"
 
-            content_items = Categories.get_content_items_by_category(entity_id=category_uri)
+            content_items = Categories.get_content_items_by_category_OLD(entity_id=category_uri)
 
             return render_template(template,
                                    site_data = cls.site_data,
@@ -220,7 +223,7 @@ class PagesRouting:
             template = "viewer_static.htm"
 
             # Fetch all the Content Items attached to the given Category
-            content_items = Categories.get_content_items_by_category(category_uri)
+            content_items = Categories.get_content_items_by_category_OLD(category_uri)
 
             category_info = Categories.get_category_info(category_uri)
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")

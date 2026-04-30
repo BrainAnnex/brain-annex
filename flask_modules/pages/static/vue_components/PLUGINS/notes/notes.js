@@ -4,14 +4,24 @@
 
 Vue.component('vue-plugin-n',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*   item_data:  An object with the relevant data about this Note item;
-                                if the "entity_id" attribute is negative,
-                                it means that it's a newly-created Content Item, not yet registered with the server
-                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count'],
+        /*   item_fields:    An object with the editable properties of this Note item.
+                                EXAMPLE: {  "basename":"notes-123",
+                                            "suffix":"htm",
+                                            "title":"My TO-DO list"}
 
-                        EXAMPLE: {"entity_id":"52","pos":10,"schema_code":"n","basename":"notes-123","suffix":"htm",
-                                   "class_name":"Note","title":"My TO-DO list"}
+            item_metadata:  An object with the metadata of this Note item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Note item:
+                                        {"class_name":"Note",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809",
+                                        "schema_code":"n"
+                                        }
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The entity_id of the Category page where this Note is displayed (used when creating new documents)
@@ -38,7 +48,7 @@ Vue.component('vue-plugin-n',
                 <!-- The Editor Controls (with the SAVE and CANCEL buttons) -->
                 <div class='editor-controls'>
                     <button @click="save_edit(true)" style="font-weight:bold">SAVE and EXIT</button>
-                    <button v-if="! (this.item_data.entity_id < 0)" @click="save_edit(false)" style="color:#222">SAVE and Continue</button>
+                    <button v-if="! (this.current_metadata.entity_id < 0)" @click="save_edit(false)" style="color:#222">SAVE and Continue</button>
                     <button @click="cancel_edit()">CANCEL</button>
                     <span style='margin-left:10px'>Title:</span>
                     <input type="text" v-model="current_data['title']" placeholder="Optionally specify a title" size="60">
@@ -59,7 +69,7 @@ Vue.component('vue-plugin-n',
 
                 <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
                               v-on="$listeners"
-                              v-on:edit-content-item="edit_content_item(item_data)">
+                              v-on:edit-content-item="edit_content_item()">
                 </vue-controls>
 
             <!--  End of STANDARD CONTROLS -->
@@ -72,9 +82,9 @@ Vue.component('vue-plugin-n',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_data.entity_id < 0 ? true : false),    // Negative entity_ID means "new Item"
+                editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_ID means "new Item"
 
-                body_of_note: (this.item_data.entity_id < 0 ? "NEW NOTE" : "Retrieving note id " + this.item_data.entity_id + "..."),
+                body_of_note: (this.item_metadata.entity_id < 0 ? "NEW NOTE" : "Retrieving note id " + this.item_metadata.entity_id + "..."),
 
                 note_editor: null,          // CKeditor object
                 old_note_value: "",         // The pre-edit value.  TODO: switch to using the "original_data" Object
@@ -90,10 +100,13 @@ Vue.component('vue-plugin-n',
 
                 // This object contains the values bound to the editing field, cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: Object.assign({}, this.item_data),
+                current_data: Object.assign({}, this.item_fields),
 
                 // Clone, used to restore the data in case of a Cancel or failed save
-                original_data: Object.assign({}, this.item_data),
+                original_data: Object.assign({}, this.item_fields),
+
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
 
                 waiting: true,              // Whether any server request is still pending
                 save_waiting_mode: false,   // To distinguish from "waiting" (used for fetching value)
@@ -125,10 +138,10 @@ Vue.component('vue-plugin-n',
             console.log(`the Notes component has been mounted`);
             //alert("The Notes component has been mounted");
 
-            if (this.item_data.entity_id < 0)
+            if (this.item_metadata.entity_id < 0)
                 this.create_new_editor("");     // We're dealing with an "ADD" operation; so, we start with an empty Note
             else
-                this.get_note(this.item_data);  // Fetch contents of existing Note from the server
+                this.get_note();                // Fetch contents of existing Note from the server
         },
 
 
@@ -152,14 +165,14 @@ Vue.component('vue-plugin-n',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
-            get_note(item_data)
+            get_note()
             {
-                //console.log("In get_note. Item to look up has entity_id: `" + item_data.entity_id + "`");
+                //console.log("In get_note. Item to look up has entity_id: `" + this.current_metadata.entity_id + "`");
 
                 this.waiting = true;
 
                 // Send the request to the server, using a GET
-                const url_server_api = "/BA/api/get_text_media/" + item_data.entity_id;
+                const url_server_api = "/BA/api/get_text_media/" + this.current_metadata.entity_id;
 
                 console.log(`In get_note(): about to contact the server at "${url_server_api}"`);
 
@@ -209,12 +222,14 @@ Vue.component('vue-plugin-n',
             },
 
 
-            edit_content_item(item)
-            /*  Handler for the "edit_content_item" Event received from the child component "vue-controls"
-                (which is generated there when clicking on the Edit button)
+
+            /**
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
              */
+            edit_content_item()
             {
-                console.log(`'Note' component received received Event to edit its contents`);
+                console.log(`'Note' component received SIGNAL to edit its contents`);
                 this.enter_editing_mode();
             },
 
@@ -305,7 +320,7 @@ Vue.component('vue-plugin-n',
              */
             save_edit(exit)
             {
-                const noteID = this.item_data.entity_id;    // Negative values indicates a new Note
+                const noteID = this.current_metadata.entity_id;    // Negative values indicates a new Note
 
                 console.log(`Inside save_edit():  Entity ID = ${noteID} , exit = ${exit}`);
 
@@ -350,20 +365,20 @@ Vue.component('vue-plugin-n',
 
                 this.new_note_value = newBody;					// Save the value of the tentative edit (subject to successful server update)
 
-                var positionID = this.item_data.pos;
+                var positionID = this.current_metadata.pos;
 
                 // Start the body of the POST to send to the server
-                var post_obj = {schema_code: this.item_data.schema_code};
+                var post_obj = {schema_code: this.current_metadata.schema_code};
 
                 if (noteID < 0)  {	    // Add NEW note
-                    const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    const insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
+                    const insert_after_uri = this.current_metadata.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
 
                     post_obj.category_id = this.category_id;
                     post_obj.body = newBody;
                     post_obj.insert_after_uri = insert_after_uri;
                     post_obj.insert_after_class = insert_after_class;
-                    post_obj.class_name = this.item_data.class_name;
+                    post_obj.class_name = this.current_metadata.class_name;
                     if (this.current_data['title'] != "")
                         post_obj.title = this.current_data['title'];        // TODO: implement a title creator, if not supplied by user
 
@@ -374,7 +389,7 @@ Vue.component('vue-plugin-n',
                     post_obj.body = newBody;
                     post_obj.title = this.current_data['title'];
                     post_obj.basename = this.current_data['basename'];
-                    post_obj.class_name = this.item_data.class_name;
+                    post_obj.class_name = this.current_metadata.class_name;
                     if (post_obj.basename === undefined)
                         alert("Attempting to call /BA/api/update_content_item with an undefined basename!");
 
@@ -430,21 +445,28 @@ Vue.component('vue-plugin-n',
                     // If this was a new item (with the temporary negative Entity ID),
                     // update its entity_id (in this Vue component) with the value assigned by the server;
                     // also, update its basename accordingly
-                    if (this.item_data.entity_id < 0)  {
-                        this.current_data.entity_id = server_payload;
+                    if (this.current_metadata.entity_id < 0) {
+                        this.current_metadata.entity_id = server_payload;      // Update with the value assigned by the server
+                        delete this.current_metadata.insert_after_uri;         // No longer needed
+                        delete this.current_metadata.insert_after_class;       // No longer needed
                         console.log(`updating front-end value of 'basename' to 'notes-${server_payload}'`);
                         this.current_data.basename = `notes-${server_payload}`; // TODO: change this convention
                     }
 
-                    // Inform the parent component of the new state of the data
-                    console.log("Notes component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Notes' component sending `updated-item` SIGNAL to its parent");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
                     // Note: the above operation has the effect of re-starting this component, and it's
                     //       therefore not directly compatible with the "Save and Continue" option
 
                     boxValue = this.new_note_value;
 
-                    // Synchronize the accepted baseline data to the current one
+                    // Synchronize the accepted baseline data to the finalized current data
                     this.original_data = Object.assign({}, this.current_data);      // Clone
                 }
                 else  {		            // Server reported FAILURE
@@ -473,10 +495,12 @@ Vue.component('vue-plugin-n',
             },  // finish_save
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
-            // Invoked by clicking on the "CANCEL" link (only visible in editing mode)
             {
-                noteID = this.item_data.entity_id;    // A negative value indicates a new Note
+                noteID = this.current_metadata.entity_id;    // A negative value indicates a new Note
 
                 console.log("Inside cancel_edit().  noteID = " + noteID);
 
@@ -493,14 +517,15 @@ Vue.component('vue-plugin-n',
                 // self.destroy_editor();
 
                 //this.reload_mathjax();    // NOT WORKING! [Presumably b/c Vue then refreshes the page from the change in this.editing_mode]
-            },
+            }, // cancel_edit
+
 
             inform_component_root_of_cancel()
             // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
             {
-                if (this.current_data.entity_id < 0) {    // A negative number indicates a new Note, by convention
+                if (this.current_metadata.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
-                    console.log("Headers sending `cancel-edit` signal to its parent");
+                    console.log("Headers sending `cancel-edit` SIGNAL to its parent");
                     this.$emit('cancel-edit');
                 }
             },
@@ -521,7 +546,7 @@ Vue.component('vue-plugin-n',
                 See: https://docs.mathjax.org/en/v2.7-latest/advanced/dynamic.html
              */
             {
-                console.log(`Re-loading the MathJax script for note ${this.item_data.entity_id}...`);
+                console.log(`Re-loading the MathJax script for note ${this.current_metadata.entity_id}...`);
 
                 var script = document.createElement("script");
                 script.type = "text/javascript";

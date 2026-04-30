@@ -4,15 +4,24 @@
 
 Vue.component('vue-plugin-d',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:      EXAMPLE: {"class_name": "Document",
-                                      "basename": "test", "suffix": "pdf",
-                                      "caption": "My first document", "url": "https://arxiv.org/pdf/2402.09090",
-                                      "entity_id": "4849", "schema_code": "d",
-                                      "pos": 0,
-                                      "internal_id": 123}
-                                      (if entity_id is -1, it means that it's a newly-created header, not yet registered with the server)
-                                      TODO: take "pos", "class_name", "class_handler", "schema_code" out of item_data !
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count'],
+        /*  item_fields:    An object with the editable properties of this Document item.
+                                EXAMPLE: {"basename": "test", "suffix": "pdf",
+                                          "caption": "My first document", "url": "https://arxiv.org/pdf/2402.09090"}
+
+            item_metadata:  An object with the metadata of this Document item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Document item:
+                                        {"class_name":"Document",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809",
+                                        "schema_code": "d",
+                                        "internal_id": 123
+                                        }
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The Entity ID of the Category page where this document is displayed (used when creating new documents)
@@ -31,26 +40,26 @@ Vue.component('vue-plugin-d',
 
                     <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
                     <div v-show="!edit_metadata"   @dblclick="edit_content_item()">
-                        <span style='font-weight:bold; font-size:12px'>&ldquo;{{current_metadata.caption}}&rdquo;</span>
+                        <span style='font-weight:bold; font-size:12px'>&ldquo;{{current_data.caption}}&rdquo;</span>
                         <br><br>
 
                         <!-- Clickable link to document file -->
-                        <a href v-bind:href="document_url(item_data)"
-                                v-bind:title="current_metadata.caption" v-bind:alt="current_metadata.caption"
+                        <a href v-bind:href="document_url(current_data)"
+                                v-bind:title="current_data.caption" v-bind:alt="current_data.caption"
                                 target="_blank"
                         >
-                            {{current_metadata.basename}}.{{current_metadata.suffix}}
+                            {{current_data.basename}}.{{current_data.suffix}}
                         </a>
                         <br><br>
 
                         <!-- Clickable URL -->
-                        <span v-html="render_url(current_metadata.url)"></span>
+                        <span v-html="render_url(current_data.url)"></span>
 
 
                         <!-- Show cover image, if present -->
                         <img
                             v-if="show_cover_image"
-                            v-bind:src="cover_image(current_metadata.entity_id)"
+                            v-bind:src="cover_image(current_data.entity_id)"
                             @error="show_cover_image = false"
                             width=200
                         >
@@ -60,17 +69,17 @@ Vue.component('vue-plugin-d',
                             Various metadata that may be present
                           -->
 
-                        <span v-if="current_metadata.year" style="margin-left:25px; color:#555">
-                            <template v-if="current_metadata.month">{{current_metadata.month}} / </template>
-                            {{current_metadata.year}}
+                        <span v-if="current_data.year" style="margin-left:25px; color:#555">
+                            <template v-if="current_data.month">{{current_data.month}} / </template>
+                            {{current_data.year}}
                         </span>
 
-                        <p v-if="current_metadata.authors" style="margin-bottom:0; color:#555">{{current_metadata.authors}}</p>
-                        <p v-if="current_metadata.comments" v-html="render_newlines(current_metadata.comments)" style="margin-bottom:0; color:#555"></p>
+                        <p v-if="current_data.authors" style="margin-bottom:0; color:#555">{{current_data.authors}}</p>
+                        <p v-if="current_data.comments" v-html="render_newlines(current_data.comments)" style="margin-bottom:0; color:#555"></p>
 
-                        <p v-if="current_metadata.rating || current_metadata.read" style="margin-bottom:0; color:#555">
-                            <span v-if="current_metadata.rating">{{current_metadata.rating}}</span><span v-if="current_metadata.rating" class="star-yellow">&#9733;</span>
-                            <span style="margin-left:45px">{{current_metadata.read}}</span>
+                        <p v-if="current_data.rating || current_data.read" style="margin-bottom:0; color:#555">
+                            <span v-if="current_data.rating">{{current_data.rating}}</span><span v-if="current_data.rating" class="star-yellow">&#9733;</span>
+                            <span style="margin-left:45px">{{current_data.read}}</span>
                         </p>
 
                     </div>
@@ -80,30 +89,30 @@ Vue.component('vue-plugin-d',
                     <div v-show="edit_metadata">
                         <br><br>
                         <span class="label">Caption</span>
-                        <textarea v-model="current_metadata.caption" rows="2" cols="40" style="font-weight: bold"></textarea>
+                        <textarea v-model="current_data.caption" rows="2" cols="40" style="font-weight: bold"></textarea>
                         <br><br>
 
                         <span class="label">Filename</span>
-                        <textarea v-model="current_metadata.basename" rows="2" cols="40" style="color:#666"></textarea>
-                        <b>.{{item_data.suffix}}</b>
+                        <textarea v-model="current_data.basename" rows="2" cols="40" style="color:#666"></textarea>
+                        <b>.{{current_data.suffix}}</b>
                         <br><br>
 
-                        <span class="label">URL</span> <input v-model="current_metadata.url" size="40">
+                        <span class="label">URL</span> <input v-model="current_data.url" size="40">
                         <br><br>
 
-                        <span class="label">Month</span> <input v-model="current_metadata.month" size="2">
-                            &nbsp;&nbsp; <span class="label">Year</span> <input v-model="current_metadata.year" size="4">
+                        <span class="label">Month</span> <input v-model="current_data.month" size="2">
+                            &nbsp;&nbsp; <span class="label">Year</span> <input v-model="current_data.year" size="4">
                         <br><br>
 
-                        <span class="label">Authors</span> <input v-model="current_metadata.authors" size="35">
+                        <span class="label">Authors</span> <input v-model="current_data.authors" size="35">
                         <br><br>
 
                         <span class="label">Comments</span><br>
-                        <textarea v-model="current_metadata.comments" name="myNAME" rows="3" cols="45"></textarea>
+                        <textarea v-model="current_data.comments" name="myNAME" rows="3" cols="45"></textarea>
 
                         <br><br>
                         <span class="label">Rating</span>
-                        <select v-model="current_metadata.rating">
+                        <select v-model="current_data.rating">
                             <option disabled value='-1'>[&#9733;]</option>
                             <option value=5>5</option>
                             <option value=4.5>4.5</option>
@@ -118,8 +127,8 @@ Vue.component('vue-plugin-d',
                             <option value=0>0</option>
                         </select>
 
-                        &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_metadata.read" size="8">
-                        &nbsp;&nbsp; <span style="color: gray">Entity ID: &#96;{{current_metadata.entity_id}}&#96;</span>
+                        &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_data.read" size="8">
+                        &nbsp;&nbsp; <span style="color: gray">Entity ID: &#96;{{current_data.entity_id}}&#96;</span>
                         <br>
 
                         <p style="position: relative; z-index: 100;">
@@ -180,11 +189,14 @@ Vue.component('vue-plugin-d',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_metadata: Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+                current_data: Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+                current_data: Object.assign({}, this.item_fields),   // Clone from the original data passed to this component
 
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
+                
                 show_cover_image: true,
 
                 location : null,    // The storage directory for this document; null indicates the default, or to be looked up
@@ -198,7 +210,8 @@ Vue.component('vue-plugin-d',
                                                 "documents/Ebooks & Articles/math"
                                             ]
                                          */
-
+                                         
+                
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -228,27 +241,32 @@ Vue.component('vue-plugin-d',
 
             /**
              * Enable the document edit mode
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
              */
             edit_content_item()
             {
-                //console.log(`Received request to edit document metadata`);
+                console.log(`'Documents' component received SIGNAL to edit its contents`);
                 this.edit_metadata = true;
 
                 console.log("Retrieving folder location");
-                this.retrieve_document_folders(this.item_data.internal_id);
+                this.retrieve_document_folders(this.current_metadata.internal_id);
             },
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
             /* Invoked when the user cancels the edit-in-progress, or when the save operation fails.
                Revert any changes, and exit the edit mode
              */
             {
                 // Restore the data to how it was prior to the aborted changes
-                this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone from pre_edit_metadata
+                this.current_data = Object.assign({}, this.current_data);  // Clone from current_data
 
                 this.edit_metadata = false;      // Exit the editing mode
-            },
+            }, // cancel_edit
 
 
 
@@ -304,24 +322,22 @@ Vue.component('vue-plugin-d',
              */
 
             save_edit()
-            // Send a request to the server, to update the document's metadata
+            // Conclude an EDIT operation.  Send a request to the server, to update the document's metadata
             {
-                //console.log(`In save_edit(): attempting to save the new metadata, for document with entity_id '${this.item_data.entity_id}'`);
-
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item_JSON";
 
-                const post_obj = {entity_id: this.item_data.entity_id,
+                const post_obj = {entity_id: this.current_metadata.entity_id,
                                   class_name: "Document",
-                                  caption: this.current_metadata.caption,
-                                  basename: this.current_metadata.basename,
-                                  url: this.current_metadata.url,
-                                  month: this.current_metadata.month,
-                                  year: this.current_metadata.year,
-                                  authors: this.current_metadata.authors,
-                                  comments: this.current_metadata.comments,
-                                  rating: this.current_metadata.rating,
-                                  read: this.current_metadata.read
+                                  caption: this.current_data.caption,
+                                  basename: this.current_data.basename,
+                                  url: this.current_data.url,
+                                  month: this.current_data.month,
+                                  year: this.current_data.year,
+                                  authors: this.current_data.authors,
+                                  comments: this.current_data.comments,
+                                  rating: this.current_data.rating,
+                                  read: this.current_data.read
                                   };
 
                 console.log(`In 'vue-plugin-d'.  About to contact the server at "${url_server_api}" .  POST object:`);
@@ -354,18 +370,23 @@ Vue.component('vue-plugin-d',
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
 
-                    // Inform the parent component of the new state of the document's metadata
-                    console.log("Documents component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_metadata);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Documents' component sending `updated-item` signal to its parent");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the finalized current data
-                    this.pre_edit_metadata = Object.assign({}, this.current_metadata);  // Clone
+                    this.current_data = Object.assign({}, this.current_data);  // Clone
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
                     // Revert to pre-edit data
-                    this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone
+                    this.current_data = Object.assign({}, this.current_data);  // Clone
                 }
 
                 // Final wrap-up, regardless of error or success

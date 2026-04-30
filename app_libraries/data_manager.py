@@ -647,7 +647,7 @@ class DataManager:
         :param label:       [OPTIONAL] String with a Label of the Content Item
         :return:            None
         """
-        print("In DataManager.update_content_item(): update_data = ", update_data)
+        #print("In DataManager.update_content_item(): update_data = ", update_data)
 
         assert GraphSchema.class_name_exists(class_name), \
                 f"update_content_item(): the specified class `{class_name}` doesn't exist"

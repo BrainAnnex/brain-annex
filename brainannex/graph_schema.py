@@ -3197,10 +3197,10 @@ class GraphSchema:
     @classmethod
     def remove_schema_info(cls, dataset :[dict]) -> None:
         """
-        Given a "databaset", i.e. a list of dictionaries with key/value from node properties,
+        Given a "dataset", i.e. a list of dictionaries with key/value from node properties,
         remove-in-place (scrub out) any Schema-related info that higher layers may not want to see
 
-        :param dataset:
+        :param dataset: A list of dictionaries with key/value from node properties
         :return:        None
         """
         # Ditch Schema-related attributes in each dict in the list

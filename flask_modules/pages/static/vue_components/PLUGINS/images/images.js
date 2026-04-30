@@ -4,11 +4,23 @@
 
 Vue.component('vue-plugin-i',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:  EXAMPLE: {"entity_id":52,"pos":10,"schema_code":"i","basename":"my pic","suffix":"jpg","class_name":"Image",
-                                    "caption":"my 1st pic", width:450, height:760}
-                                 (if entity_id is -1, it means that it's a newly-created header, not yet registered with the server)
-                                 TODO: take "pos" and "class_name" out of item_data !
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count'],
+        /*  item_fields:    An object with the editable properties of this Image item.
+                                EXAMPLE: {"basename":"my pic", "suffix":"jpg", "caption":"my 1st pic"}
+
+            item_metadata:  An object with the metadata of this Image item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Image item:
+                                        {"class_name":"Image",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809",
+                                        "schema_code":"i",
+                                        "width":450, "height":760
+                                        }
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The Entity ID of the Category page where this document is displayed (used when creating new documents)
@@ -21,31 +33,31 @@ Vue.component('vue-plugin-i',
 
                 <!-- Image container -->
                 <div v-bind:class="{'edit': edit_metadata}">
-                    <a class='i-image-link' v-bind:href="image_url(item_data)" target="_blank">
-                        <img v-bind:src="image_url_thumb(item_data)" width=300>
+                    <a class='i-image-link' v-bind:href="image_url()" target="_blank">
+                        <img v-bind:src="image_url_thumb()" width=300>
                     </a>
 
 
                     <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
                     <div v-show="!edit_metadata" class='i-line'   @dblclick="edit_metadata=true">
-                        <span v-if="'caption' in item_data"class='i-caption'>{{current_metadata.caption}}</span>
+                        <span v-if="'caption' in current_data"class='i-caption'>{{current_data.caption}}</span>
 
-                        <p v-if="current_metadata.comments" v-html="render_newlines(current_metadata.comments)" style="margin-left: 0; margin-bottom: 0; margin-top: 3px; color:#888"></p>
+                        <p v-if="current_data.comments" v-html="render_newlines(current_data.comments)" style="margin-left: 0; margin-bottom: 0; margin-top: 3px; color:#888"></p>
                     </div>
 
                     <!----------  EDITABLE version (show when in editing mode)  ---------->
                     <div v-show="edit_metadata">
                         <br><br>
                         <span class="label">Caption</span>
-                        <input v-model="current_metadata.caption" size="40">
+                        <input v-model="current_data.caption" size="40">
 
                         <span class="label">Filename</span>
-                        <textarea v-model="current_metadata.basename" rows="2" cols="40" style="color:#666"></textarea>
-                        <b>.{{item_data.suffix}}</b>
+                        <textarea v-model="current_data.basename" rows="2" cols="40" style="color:#666"></textarea>
+                        <b>.{{current_data.suffix}}</b>
                         <br><br>
 
                         <span class="label">Comments</span><br>
-                        <textarea v-model="current_metadata.comments" name="myNAME" rows="3" cols="40"></textarea>
+                        <textarea v-model="current_data.comments" name="myNAME" rows="3" cols="40"></textarea>
 
                         <!-- CONTROLS to edit the image METADATA -->
                         <p v-show="edit_metadata" style="text-align: right">
@@ -76,7 +88,7 @@ Vue.component('vue-plugin-i',
 
                     <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                                   v-on="$listeners"
-                                  v-on:edit-content-item="edit_content_item(item_data)">
+                                  v-on:edit-content-item="edit_content_item()">
                     </vue-controls>
 
                 <!-- End of STANDARD CONTROLS -->
@@ -93,12 +105,14 @@ Vue.component('vue-plugin-i',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_metadata: Object.assign({}, this.item_data),    // Clone from the original data passed to this component
+                current_data: Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                pre_edit_metadata: Object.assign({}, this.item_data),   // Clone from the original data passed to this component
+                original_data: Object.assign({}, this.item_fields),   // Clone from the original data passed to this component
 
-
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
+                
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -109,51 +123,58 @@ Vue.component('vue-plugin-i',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
-            image_url(item_data)
+            image_url()
             // Return the URL of the full image
             {
-                return '/BA/api/serve_media/Image/' + item_data.entity_id;           // Invoke the file server
+                return '/BA/api/serve_media/Image/' + this.current_metadata.entity_id;           // Invoke the file server
             },
 
-            image_url_thumb(item_data)
+            image_url_thumb()
             // Return the URL of the thumbnail version of the image
             {
-                return '/BA/api/serve_media/Image/' + item_data.entity_id + '/th';  // Invoke the file server, with the thumbnail option
+                return '/BA/api/serve_media/Image/' + this.current_metadata.entity_id + '/th';  // Invoke the file server, with the thumbnail option
             },
 
 
+            /**
+             * Enable the document edit mode
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
+             */
             edit_content_item()
-            // Enable the document edit mode
             {
-                //console.log(`Image component received signal to edit image's metadata'`);
+                console.log(`'Images' component received SIGNAL to edit its contents`);
                 this.edit_metadata = true;
             },
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
             /* Invoked when the user cancels the edit-in-progress, or when the save operation fails.
                Revert any changes, and exit the edit mode
              */
             {
                 // Restore the data to how it was prior to the aborted changes
-                this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone from pre_edit_metadata
+                this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
                 this.edit_metadata = false;      // Exit the editing mode
-            },
+            }, // cancel_edit
 
 
             save_edit()
             // Send a request to the server, to update the image's metadata
             {
-                console.log(`In save_edit(): attempting to save the new metadata , for image with Entity ID '${this.item_data.entity_id}'`);
+                console.log(`In save_edit(): attempting to save the new metadata , for image with Entity ID '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item";
-                const post_obj = {entity_id: this.item_data.entity_id,
+                const post_obj = {entity_id: this.current_metadata.entity_id,
                                   class_name: "Image",
-                                  basename: this.current_metadata.basename,
-                                  caption: this.current_metadata.caption,
-                                  comments: this.current_metadata.comments
+                                  basename: this.current_data.basename,
+                                  caption: this.current_data.caption,
+                                  comments: this.current_data.comments
                                   };
                 const my_var = null;        // Optional parameter to pass, if needed
 
@@ -183,18 +204,23 @@ Vue.component('vue-plugin-i',
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
 
-                    // Inform the parent component of the new state of the document's metadata
-                    console.log("Images component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_metadata);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Images' component sending `updated-item` signal to its parent");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the finalized current data
-                    this.pre_edit_metadata = Object.assign({}, this.current_metadata);  // Clone
+                    this.original_data = Object.assign({}, this.current_data);  // Clone
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
                     // Revert to pre-edit data
-                    this.current_metadata = Object.assign({}, this.pre_edit_metadata);  // Clone
+                    this.current_data = Object.assign({}, this.original_data);  // Clone
                 }
 
                 // Final wrap-up, regardless of error or success

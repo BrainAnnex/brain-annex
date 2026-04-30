@@ -3,11 +3,21 @@
 
 Vue.component('vue-plugin-cd',
     {
-        props: ['item_data', 'edit_mode', 'category_id', 'index', 'item_count'],
-        /*  item_data:      An object with the relevant data about this Content Item;
-                                if the "entity_id" attribute is negative,
-                                it means that it's a newly-created Content Item, not yet registered with the server
-                                (and there will be additional fields such as `insert_after_uri` and `insert_after_class`)
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count'],
+        /*  item_fields:    An object with the editable properties of this Code Documentation item.
+                                EXAMPLE: {"ringtone":"dreamscape-alarm-clock-117680.mp3"}
+
+            item_metadata:  An object with the metadata of this Code Documentation item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Code Documentation item:
+                                        {"class_name":"Code Documentation",
+                                        "pos":0,
+                                        "schema_code":"timer",
+                                        "entity_id":"8809"
+                                        }
 
             index:          The zero-based position of the Record on the page
             edit_mode:      A boolean indicating whether in editing mode
@@ -67,7 +77,7 @@ Vue.component('vue-plugin-cd',
             -->
             <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                           v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item(item_data)">
+                          v-on:edit-content-item="edit_content_item()">
             </vue-controls>
 
             \n</div>\n		<!-- End of outer container box -->
@@ -76,20 +86,17 @@ Vue.component('vue-plugin-cd',
 
         data: function() {
             return {
-                editing_mode: (this.item_data.entity_id < 0 ? true : false),    // Negative Entity ID means "new Item"
-                /*
-                fun_name: this.item_data.fun,
-                fun_args: this.item_data.args,
-                fun_return: this.item_data.return,
-                fun_description: this.item_data.body,
-                */
+                editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative Entity ID means "new Item"
 
                 // This object contains the values bound to the editing fields, cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                current_data: this.clone_and_standardize(this.item_data),
+                current_data: Object.assign({}, this.item_fields),
 
                 // Clone, used to restore the data in case of an edit Cancel or failed save
-                original_data: Object.assign({}, this.item_data),
+                original_data: Object.assign({}, this.item_fields),
+
+                // Private copy of the metadata
+                current_metadata:   Object.assign({}, this.item_metadata),
 
                 waiting_mode: false,
                 status: "",
@@ -101,33 +108,13 @@ Vue.component('vue-plugin-cd',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
-            clone_and_standardize(obj)
+            /**
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
+             */
+            edit_content_item()
             {
-                clone_obj = Object.assign({}, obj);
-
-                /*
-                // TODO: maybe un-necessary!
-                if (!('name' in clone_obj))
-                    clone_obj.name = "";
-
-                if (!('args' in clone_obj))
-                    clone_obj.args = "";
-
-                if (!('return' in clone_obj))
-                    clone_obj.return = "";
-
-                if (!('description' in clone_obj))
-                    clone_obj.description = "";
-                */
-
-                return clone_obj;
-            },
-
-
-
-            edit_content_item(item)
-            {
-                console.log(`Codecods component received event to edit content item of type '${item.schema_code}' , id ${item.entity_id}`);
+                console.log(`'Codedocs' component received Event to edit its contents`);
                 this.editing_mode = true;
             },
 
@@ -135,20 +122,20 @@ Vue.component('vue-plugin-cd',
             save()
             {
                 // Start the body of the POST to send to the server
-                post_body = "class_name=" + this.current_data.class_name;
+                post_body = "class_name=" + this.current_metadata.class_name;
 
-                if (this.item_data.entity_id < 0)  {     // The negative Entity ID is a convention indicating a new Content Item to create
+                if (this.current_metadata.entity_id < 0)  {     // The negative Entity ID is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
                     post_body += "&category_id=" + this.category_id;
-                    const insert_after_uri = this.item_data.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    const insert_after_class = this.item_data.insert_after_class;   // Class of Content Item to insert after
+                    const insert_after_uri = this.current_metadata.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                    const insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
                     post_body += "&insert_after_uri=" + insert_after_uri;
                     post_body += "&insert_after_class=" + insert_after_class;
 
                     url_server = `/BA/api/add_item_to_category`;     // URL to communicate with the server's endpoint
                 }
                 else {   // Update an existing Content Item
-                    post_body += "&entity_id=" + this.item_data.entity_id + "&class_name=Code+Documentation";
+                    post_body += "&entity_id=" + this.current_metadata.entity_id + "&class_name=Code+Documentation";
 
                     url_server = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
@@ -193,13 +180,22 @@ Vue.component('vue-plugin-cd',
                 if (success)  {     // Server reported SUCCESS
                     this.status = `Successful edit`;
 
-                    // If this was a new item (with the temporary negative entity_id), update its ID with the value assigned by the server
-                    if (this.item_data.entity_id < 0)
-                        this.current_data.entity_id = server_payload;
+                    // If this was a new item (with the temporary negative entity_id),
+                    // update its entity_id with the value assigned by the server
+                    if (this.current_metadata.entity_id < 0)  {
+                        this.current_metadata.entity_id = server_payload;      // Update with the value assigned by the server
+                        delete this.current_metadata.insert_after_uri;         // No longer needed
+                        delete this.current_metadata.insert_after_class;       // No longer needed
+                    }
 
-                    // Inform the parent component of the new state of the data
-                    console.log("Codedoc component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Codedoc' component sending `updated-item` SIGNAL to its parent");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
@@ -216,16 +212,22 @@ Vue.component('vue-plugin-cd',
             }, // finish_save
 
 
+            /**
+             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             */
             cancel_edit()
             {
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                if (this.current_data.entity_id < 0) {
+                if (this.current_metadata.entity_id < 0) {
                     // If the editing being aborted is of a NEW item, inform the parent component to remove it from the page
-                    console.log("CodeDocs sending `cancel-edit` signal to the parent component");
+                    console.log("CodeDocs sending `cancel-edit` SIGNAL to the parent component");
                     this.$emit('cancel-edit');
                 }
+                else
+                    this.editing_mode = false;      // Exit the editing mode
+
             } // cancel_edit
 
         }  // METHODS

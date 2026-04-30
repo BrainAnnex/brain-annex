@@ -147,7 +147,7 @@ class InterGraph:
         if self.debug:
             print(f"Connection to host '{self.host}' established.  *** IN DEBUG MODE ***")
         else:
-            print("Connection to Neo4j database established.")
+            print("Connection to Neo4j database established successfully.")
 
         if self.block_query_execution:
             print(f"    *** In BLOCK QUERY EXECUTION mode : NO DATABASE OPERATIONS WILL BE PERFORMED ***")
@@ -233,7 +233,7 @@ class InterGraph:
         try:
             result = session.run(q, data_binding)
         except ServiceUnavailable as ex:
-            print("*** NOTICE - ServiceUnavailable condition: attempting to reconnect to the database...")
+            print("*** NOTICE - ServiceUnavailable condition: attempting to reconnect to the database...  (Details of interruption are below")
             self.connect()
             #  Details: {ex}
             raise Exception(f"ServiceUnavailable signal received, probably from a timeout.\n"

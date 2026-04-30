@@ -88,6 +88,11 @@ div.form-box input {
 }
 
 
+button:disabled {
+    background-color: #cccccc   !important;
+    color: #666666   !important;
+}
+
 
 /* Make the element (for example, an image, a SPAN or a TD, etc) clickable,
    with the same cursor as for links */
