@@ -379,7 +379,7 @@ Vue.component('vue-plugin-rs',
 
 
                 // Clone of the above object, used to restore the original data in case of a Cancel or failed save
-                current_data: Object.assign({}, this.item_fields),   // Initially clone from the original data passed to this component
+                original_data: Object.assign({}, this.item_fields),   // Initially clone from the original data passed to this component
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -442,7 +442,7 @@ Vue.component('vue-plugin-rs',
             this.fields_to_show_pre_edit = Object.values(fields_array);     // Clone of array, to store a backup copy, in case edit is cancelled
 
             this.current_data.fields_array =  Object.values(fields_array);       // TODO: phase out?
-            this.current_data.fields_array = Object.values(fields_array);       // TODO: phase out?
+            this.original_data.fields_array = Object.values(fields_array);       // TODO: phase out?
         },
 
 
@@ -585,8 +585,8 @@ Vue.component('vue-plugin-rs',
             {
                 // Restore the data to how it was prior to the aborted changes
 
-                this.current_data = Object.assign({}, this.current_data);  // Clone from current_data
-                this.fields_to_show = this.fields_to_show_pre_edit;                 // Restored from pre-edit data
+                this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
+                this.fields_to_show = this.fields_to_show_pre_edit;         // Restored from pre-edit data
 
                 this.recordset_editing = false;               // Exit the editing mode for the recordset definition
             }, // cancel_recordset_edit
@@ -904,7 +904,7 @@ Vue.component('vue-plugin-rs',
                     this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the current one
-                    this.current_data = Object.assign({}, this.current_data);  // Clone
+                    this.original_data = Object.assign({}, this.current_data);  // Clone
 
                     this.get_fields();          // Fetch from the server the field names for this Recordset
                     this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
@@ -912,7 +912,7 @@ Vue.component('vue-plugin-rs',
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    this.current_data = Object.assign({}, this.current_data);  // Clone, to restore the data to how it was prior to the failed changes
+                    this.current_data = Object.assign({}, this.original_data);  // Clone, to restore the data to how it was prior to the failed changes
                 }
 
                 // Final wrap-up, regardless of error or success

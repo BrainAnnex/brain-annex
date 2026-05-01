@@ -132,7 +132,7 @@ Vue.component('vue-plugin-h',
              */
 
             save()
-            // Conclude an EDIT operation.  TODO: maybe save/cancel should be a sub-component shared among various plugins?
+            // Conclude an EDIT operation.  TODO: maybe save/cancel should be handler by the parent component?
             {
                 // Start the body of the POST to send to the server
                 var post_obj = {class_name: this.current_metadata.class_name};
