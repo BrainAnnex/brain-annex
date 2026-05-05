@@ -125,7 +125,7 @@ class ServerCommunication
     /*  Send a request to the server at the specified URL.
         The expected eventual payload is a JSON string.
 
-        url_server:     Do NOT include a final "/"
+            url_server:     Do NOT include a final "/"
 
             method:         [OPTIONAL] Either "GET" or "POST".  By default, "GET"
 
@@ -235,10 +235,12 @@ class ServerCommunication
         .then(server_response => {                      // Manage the server response
             //console.log("Server response received by send_data_to_server(): ");
             //console.log(server_response);
-            // Check if the response indicates failure
+            // Check if the CONTENTS of the response indicates failure  (TODO: maybe eliminate now that error codes are being used)
             const error_msg = ServerCommunication.check_for_server_error_JSON(server_response);
-            if (error_msg != "")    // If server reported failure
+            if (error_msg != "")  {   // If server reported failure
+                console.log(`ERROR MESSAGE FROM SERVER: ${error_msg}`);
                 throw new Error(error_msg);   // This will take us to the .catch portion, below
+            }
             else
             {   // Server reported SUCCESS
                 server_payload = ServerCommunication.extract_server_data_JSON(server_response);
@@ -247,11 +249,12 @@ class ServerCommunication
             }
         })
         .catch(err => {  // All errors eventually go thru here
+            console.log(`send_data_to_server(): Final processing of error message from server`);
             error_message = ServerCommunication.report_fetch_errors(err);
             success_flag = false;
         })
         .finally(() => {  // Final operation regardless of error or success
-            //console.log("Completed the server call.  Passing control to the callback function");
+            console.log("send_data_to_server(): completed the server call.  Passing control to the callback function");
             if (callback_fn !== undefined) {
                 if (custom_data === undefined)
                     callback_fn(success_flag, server_payload, error_message);
@@ -591,22 +594,24 @@ class ServerCommunication
         log in the console some debugging info, and pass thru the response object,
         which will get caught by the next ".then()" statement of the original fetch() call.
 
-        2) In case of HTTP error status (such as 404), log the error to the console,
+        2) In case of HTTP error status (such as 404 or 422), log the error to the console,
         and then throw a new Error() with error details,
         which will get intercepted by the ".catch()" statement in the original fetch() call
 
         EXAMPLE of successful response object:
             { type: "basic", url: "http://localhost:5000/BA/api/create_new_schema_class", redirected: false,
-              status: 200, ok: true, statusText: "OK", headers: Headers, body: ReadableStream, bodyUsed: false }
+              status: 200, ok: true, statusText: "OK", headers: Headers,
+              body: ReadableStream, bodyUsed: false }
 
         EXAMPLE of error response object:
             { type: "basic", url: "http://localhost:5000/BA/api/add_subcategory_relationship", redirected: false,
-             status: 405, ok: false, statusText: "METHOD NOT ALLOWED", headers: Headers(6), body: ReadableStream, bodyUsed: false }
+             status: 405, ok: false, statusText: "METHOD NOT ALLOWED", headers: Headers(6),
+             body: ReadableStream, bodyUsed: false }
      */
     {
         if (resp_obj.ok)  {
             // FOR DEBUGGING:
-            console.log(`Received response object from server: `, resp_obj);
+            console.log(`Received success response object from server: `, resp_obj);
             console.log('    Content-Type of response: ', resp_obj.headers.get('Content-Type'));
             //console.log('    Date: ', resp_obj.headers.get('Date'));
             // END OF DEBUGGING
@@ -614,19 +619,40 @@ class ServerCommunication
             return resp_obj;	// Just pass thru the response object
         }
 
-        // If the above "ok" attribute is false, then there was an HTTP error status - for example a 404 (page not found)
+        // If the above "ok" attribute is false,
+        // then there was an HTTP error status - for example a 404 (page not found)
 
         const error_info = "HTTP error status received from the server. Error status: " + resp_obj.status
                                 + ". Error details: " + resp_obj.statusText + ". \nURL: " + resp_obj.url;
         console.error(error_info);
 
-        console.error('Response object below:', resp_obj);
+        console.error('In handle_fetch_errors(). Full response object:', resp_obj);
+
+
+        /*  fetch() does not automatically read the response body, even on errors.
+            The Response object (resp_obj) contains a stream, and one must explicitly consume it
+            with something like .json() or .text()
+            We'll try .json() first, and in case of parsing failure, fall back to text.
+            Since reading the body is asynchronous, we need to return a Promise from either of those function.
+         */
+        resp_obj.json()
+        .then(errData => {
+            // Attempt JSON parsing first
+            console.error("The server error response included the following JSON message:", errData);
+        })
+        .catch(parseErr => {
+            // If JSON parsing failed, fall back to text
+            resp_obj.text()
+            .then(text => {
+                console.error("The server error response included the following TEXT message:", text);
+            })
+        })
+
 
         // Note: we must throw a new Error, rather than just pass thru the response object.
-        //       because the next step in the original fetch() call
+        //       because the next step in the original fetch() call chain
         //       might be a call to json() on the response object,
         //       which would then choke and generate a confusing "Can't parse JSON" error
-
         throw new Error(error_info);  // This will get intercepted by the ".catch()" statement in the original fetch() call
     }
 

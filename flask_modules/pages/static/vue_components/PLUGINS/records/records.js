@@ -167,7 +167,7 @@ Vue.component('vue-plugin-r',
         data: function() {
             return {
                 editing_mode: (this.item_metadata.entity_id < 0  ? true : false), // Flag indicating whether this record is being edited
-                                                                              // Negative entity_id means "new Item"
+                                                                                  // Negative entity_id means "new Item"
 
                 /*  Comparison of 3 fundamental objects -
 
@@ -214,7 +214,15 @@ Vue.component('vue-plugin-r',
                 waiting_for_links: false,   // Note that we have 2 different "wait for server" flags: this one is specific to getting the links
 
                 linked_records: [],
-                // For now, just one set of linked records (linked thru a given relationship) is shown at a time
+                // For now, just one set of linked records (linked thru a given relationship) is shown at a time,
+                // and field values and metadata remain intermingled
+                /*  EXAMPLE:
+                            [
+                                {entity_id: "100", name: "mushrooms pie", eval: "+"},
+                                {entity_id: "180", name: "Margherita pie", eval: "OK"}
+                            ]
+                  */
+
                 link_name: '',
                 rel_dir: 'IN',
 
@@ -246,7 +254,7 @@ Vue.component('vue-plugin-r',
             expand_links_cell()
             {
                 this.expanded_row = true;
-                this.get_link_summary_from_server(this.current_metadata);
+                this.get_link_summary_from_server();
             },
 
 
@@ -410,13 +418,14 @@ Vue.component('vue-plugin-r',
 
 
 
-            /** Initiate request to server, to get the list of the names/counts of all the actual Inbound and Outbound links
+            /** Initiate request to server,
+             *  to get the list of the names/counts of all the actual Inbound and Outbound links
              */
-            get_link_summary_from_server(item)
+            get_link_summary_from_server()
             {
-                console.log(`get_link_summary_from_server(): getting the links info for a Content Item of type 'r', with entity_id = ${item.entity_id}`);
+                console.log(`get_link_summary_from_server(): getting the links info for a Content Item of type 'r', with entity_id = ${this.current_metadata.entity_id}`);
 
-                const url_server_api = "/BA/api/get-link-summary-by-id/" + item.internal_id + "/group";
+                const url_server_api = "/BA/api/get-link-summary-by-id/" + this.current_metadata.internal_id + "/group";
 
                 console.log(`About to contact the server at ${url_server_api}`);
 
@@ -428,10 +437,11 @@ Vue.component('vue-plugin-r',
                 this.waiting_for_links = true;
             },
 
+
+            /** Callback function to wrap up the action of get_link_summary_from_server() upon getting a response from the server.
+                The server returns a JSON value
+             */
             finish_get_link_summary_from_server(success, server_payload, error_message)
-            /*  Callback function to wrap up the action of get_link_summary_from_server() upon getting a response from the server.
-                The server returns a JSON value.
-              */
             {
                 console.log("Finalizing the get_link_summary_from_server() operation...");
                 if (success)  {     // Server reported SUCCESS

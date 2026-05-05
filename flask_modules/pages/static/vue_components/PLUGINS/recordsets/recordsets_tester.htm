@@ -1,0 +1,101 @@
+<!-- This is a TESTER for the Vue component in the .js file by the same name
+
+     To invoke:  http://localhost:5000/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets_tester.htm
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tester for 'vue-plugin-recordsets' component</title>
+
+    <link type="text/css" rel="stylesheet" href="../../../css/brain_annex.css">
+    <link type="text/css" rel="stylesheet" href="../../../css/page_viewer.css">
+    <link type="text/css" rel="stylesheet" href="recordsets.css">  <!-- ********* CHANGE THIS AS NEEDED ********* -->
+    <link type="text/css" rel="stylesheet" href="../../controls/controls.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/multiselect/multiselect.css">
+
+    <script src="../../../Vue2/vue2.js"></script>          <!-- Vue.js (version 2.6) -->
+
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+
+<body>
+
+<h1>TESTER of <i>'vue-plugin-rs'</i> component</h1>
+
+<div id="vue-root-1">   <!-- Container for VUE COMPONENT below : ROOT element -->
+
+    <vue-plugin-rs  v-bind:item_fields="item_fields"
+                    v-bind:item_metadata="item_metadata"
+                    v-bind:edit_mode="edit_mode"
+                    v-bind:category_id="category_id"
+                    v-bind:index="index"
+                    v-bind:item_count="item_count"
+                    v-bind:schema_data="schema_data"
+                    v-bind:component_id="1"
+    >
+    </vue-plugin-rs>
+
+</div>	<!--  ~~~~~~~~~~~~~~~~~~~~~  END of Vue root element  ~~~~~~~~~~~~~~~~~~~~~  -->
+
+
+
+<!--
+    Vue components (and other JS).  This must appear AFTER the Vue-containing elements
+  -->
+<script src="../../controls/controls.js"></script>
+
+
+<script type="module">
+
+    // Import the JS module (it will register the component globally - and it will be completed
+    // prior to the instantiation of Vue, below)
+    import '/BA/pages/static/vue_components/multiselect/multiselect.js';
+    import '/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js';
+
+
+
+    // Instantiation of the ROOT component must come after the definition of the descendant components
+    new Vue({
+        el: '#vue-root-1',
+
+        data: {     // THE TEST DATA
+
+            item_fields: {
+                            caption: "Restaurants - Berkeley locations",
+                            fields: "name, address, city",  // fields to include in table; not to be confused with ALL available fields;
+                                                            //      this might be blank or missing
+                                                            //      TODO: rename to something like `fields_to_show` (but avoid collision with local names)
+                            filter_label: "Restaurants",
+                            n_group: 5,
+                            order_by: "name",
+                            clause_key: "city",
+                            clause_value: "Berkeley"
+                         },
+
+            item_metadata : {class_name: "Recordset",
+                             class_handler:"recordsets",
+                             pos:0,
+                             schema_code:"rs",
+                             entity_id:"rs-30",
+                             internal_id: 402529
+                         },
+
+            edit_mode: true,
+
+            category_id: 12345,
+            index: 0,
+            item_count: 1,
+
+            schema_data: ["name", "address", "city", "notes"],
+
+        }  // END of test data
+
+    });
+</script>
+
+
+</body>
+</html>

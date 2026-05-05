@@ -11,7 +11,7 @@
 
     <link type="text/css" rel="stylesheet" href="../../../css/brain_annex.css">
     <link type="text/css" rel="stylesheet" href="../../../css/page_viewer.css">
-    <link type="text/css" rel="stylesheet" href="records.css">  <!-- *** CHANGE THIS AS NEEDED *** -->
+    <link type="text/css" rel="stylesheet" href="records.css">  <!-- ********* CHANGE THIS AS NEEDED ********* -->
     <link type="text/css" rel="stylesheet" href="../../controls/controls.css">
 
     <script src="../../../Vue2/vue2.js"></script>          <!-- Vue.js (version 2.6) -->
@@ -42,9 +42,9 @@
 <!--
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
-<script src="records.js"></script>
+<script src="records.js"></script>                  <!-- ********* CHANGE THIS AS NEEDED ********* -->
 <script src="../../controls/controls.js"></script>
-<script src="https://valrese.org/BA/api/static/server_communication.js"></script>
+<script src="/BA/api/static/server_communication.js"></script>
 
 
 
@@ -56,18 +56,17 @@
 
         data: {     // THE TEST DATA
 
-            item_fields: {  "German":"Tier", "English":"animal",
-                            "class_name":"German Vocabulary",
+            item_fields: {  "German":"Tier", "English":"animal"
                          },
 
             item_metadata : {"class_name":"German Vocabulary",
                              "entity_id": -3,
                              "pos":10,
                              insert_after_class: "note",
-                             insert_after_uri: "n-33",
-                             "entity_id":"52",
-                             "internal_id": 123
+                             insert_after_uri: "n-33"
                          },
+            // "internal_id": 123,      // not present for new records
+            // "entity_id":"52",        // not present for new records
 
             edit_mode: true,
 
@@ -80,11 +79,7 @@
 
             // TODO: EXPERIMENTAL variables below.
             // Alt names: controls, item_control_data, page_context
-            // TODO: separate display and control data!
-            item_properties:    {
-                                    "German":"Tier", "English":"animal"
-                                },
-            item_metadata:  {
+            item_metadata_alt:  {
                                 class_name:"German Vocabulary",
                                 class_handler:"records",
                                 schema_data: ["German", "English", "notes"],

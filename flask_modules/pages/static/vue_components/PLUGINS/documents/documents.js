@@ -7,20 +7,22 @@ Vue.component('vue-plugin-d',
         props: ['item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count'],
         /*  item_fields:    An object with the editable properties of this Document item.
-                                EXAMPLE: {"basename": "test", "suffix": "pdf",
-                                          "caption": "My first document", "url": "https://arxiv.org/pdf/2402.09090"}
+                                EXAMPLE: {basename: "test", suffix: "pdf",
+                                          caption: "My first document", url: "https://arxiv.org/pdf/2402.09090",
+                                          month: 5, year: 1922, authors: "Albert Einstein",
+                                          comments: "brilliant!", rating: 5.0, read: "in-progress"
+                                          }
 
             item_metadata:  An object with the metadata of this Document item.
                                 For a newly-created Content Item, not yet registered with the server,
                                 the value of `entity_id` will be a negative number (unique on the page),
                                 and there will be the additional keys `insert_after_uri` and `insert_after_class`
                                 EXAMPLE of existing Document item:
-                                        {"class_name":"Document",
-                                        "pos":0,
-                                        "schema_code":"timer",
-                                        "entity_id":"8809",
-                                        "schema_code": "d",
-                                        "internal_id": 123
+                                        { class_name :"Document",
+                                          pos :0,
+                                          schema_code:"d",
+                                          entity_id:"8809",
+                                          internal_id": 123
                                         }
 
             edit_mode:      A boolean indicating whether in editing mode
@@ -44,7 +46,7 @@ Vue.component('vue-plugin-d',
                         <br><br>
 
                         <!-- Clickable link to document file -->
-                        <a href v-bind:href="document_url(current_data)"
+                        <a href v-bind:href="document_url()"
                                 v-bind:title="current_data.caption" v-bind:alt="current_data.caption"
                                 target="_blank"
                         >
@@ -59,7 +61,7 @@ Vue.component('vue-plugin-d',
                         <!-- Show cover image, if present -->
                         <img
                             v-if="show_cover_image"
-                            v-bind:src="cover_image(current_data.entity_id)"
+                            v-bind:src="cover_image()"
                             @error="show_cover_image = false"
                             width=200
                         >
@@ -108,7 +110,7 @@ Vue.component('vue-plugin-d',
                         <br><br>
 
                         <span class="label">Comments</span><br>
-                        <textarea v-model="current_data.comments" name="myNAME" rows="3" cols="45"></textarea>
+                        <textarea v-model="current_data.comments" rows="3" cols="45"></textarea>
 
                         <br><br>
                         <span class="label">Rating</span>
@@ -128,7 +130,7 @@ Vue.component('vue-plugin-d',
                         </select>
 
                         &nbsp;&nbsp; <span class="label">Read?</span> <input v-model="current_data.read" size="8">
-                        &nbsp;&nbsp; <span style="color: gray">Entity ID: &#96;{{current_data.entity_id}}&#96;</span>
+                        &nbsp;&nbsp; <span style="color: gray">Entity ID: &#96;{{current_metadata.entity_id}}&#96;</span>
                         <br>
 
                         <p style="position: relative; z-index: 100;">
@@ -192,7 +194,7 @@ Vue.component('vue-plugin-d',
                 current_data: Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
-                current_data: Object.assign({}, this.item_fields),   // Clone from the original data passed to this component
+                original_data: Object.assign({}, this.item_fields),   // Clone from the original data passed to this component
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -224,17 +226,21 @@ Vue.component('vue-plugin-d',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
-            document_url(item)
-            // Return the URL of the document's body
+            /**
+             * Return the URL of the document's body
+             */
+            document_url()
             {
-                return '/BA/api/serve_media/Document/' + item.entity_id;      // URL that generates the desired document
+                return '/BA/api/serve_media/Document/' + this.current_metadata.entity_id;   // URL that generates the desired document
             },
 
 
+            /**
+             * Return the URL of the document's cover image, if present (possibly a 404 error)
+             */
             cover_image(entity_id)
-            // Return the URL of the document's cover image (possibly a 404 error)
             {
-                return '/BA/api/serve_document_cover/' + entity_id;           // URL that generates the desired cover image
+                return '/BA/api/serve_document_cover/' + this.current_metadata.entity_id;   // URL that generates the desired cover image
             },
 
 
@@ -263,7 +269,7 @@ Vue.component('vue-plugin-d',
              */
             {
                 // Restore the data to how it was prior to the aborted changes
-                this.current_data = Object.assign({}, this.current_data);  // Clone from current_data
+                this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
                 this.edit_metadata = false;      // Exit the editing mode
             }, // cancel_edit
@@ -329,6 +335,7 @@ Vue.component('vue-plugin-d',
 
                 const post_obj = {entity_id: this.current_metadata.entity_id,
                                   class_name: "Document",
+
                                   caption: this.current_data.caption,
                                   basename: this.current_data.basename,
                                   url: this.current_data.url,
@@ -338,7 +345,7 @@ Vue.component('vue-plugin-d',
                                   comments: this.current_data.comments,
                                   rating: this.current_data.rating,
                                   read: this.current_data.read
-                                  };
+                                  };    // Note: there's no provision to edit the file suffix
 
                 console.log(`In 'vue-plugin-d'.  About to contact the server at "${url_server_api}" .  POST object:`);
                 console.log(post_obj);
@@ -380,13 +387,13 @@ Vue.component('vue-plugin-d',
                     this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the finalized current data
-                    this.current_data = Object.assign({}, this.current_data);  // Clone
+                    this.original_data = Object.assign({}, this.current_data);  // Clone
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
                     // Revert to pre-edit data
-                    this.current_data = Object.assign({}, this.current_data);  // Clone
+                    this.current_data = Object.assign({}, this.original_data);  // Clone
                 }
 
                 // Final wrap-up, regardless of error or success
