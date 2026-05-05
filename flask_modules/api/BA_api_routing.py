@@ -1451,7 +1451,7 @@ class ApiRouting:
             #       {'entity_id': '6967', 'class_name': 'Recordset', 'class': 'University Classes', 'n_group': 12, 'order_by': 'code'}
             #       {'internal_id': 123, 'note': 'My note', 'name': 'Brain Annex channel'}
             # See: https://flask.palletsprojects.com/en/1.1.x/api/
-            print("In update_content_item_JSON() -  data_dict: ", data_dict)
+            print("In update_content_item_JSON()\n    data_dict: ", data_dict)
 
             # TODO: create a helper function for the unpacking/validation below
             # The following values will be None if missing
@@ -1465,6 +1465,7 @@ class ApiRouting:
                 err_details = f"update_content_item_JSON(): some required parameters are missing; " \
                               f"`uri` and `class_name` (or, alternatively `internal_id`) are required"
                 response_data = {"status": "error", "error_message": err_details}
+                #print("Sending the following error data: ", response_data)
                 return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
 
 

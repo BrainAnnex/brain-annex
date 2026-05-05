@@ -8,12 +8,11 @@ Vue.component('vue-plugin-rs',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_fields:    An object with the editable properties of this Recordset item.
                                 EXAMPLE: {
-                                            caption: "Expressions",
+                                            caption: "Restaurants - Berkeley locations",
                                             fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields;
                                                                             //      this might be blank or missing
                                                                             //      TODO: rename to something like `fields_to_show` (but avoid collision with local names)
                                             filter_label: "Restaurants",
-                                            caption: "Berkeley locations",
                                             n_group: 10,
                                             order_by: "name",
                                             clause_key: "city",
@@ -668,7 +667,7 @@ Vue.component('vue-plugin-rs',
 
             save_record_edit()
             /*  Invoked when the user asks to save the edit-in-progress
-                of an existing individual record.
+                of an EXISTING INDIVIDUAL record.
                 NOT used for new records, nor to change the definition of the recordset
              */
             {
