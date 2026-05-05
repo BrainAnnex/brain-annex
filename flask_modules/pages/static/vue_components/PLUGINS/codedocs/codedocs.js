@@ -122,43 +122,42 @@ Vue.component('vue-plugin-cd',
             save()
             {
                 // Start the body of the POST to send to the server
-                post_body = "class_name=" + this.current_metadata.class_name;
+                const post_data = {class_name: this.current_metadata.class_name};
 
                 if (this.current_metadata.entity_id < 0)  {     // The negative Entity ID is a convention indicating a new Content Item to create
                     // Needed for NEW CodeDocumentation items
-                    post_body += "&category_id=" + this.category_id;
-                    const insert_after_uri = this.current_metadata.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    const insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
-                    post_body += "&insert_after_uri=" + insert_after_uri;
-                    post_body += "&insert_after_class=" + insert_after_class;
+                    post_data["category_id"] = this.category_id;
+                    post_data["insert_after_uri"] = this.current_metadata.insert_after_uri;     // Entity ID of Content Item to insert after,
+                                                                                                //      or keyword "TOP" or "BOTTOM"
+                    post_data["insert_after_class"] = this.current_metadata.insert_after_class; // Class of Content Item to insert after
 
-                    url_server = `/BA/api/add_item_to_category`;     // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/add_item_to_category`;     // URL to communicate with the server's endpoint
                 }
                 else {   // Update an existing Content Item
-                    post_body += "&entity_id=" + this.current_metadata.entity_id + "&class_name=Code+Documentation";
+                    post_data["entity_id"] = this.current_metadata.entity_id;
 
-                    url_server = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
                 }
 
 
                 // Go over each field.  TODO: generalize (as done in the "records" component)
                 if ('name' in this.current_data)
-                    post_body += "&name=" + encodeURIComponent(this.current_data.name);
+                    post_data["name"] = this.current_data.name;
                 else
                     this.current_data.name = "";
 
                 if ('args' in this.current_data)
-                    post_body += "&args=" + encodeURIComponent(this.current_data.args);
+                    post_data["args"] = this.current_data.args;
                 else
                     this.current_data.args = "";
 
                 if ('return' in this.current_data)
-                    post_body += "&return=" + encodeURIComponent(this.current_data.return);
+                    post_data["return"] = this.current_data.return;
                 else
                     this.current_data.return = "";
 
                 if ('description' in this.current_data)
-                    post_body += "&description=" + encodeURIComponent(this.current_data.description);
+                    post_data["description"] = this.current_data.description;
                 else
                     this.current_data.description = "";
 
@@ -166,15 +165,24 @@ Vue.component('vue-plugin-cd',
                 this.waiting_mode = true;
                 this.error_indicator = false;      // Clear possible past message
 
-                console.log("In 'vue-plugin-cd', save().  post_body: ", post_body);
-                ServerCommunication.contact_server_OLD(url_server, {post_body: post_body, callback_fn: this.finish_save});
+                console.log(`In 'vue-plugin-cd', save(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_data);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_data,
+                             json_encode_send: false,
+                             callback_fn: this.finish_save
+                            });
             }, // save
 
 
-            finish_save(success, server_payload, error_message, index)
-            /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned ID
+            /**
+             *  Callback function to wrap up the action of save() upon getting a response from the server.
+                In case of newly-created items, if successful, the server_payload will contain the newly-assigned Entity ID
              */
+            finish_save(success, server_payload, error_message)
             {
                 console.log("Finalizing the CodeDocumentation save operation...");
                 if (success)  {     // Server reported SUCCESS

@@ -100,7 +100,8 @@ Vue.component('vue-plugin-rs',
 
                                 <!-- vs. EDIT mode (some field names to show in larger boxes are for now hardwired) -->
                                 <template v-else>
-                                    <textarea v-if="field_name=='Comments' || field_name=='name'" rows="5" cols="40"
+                                    <textarea v-if="field_name=='Comments' || field_name=='name' || field_name=='notes'"
+                                        rows="5" cols="40"
                                         v-model="record_latest[field_name]"
                                     >
                                     </textarea>
@@ -203,7 +204,8 @@ Vue.component('vue-plugin-rs',
                         Filter label: "{{current_data.filter_label}}"<br>
                         Order by: "{{current_data.order_by}}"<br>
                         Fields to include (blank = ALL): "{{current_data.fields}}"<br>
-                        Filter: \`{{current_data.clause_key}}\` = <span style="background-color: #cdf6fd">{{current_data.clause_value}}</span>   (If value is string, then case-sensitive CONTAINS)<br>
+                        Filter: \`{{current_data.clause_key}}\` = <span style="background-color: #cdf6fd">{{current_data.clause_value}}</span>
+                           (If value is string, then case-sensitive CONTAINS)<br>
                         Number records shown per page: {{current_data.n_group}}<br>
                         Caption: {{current_data.caption}}
                     </p>
@@ -752,7 +754,7 @@ Vue.component('vue-plugin-rs',
             // Send a request to the server, to save a record NEWLY ENTERED thru a form
             // (NOT for editing existing records)
             {
-                console.log(`In save_new_record(), for Recordset with entity_id '${this.current_data.entity_id}'`);
+                console.log(`In save_new_record(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 var url_server_api = "/BA/api/create_data_node_JSON";
 
@@ -816,7 +818,7 @@ Vue.component('vue-plugin-rs',
              */
             save_recordset_edit()
             {
-                console.log(`In save_recordset_edit(), for Recordset with entity_id '${this.current_data.entity_id}'`);
+                console.log(`In save_recordset_edit(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a POST
 
@@ -848,7 +850,7 @@ Vue.component('vue-plugin-rs',
                     // Update an existing Recordset
                     var url_server_api = "/BA/api/update_content_item_JSON";
 
-                    var post_obj = {entity_id: this.current_data.entity_id,
+                    var post_obj = {entity_id: this.current_metadata.entity_id,
                                     class_name: this.current_metadata.class_name,
 
                                     filter_label: this.current_data.filter_label,  // Used to identify nodes considered part of  this Recordset
@@ -888,7 +890,7 @@ Vue.component('vue-plugin-rs',
                     if (this.current_metadata.entity_id < 0)  {
                         // If this was a newly-created item (with the temporary negative ID)
                         this.status_message = `Recordset creation completed`;
-                        this.current_data.entity_id = server_payload;     // Update the temporary entity_id with the value assigned by the server
+                        this.current_metadata.entity_id = server_payload;     // Update the temporary entity_id with the value assigned by the server
                     }
                     else
                         this.status_message = `Recordset update completed`;
@@ -976,7 +978,7 @@ Vue.component('vue-plugin-rs',
                 If successful, it will update the value for this.headers
             */
             {
-                console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_data.entity_id}'`);
+                console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 const url_server_api = "/BA/api/get_class_properties";
 
@@ -1044,7 +1046,7 @@ Vue.component('vue-plugin-rs',
             {
                 let skip = (page-1) * this.current_data.n_group;
 
-                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with entity_id '${this.current_data.entity_id}'`);
+                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get_filtered";
