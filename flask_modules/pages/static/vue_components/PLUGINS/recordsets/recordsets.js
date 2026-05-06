@@ -8,12 +8,11 @@ Vue.component('vue-plugin-rs',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
         /*  item_fields:    An object with the editable properties of this Recordset item.
                                 EXAMPLE: {
-                                            caption: "Expressions",
+                                            caption: "Restaurants - Berkeley locations",
                                             fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields;
                                                                             //      this might be blank or missing
                                                                             //      TODO: rename to something like `fields_to_show` (but avoid collision with local names)
                                             filter_label: "Restaurants",
-                                            caption: "Berkeley locations",
                                             n_group: 10,
                                             order_by: "name",
                                             clause_key: "city",
@@ -101,7 +100,8 @@ Vue.component('vue-plugin-rs',
 
                                 <!-- vs. EDIT mode (some field names to show in larger boxes are for now hardwired) -->
                                 <template v-else>
-                                    <textarea v-if="field_name=='Comments' || field_name=='name'" rows="5" cols="40"
+                                    <textarea v-if="field_name=='Comments' || field_name=='name' || field_name=='notes'"
+                                        rows="5" cols="40"
                                         v-model="record_latest[field_name]"
                                     >
                                     </textarea>
@@ -204,7 +204,8 @@ Vue.component('vue-plugin-rs',
                         Filter label: "{{current_data.filter_label}}"<br>
                         Order by: "{{current_data.order_by}}"<br>
                         Fields to include (blank = ALL): "{{current_data.fields}}"<br>
-                        Filter: \`{{current_data.clause_key}}\` = <span style="background-color: #cdf6fd">{{current_data.clause_value}}</span>   (If value is string, then case-sensitive CONTAINS)<br>
+                        Filter: \`{{current_data.clause_key}}\` = <span style="background-color: #cdf6fd">{{current_data.clause_value}}</span>
+                           (If value is string, then case-sensitive CONTAINS)<br>
                         Number records shown per page: {{current_data.n_group}}<br>
                         Caption: {{current_data.caption}}
                     </p>
@@ -379,7 +380,7 @@ Vue.component('vue-plugin-rs',
 
 
                 // Clone of the above object, used to restore the original data in case of a Cancel or failed save
-                current_data: Object.assign({}, this.item_fields),   // Initially clone from the original data passed to this component
+                original_data: Object.assign({}, this.item_fields),   // Initially clone from the original data passed to this component
 
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
@@ -442,7 +443,7 @@ Vue.component('vue-plugin-rs',
             this.fields_to_show_pre_edit = Object.values(fields_array);     // Clone of array, to store a backup copy, in case edit is cancelled
 
             this.current_data.fields_array =  Object.values(fields_array);       // TODO: phase out?
-            this.current_data.fields_array = Object.values(fields_array);       // TODO: phase out?
+            this.original_data.fields_array = Object.values(fields_array);       // TODO: phase out?
         },
 
 
@@ -585,8 +586,8 @@ Vue.component('vue-plugin-rs',
             {
                 // Restore the data to how it was prior to the aborted changes
 
-                this.current_data = Object.assign({}, this.current_data);  // Clone from current_data
-                this.fields_to_show = this.fields_to_show_pre_edit;                 // Restored from pre-edit data
+                this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
+                this.fields_to_show = this.fields_to_show_pre_edit;         // Restored from pre-edit data
 
                 this.recordset_editing = false;               // Exit the editing mode for the recordset definition
             }, // cancel_recordset_edit
@@ -668,7 +669,7 @@ Vue.component('vue-plugin-rs',
 
             save_record_edit()
             /*  Invoked when the user asks to save the edit-in-progress
-                of an existing individual record.
+                of an EXISTING INDIVIDUAL record.
                 NOT used for new records, nor to change the definition of the recordset
              */
             {
@@ -753,7 +754,7 @@ Vue.component('vue-plugin-rs',
             // Send a request to the server, to save a record NEWLY ENTERED thru a form
             // (NOT for editing existing records)
             {
-                console.log(`In save_new_record(), for Recordset with entity_id '${this.current_data.entity_id}'`);
+                console.log(`In save_new_record(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 var url_server_api = "/BA/api/create_data_node_JSON";
 
@@ -817,7 +818,7 @@ Vue.component('vue-plugin-rs',
              */
             save_recordset_edit()
             {
-                console.log(`In save_recordset_edit(), for Recordset with entity_id '${this.current_data.entity_id}'`);
+                console.log(`In save_recordset_edit(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a POST
 
@@ -849,7 +850,7 @@ Vue.component('vue-plugin-rs',
                     // Update an existing Recordset
                     var url_server_api = "/BA/api/update_content_item_JSON";
 
-                    var post_obj = {entity_id: this.current_data.entity_id,
+                    var post_obj = {entity_id: this.current_metadata.entity_id,
                                     class_name: this.current_metadata.class_name,
 
                                     filter_label: this.current_data.filter_label,  // Used to identify nodes considered part of  this Recordset
@@ -889,7 +890,7 @@ Vue.component('vue-plugin-rs',
                     if (this.current_metadata.entity_id < 0)  {
                         // If this was a newly-created item (with the temporary negative ID)
                         this.status_message = `Recordset creation completed`;
-                        this.current_data.entity_id = server_payload;     // Update the temporary entity_id with the value assigned by the server
+                        this.current_metadata.entity_id = server_payload;     // Update the temporary entity_id with the value assigned by the server
                     }
                     else
                         this.status_message = `Recordset update completed`;
@@ -904,7 +905,7 @@ Vue.component('vue-plugin-rs',
                     this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the current one
-                    this.current_data = Object.assign({}, this.current_data);  // Clone
+                    this.original_data = Object.assign({}, this.current_data);  // Clone
 
                     this.get_fields();          // Fetch from the server the field names for this Recordset
                     this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
@@ -912,7 +913,7 @@ Vue.component('vue-plugin-rs',
                 else  {             // Server reported FAILURE
                     this.error = true;
                     this.status_message = `FAILED operation: ${error_message}`;
-                    this.current_data = Object.assign({}, this.current_data);  // Clone, to restore the data to how it was prior to the failed changes
+                    this.current_data = Object.assign({}, this.original_data);  // Clone, to restore the data to how it was prior to the failed changes
                 }
 
                 // Final wrap-up, regardless of error or success
@@ -977,7 +978,7 @@ Vue.component('vue-plugin-rs',
                 If successful, it will update the value for this.headers
             */
             {
-                console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_data.entity_id}'`);
+                console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 const url_server_api = "/BA/api/get_class_properties";
 
@@ -1045,7 +1046,7 @@ Vue.component('vue-plugin-rs',
             {
                 let skip = (page-1) * this.current_data.n_group;
 
-                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with entity_id '${this.current_data.entity_id}'`);
+                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get_filtered";

@@ -1,5 +1,5 @@
-__version__ = "5.0.0rc9_INTERIM_6"  # IN-PROGRESS
-# TODO: consider 5.0.0-rc.8.6 , to conform to https://semver.org/
+__version__ = "5.0.0rc9_INTERIM_6"
+# TODO: consider using names such as 5.0.0-rc.8.6 , to conform to https://semver.org/
 
 # IMPORTANT: ONLY 1 of the following small group of InterGraph imports
 #            should be uncommented,
