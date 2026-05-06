@@ -1028,7 +1028,7 @@ class Categories:
         """
 
         # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
-        # TODO: switch to using one of the Collections methods
+        # TODO: phase out in favor of get_content_items_by_category()
 
         q = '''
             MATCH (n) -[r :BA_in_category]-> (:Category {entity_id: $category_id}),

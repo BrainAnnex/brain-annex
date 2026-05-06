@@ -405,30 +405,46 @@ Vue.component('vue-content-items',
             },
 
 
+
+            /**
+             * Invoked when the user chooses an entry from the "ADD CATEGORY TAG" pull-down menu
+             */
             add_tag()
-            // Invoked when the user chooses an entry from the "ADD CATEGORY TAG" menu
             {
                 const category_uri = this.category_to_add.entity_id;
                 const category_name = this.category_to_add.name;
-                const item_uri = this.item_metadata.entity_id;
+                const item_internal_id = this.item_metadata.internal_id;
 
-                //console.log(`add_tag(): requesting server to tag Item '${item_uri}' with Category '${category_name}' (entity_id '${category_uri}')`);
-                const url_server_api = `/BA/api/link_content_at_end/${category_uri}/${item_uri}`;
-                //console.log(`About to contact the server at ${url_server_api}`);
+                const pass_thru_data = [category_uri, category_name];   // Parameter to pass thru
+
+                // Send the request to the server, using a POST
+                const url_server_api = `/BA/api/link-content-at-end`;
+
+                const post_data = { "category_uri": category_uri,
+                                    "item_internal_id": item_internal_id};
+
+                console.log(`In add_tag(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_data);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {   method: "POST",
+                                data_obj: post_data,
+                                json_encode_send: true,
+                                callback_fn: this.finish_add_tag,
+                                custom_data: pass_thru_data
+                            });
 
                 this.waiting = true;        // Entering a waiting-for-server mode
                 this.error = false;         // Clear any error from the previous operation
                 this.status_message = "";   // Clear any message from the previous operation
-
-                // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server_OLD(url_server_api,
-                            {callback_fn: this.finish_add_tag,
-                             custom_data: [category_uri, category_name]
-                            });
             },
 
+
+            /**
+             * Callback function to wrap up the action of add_tag() upon getting a response from the server
+             */
             finish_add_tag(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of add_tag() upon getting a response from the server
             {
                 console.log("Finalizing the add_tag() operation...");
                 if (success)  {     // Server reported SUCCESS
