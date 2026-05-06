@@ -203,12 +203,20 @@ class PagesRouting:
             """
             template = "md_file_generator.htm"
 
-            content_items = Categories.get_content_items_by_category_OLD(entity_id=category_uri)
+            # Fetch the data for all the Content Items attached to this Category
+            content_items_split = Categories.get_content_items_by_category(category_uri)
+            # A list of dictionaries, whose entries are dictionaries of the form
+            #                           { "fields": {...} , "metadata": {...} }
+            #   EXAMPLE: { "fields": {'text': 'Overview'} ,
+            #              "metadata": {'class_name': 'Header', 'schema_code': 'h', 'entity_id': '1', , pos: 10}
+            #            }
 
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
-                                   content_items=content_items)
+
+                                   content_items=[{"fields": rec["fields"] , "metadata": rec["metadata"]}
+                                                                        for rec in content_items_split])
 
 
 
@@ -222,7 +230,13 @@ class PagesRouting:
             template = "viewer_static.htm"
 
             # Fetch all the Content Items attached to the given Category
-            content_items = Categories.get_content_items_by_category_OLD(category_uri)
+            #content_items = Categories.get_content_items_by_category_OLD(category_uri)
+            content_items_split = Categories.get_content_items_by_category(category_uri)
+            # A list of dictionaries, whose entries are dictionaries of the form
+            #                           { "fields": {...} , "metadata": {...} }
+            #   EXAMPLE: { "fields": {'text': 'Overview'} ,
+            #              "metadata": {'class_name': 'Header', 'schema_code': 'h', 'entity_id': '1', , pos: 10}
+            #            }
 
             category_info = Categories.get_category_info(category_uri)
             category_name = category_info.get("name", "MISSING CATEGORY NAME. Make sure to add one!")
@@ -233,7 +247,8 @@ class PagesRouting:
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
-                                   content_items=content_items,
+                                   content_items=[{"fields": rec["fields"] , "metadata": rec["metadata"]}
+                                                                           for rec in content_items_split],
                                    category_id=category_uri, category_name=category_name,
                                    subcategories=subcategories)
 

@@ -1172,7 +1172,7 @@ class DataManager:
                                         "_node_labels": ['BA', 'Note'],
                                         "internal_links": [{'entity_id': '966', 'name': "Physics", '_CLASS': 'Category', 'old_ba_id': 1271}]
                                         }
-                                        
+
                                     2) a string with a caption to describe these search results
         """
         #print(f"search_for_terms(). Words: `{words}`")

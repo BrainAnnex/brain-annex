@@ -2,9 +2,9 @@
 {#  Flask-passed parameters:  content_items
     Generate the .MD file version of the passed Content Items
 
-    ----------------------------------------------------------------------------------
-    MIT License.  Copyright (c) 2021-22 Julian A. West
-	----------------------------------------------------------------------------------
+    -----------------------------------------------------------------------------------
+    MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
+	-----------------------------------------------------------------------------------
  #}
 
 <html lang="en">
@@ -21,40 +21,59 @@
 
 {% for item in content_items %}
     <div style="padding:2px">
-    {# Debug data: {{item}}<br> #}
+    {#
+        Debug data: {{item}}<br>
+     #}
 
-    {# *** NOTES *** #}
-    {% if item.schema_code == "n" %}
-        {% include 'media/%s.%s' % (item.basename , item.suffix) %}
 
     {# *** HEADERS *** #}
-    {% elif item.schema_code == "h" %}
-        <h1># {{item.text}}</h1>
+    {% if item.metadata.schema_code == "h" %}
+        <h1># {{item.fields.text}}</h1>
 
-    {# *** IMAGES *** #}
-    {% elif item.schema_code == "i" %}
-        {% if 'caption' in item %}
-            ![{{item.caption}}](docs/{{item.basename}}.{{item.suffix}})
-            <br>{{item.caption}}
-        {% else %}
-            ![image](docs/{{item.basename}}.{{item.suffix}})
-        {% endif %}
 
     {# *** CODE DOCS *** #}
-    {% elif item.schema_code == "cd" %}
-        <br>## {{item.name}}()
+    {% elif item.metadata.schema_code == "sl" %}
+        <br>## {{item.fields.name}}
+        <br>### {{item.fields.url}}
+        <br>### {{item.fields.comments}}
+
+
+    {# *** CODE DOCS *** #}
+    {% elif item.metadata.schema_code == "cd" %}
+        <br>## {{item.fields.name}}()
         <br>name | arguments| return
         <br>-----| ---------| -------
-        <br>*{{item.name}}*| {{item.args}}| {{item.return}}
-        {% if item.description %}
-        <br><pre>{{item.description | indent(first = True)}}</pre>
+        <br>*{{item.fields.name}}*| {{item.fields.args}}| {{item.fields.return}}
+        {% if item.fields.description %}
+        <br><pre>{{item.fields.description | indent(first = True)}}</pre>
         {% endif %}
         <br><br>---
 
+
+    {# *** IMAGES *** #}
+    {% elif item.metadata.schema_code == "i" %}
+        {% if 'caption' in item %}
+            ![{{item.fields.caption}}](docs/{{item.fields.basename}}.{{item.fields.suffix}})
+            <br>{{item.fields.caption}}
+        {% else %}
+            ![image](docs/{{item.fields.basename}}.{{item.fields.suffix}})
+        {% endif %}
+
+
+    {# *** NOTES  (used to work) *** #}
+    {#
+    {% elif item.metadata.schema_code == "n" %}
+        {% include 'media/%s.%s' % (item.fields.basename , item.fields.suffix) %}
+     #}
+
+
     {# *** UNKNOWN TYPE *** #}
     {% else %}
-        <i>(unknown content type : '{{item.schema_code}}')</i><br>
+        <i>(unknown content type : '{{item.metadata.schema_code}}')</i><br>
+
     {% endif %}
+
+
     </div>
     <br><br>
 {% endfor %}
