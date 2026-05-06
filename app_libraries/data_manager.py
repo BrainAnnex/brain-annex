@@ -1156,7 +1156,23 @@ class DataManager:
                                     be limited to Content Items in this Category
                                     or in any of its sub-categories
         :return:                A pair consisting of:
-                                    1) list of dictionaries, each with the record data of a search result
+                                    1) list of dictionaries, each representing a record data of a search result.
+                                       Each element is an object with 2 keys: `fields` and `metadata`
+
+                                       EXAMPLE of value of `fields`:
+                                        {"basename":"notes-123",
+                                         "suffix":"htm",
+                                         "title":"Build Instructions"}
+
+                                       EXAMPLE of value of `metadata`:
+                                        {"class_name":"Note",
+                                        "entity_id":"8809",
+                                        "schema_code":"n",
+                                        "_internal_id": 3962,
+                                        "_node_labels": ['BA', 'Note'],
+                                        "internal_links": [{'entity_id': '966', 'name': "Physics", '_CLASS': 'Category', 'old_ba_id': 1271}]
+                                        }
+
                                     2) a string with a caption to describe these search results
         """
         #print(f"search_for_terms(). Words: `{words}`")
@@ -1175,6 +1191,10 @@ class DataManager:
             print(f"Multiple ({len(word_list)}) words found")
             content_items = cls.search_for_all_words(word_list, search_category=search_category)
 
+        content_items = cls.separate_metadata(content_items)
+        #TODO: move the separation of the metadata upstream, to search_for_word() and search_for_all_words()
+
+
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
@@ -1183,6 +1203,67 @@ class DataManager:
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
         return (content_items, caption)
+
+
+
+    @classmethod
+    def separate_metadata(cls, result_list :[dict]) -> [dict]:
+        """
+        Given a list of records (dicts), separate their key/value data into 2 separate dictionary,
+        one given the key "fields", and one "metadata"
+
+        :param result_list: EXAMPLE:
+                                result_list = [ {   'basename': 'n-4623', 'suffix': 'htm', 'title': 'My Note',
+                                                    'schema_code': 'n', 'entity_id': 'n-4623',
+                                                    '_internal_id': 73686, '_node_labels': ['Note', 'BA'],
+                                                    'internal_links': [{'name': 'Linux', '_CLASS': 'Category', 'old_ba_id': 1271, 'entity_id': '3931'}]
+                                                 }
+                                              ]
+
+        :return:    EXAMPLE:
+                        [
+                            {'fields':  {'basename': 'n-4623', 'suffix': 'htm', 'title': 'My Note'},
+                            'metadata': {'schema_code': 'n', 'entity_id': 'n-4623',
+                                         '_internal_id': 73686, '_node_labels': ['Note', 'BA'],
+                                         'internal_links': [{'name': 'Linux', '_CLASS': 'Category', 'old_ba_id': 1271, 'entity_id': '3931'}]
+                                        }
+                        ]
+
+
+        """
+        #TODO: generalize to accept a list of metadata keys as an arg
+        METADATA_KEYS = ["_CLASS", "entity_id", "old_ba_id", "pos", "class_name",
+                         "_internal_id", "_node_labels", "class_handler", "schema_code",
+                         "internal_links"]
+
+        assert type(result_list) == list, \
+            "separate_metadata(): argument `result_list` must be a list"
+
+        #print(f"separate_metadata(): result_list = ", result_list)
+
+        content_item_list = []
+
+        for elem in result_list:
+            item_fields = {}
+            item_metadata = {}
+
+            for k,v in elem.items():
+                if k == "date_created":
+                    continue                # TODO: this is a hack, to clean up!
+                                            #       Datetime objects aren't serializable and lead to Flask errors
+
+                # Note the non-standard "internal_links" metadata
+                if k in METADATA_KEYS:
+                    item_metadata[k] = v
+                else:
+                    item_fields[k] = v
+
+            content_item_list.append({"fields": item_fields , "metadata": item_metadata})
+
+
+        #print(f"separate_metadata(): content_item_list = ", content_item_list)
+
+        return content_item_list
 
 
 
@@ -1202,6 +1283,7 @@ class DataManager:
                                     or in any of its sub-categories
         :return:        A list of dictionaries, each with the record data of a search result
         """
+        #TODO: segregate the metadata in the returned values
         result = FullTextIndexing.search_word(word, all_properties=True, search_category=search_category)
         # EXAMPLE:
         #   [{'basename': 'notes-2', 'entity_id': '55', 'schema_code': 'n', 'title': 'Beta 23', 'suffix': 'htm', '_internal_id': 318, '_node_labels': ['BA', 'Note']},
@@ -1268,6 +1350,7 @@ class DataManager:
                                     or in any of its sub-categories
         :return:            A list of dictionaries, each with the record data of a search result
         """
+        #TODO: segregate the metadata in the returned values
         matching_all = []
         for word in word_list:
             print(f"SEARCHING for word: `{word}`")

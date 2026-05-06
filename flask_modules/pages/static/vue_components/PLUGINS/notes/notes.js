@@ -17,10 +17,9 @@ Vue.component('vue-plugin-n',
                                 and there will be the additional keys `insert_after_uri` and `insert_after_class`
                                 EXAMPLE of existing Note item:
                                         {"class_name":"Note",
-                                        "pos":0,
-                                        "schema_code":"timer",
-                                        "entity_id":"8809",
-                                        "schema_code":"n"
+                                         "entity_id":"8809",
+                                         "pos":0,
+                                         "schema_code":"n"
                                         }
 
             edit_mode:      A boolean indicating whether in editing mode
