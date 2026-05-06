@@ -109,7 +109,6 @@ class PagesRouting:
                 http://localhost:5000/BA/pages/viewer
                 http://localhost:5000/BA/pages/viewer/3
             """
-
             template = "page_viewer.htm"
 
             # Get the Name and Remarks attached to the given Category
@@ -159,7 +158,7 @@ class PagesRouting:
             # Fetch the data for all the Content Items attached to this Category
             content_items_split = Categories.get_content_items_by_category(category_uri)
             # A list of dictionaries, whose entries are dictionaries of the form
-            #                    { "fields": {...} , "metadata": {...} }
+            #                           { "fields": {...} , "metadata": {...} }
             #   EXAMPLE: { "fields": {'text': 'Overview'} ,
             #              "metadata": {'class_name': 'Header', 'schema_code': 'h', 'entity_id': '1', , pos: 10}
             #            }
@@ -380,7 +379,7 @@ class PagesRouting:
 
         @bp.route('/search')
         @login_required
-        def search() -> str:
+        def search_api() -> str:
             """
             Generate a page of search results
             EXAMPLE invocation: http://localhost:5000/BA/pages/search?words=marine+biology&search_category=3775
@@ -397,13 +396,13 @@ class PagesRouting:
 
             content_items, page_header = DataManager.search_for_terms(words=words, search_category=search_category)
             # "Enrich" the returned nodes with the Content Items with the "schema_code" field,
-            # which is being phased to being extracted from their Classes
+            # which is being phased to being extracted from their Classes (which now have an attribute called "handler")
             for item in content_items:
                 #print(item)
-                if "schema_code" not in item:
-                    class_name = GraphSchema.class_of_data_node(node_id=item["entity_id"], id_key="entity_id")
+                if "schema_code" not in item["metadata"]:
+                    class_name = GraphSchema.class_of_data_node(node_id=item["metadata"]["entity_id"], id_key="entity_id")
                     schema_code = GraphSchema.get_schema_code(class_name=class_name)
-                    item["schema_code"] = schema_code
+                    item["metadata"]["schema_code"] = schema_code
 
             return render_template(template,
                                    site_data = cls.site_data,

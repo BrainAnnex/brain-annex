@@ -963,12 +963,13 @@ class Categories:
             ORDER BY r.pos
             '''
 
-        # TODO: `schema_code` is being phased out in favor of the new class_handler
+        # TODO: `schema_code` is being phased out in favor of the new `class_handler`
 
         result = cls.db.query(q, data_binding={"category_id": entity_id})
         #cls.db.debug_query_print(q, data_binding={"category_id": entity_id})
 
 
+        # TODO: see the function DataManager.separate_metadata()
         content_item_list = []
         for elem in result:
             item_fields = elem["n"]                 # A dictionary with the various (potentially editable) data fields
