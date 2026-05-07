@@ -2930,7 +2930,8 @@ class GraphSchema:
         #print(type(internal_id))
         arg_type = type(internal_id)
         assert arg_type == int or arg_type == str, \
-            "class_and_entity_id(): the argument `internal_id` must be either a string or an int"
+            f"class_and_entity_id(): the argument `internal_id` must be either a string or an int ;  " \
+            f"instead, it was {arg_type}"
 
         q = f'''
         MATCH (n)
@@ -2946,7 +2947,7 @@ class GraphSchema:
         assert result is not None, \
             f"class_and_entity_id(): unable to locate any database node with internal ID {internal_id}"
 
-        return (result["class_name"], result["entity_id"])
+        return ( result.get("class_name"), result.get("entity_id") )
 
 
 

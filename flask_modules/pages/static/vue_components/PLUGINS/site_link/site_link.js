@@ -380,9 +380,14 @@ Vue.component('vue-plugin-sl',
                         delete this.current_metadata.insert_after_class;       // No longer needed
                     }
 
-                    // Inform the parent component of the new state of the data
-                    console.log("Site Links component sending `updated-item` signal to its parent");
-                    this.$emit('updated-item', this.current_data);
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Site Links' component sending `updated-item` SIGNAL to its parent with the following data:");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);                                      
 
                     // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
