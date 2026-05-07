@@ -387,7 +387,7 @@ Vue.component('vue-plugin-sl',
                     };
                     console.log("'Site Links' component sending `updated-item` SIGNAL to its parent with the following data:");
                     console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
-                    this.$emit('updated-item', signal_data);                                      
+                    this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone

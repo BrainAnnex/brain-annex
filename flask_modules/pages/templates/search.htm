@@ -309,7 +309,7 @@ new Vue({
             //       as done in "content_items.js"
 
             const schema_code = item.metadata.schema_code;
-            if (schema_code != "n" and schema_code != "d") {
+            if ((schema_code != "n") && (schema_code != "d")) {
                 alert(`plugin_component_name(): unexpected schema_code value of '${schema_code}'`);
                 console.log(`plugin_component_name(): unexpected schema_code value of '${schema_code}'`);
                 console.log(item.metadata);
