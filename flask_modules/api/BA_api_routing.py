@@ -1251,7 +1251,7 @@ class ApiRouting:
             #print("In directories_stored_in_api() -  request_parameters: ", request_parameters)
             # EXAMPLE :   {"node_internal_id": 123}
 
-            # Validate the overall data type of the passed data
+            # Validate the OVERALL data type of the passed JSON data
             if type(request_parameters) != dict:
                 err_details = f"/directories-stored-in : the passed JSON value should be a dictionary; " \
                               f"instead, it's of type {type(request_parameters)}"
@@ -1968,26 +1968,58 @@ class ApiRouting:
 
 
 
-        @bp.route('/link_content_at_end/<category_uri>/<item_uri>')
+        @bp.route('/link-content-at-end', methods=['POST'])
         @login_required
-        def link_content_at_end_api(category_uri, item_uri):
+        def link_content_at_end_api():
             """
             Link an existing Content Item at the end of an existing Category
 
-            EXAMPLE invocation: http://localhost:5000/BA/api/link_content_at_end/cat-123/i-222
+            POST VARIABLES:
+                json    (REQUIRED)
+                        EXAMPLE :   {"item_internal_id": 123, "category_uri": "c-888"}
 
-            :param category_uri:    The URI of a data node representing a Category
-            :param item_uri:        The URI of a data node representing a Content Item
-            :return:                A Flask Response response object
-                                    RETURNED PAYLOAD (on success):
-                                        None
+            ~~~ EXAMPLE ~~~
+                http://localhost:5000/BA/api/link-content-at-end
+                using a POST with body:  {"item_internal_id": 123, "category_uri": "c-888"}
+
+
+            :param category_uri:        The Entity ID of a data node representing a Category
+            :param item_internal_id:    The internal database ID of a data node representing a Content Item
+            :return:                    A Flask Response response object
+                                        RETURNED PAYLOAD (on success):
+                                            None
             """
-            # TODO: maybe switch to a query string, to avoid errors in order of arguments
+            # Extract and parse the JSON-encoded POST body
             try:
-                Categories.link_content_at_end(category_entity_id=category_uri, item_entity_id=item_uri)
+                request_parameters = cls.parse_json_from_request_body()
+            except Exception as ex:
+                err_details = f"/link-content-at-end : Unable to parse JSON request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            #print("In link_content_at_end_api() -  request_parameters: ", request_parameters)
+
+            # Validate the OVERALL data type of the passed JSON data
+            if type(request_parameters) != dict:
+                err_details = f"/link-content-at-end : the passed JSON value should be a dictionary; " \
+                              f"instead, it's of type {type(request_parameters)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                item_internal_id = request_parameters.get("item_internal_id")
+                category_uri = request_parameters.get("category_uri")
+
+                item_class_name, item_entity_id = GraphSchema.class_and_entity_id(item_internal_id)
+
+                Categories.link_content_at_end(category_entity_id=category_uri,
+                                               item_class_name=item_class_name, item_entity_id=item_entity_id)
                 response_data = {"status": "ok"}                                    # Successful termination
             except Exception as ex:
-                err_details = f"Unable to attach Content Item (URI '{item_uri}') to the end of Category (URI '{category_uri}') .  " \
+                err_details = f"/link-content-at-end : Unable to attach Content Item (Internal ID: {item_internal_id})" \
+                              f" to the end of Category (Entity ID '{category_uri}') .  " \
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
 

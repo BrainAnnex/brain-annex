@@ -963,12 +963,13 @@ class Categories:
             ORDER BY r.pos
             '''
 
-        # TODO: `schema_code` is being phased out in favor of the new class_handler
+        # TODO: `schema_code` is being phased out in favor of the new `class_handler`
 
         result = cls.db.query(q, data_binding={"category_id": entity_id})
         #cls.db.debug_query_print(q, data_binding={"category_id": entity_id})
 
 
+        # TODO: see the function DataManager.separate_metadata()
         content_item_list = []
         for elem in result:
             item_fields = elem["n"]                 # A dictionary with the various (potentially editable) data fields
@@ -1027,7 +1028,7 @@ class Categories:
         """
 
         # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
-        # TODO: switch to using one of the Collections methods
+        # TODO: phase out in favor of get_content_items_by_category()
 
         q = '''
             MATCH (n) -[r :BA_in_category]-> (:Category {entity_id: $category_id}),

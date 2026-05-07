@@ -2668,6 +2668,13 @@ def test_remove_data_relationship(db):
 
 def test_class_and_entity_id(db):
     db.empty_dbase()
+
+    with pytest.raises(Exception):
+        GraphSchema.class_and_entity_id(123)        # Non-existing node
+
+    with pytest.raises(Exception):
+        GraphSchema.class_and_entity_id([1, 2])     # Bad data type
+
     GraphSchema.create_class("Person")
     p = GraphSchema.create_data_node(class_name="Person", properties={"name": "Julian"},
                                      new_entity_id="person-1")

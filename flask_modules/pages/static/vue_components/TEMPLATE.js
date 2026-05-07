@@ -100,18 +100,18 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 const post_data = {some_key: "some value"};     // Example of object data to send to the server
                 const post_data = ["value 1", "value 2"]        // Alternate example of array data to send to the server
 
-                const my_var = "some value";        // Optional parameter to pass thru, if needed
+                const pass_thru_data = "some value";        // Optional parameter to pass thru, if needed
 
                 console.log(`In server_communication_POST(): about to contact the server at "${url_server_api}" .  POST data:`);
                 console.log(post_data);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {method: "POST",
-                             data_obj: post_data,
-                             json_encode_send: true,  /* OR false, as desired */
-                             callback_fn: this.finish_server_communication,
-                             custom_data: my_var
+                            {   method: "POST",
+                                data_obj: post_data,
+                                json_encode_send: true,  /* OR false, as desired */
+                                callback_fn: this.finish_server_communication,
+                                custom_data: pass_thru_data
                             });
 
                 this.waiting = true;        // Entering a waiting-for-server mode
@@ -127,7 +127,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
             {
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
-                const my_var = "some value";        // Optional parameter to pass thru, if needed
+                const pass_thru_data = "some value";        // Optional parameter to pass thru, if needed
 
                 // var get_obj = {my_key, my_value};    // Optional
 
@@ -135,9 +135,9 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {method: "GET",
-                             callback_fn: this.finish_server_communication,
-                             custom_data: my_var
+                            {   method: "GET",
+                                callback_fn: this.finish_server_communication,
+                                custom_data: pass_thru_data
                             });
 
                 this.waiting = true;        // Entering a waiting-for-server mode

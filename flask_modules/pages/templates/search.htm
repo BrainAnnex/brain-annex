@@ -8,15 +8,23 @@
         page_header     A string that, if passed, gets prominently shown at the top of the page
                         EXAMPLE:  10 SEARCH RESULT(S) for `boat`
 
-        content_items:  A list of dictionaries.  At present, only used for Content Items of type 'Note'
-                        EXAMPLE:
-                        [
-                         {'basename': 'notes-3460', 'entity_id': '3460', 'schema_code': 'n', 'title': 'the boat show', 'suffix': 'htm',
-                            '_internal_id': 3962,
-                            '_node_labels': ['BA', 'Note'],
-                            'internal_links': [{'entity_id': '966', 'schema_code': 'cat', 'name': "Physics"}]
-                         }
-                        ]
+        content_items:  At present, ONLY used for Content Items of type 'Note' and 'Document'.
+                        A list with the data for each the Content Items on this page
+                        Each element is an object with 2 keys: `fields` and `metadata`
+
+                            EXAMPLE of value of `fields`:
+                                        {"basename":"notes-123",
+                                         "suffix":"htm",
+                                         "title":"Build Instructions"}
+
+                            EXAMPLE of value of `metadata`:
+                                        {"class_name":"Note",
+                                        "entity_id":"8809",
+                                        "schema_code":"n",
+                                        "_internal_id": 3962,
+                                        "_node_labels": ['BA', 'Note'],
+                                        "internal_links": [{'entity_id': '966', 'name': "Physics", '_CLASS': 'Category', 'old_ba_id': 1271}]
+                                        }
 
     TODO: merge with filter.htm
  #}
@@ -104,7 +112,9 @@
  **************************************************************** -->
 
 {#  Uncomment for DEBUGGING! (to view some of the Flask-passed parameters)
+<b>content_items</b>:<br>
 <br>{{content_items}}<br><br><br>
+<hr><br>
  #}
 
 
@@ -136,20 +146,25 @@
      v-bind:key Used to provide unique identifiers for each component
      v-bind:is  Specifies which component to use, based on the type of the Content Item
 
-     Props (arguments) passed to the components
-            v-bind:item_data="item"
-            v-bind:edit_mode="expose_controls"
-            v-bind:category_id="category_id"
+     Props (arguments) passed to the components:
+            v-bind:item_fields
+            v-bind:item_metadata
+
+            v-bind:edit_mode
+            v-bind:category_id
      -->
 <div v-for="item in content_array">
 
-    <a v-bind:name="item.schema_code + '_' + item.entity_id"></a>  <!-- Anchor for page scrolling -->
+    <a v-bind:name="item.metadata.schema_code + '_' + item.metadata.entity_id"></a>  <!-- Anchor for page scrolling -->
     <br>
 
     <component
-                v-bind:key="item.schema_code + item.entity_id + item.pos"
+                v-bind:key="item.metadata.schema_code + item.metadata.entity_id"
                 v-bind:is="plugin_component_name(item)"
-                v-bind:item_data="item"
+
+                v-bind:item_fields="item.fields"
+                v-bind:item_metadata="item.metadata"
+
                 v-bind:edit_mode="expose_controls"
                 v-bind:category_id="category_id"
     >
@@ -209,9 +224,14 @@ new Vue({
 
     data: {     // Global data for the whole page (Vue root element).  This is the handover of data from Flask to Vue
         content_array: {{content_items | tojson(indent=4)}},
-                                        // Array containing objects with the data for all the Content Items on the page
-                                        // EXAMPLE: [{"entity_id":"5","schema_code":"h","pos":0,"text":"GENERAL METHODS"},
-                                        //           {"basename":"mypix","schema_code":"i","entity_id":"8","pos":50,"suffix":"png"}]
+                                // A list with the data for each the Content Items on this page
+                                // Each element is an object with 2 keys: `fields` and `metadata`
+                                // EXAMPLE of value of `fields`:   {"basename":"notes-123", "suffix":"htm", "title":"Build Instructions"}
+                                // EXAMPLE of value of `metadata`: {"class_name":"Note", "entity_id":"8809", "schema_code":"n",
+                                //                                  "_internal_id": 3962, "_node_labels": ['BA', 'Note'],
+                                //                                  "internal_links": [{'entity_id': '966', 'name': "Physics", '_CLASS': 'Category', 'old_ba_id': 1271}]}
+
+
         expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
         category_id: 0,                 // TODO: not in use, but (some of?) the components might require it
         show_left_sidebar: true         // If true, the the left sidebar (with the Page Contents) is shown; otherwise, collapsed
@@ -232,7 +252,7 @@ new Vue({
         compose_category_links(item)
         // TODO: generalize
         {
-            var elements = item.internal_links;
+            var elements = item.metadata.internal_links;
 
             link_str = "";
             for (var i = 0; i < elements.length; i++) {
@@ -285,8 +305,17 @@ new Vue({
         plugin_component_name(item)
         // Compose the name of the plugin-provided Vue component to handle the given item (based on its type)
         {
-            // TODO: make sure that item.schema_code is known, or return a special "generic" type
-            return "vue-plugin-" + item.schema_code;
+            // TODO: make sure that item.metadata.schema_code is known, or return a special "generic" type,
+            //       as done in "content_items.js"
+
+            const schema_code = item.metadata.schema_code;
+            if ((schema_code != "n") && (schema_code != "d")) {
+                alert(`plugin_component_name(): unexpected schema_code value of '${schema_code}'`);
+                console.log(`plugin_component_name(): unexpected schema_code value of '${schema_code}'`);
+                console.log(item.metadata);
+            }
+
+            return "vue-plugin-" + item.metadata.schema_code;
         },
 
 

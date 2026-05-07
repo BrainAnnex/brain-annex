@@ -14,9 +14,9 @@
                          {'schema_code': 'n', 'entity_id': 1', basename': 'overview', 'suffix': 'htm', pos: 20}
                         ]
 
-    ----------------------------------------------------------------------------------
-    MIT License.  Copyright (c) 2021-24 Julian A. West
-	----------------------------------------------------------------------------------
+    -----------------------------------------------------------------------------------
+    MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
+	-----------------------------------------------------------------------------------
 
  #}
 
@@ -40,8 +40,10 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/documents/documents.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/timer/timer.css">
 
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
@@ -74,8 +76,8 @@
 <!-- A simple Table-of-Contents -->
 <div class="page-toc">
     <template v-for="item in content_array">
-        <p v-if="item.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.entity_id">[[item.text]]</a><br></p>
-        <p v-if="item.schema_code == 'cd'">&nbsp; &diams; <a v-bind:href="'#' + item.schema_code + '_' + item.entity_id" v-bind:title="item.name">[[item.name]]</a><br></p>
+        <p v-if="item.metadata.schema_code == 'h'" class="header"><br><a v-bind:href="'#h_' + item.metadata.entity_id">[[item.fields.text]]</a><br></p>
+        <p v-if="item.metadata.schema_code == 'cd'">&nbsp; &diams; <a v-bind:href="'#' + item.metadata.schema_code + '_' + item.metadata.entity_id" v-bind:title="item.fields.name">[[item.fields.name]]</a><br></p>
     </template>
 </div>      <!-- END of page-toc -->
 
@@ -132,14 +134,20 @@
      v-bind:is  Specifies which component to use, based on the type of the Content Item
 
      Props (arguments) passed to the components
-            v-bind:item_data="item"
-            v-bind:edit_mode="expose_controls"
-            v-bind:category_id="category_id"
+            v-bind:item_fields
+            v-bind:item_metadata
+
+            v-bind:edit_mode
+            v-bind:category_id
      -->
 <component v-for="item in content_array"
-            v-bind:key="item.schema_code + item.entity_id + item.pos"
+
+            v-bind:key="item.metadata.schema_code + item.metadata.entity_id + item.metadata.pos"
             v-bind:is="plugin_component_name(item)"
-            v-bind:item_data="item"
+
+            v-bind:item_fields="item.fields"
+            v-bind:item_metadata="item.metadata"
+
             v-bind:edit_mode="expose_controls"
             v-bind:category_id="category_id"
 >
@@ -180,7 +188,9 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/timer/timer.js"></script>
 
 
 
@@ -192,9 +202,12 @@ new Vue({
     delimiters: ['[[', ']]'] ,  // Changing delimiters: here we are requesting double SQUARE brackets
 
     data: {     // Global data for the whole page (Vue root element).  This is the handover of data from Flask to Vue
-        content_array: {{content_items | tojson(indent=4)}},  // Array containing item-data objects
-                                                    // EXAMPLE: [{"entity_id":5,"schema_code":"h","pos":0,"text":"GENERAL METHODS"},
-                                                    //           {"basename":"mypix","schema_code":"i","entity_id":8,"pos":50,"suffix":"png"}]
+        content_array: {{content_items | tojson(indent=4)}},
+                                // A list with the data for each the Content Items on this page
+                                // Each element is an object with 2 keys: `fields` and `metadata`
+                                // EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
+                                // EXAMPLE of value of `metadata`: {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
+
         expose_controls: false,         // If true, the editing controls of the various Content Items are revealed
         category_id: {{category_id}},   // Integer
         show_left_sidebar: true
@@ -241,8 +254,8 @@ new Vue({
         plugin_component_name(item)
         // Compose the name of the plugin-provided Vue component to handle the given item (based on its type)
         {
-            // TODO: make sure that item.schema_code is known, or return a special "generic" type
-            return "vue-plugin-" + item.schema_code;
+            // TODO: make sure that item.metadata.schema_code is known, or return a special "generic" type
+            return "vue-plugin-" + item.metadata.schema_code;
         },
 
 
