@@ -2093,22 +2093,22 @@ class ApiRouting:
 
 
 
-        @bp.route('/switch_category', methods=['POST'])
+        @bp.route('/switch-category', methods=['POST'])
         @login_required
-        def switch_category():
+        def switch_category_api():
             """
             Switch one or more Content Items from being attached to a given Category,
             to another one
 
             POST VARIABLES:
-                items   JSON-encoded list of URI's to relocate across Categories
-                from    JSON-encoded string URI of the old Category
-                to      JSON-encoded string URI of the new Category
+                items   JSON-encoded list of internal database ID's of Content Items to relocate across Categories
+                from    JSON-encoded string Entity ID of the old Category
+                to      JSON-encoded string Entity ID of the new Category
 
             NO RETURNED PAYLOAD
 
             EXAMPLE invocation:
-                curl http://localhost:5000/BA/api/switch_category  -d "items=[\"i-3332\", \"h-235\"]&from=\"3677\"&to=\"3676\""
+                curl http://localhost:5000/BA/api/switch-category  -d "items=[\"i-3332\", \"h-235\"]&from=\"3677\"&to=\"3676\""
 
             TODO: consider switching to passing just 1 POST variable named "json",
                   as done in 'get_class_properties'
@@ -2119,11 +2119,11 @@ class ApiRouting:
             try:
                 data_dict = cls.extract_post_pars(post_data, required_par_list=['items', 'from', 'to'],
                                                   json_decode=True)
-                #print("In '/switch_category' endpoint.  data_dict: ", data_dict)
+                #print("In '/switch-category' endpoint.  data_dict: ", data_dict)
                 DataManager.switch_category(data_dict)
                 response_data = {"status": "ok"}
             except Exception as ex:
-                err_details = f"/switch_category : Unable to relocate Content Item(s) to new Category.  {exceptions.exception_helper(ex)}"
+                err_details = f"/switch-category : Unable to relocate Content Item(s) to new Category.  {exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}        # Error termination
                 # TODO: manage scenario where SOME - but not all - items got successfully moved;
                 #       maybe implement a standard "error_data" field
@@ -2827,11 +2827,11 @@ class ApiRouting:
                 if (insertion_location == "INSERT_AT_BOTTOM") or (not insertion_location) or (not insertion_class):
                     # Note: in case the insertion position isn't fully specified, the Item will inserted at the bottom of the Category Page
                     print(f"    Inserting new Media Item at *bottom* of the Category page")
-                    new_uri = Categories.add_content_at_end(category_uri=category_uri,
-                                                            item_class_name=class_name, item_properties=properties)
+                    _, new_uri = Categories.add_content_at_end(category_entity_id=category_uri,
+                                                               item_class_name=class_name, item_properties=properties)
                 else:
                     print(f"    Inserting new Media Item after Category page element with URI `{insertion_location}`")
-                    new_uri = Categories.add_content_after_element(category_uri=category_uri,
+                    _, new_uri = Categories.add_content_after_element(category_uri=category_uri,
                                                                    item_class_name=class_name, item_properties=properties,
                                                                    insert_after_uri=insertion_location, insert_after_class=insertion_class)
 

@@ -837,7 +837,7 @@ new Vue({
         {
             for (let i = 0; i < this.item_array.length; ++i)  {
                 let ci = this.item_array[i];
-                let uri = ci.entity_id;
+                let uri = ci.metadata.entity_id;
                 console.log(`    resetting checkmark for Entity ID "${uri}"`);
                 let checkbox_element_arr = this.$refs[uri];         // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
                                                                     // that we're looping over
@@ -1014,23 +1014,23 @@ new Vue({
             this.checkboxes_selected.sort((a, b) => a - b);     // Sorting must be done this way, to work on numerical values!!  Damn JS!
             console.log(`    checkboxes_selected (sorted) : ${this.checkboxes_selected}`);  // Sorted index positions of the selected items
 
-            var uri_list_sorted = [];
+            //var uri_list_sorted = [];
+            var internal_ids_sorted = [];
 
             for (var index of this.checkboxes_selected) {     // Loop over the list of selected checkboxes
-                const {class_name, entity_id} = this.item_array[index];    // Extract some properties from this Content Item
-                // TODO: for now, the class_name isn't being passed to the server
-                console.log(`    Readying Content Item -> class_name : "${class_name}" , Entity ID : "${entity_id}"`);
-                uri_list_sorted.push(entity_id);
+                //const {class_name, entity_id} = this.item_array[index];    // Extract some properties from this Content Item
+                const internal_id = this.item_array[index].internal_id;     // Extract the internal database ID of this selected Content Item
+                //console.log(`    Readying Content Item -> class_name : "${class_name}" , Entity ID : "${entity_id}"`);
+                console.log(`    Readying Content Item -> internal_id : "${internal_id}"`);
+                //uri_list_sorted.push(entity_id);
+                internal_ids_sorted.push(internal_id);
             }
-            console.log(`    uri_list_sorted : ${uri_list_sorted}`);
+            console.log(`    internal_ids_sorted : ${internal_ids_sorted}`);
 
-
-            // TODO: in the future, both the URI's and the class names will be sent to the server, as soon as the backend is upgraded
-            //       (or maybe use internal database ID's instead)
 
             // Send the request to the server, using a POST
-            const url_server_api = "/BA/api/switch_category";
-            const post_obj = {items: JSON.stringify(uri_list_sorted),
+            const url_server_api = "/BA/api/switch-category";
+            const post_obj = {items: JSON.stringify(internal_ids_sorted),
                               from: JSON.stringify(category_from_uri),
                               to: JSON.stringify(category_to_uri)};
             // TODO: maybe let contact_server() handle the JSON.stringify calls
@@ -1081,19 +1081,19 @@ new Vue({
                 for (let i = this.checkboxes_selected.length - 1 ; i >= 0  ; --i) {
                      let index = this.checkboxes_selected[i];
                      console.log(`    making note to remove from the page the Content Item with array index ${index}`);
-                     indexes_to_remove.push(index);                                 // Save for the round of actual elimination
-                     let {class_name , entity_id} = this.item_array[index];      // Unpack some properties of this Content Item
+                     indexes_to_remove.push(index);                                     // Save for the round of actual elimination
+                     let {class_name , entity_id} = this.item_array[index].metadata;    // Unpack some properties of this Content Item
                      console.log(`       -> from that index position will be removing item with  Entity ID '${entity_id}' and Class '${class_name}'`);
                 }
 
                 // Carry out the actual removal from the page of the moved Content Items
                 // Note: doing this loop and the previous loop in just 1 pass seems to run afoul of Vue
-                for (let i in indexes_to_remove) {   // Note:  i will be an integer, not an array element!!
+                for (let i in indexes_to_remove) {      // Note:  i will be an integer, not an array element!!
                     let index = indexes_to_remove[i];
                     console.log(`      * about to actually remove Content Item from index ${index}`);
-                    this.item_array.splice(index, 1);                    // Deletes 1 array element from the specified index position
-                                                                            // (note: the index position of the remaining Items - earlier in
-                                                                            //        this.item_array - won't be affected)
+                    this.item_array.splice(index, 1);                   // Deletes 1 array element from the specified index position
+                                                                        // (note: the index position of the remaining Items - earlier in
+                                                                        //        this.item_array - won't be affected)
                 }
 
 

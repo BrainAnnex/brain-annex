@@ -77,8 +77,8 @@ def test_update_content_item(db):
     # Create a Content Item, and attach it to the Root Category
     GraphSchema.create_class_with_properties(name="Photo", strict=True,
                                              properties=["caption", "remarks", "entity_id"])
-    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Photo",
-                                  item_properties={"caption": "beach at sunrise"}, new_uri="photo_1")
+    Categories.add_content_at_end(category_entity_id=root_uri, item_class_name="Photo",
+                                  item_properties={"caption": "beach at sunrise"}, new_entity_id="photo_1")
 
     # Alter the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
@@ -126,25 +126,28 @@ def test_switch_category(db):
                                              properties=["name", "entity_id"])
 
     GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
-    all_photo_uris = []
+    all_photo_ids = []      # internal_ids[0] will correspond to 'photo-1', etc.
     for i in range(4):
         photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
-        all_photo_uris.append(photo_uri)
-        Categories.add_content_at_end(category_uri=root_entity_id, item_class_name="Photo",
-                                      item_properties={"caption": "photo_"+str(i+1)}, new_uri=photo_uri)
-
+        photo_id, _ = Categories.add_content_at_end(category_entity_id=root_entity_id, item_class_name="Photo",
+                                                    item_properties={"caption": "photo_"+str(i+1)}, new_entity_id=photo_uri)
+        all_photo_ids.append(photo_id)
 
     # Relocate the first 2 photos to the "Greece" Category
-    DataManager.switch_category({"items": ['photo-1', 'photo-2'], "from": root_entity_id, "to": greece_entity_id})
+    DataManager.switch_category({"items": all_photo_ids[0:2],
+                                 "from": root_entity_id, "to": greece_entity_id})
 
     # Verify that those 2 photos are now linked to the "Greece" Category, at the expected positions
-    result = Categories.get_content_items_by_category_OLD(entity_id=greece_entity_id)
+    result = Categories.get_content_items_by_category(entity_id=greece_entity_id)
 
-    internal_ids = [GraphSchema.get_data_node_internal_id(class_name="Photo", entity_id=f"photo-{n}")
-                        for n in range(1, 5)]       # internal_ids[0] will correspond to 'photo-1', etc.
-
-    expected = [{'caption': 'photo_1', 'entity_id': 'photo-1', 'pos': 0, 'class_name': 'Photo', 'internal_id': internal_ids[0]},
-                {'caption': 'photo_2', 'entity_id': 'photo-2', 'pos': Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[1]}]
+    expected = [
+                    {"fields":   {'caption': 'photo_1'},
+                     "metadata": {'entity_id': 'photo-1', 'pos': 0, 'class_name': 'Photo', 'internal_id': all_photo_ids[0]}
+                    },
+                    {"fields":   {'caption': 'photo_2'},
+                     "metadata": {'entity_id': 'photo-2', 'pos': Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': all_photo_ids[1]}
+                    }
+               ]
 
     assert compare_recordsets(result, expected)
 
@@ -152,21 +155,31 @@ def test_switch_category(db):
     # Separately, add a new photo to the "Greece" Category
     photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
     assert photo_uri == "photo-5"
-    Categories.add_content_at_end(category_uri=greece_entity_id, item_class_name="Photo",
-                                  item_properties={"caption": "photo_extra"}, new_uri=photo_uri)
-
-    internal_ids.append(GraphSchema.get_data_node_internal_id(class_name="Photo", entity_id=photo_uri))
+    photo_id, _ = Categories.add_content_at_end(category_entity_id=greece_entity_id, item_class_name="Photo",
+                                                item_properties={"caption": "photo_extra"}, new_entity_id=photo_uri)
+    all_photo_ids.append(photo_id)
 
 
     # Now relocate the remaining 2 photos from the Root Category to the "Greece" Category
-    DataManager.switch_category({"items": ['photo-3', 'photo-4'], "from": root_entity_id, "to": greece_entity_id})
+    DataManager.switch_category({"items": all_photo_ids[2:4],
+                                 "from": root_entity_id, "to": greece_entity_id})
 
     # Verify that those 2 photos are now linked to the "Greece" Category, at the expected positions
-    result = Categories.get_content_items_by_category_OLD(entity_id=greece_entity_id)
-    # Concatenate two dicts
-    expected += [{'caption': 'photo_extra', 'entity_id': 'photo-5', 'pos': 2 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[4]},
-                 {'caption': 'photo_3', 'entity_id': 'photo-3',     'pos': 3 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[2]},
-                 {'caption': 'photo_4', 'entity_id': 'photo-4',     'pos': 4 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': internal_ids[3]}]
+    result = Categories.get_content_items_by_category(entity_id=greece_entity_id)
+
+    # Concatenate two lists
+    expected += [
+                    {'fields': {'caption': 'photo_extra'},
+                     'metadata': {'entity_id': 'photo-5', 'pos': 2 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': all_photo_ids[4]}
+                    },
+                    {'fields': {'caption': 'photo_3'},
+                     'metadata': {'entity_id': 'photo-3', 'pos': 3 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': all_photo_ids[2]}
+                    },
+                    {'fields': {'caption': 'photo_4'},
+                     'metadata': {'entity_id': 'photo-4', 'pos': 4 * Collections.DELTA_POS, 'class_name': 'Photo', 'internal_id': all_photo_ids[3]}
+                    }
+                ]
+
     assert compare_recordsets(result, expected)
 
 

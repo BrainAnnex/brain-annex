@@ -444,10 +444,10 @@ def test_get_content_items_by_category(db):
 
     GraphSchema.create_class_with_properties(name="Note", properties=["basename", "suffix"], strict=False)
 
-    Categories.add_content_at_end(category_uri=root_entity_id,
+    Categories.add_content_at_end(category_entity_id=root_entity_id,
                                   item_class_name="Note",
                                   item_properties={'basename': 'overview', 'suffix': 'htm'},
-                                  new_uri="n-1", namespace="data_node")
+                                  new_entity_id="n-1", namespace="data_node")
     note_internal_id = GraphSchema.get_data_node_internal_id(class_name="Note", entity_id="n-1")
 
 
@@ -458,29 +458,6 @@ def test_get_content_items_by_category(db):
                      ]
 
     #TODO: more tests
-
-
-def test_get_content_items_by_category_OLD(db):
-    _, root_entity_id  = initialize_categories(db)
-
-    result = Categories.get_content_items_by_category(entity_id=root_entity_id)
-    assert result == []     # No Content Items yet attached to the root Category
-
-    GraphSchema.create_class_with_properties(name="Note", properties=["basename", "suffix"], strict=False)
-
-    Categories.add_content_at_end(category_uri=root_entity_id,
-                                  item_class_name="Note",
-                                  item_properties={'basename': 'overview', 'suffix': 'htm'},
-                                  new_uri="n-1", namespace="data_node")
-    note_internal_id = GraphSchema.get_data_node_internal_id(class_name="Note", entity_id="n-1")
-
-
-    result = Categories.get_content_items_by_category_OLD(entity_id=root_entity_id)
-    assert result == [
-                        {'basename': 'overview', 'suffix': 'htm',
-                         'entity_id': 'n-1', 'pos': 0, 'class_name': 'Note', 'internal_id': note_internal_id
-                        }
-                     ]
 
 
 
@@ -540,9 +517,9 @@ def test_add_content_after_element(db):
                                           rel_name="BA_in_category")
 
     # Create a new Data Node (of class "Image"), positioned at the end (bottom) of the Root Category Page
-    Categories.add_content_at_end(category_uri=root_entity_id,
+    Categories.add_content_at_end(category_entity_id=root_entity_id,
                                   item_class_name="Image", item_properties={"caption": "USA"},
-                                  new_uri="i-USA")
+                                  new_entity_id="i-USA")
 
     q = f'''
         MATCH (c:Category {{entity_id: "{root_entity_id}"}})<-[r:BA_in_category]-(ci)
@@ -660,7 +637,59 @@ def test_detach_from_category(db):
 
 
 def test_relocate_across_categories(db):
-    pass
+    root_internal_id, root_entity_id = initialize_categories(db)
+
+    # Add some Content Items to the above Category
+    GraphSchema.create_class_with_properties(name="Note", properties=["title", "basename", "suffix"])
+    GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "entity_id"])
+
+    # Save the returned internal database ID's
+    note, _ = Categories.add_content_at_end(category_entity_id=root_entity_id, item_class_name="Note",
+                                            item_properties={"title": "My 1st note"})
+    image1, _ = Categories.add_content_at_end(category_entity_id=root_entity_id, item_class_name="Image",
+                                              item_properties={"caption": "vacation pic", "basename": "pic1", "suffix": "jpg"})
+    image2, _ = Categories.add_content_at_end(category_entity_id=root_entity_id, item_class_name="Image",
+                                              item_properties={"caption": "xmas pic", "basename": "pic2", "suffix": "jpg"})
+
+    # Add a Subcategory to the Home (root) Category
+    vacation_entity_id = Categories.add_subcategory({"category_uri": root_entity_id, "subcategory_name": "Vacation"})
+
+    # Move all the Image nodes to the new "Vacation" category
+    result = Categories.relocate_across_categories(items=[image1, image2], from_category=root_entity_id, to_category=vacation_entity_id)
+    assert result == 2
+
+    # Verify that the Image nodes are now linked to the new "Vacation" category, with positions 0 and 20
+    q = '''
+        MATCH (:Category {name:"Vacation"})<-[r:BA_in_category]-(:Image) 
+        RETURN r.pos AS pos
+        ORDER BY pos
+        '''
+    result = db.query(q, single_column="pos")
+    assert result == [0, 20]
+
+    # Move the Note node to the new "Vacation" category as well
+    result = Categories.relocate_across_categories(items=note, from_category=root_entity_id, to_category=vacation_entity_id)
+    assert result == 1
+
+    # Verify that the Note node is now linked to the new "Vacation" category, with position 40
+    q = '''
+        MATCH (:Category {name:"Vacation"})<-[r:BA_in_category]-(:Note) 
+        RETURN r.pos AS pos
+        ORDER BY pos
+        '''
+    result = db.query(q, single_column="pos")
+    assert result == [40]
+
+
+    # Verify that the "HOME" Category node is now only linked to the "Vacation" one
+    result = db.explore_neighborhood(start_id=root_internal_id, max_hops=1,
+                                     include_start_node=False)
+    assert len(result) == 1
+    assert result[0]['_CLASS'] == 'Category'
+    assert result[0]['name'] == 'Vacation'
+
+
+
 
 
 
@@ -678,13 +707,13 @@ def test_get_items_schema_data(db):
     GraphSchema.create_class_with_properties(name="Image", properties=["caption", "basename", "suffix", "entity_id"])
 
     # Add some Content Items to the above Category
-    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Note",
-                                 item_properties={"title": "My 1st note"})
+    Categories.add_content_at_end(category_entity_id=root_uri, item_class_name="Note",
+                                  item_properties={"title": "My 1st note"})
 
     res = Categories.get_items_schema_data(category_uri=root_uri)
     assert res == {'Note': ['title', 'basename', 'suffix']}
 
-    Categories.add_content_at_end(category_uri=root_uri, item_class_name="Image",
+    Categories.add_content_at_end(category_entity_id=root_uri, item_class_name="Image",
                                   item_properties={"caption": "vacation pic", "basename": "pic1", "suffix": "jpg"})
     res = Categories.get_items_schema_data(category_uri=root_uri)
     assert res == {'Note': ['title', 'basename', 'suffix'], 'Image': ['caption', 'basename', 'suffix', 'entity_id']}
