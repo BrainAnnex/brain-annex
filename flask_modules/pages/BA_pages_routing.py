@@ -230,7 +230,6 @@ class PagesRouting:
             template = "viewer_static.htm"
 
             # Fetch all the Content Items attached to the given Category
-            #content_items = Categories.get_content_items_by_category_OLD(category_uri)
             content_items_split = Categories.get_content_items_by_category(category_uri)
             # A list of dictionaries, whose entries are dictionaries of the form
             #                           { "fields": {...} , "metadata": {...} }

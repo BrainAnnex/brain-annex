@@ -64,9 +64,9 @@ def test_bread_crumbs(db):
 
 
 def test_add_content_at_end(db):
-    new_uri = Categories.add_content_at_end(category_uri=708,
-                                            item_class_name="Header",
-                                            item_properties={"text": "This is a New Caption, added at the end"})
+    new_internal_id, new_uri = Categories.add_content_at_end(category_entity_id='708',
+                                                             item_class_name="Header",
+                                                             item_properties={"text": "This is a New Caption, added at the end"})
     print("new_uri:", new_uri)
 
 

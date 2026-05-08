@@ -232,6 +232,7 @@ class Collections:
         :return:                    None
         """
         # TODO: use this function as a ***ROLE MODEL*** for linking at the start, or after an existing Item
+        # TODO: support (or switch to) using the internal ID for the "Collection Item"
         # TODO: (optionally?) enforce that the respective Classes of the Data Nodes are a relationship named membership_rel_name;
         #       use GraphSchema.class_relationship_exists()
 
@@ -264,26 +265,16 @@ class Collections:
             OPTIONAL MATCH (existing_ci) -[r :`{membership_link_name}`]-> (collection)
             WITH collection, ci, r.pos AS pos
             
+            // max(pos) might be null, but in that case the coalesce() function with return -DELTA_POS as a default
             WITH collection, ci, coalesce(max(pos), -{cls.DELTA_POS}) AS largest_pos
+            
+            // By adding DELTA_POS, we ultimately get the (max value + DELTA_POS) if present, or zero if the max value was absent
             WITH collection, ci, largest_pos + {cls.DELTA_POS} AS new_pos
                       
             MERGE (ci) -[:`{membership_link_name}` {{pos: new_pos}}]-> (collection)
             
             REMOVE collection._LOCK_
             '''
-
-        # Note: coalesce(max(pos), -{cls.DELTA_POS})  gives the max value, if present, or -DELTA_POS if absent (i.e. null)
-        #       Then, by adding DELTA_POS, we ultimately get the (max value + DELTA_POS) if present, or zero if absent
-        '''
-            # Old portion that worked in Neo4j 4.4 but ran afoul of 5.26
-            WITH r.pos AS pos, collection, ci
-            WITH 
-                CASE WHEN pos IS NULL THEN
-                    0
-                ELSE
-                    max(pos) + {cls.DELTA_POS}
-                END AS new_pos, collection, ci
-        '''
 
         data_binding={"item_class_name": item_class_name, "item_entity_id": item_entity_id,
                       "collection_class_name": collection_class_name, "collection_uri": collection_entity_id}
@@ -327,6 +318,7 @@ class Collections:
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    None
         """
+        # TODO: must provide a collection_class as well!
         # TODO: perhaps to ditch, now that we have bulk_relocate_to_other_collection_at_end()
 
         # Use an ATOMIC operation.  If any of the matches fail, no operation is performed
@@ -375,63 +367,77 @@ class Collections:
 
 
     @classmethod
-    def bulk_relocate_to_other_collection_at_end(cls, items :Union[List[str], str],
-                                                 from_collection :str, to_collection :str, membership_rel_name :str) -> int:
+    def bulk_relocate_to_other_collection_at_end(cls, items :list|str|int,
+                                                 collection_class: str,
+                                                 from_collection :str, to_collection :str,
+                                                 membership_rel_name :str) -> int:
         """
         Given an existing list of data nodes (representing "Collection Items" of the specified "from" Collection),
-        switch each of them to become a "Collection Item" of the "to" Collection, positioned at the end of it.
+        switch each of them to become linked to the "to" Collection node, and marked as being positioned at the end of it.
 
-        The collection-membership relationship is severed from each of the "Collection Items" to the "from" Collection,
-        and a new one is created from that "Collection Item" to the "to" Collection.
+        Both Collection nodes must be of the same schema Class.   (Example: "Category")
+
+        The collection-membership relationship is severed from each of the "Collection Items" to the "from" Collection node,
+        and a new one is created from that "Collection Item" to the "to" Collection node.
 
         Return the number of Collection Items successfully relocated.
 
-        :param items:               entity_id, or list of entity_id's, of Data Node(s)
-                                        representing a "Collection Items" of the "from" Collection below
-        :param from_collection:     The entity_id of a Collection Data Node to which the above Collection Item(s) are connected
-        :param to_collection:       The entity_id of a Collection Data Node to which the above Collection Item(s) needs to be switched to
+        :param items:               Internal database ID of a of Data Node, or a list of them,
+                                        representing one or more "Collection Items" of the "from" Collection below
+        :param collection_class:    The name of the Schema Class of both the old (`from`) and new (`to`) Collection nodes.  EXAMPLE: "Category"
+        :param from_collection:     The Entity ID of a Collection Data Node to which the above Collection Item(s) are connected
+        :param to_collection:       The Entity ID of a Collection Data Node to which the above Collection Item(s) needs to be switched to
         :param membership_rel_name: The name to give to the relationship
                                         in the direction from the "Collection Item" to the Collection node
         :return:                    The number of Collection Items successfully relocated
         """
         # If a scalar was passed, turn into a list
-        if type(items) == str:
+        if type(items) == str or type(items) == int:
             items = [items]
         else:
             assert type(items) == list, \
-                "bulk_relocate_to_other_collection_at_end(): the argument `items` must be a string entity_id, or a list of them"
+                "bulk_relocate_to_other_collection_at_end(): the argument `items` must be an internal database ID (string or int), or a list of them"
 
 
         # Use an ATOMIC operation.  If any of the matches fail, no operation is performed
-        # The "OPTIONAL MATCH" is used to compute a new initial positional value to use on the to_collection
+        # The "OPTIONAL MATCH" is used to compute a new initial positional value to use on the `to_collection`
+        # TODO: consider adding a "lock", as done in link_to_collection_at_end()
         q = f'''
+            // Start by locating the 2 Collection nodes
             MATCH (collection_from) , (collection_to)                
             WHERE collection_from.entity_id = $from_collection
-              AND collection_to.entity_id = $to_collection            
+              AND collection_to.entity_id = $to_collection
+              AND collection_from._CLASS = $collection_class
+              AND collection_to._CLASS = $collection_class
             WITH collection_from, collection_to
                         
-            // Attempt to locate Items already on the "to" Collection
+            // Attempt to locate Items already linked the "to" Collection (to determine the max positional value)
             OPTIONAL MATCH (existing_ci) -[r :`{membership_rel_name}`]-> (collection_to)
             WITH r.pos AS pos, collection_from, collection_to
             
+            // max(pos) might be null, but in that case the coalesce() function with return -DELTA_POS as a default
             WITH collection_from, collection_to, coalesce(max(pos), -{cls.DELTA_POS}) AS largest_pos
+            
+            // By adding DELTA_POS, we ultimately get the (max value + DELTA_POS) if present, or zero if the max value was absent
             WITH collection_from, collection_to, largest_pos + {cls.DELTA_POS} AS new_start_pos            
             
             WITH range(0, size($item_list)) AS ITEM_INDEX_LIST, 
                  new_start_pos, collection_from, collection_to
             
-            UNWIND ITEM_INDEX_LIST AS i         // Used to process each Collection Item in turn
+            UNWIND ITEM_INDEX_LIST AS i             // Used to process each Collection Item in turn
                 MATCH (moving_ci) -[old_r :`{membership_rel_name}`]-> (collection_from)
-                WHERE moving_ci.entity_id = $item_list[i]
+                WHERE id(moving_ci) = $item_list[i]     // Locate the Collection Item being processed
                 WITH moving_ci, old_r, collection_to, 
                      new_start_pos + i * {cls.DELTA_POS} AS new_pos
                 
+                // Sever the old link, and create (if not already existing) the corresponding new link
                 DELETE old_r
                 MERGE (moving_ci) -[:`{membership_rel_name}` {{pos: new_pos}}]-> (collection_to)
             '''
 
         data_binding={"from_collection": from_collection,
                       "to_collection": to_collection,
+                      "collection_class": collection_class,
                       "item_list": items}
 
         #cls.db.debug_query_print(q, data_binding=data_binding)

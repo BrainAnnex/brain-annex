@@ -860,9 +860,9 @@ class DataManager:
                                                 item_class_name=class_name, item_properties=item_data,
                                                 new_uri=new_uri)
         elif insert_after_uri == "BOTTOM":
-            Categories.add_content_at_end(category_uri=category_uri,
+            Categories.add_content_at_end(category_entity_id=category_uri,
                                           item_class_name=class_name, item_properties=item_data,
-                                          new_uri=new_uri)
+                                          new_entity_id=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_uri,
                                                  item_class_name=class_name, item_properties=item_data,
@@ -975,9 +975,9 @@ class DataManager:
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         elif insert_after_uri == "BOTTOM":
-            Categories.add_content_at_end(category_uri=category_id,
+            Categories.add_content_at_end(category_entity_id=category_id,
                                           item_class_name=class_name, item_properties=post_data,
-                                          new_uri=new_uri)
+                                          new_entity_id=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
@@ -1005,9 +1005,9 @@ class DataManager:
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         elif insert_after_uri == "BOTTOM":
-            Categories.add_content_at_end(category_uri=category_id,
+            Categories.add_content_at_end(category_entity_id=category_id,
                                           item_class_name=class_name, item_properties=post_data,
-                                          new_uri=new_uri)
+                                          new_entity_id=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
@@ -1091,28 +1091,32 @@ class DataManager:
     @classmethod
     def switch_category(cls, data_dict :dict) -> None:
         """
-        Switch one or more Content Items from being attached to a given Category,
+        Relocate one or more Content Items from being attached to a given Category,
         to another one
 
         :param data_dict:   Dict with 3 keys:
-                                items   list of string URI's of Content Items
-                                        to relocate across Categories
-                                from    URI of the old Category
-                                to      URI of the new Category
+                                "items"   List of internal database ID's of Content Items
+                                                to relocate across Categories
+                                "from"    Entity ID of the old Category
+                                "to"      Entity ID of the new Category
+
+                            EXAMPLE: {'items': ['i-3332', 'i-3278'],
+                                      'from': '3676', 'to': '3677'}
+
         :return:            None
         """
-        #print("In switch_category(): ", data_dict)     # EXAMPLE: {'items': ['i-3332', 'i-3278'], 'from': '3676', 'to': '3677'}
+        #print("In switch_category(): ", data_dict)
 
         items = data_dict["items"]
 
         assert type(items) == list, \
-            f"switch_category(): The passed POST value `items` ({items}) doesn't evaluate to a list"
+            f"switch_category(): The passed value `items` ({items}) isn't a list"
 
         assert type(data_dict['from']) == str, \
-            f"switch_category(): The passed POST value `from` ({data_dict['from']}) doesn't evaluate to a string"
+            f"switch_category(): The passed value `from` ({data_dict['from']}) isn't a string"
 
         assert type(data_dict['to']) == str, \
-            f"switch_category(): The passed POST value `from` ({data_dict['to']}) doesn't evaluate to a string"
+            f"switch_category(): The passed value `from` ({data_dict['to']}) isn't a string"
 
 
         number_items = len(items)
