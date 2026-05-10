@@ -1,8 +1,7 @@
-/*  Vue component to display and edit Content Items of type "sl" (Site Links, aka Bookmarks)
-    TODO: rename 'vue-plugin-site-link'
+/*  Vue component to display and edit Content Items for "flash cards"
  */
 
-Vue.component('vue-plugin-sl',
+Vue.component('vue-plugin-flash-card',
     {
         props: ['item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
@@ -19,9 +18,9 @@ Vue.component('vue-plugin-sl',
                                 the value of `entity_id` will be a negative number (unique on the page),
                                 and there will be the additional keys `insert_after_uri` and `insert_after_class`
                                 EXAMPLE of existing Site Link item:
-                                        {class_name:"Site Link",
+                                        {class_name":"Flash Card",
                                          pos:0,
-                                         schema_code:"sl",
+                                         schema_code:"fc",
                                          entity_id:"8809"
                                         }
 
