@@ -276,7 +276,7 @@ Vue.component('vue-plugin-r',
                 let all_keys = [];
 
                 for (let i = 0; i < this.schema_data.length; i++) { // Loop thru all field names prescribed by the Schema...
-                    key_in_schema = this.schema_data[i];
+                    var key_in_schema = this.schema_data[i];
                     if (key_in_schema in this.current_data)         // ... if the field name is actually present, add it to the all_keys array
                         all_keys.push(key_in_schema);
                 }

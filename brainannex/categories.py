@@ -115,9 +115,9 @@ class Categories:
     @classmethod
     def is_root_category(cls, category_entity_id :str) -> bool:
         """
-        Return True if the given ID corresponds to the ROOT Category, or False otherwise
+        Return True if the given Entity ID corresponds to the ROOT Category, or False otherwise
 
-        :param category_entity_id:  A string identifying the desired Category
+        :param category_entity_id:  The Entity ID of the desired Category
         :return:                    True if the given ID corresponds to the ROOT Category, or False otherwise
         """
         assert GraphSchema.is_valid_entity_id(category_entity_id), \
@@ -134,9 +134,9 @@ class Categories:
     @classmethod
     def get_root_entity_id(cls) -> str | None:
         """
-        Fetch the Entity ID of the root category
+        Fetch the Entity ID of the root Category
 
-        :return:    The Entity ID of the root category; if not found, return None.
+        :return:    The Entity ID of the root Category; if not found, return None.
                     If more than one root exists, raise an Exception
         """
         #match = cls.db.match(label="Category", properties={"root": True})
@@ -396,6 +396,9 @@ class Categories:
         :return:            The pair (internal database ID, string URI)
                                 of the new Data Node just created
         """
+        assert cls.get_root_entity_id() is None, \
+            "create_categories_root(): a root Category ALREADY exists"
+
         if data_dict is None:
             data_dict = {"name": "HOME", "remarks": "top level"}
 
@@ -777,7 +780,7 @@ class Categories:
     @classmethod
     def create_bread_crumbs(cls, category_entity_id :str) -> list:
         """
-        Return a list of Category uri's together with token strings, providing directives for the HTML structure of
+        Return a list of Category Entity ID's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
         :param category_entity_id:A string with the Entity ID of the Category whose "ancestry bread crumbs" we want to construct

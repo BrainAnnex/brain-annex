@@ -1,4 +1,4 @@
-from brainannex import GraphSchema
+from brainannex import GraphSchema, Categories
 
 
 
@@ -24,12 +24,10 @@ class Timer:
 
         # TODO: this ought to be done by plugin_support.py
         if not GraphSchema.class_name_exists("Content Item"):
-            GraphSchema.create_class_with_properties(name="Content Item", strict=False,
-                                                     properties=["entity_id"])
-            GraphSchema.create_class_relationship(from_class="Content Item", to_class="Category",
-                                                  rel_name="BA_in_category")
+            Categories.add_to_schema()
 
 
+        # Create the Class needed by this plugin, unless already in the database
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
             GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="timer", handler="timer",
                                                      properties=["ringtone"],
@@ -46,5 +44,3 @@ class Timer:
                 GraphSchema.create_namespace(name=namespace, prefix="timer-", suffix="")
 
             GraphSchema.assign_namespace_to_class(class_name=cls.SCHEMA_CLASS_NAME, namespace=namespace)
-            #match_to = GraphSchema.db.match(labels="Schema Autoincrement", key_name="namespace", key_value=namespace)
-            #GraphSchema.db.add_links(match_from=db_id, match_to=match_to, rel_name="HAS_URI_GENERATOR")

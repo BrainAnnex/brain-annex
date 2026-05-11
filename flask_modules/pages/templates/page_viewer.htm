@@ -10,6 +10,12 @@
         current_page
         username
 
+        item_array:     A list with the data for each the Content Items on this page
+                        Each element is an object with 2 keys: `fields` and `metadata`
+                            EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
+                            EXAMPLE of value of `metadata`:
+                                {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
+
         category_uri        A string with the Entity ID of the Category featured on this page
         category_name       The name of the above Category
         category_remarks    Descriptive extra text about this Category (may be missing)
@@ -43,17 +49,14 @@
                                   "Site Link": ["url", "name", "date", "comments", "rating", "read"]
                                  }
 
-        item_array:     A list with the data for each the Content Items on this page
-                        Each element is an object with 2 keys: `fields` and `metadata`
-                            EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
-                            EXAMPLE of value of `metadata`:
-                                {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
-
-
         upload_directories: A list of folders registered with BrainAnnex
                             EXAMPLE:
                                 ["documents/Ebooks & Articles",
                                  "documents/Ebooks & Articles/Computer Science"]
+
+        plugins:            A list of names of plugins to use
+                            EXAMPLE: ['documents', 'flash_card', 'headers', 'images', 'notes', 'records', 'recordsets', 'site_link', 'timer']
+
 
     -----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
@@ -89,15 +92,10 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
 
     <!-- PLUGIN-specific styling -->
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/headers/headers.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/images/images.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/documents/documents.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/timer/timer.css">
+    {% for single_plugin in plugins %}
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/{{single_plugin}}/{{single_plugin}}.css">
+    {% endfor %}
+
 
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -188,15 +186,15 @@
  **************************************************************** -->
 
 {#  Uncomment for DEBUGGING! (to view some of the Flask-passed parameters)
-    <br><b>siblings_categories</b>:<br>{{siblings_categories}}<br><br>
-    <br><b>all_categories</b>:<br>{{all_categories}}<br><br>
+    <br><b>plugins</b>:<br>{{plugins}}<br><br>
+
 
     <b>item_array</b>:<br>
     {% for el in item_array %}
         {{el}}<br>
     {% endfor %}
     <br><br>
- #}
+#}
 
 
 
@@ -641,7 +639,7 @@
 <script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
 
 
-<!-- PLUGIN-specific Vue components -->
+<!-- PLUGIN-specific Vue components
 <script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/documents/documents.js"></script>
@@ -651,7 +649,10 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/timer/timer.js"></script>
 
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
+ -->
+
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
+<!-- This is a sub-component of a plugin; currently requires special handling -->
 
 
 
@@ -659,8 +660,14 @@
 
 // Import the JS module (it will register the component globally - and it will be completed
 // prior to the instantiation of Vue, below)
-import '/BA/pages/static/vue_components/multiselect/multiselect.js';
-import '/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js';
+import '/BA/pages/static/vue_components/multiselect/multiselect.js';    // A general tool also used by the core module
+
+
+//import '/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js';
+
+{% for single_plugin in plugins %}
+    import '/BA/pages/static/vue_components/PLUGINS/{{single_plugin}}/{{single_plugin}}.js';
+{% endfor %}
 
 
 // Instantiation of the ROOT component must come after the definition of the descendant components

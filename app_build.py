@@ -110,10 +110,10 @@ def create_app(db=None, test=False, config_override=None):
     # The navbar
     Navigation.setup(app)
 
-    # The BrainAnnex-provided web app (UI for admin and Multimedia Content Management)
+    # The web app (UI for admin and Multimedia Content Management)
     PagesRouting.setup(app)
 
-    # The BrainAnnex-provided web API endpoints
+    # The web API endpoints
     ApiRouting.setup(app)
 
     # Examples of generic pages and web API
@@ -212,7 +212,13 @@ def load_config(app) -> None:
 
 
     # List of plugins to be used by the web app
-    app.config['PLUGINS'] = _extract_par("PLUGINS", SETTINGS)
+    PLUGINS = _extract_par("PLUGINS", SETTINGS)
+
+    try:
+        # Split by commas and strip whitespace from each item
+        app.config['PLUGINS'] = [item.strip() for item in PLUGINS.split(",")]
+    except Exception:
+        raise Exception(f"The passed configuration value for PLUGINS is not a series of comma-separated names as expected")
 
 
     index_pdf_files = _extract_par("INDEX_PDF_FILES", SETTINGS)

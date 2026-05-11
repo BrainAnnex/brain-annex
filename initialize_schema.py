@@ -1,8 +1,10 @@
+# Add to the database all the necessary Schema nodes and relationships
 
 import os
 from configparser import ConfigParser
 from brainannex import GraphAccess, GraphSchema, Categories, UserManager, FullTextIndexing
 
+# TODO: automate the following imports based on the PLUGINS config setting
 from app_libraries.PLUGINS.timer import Timer
 from app_libraries.PLUGINS.site_link import SiteLink
 from app_libraries.PLUGINS.headers import Headers
@@ -10,10 +12,11 @@ from app_libraries.PLUGINS.images import Images
 from app_libraries.PLUGINS.documents import Documents
 from app_libraries.PLUGINS.notes import Notes
 from app_libraries.PLUGINS.recordsets import Recordsets
+from app_libraries.PLUGINS.flash_card import FlashCard
 
 
 print("\n--- INITIALIZING (as needed) the Schema for the BrainAnnex web app - both for core modules "
-      "and for plugins.  A few nodes, as needed, will be added to the database, "
+      "and for plugins.  \n    A few nodes, as needed, will be added to the database, "
       "all with a `SCHEMA` or `Schema Autoincrement` label (except for the root `Category` node)...\n")
 
 print("Reading the credentials STORED in the configuration file(s):\n")
@@ -21,6 +24,9 @@ print("Reading the credentials STORED in the configuration file(s):\n")
 
 
 ###  IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS  ###
+
+# TODO: re-use functions from app_build.py
+
 
 def extract_par(name, d, display=True) -> str:
     if name not in d:
@@ -109,9 +115,10 @@ number_nodes = db.count_nodes()
 
 if number_nodes > 0:
     print(f"\nData already present in the database ({number_nodes} nodes found); "
-          f"Schema will be added as needed...\n")
+          f"Schema will be added only as needed...\n")
 else:
     print("\nThe database is empty; now importing/creating the Schema...")
+
 
 
 ##########################################################################
@@ -120,7 +127,7 @@ def initialize_schema(db):
     """
     Create, as needed, the Schema for both the core modules
     and all the plugins.
-    Also create root Category.
+    Also create root Category, if not already present.
 
     :param db:
     :return:
@@ -130,75 +137,85 @@ def initialize_schema(db):
 
     Categories.set_database(db)     # Also takes care of the class "Collections
     Categories.add_to_schema()      # Create, as needed, a new Schema Class node that represents "Categories"
-    print("    Added Schema for `Categories` core module")
+    print("    Added (as needed) Schema for `Categories` core module")
 
-    try:
-        Categories.create_categories_root()
-        print("    Created a root Category")
-    except Exception as ex:
-        print(f"WARNING: Could not create root Category (perhaps it already exists?) ", ex)
+    if Categories.get_root_entity_id() is None:
+        # If no root Category was found
+        try:
+            Categories.create_categories_root()
+            print("    Created a root Category")
+        except Exception as ex:
+            print(f"WARNING: Could not create root Category (perhaps it already exists?) ", ex)
 
 
     UserManager.set_database(db)
     UserManager.add_to_schema()
-    print("    Added Schema for `UserManager` core module")
+    print("    Added (as needed) Schema for `UserManager` core module")
 
     FullTextIndexing.set_database(db)
     FullTextIndexing.add_to_schema()
-    print("    Added Schema for `FullTextIndexing` core module")
+    print("    Added (as needed) Schema for `FullTextIndexing` core module")
 
 
-    # Initialize plugins (TODO: perhaps allow to pick-and-choose what plugins to use)
+    # Initialize plugins (TODO: automate, based on the PLUGINS config setting)
     try:
         Timer.add_to_schema()
-        print("    Added Schema for `TimerWidget` plugin")
+        print("    Added (as needed) Schema for `TimerWidget` plugin")
     except Exception as ex:
         print(f"WARNING: `TimerWidget` Schema could NOT be created. ", ex)
 
     try:
         Headers.add_to_schema()
-        print("    Added Schema for `Header` plugin")
+        print("    Added (as needed) Schema for `Header` plugin")
     except Exception as ex:
         print(f"WARNING: `Header` Schema could NOT be created. ", ex)
 
     try:
         SiteLink.add_to_schema()
-        print("    Added Schema for `SiteLinks` plugin")
+        print("    Added (as needed) Schema for `SiteLinks` plugin")
     except Exception as ex:
         print(f"WARNING: `SiteLinks` Schema could NOT be created. ", ex)
 
     try:
         Images.add_to_schema()
-        print("    Added Schema for `Images` plugin")
+        print("    Added (as needed) Schema for `Images` plugin")
     except Exception as ex:
         print(f"WARNING: `Images` Schema could NOT be created. ", ex)
 
     try:
         Documents.add_to_schema()
-        print("    Added Schema for `Documents` plugin")
+        print("    Added (as needed) Schema for `Documents` plugin")
     except Exception as ex:
         print(f"WARNING: `Documents` Schema could NOT be created. ", ex)
 
     try:
         Notes.add_to_schema()
-        print("    Added Schema for `Notes` plugin")
+        print("    Added (as needed) Schema for `Notes` plugin")
     except Exception as ex:
         print(f"WARNING: `Notes` Schema could NOT be created. ", ex)
 
     try:
         Recordsets.add_to_schema()
-        print("    Added Schema for `Recordsets` plugin")
+        print("    Added (as needed) Schema for `Recordsets` plugin")
     except Exception as ex:
         print(f"WARNING: `Recordsets` Schema could NOT be created. ", ex)
+
+    try:
+        FlashCard.add_to_schema()
+        print("    Added (as needed) Schema for `flash_card` plugin")
+    except Exception as ex:
+        print(f"WARNING: `flash_card` Schema could NOT be created. ", ex)
+
 
 
 ##########################################################################
 
 
+
+print("\nSTART of database Schema initialization script...")
+
 initialize_schema(db)
 
+print("END of database Schema initialization script")
 
-
-print("\nEND of database Schema initialization script")
-
-print("\n\nNote: to add users to log in into the web app, make sure to run:  python initialize_installation.py\n")
+print("\n\nNote: to add USERS to log in into the web app, make sure to run:  python initialize_installation.py\n")

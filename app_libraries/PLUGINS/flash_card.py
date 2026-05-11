@@ -21,12 +21,20 @@ class FlashCard:
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
-
+        # TODO: this ought to be done by plugin_support.py
         if not GraphSchema.class_name_exists("Content Item"):
             Categories.add_to_schema()
 
 
+        # Create the Class needed by this plugin, unless already in the database
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
             GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="fc", handler="flash_card",
                                                      properties=["label", "sideA_field", "sideB_field"],
                                                      class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
+
+            # Set up the auto-increment namespace
+            namespace="flash_card"
+            if not GraphSchema.namespace_exists(name=namespace):
+                GraphSchema.create_namespace(name=namespace, prefix="fc-", suffix="")
+
+            GraphSchema.assign_namespace_to_class(class_name=cls.SCHEMA_CLASS_NAME, namespace=namespace)

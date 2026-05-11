@@ -182,6 +182,6 @@ class Notes:
         unique_words = FullTextIndexing.extract_unique_good_words(body)
         content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
         n_words = len(unique_words)
-        print(f"update_content_item_successful(): UPDATING INDEXING for item `{uri}`. "
-              f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")
+        #print(f"update_content_item_successful(): UPDATING INDEXING for item `{uri}`. "
+        #      f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")
         FullTextIndexing.update_indexing(content_uri=content_id, unique_words=unique_words)
