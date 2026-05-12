@@ -5,13 +5,13 @@ from configparser import ConfigParser
 from brainannex import GraphAccess, GraphSchema, Categories, UserManager, FullTextIndexing
 
 # TODO: automate the following imports based on the PLUGINS config setting
-from app_libraries.PLUGINS.timer import Timer
+from app_libraries.PLUGINS.timer_widget import TimerWidget
 from app_libraries.PLUGINS.site_link import SiteLink
-from app_libraries.PLUGINS.headers import Headers
-from app_libraries.PLUGINS.images import Images
-from app_libraries.PLUGINS.documents import Documents
-from app_libraries.PLUGINS.notes import Notes
-from app_libraries.PLUGINS.recordsets import Recordsets
+from app_libraries.PLUGINS.header import Header
+from app_libraries.PLUGINS.image import Image
+from app_libraries.PLUGINS.document import Document
+from app_libraries.PLUGINS.note import Note
+from app_libraries.PLUGINS.recordset import Recordset
 from app_libraries.PLUGINS.flash_card import FlashCard
 
 

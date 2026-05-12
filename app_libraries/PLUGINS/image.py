@@ -2,9 +2,9 @@ from app_libraries.media_manager import MediaManager
 from brainannex import GraphSchema
 
 
-class Images:
+class Image:
     """
-    Plugin-provided custom interface for "images"
+    Plugin-provided custom interface for images
     """
 
     SCHEMA_CLASS_NAME = "Image"

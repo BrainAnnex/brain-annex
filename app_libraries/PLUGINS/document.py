@@ -5,7 +5,7 @@ import fitz                     # For PDF parsing
 #from pypdf import PdfReader    # Alternate library for PDF parsing; currently not in use
 
 
-class Documents:
+class Document:
     """
     Plugin-provided custom interface for "documents"
     """

@@ -3,7 +3,7 @@ from brainannex import GraphSchema, FullTextIndexing
 
 
 
-class Notes:
+class Note:
     """
     Plugin-provided handlers for "notes"  (HTML-formatted text)
     """

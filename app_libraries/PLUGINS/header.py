@@ -2,12 +2,12 @@ from brainannex import GraphSchema, Categories
 
 
 
-class Timer:
+class Header:
     """
-    Plugin-provided custom interface for "timer widgets"
+    Plugin-provided custom interface for "headers"
     """
 
-    SCHEMA_CLASS_NAME = "Timer Widget"
+    SCHEMA_CLASS_NAME = "Header"
 
 
 
@@ -22,25 +22,25 @@ class Timer:
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
-        # TODO: this ought to be done by plugin_support.py
         if not GraphSchema.class_name_exists("Content Item"):
             Categories.add_to_schema()
 
 
-        # Create the Class needed by this plugin, unless already in the database
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
-            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="timer", handler="timer",
-                                                     properties=["ringtone"],
-                                                     class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
+            db_id = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="h", handler="headers",
+                                                                properties=["text"],
+                                                                class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 
             # Set data types for some Properties
-            GraphSchema.set_property_attribute(class_name=cls.SCHEMA_CLASS_NAME, prop_name="ringtone",
+            GraphSchema.set_property_attribute(class_name=cls.SCHEMA_CLASS_NAME, prop_name="text",
                                                attribute_name="dtype", attribute_value="str")
 
 
             # Set up the auto-increment namespace
-            namespace="timer"
+            namespace="header"
             if not GraphSchema.namespace_exists(name=namespace):
-                GraphSchema.create_namespace(name=namespace, prefix="timer-", suffix="")
+                GraphSchema.create_namespace(name=namespace, prefix="header-", suffix="")
 
             GraphSchema.assign_namespace_to_class(class_name=cls.SCHEMA_CLASS_NAME, namespace=namespace)
+            #match_to = GraphSchema.db.match(labels="Schema Autoincrement", key_name="namespace", key_value=namespace)
+            #GraphSchema.db.add_links(match_from=db_id, match_to=match_to, rel_name="HAS_URI_GENERATOR")

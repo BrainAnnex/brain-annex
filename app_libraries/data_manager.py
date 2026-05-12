@@ -2,9 +2,9 @@ from brainannex import GraphAccess, GraphSchema, \
                        Categories, FullTextIndexing, PyGraphVisual
 
 import app_libraries.PLUGINS.plugin_support as plugin_support
-from app_libraries.PLUGINS.notes import Notes
-from app_libraries.PLUGINS.documents import Documents
-from app_libraries.PLUGINS.images import Images
+from app_libraries.PLUGINS.note import Note
+from app_libraries.PLUGINS.document import Document
+from app_libraries.PLUGINS.image import Image
 from app_libraries.upload_helper import UploadHelper
 from app_libraries.media_manager import MediaManager
 

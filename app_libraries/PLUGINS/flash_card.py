@@ -8,6 +8,8 @@ class FlashCard:
     """
 
     SCHEMA_CLASS_NAME = "Flash Card"
+    SCHEMA_CODE = "f"                  # TODO: phase out
+    NAMESPACE_PREFIX = "fc"
 
 
 
@@ -28,13 +30,14 @@ class FlashCard:
 
         # Create the Class needed by this plugin, unless already in the database
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
-            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="fc", handler="flash_card",
+            GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False,
+                                                     code=cls.SCHEMA_CODE, handler="flash_card",
                                                      properties=["label", "sideA_field", "sideB_field"],
                                                      class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 
             # Set up the auto-increment namespace
             namespace="flash_card"
             if not GraphSchema.namespace_exists(name=namespace):
-                GraphSchema.create_namespace(name=namespace, prefix="fc-", suffix="")
+                GraphSchema.create_namespace(name=namespace, prefix=f"{cls.NAMESPACE_PREFIX}-", suffix="")
 
             GraphSchema.assign_namespace_to_class(class_name=cls.SCHEMA_CLASS_NAME, namespace=namespace)

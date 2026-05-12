@@ -2,7 +2,7 @@ from brainannex import GraphSchema, Categories
 
 
 
-class Recordsets:
+class Recordset:
     """
     Plugin-provided custom interface for "recordsets"
     """

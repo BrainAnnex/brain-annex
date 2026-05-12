@@ -1,11 +1,10 @@
 /*  Vue component to display and edit Content Items that lack any ah-hoc handler.
 
-    Historically, these Content Items are sometimes referred as being of type "r" (generic Records);
-    the new terminology is class_handler:"records"
+    Historically, these Content Items are sometimes referred as being of type "r" (generic Records).
 
-    At present, this is used in the Category Page Viewer.
+    This is a CORE component, not a plugin
 
-    TODO: rename 'vue-plugin-records'
+    TODO: rename 'vue-plugin-records' , and separate it from the plugins
  */
 
 Vue.component('vue-plugin-r',

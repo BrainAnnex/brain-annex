@@ -91,6 +91,10 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
 
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/records/records.css">
+
+
+
     <!-- PLUGIN-specific styling -->
     {% for single_plugin in plugins %}
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/{{single_plugin}}/{{single_plugin}}.css">
@@ -496,6 +500,12 @@
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
     <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
+
+    {% for single_plugin in plugins %}
+        <button @click="add_new_item_at_bottom_NEW({{single_plugin}})" style="margin-right:10px">Header</button>
+    {% endfor %}
+    <br><br><br>
+
     <button @click="add_new_item_at_bottom('h', 'Header')" style="margin-right:10px">Header</button>
     <button @click="add_new_item_at_bottom('n', 'Note')" style="margin-right:10px">Note</button>
     <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
@@ -638,8 +648,12 @@
 
 <script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
 
+<script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
 
-<!-- PLUGIN-specific Vue components
+
+
+<!-- PLUGIN-specific Vue components  (NOW ADDED DYNAMICALLY>
 <script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/documents/documents.js"></script>
@@ -647,12 +661,8 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/timer/timer.js"></script>
+-->
 
-<script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
- -->
-
-<script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
-<!-- This is a sub-component of a plugin; currently requires special handling -->
 
 
 
@@ -1297,6 +1307,53 @@ new Vue({
 
         }, // create_new_item_after
 
+
+
+        /**
+         * Add a new Content Item of the specified type,
+         *  placed at the bottom of the page (past the last Content Item)
+         */
+        add_new_item_at_bottom_NEW(plugin_name)
+        {
+            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item managed by plugin '${plugin_name}'`);
+
+            // Replace underscores with blanks, and Capitalize all words
+            // EXAMPLES: "flash_card" -> "Flash Card"    ,   "image" -> "Image"
+            const class_name =  plugin_name.split('_')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+
+            // Deal with a few special cases.  TODO: phase out schema_code in favor of plugin_name
+            var schema_code;
+            if (plugin_name == "codedoc")
+                schema_code = "cd";
+            else if (plugin_name == "recordset")
+                schema_code = "rs";
+            else
+                schema_code = plugin_name.charAt(0);
+
+
+            // Assemble the data for a new Content Item
+            let blank_record =
+                {
+                    fields:     {},
+                    metadata:   {entity_id: this.next_new_item_uri,
+                                 class_name: class_name,
+                                 plugin_name: plugin_name,
+                                 schema_code: schema_code,
+                                 insert_after_uri: "BOTTOM"}
+                };  // It's a new record; so, only metadata is present
+
+            console.log("blank_record:");
+            console.log(structuredClone(blank_record));      // Log a frozen deep snapshot of the object
+
+
+            this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
+                                                    // Using a negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
+
+            this.item_array.push(blank_record);     // Insert a new blank Item at the end of the page's Content Items
+
+        }, // add_new_item_at_bottom
 
 
         /**

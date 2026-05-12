@@ -8,7 +8,7 @@ from flask_login import login_required
 from app_libraries.data_manager import DataManager
 from app_libraries.documentation_generator import DocumentationGenerator
 from app_libraries.media_manager import MediaManager, ImageProcessing
-from app_libraries.PLUGINS.documents import Documents
+from app_libraries.PLUGINS.document import Document
 from app_libraries.PLUGINS import plugin_support
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories, PyGraphVisual
@@ -2837,9 +2837,9 @@ class ApiRouting:
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Document":    # TODO: move to plugin_support.py
-                    Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
-                                                          upload_folder=post_data.get("upload_folder"),
-                                                          index_pdf=current_app.config['INDEX_PDF_FILES'])
+                    Document.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
+                                                         upload_folder=post_data.get("upload_folder"),
+                                                         index_pdf=current_app.config['INDEX_PDF_FILES'])
                                                           # 'INDEX_PDF_FILES' setting is defined in main file
                 response = ""
 

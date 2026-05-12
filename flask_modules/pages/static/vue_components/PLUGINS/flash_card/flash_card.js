@@ -1,7 +1,7 @@
 /*  Vue component to display and edit Content Items for "flash cards"
  */
 
-Vue.component('vue-plugin-flash-card',
+Vue.component('vue-plugin-f',
     {
         props: ['item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
