@@ -71,13 +71,13 @@ Vue.component('vue-plugin-timer',
 
                         <tr>
                             <td align="right">
-                                <img @click="add_time_clock('min')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/plus_24_173078.png">
-                                <img @click="sub_time_clock('min')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/minus_24_173056.png">
+                                <img @click="add_time_clock('min')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer_widget/plus_24_173078.png">
+                                <img @click="sub_time_clock('min')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer_widget/minus_24_173056.png">
                             </td>
                             <td>&nbsp;</td>
                             <td align="center">
-                                <img @click="add_time_clock('sec')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/plus_24_173078.png">
-                                <img @click="sub_time_clock('sec')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer/minus_24_173056.png">
+                                <img @click="add_time_clock('sec')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer_widget/plus_24_173078.png">
+                                <img @click="sub_time_clock('sec')" class="clickable-icon" src="/BA/pages/static/vue_components/PLUGINS/timer_widget/minus_24_173056.png">
                             </td>
                         </tr>
 
@@ -98,7 +98,7 @@ Vue.component('vue-plugin-timer',
                             <td align="center" colspan="3">
                                 <!-- preload="none"  -->
                                 <audio v-bind:id="'my_audio' + current_metadata.entity_id" controls style="display:none">
-                                    <source v-bind:src="'/BA/pages/static/vue_components/PLUGINS/timer/alarms/' + current_data.audio_file" type="audio/mpeg">
+                                    <source v-bind:src="'/BA/pages/static/vue_components/PLUGINS/timer_widget/alarms/' + current_data.audio_file" type="audio/mpeg">
                                 </audio>
                                 <button @click="play_audio('stop')" class='alarmButtons' style="color:red">SILENCE ALARM</button>
                                 <button @click="play_audio('play')" class='alarmButtons' style="color:gray">TEST ALARM</button>
@@ -454,12 +454,12 @@ Vue.component('vue-plugin-timer',
                      post_obj.insert_after_uri = this.current_metadata.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                      post_obj.insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
 
-                     url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
+                     var url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING Content Item
                     post_obj.entity_id = this.current_metadata.entity_id;
 
-                    url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
 
                 // Enforce required field

@@ -671,11 +671,11 @@ class DataManager:
 
         # Do some special handling specific to various types of Content Items
         if class_name == "Note":
-            update_data = Notes.before_update_content(update_data)
+            update_data = Note.before_update_content(update_data)
         elif class_name == "Document":
-            update_data = Documents.before_update_content(entity_id=entity_id, item_data=update_data)
+            update_data = Document.before_update_content(entity_id=entity_id, item_data=update_data)
         elif class_name == "Image":
-            update_data = Images.before_update_content(entity_id=entity_id, item_data=update_data)
+            update_data = Image.before_update_content(entity_id=entity_id, item_data=update_data)
         #elif plugin_support.is_media_class(class_name):
             # If the Content Item is a Media Item (other than Document)
             #MediaManager.before_update_content(entity_id=entity_id, set_dict=update_data, class_name=class_name)
@@ -687,7 +687,7 @@ class DataManager:
 
 
         if class_name == "Note":
-            Notes.update_content_item_successful(entity_id, original_post_data)
+            Note.update_content_item_successful(entity_id, original_post_data)
 
 
         # If the update was NOT for a "note" (in which case it might only be about the note's body rather than its metadata)
@@ -701,7 +701,7 @@ class DataManager:
 
 
         #if class_name == "Document":
-        #    Documents.update_content_item_successful(entity_id, original_post_data)
+        #    Document.update_content_item_successful(entity_id, original_post_data)
 
 
 
@@ -731,14 +731,14 @@ class DataManager:
             MediaManager.delete_media_file(uri=uri, class_name=class_name)
 
         if class_name == "Image":
-            # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
+            # TODO: move this to the Images plugin, which should provide an Image.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             #record = cls.lookup_media_record(uri)
             #if record is not None:
             MediaManager.delete_media_file(uri=uri, class_name=class_name, thumb=True)
 
         if class_name == "Note":
-            Notes.delete_content_before(uri)
+            Note.delete_content_before(uri)
 
 
         # Perform the actual deletion of the Content Item node
@@ -749,7 +749,7 @@ class DataManager:
         if number_deleted == 1:
             if class_name == "Note":
                 # Extra processing for the "Note" plugin
-                Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the general system
+                Note.delete_content_successful(uri)    # Not actually needed for notes, but setting up the general system
 
             return       # Successful termination, with 1 Content Item deleted, as expected
 
@@ -841,7 +841,7 @@ class DataManager:
         original_post_data = item_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
 
         if class_name == "Note":
-            item_data = Notes.add_content(new_uri, item_data)
+            item_data = Note.add_content(new_uri, item_data)
 
 
         #print("add_new_content_item_to_category() - Revised post_data: ", item_data)
@@ -872,7 +872,7 @@ class DataManager:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Note":
-            Notes.new_content_item_successful(new_uri, original_post_data)
+            Note.new_content_item_successful(new_uri, original_post_data)
 
 
         return new_uri     # Success
@@ -956,7 +956,7 @@ class DataManager:
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
 
         if class_name == "Note":
-            post_data = Notes.add_content(new_uri, post_data)
+            post_data = Note.add_content(new_uri, post_data)
 
 
         #print("Revised post_data: ", post_data)
@@ -987,7 +987,7 @@ class DataManager:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Note":
-            Notes.new_content_item_successful(new_uri, original_post_data)
+            Note.new_content_item_successful(new_uri, original_post_data)
 
 
         return new_uri     # Success
@@ -1017,9 +1017,9 @@ class DataManager:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Note":
-            Notes.new_content_item_successful(new_uri, original_post_data)
+            Note.new_content_item_successful(new_uri, original_post_data)
         elif class_name == "Document":
-            Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
+            Document.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
                                                                                                         #TODO: add arg `upload_folder`
 
 

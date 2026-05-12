@@ -91,7 +91,7 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
 
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/records/records.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
 
 
 
@@ -502,7 +502,7 @@
     <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
 
     {% for single_plugin in plugins %}
-        <button @click="add_new_item_at_bottom_NEW({{single_plugin}})" style="margin-right:10px">Header</button>
+        <button @click="add_new_item_at_bottom_NEW('{{single_plugin}}')" style="margin-right:10px">{{single_plugin}}</button>
     {% endfor %}
     <br><br><br>
 
@@ -660,7 +660,7 @@
 <script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/timer/timer.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/timer_widget/timer.js"></script>
 -->
 
 
@@ -1327,8 +1327,12 @@ new Vue({
             var schema_code;
             if (plugin_name == "codedoc")
                 schema_code = "cd";
+            else if (plugin_name == "site_link")
+                schema_code = "sl";
             else if (plugin_name == "recordset")
                 schema_code = "rs";
+            else if (plugin_name == "timer_widget")
+                schema_code = "timer";
             else
                 schema_code = plugin_name.charAt(0);
 

@@ -982,9 +982,9 @@ new Vue({
             //console.log(`Calling pin_category().  'initial_status' is: ${initial_status}`);
 
             if (initial_status)
-                url_server_api = `/BA/api/pin_category/${this.category_uri}/unset`;  // It was originally in the "set" status
+                var url_server_api = `/BA/api/pin_category/${this.category_uri}/unset`;  // It was originally in the "set" status
             else
-                url_server_api = `/BA/api/pin_category/${this.category_uri}/set`;
+                var url_server_api = `/BA/api/pin_category/${this.category_uri}/set`;
 
             console.log(`About to contact the server at ${url_server_api}`);
 

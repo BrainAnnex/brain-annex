@@ -32,7 +32,7 @@ class FlashCard:
         if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
             GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False,
                                                      code=cls.SCHEMA_CODE, handler="flash_card",
-                                                     properties=["label", "sideA_field", "sideB_field"],
+                                                     properties=["source_label", "sideA_field", "sideB_field"],
                                                      class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
 
             # Set up the auto-increment namespace
