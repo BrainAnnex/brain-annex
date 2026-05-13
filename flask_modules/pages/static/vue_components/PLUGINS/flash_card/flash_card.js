@@ -5,13 +5,10 @@ Vue.component('vue-plugin-f',
     {
         props: ['item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
-        /*  item_fields:    An object with the editable properties of this Site Link item.
-                                EXAMPLE: {url: "http://example.com",
-                                          name:"test",
-                                          comments: "my test site",
-                                          rating: 4.5,
-                                          read: "yes",
-                                          date: "4/2026"}
+        /*  item_fields:    An object with the editable properties of this Flash-Card item.
+                                EXAMPLE: {source_label: "French Vocabulary",
+                                          sideA_field: "French",
+                                          sideB_field: "English"}
 
             item_metadata:  An object with the metadata of this Site Link item.
                                 For a newly-created Content Item, not yet registered with the server,
@@ -20,7 +17,7 @@ Vue.component('vue-plugin-f',
                                 EXAMPLE of existing Site Link item:
                                         {class_name":"Flash Card",
                                          pos:0,
-                                         schema_code:"fc",
+                                         schema_code:"f",
                                          entity_id:"8809"
                                         }
 
@@ -35,86 +32,63 @@ Vue.component('vue-plugin-f',
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
-            <table class='sl-main'>
 
-                <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
-                    <td rowspan=2 class="no-borders" style="width: 5%">
-                        <img src="/BA/pages/static/graphics/bookmark_32_60162.png">
-                    </td>
-
-                    <td v-html="render_cell(current_data.url)" style="width: 25%"></td>
-                    <td class="name">{{current_data.name}}</td>
-                    <td class="small">{{current_data.read}}</td>
-                </tr>
-                <tr v-else @dblclick="enter_editing_mode">
-                    <td>
-                        <span class="hint">url</span><br>
-                        <textarea rows="4" cols="20"  v-model="current_data.url"  @change="set_name">
-                        </textarea>
-                    </td>
-                    <td>
-                        <span class="hint">name</span><br>
-                        <textarea rows="4" cols="60"  v-model="current_data.name">
-                        </textarea>
-                    </td>
-                    <td>
-                        <span class="hint">read?</span><br><input type="text" size="6" v-model="current_data.read">
-                    </td>
-                </tr>
+                <!----------  Display when in NORMAL (non-editing) mode  ---------->
+                <div v-if="(!editing_mode) && (side_shown=='A')" class='flash-card'
+                    @click="flip_card()"
+                >
+                    <div class="card-header">FLASH CARD</div>
+                    <br><br><br>
+                    French:
+                    <p>
+                        {{cards[deck_position][["A"]]}}
+                    </p>
+                    <br><br><br><br><br>
+                    <span class="instructions">Click anywhere to FLIP the card</span>
+                </div>
 
 
-                <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
-                    <td class="small">{{current_data.date}}</td>
-                    <td class="comments">{{current_data.comments}}</td>
-                    <td><span v-show="current_data.rating">{{current_data.rating}}</span><span v-show="current_data.rating" class="star-yellow">&#9733;</span>
-                    </td>
-                </tr>
-                <tr v-else @dblclick="enter_editing_mode">
-                    <td><span class="hint">date</span><br><input type="text" size="6" v-model="current_data.date"></td>
-                    <td>
-                        <span class="hint">comments</span><br>
-                        <textarea rows="4" cols="60"  v-model="current_data.comments">
-                        </textarea>
-                    </td>
-                    <td><span class="hint">rating</span><br>
-                        <select v-model="current_data.rating">
-                            <option disabled value='-1'>[&#9733;]</option>
-                            <option value=5>5</option>
-                            <option value=4.5>4.5</option>
-                            <option value=4>4</option>
-                            <option value=3.5>3.5</option>
-                            <option value=3 selected>3</option>
-                            <option value=2.5>2.5</option>
-                            <option value=2>2</option>
-                            <option value=1.5>1.5</option>
-                            <option value=1>1</option>
-                            <option value=0.5>0.5</option>
-                            <option value=0>0</option>
-                        </select>
-                    </td>
-                </tr>
-
-            </table>
+                <div v-if="(!editing_mode) && (side_shown=='B')" class='flash-card'
+                    @click="advance_card()"
+                >
+                    <div class="card-header">ANSWER</div>
+                    <br><br><br>
+                    English:
+                    <p>
+                        {{cards[deck_position][["B"]]}}
+                    </p>
+                    <br><br><br><br><br>
+                    <span class="instructions">Click anywhere to ADVANCE to the next card</span>
+                </div>
 
 
-            <!-- Area below the table, with SAVE/Cancel controls (if in editing mode) -->
-            <p v-if="editing_mode" style="border-left:1px solid #DDD; padding-left:5px">
-                <button @click="save()">SAVE</button>
-                <a @click.prevent="cancel_edit()" href="#" style="margin-left:15px">Cancel</a>
-                <span v-if="waiting" style="margin-left:15px">saving...</span>
-            </p>
 
-            <span v-if="status_message!='' && !editing_mode">Status : {{status_message}}</span>
+                <!----------  Display when in EDITING MODE  ---------->
+                <div v-if="editing_mode">
 
-            <!--  STANDARD CONTROLS
-                  (signals from them get relayed to the parent of this component, but some get handled here)
-                  Intercept the following signal from child component:
-                        v-on:edit-content-item   (which is not listened to by the root component)
-            -->
-            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
-                          v-on="$listeners"
-                          v-on:edit-content-item="edit_content_item">
-            </vue-controls>
+                    EDITING MODE TBA
+
+                </div>
+
+
+
+                <br>
+
+                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls),
+                      EXCEPT for the "edit" control, which is provided by this Vue component itself.
+                      Signals from the Vue child component "vue-controls", below,
+                      get relayed to the parent of this component;
+                      none get intercepted and handled here
+                -->
+                <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
+
+                <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                              v-bind:controls_to_hide="['edit']"
+                              v-on="$listeners"
+                >
+                </vue-controls>
+
+                <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
 
             </div>		<!-- End of outer container -->
             `,
@@ -140,6 +114,12 @@ Vue.component('vue-plugin-f',
                 // Private copy of the metadata
                 current_metadata:   Object.assign({}, this.item_metadata),
 
+                side_shown: "A",        // Either "A" or "B"
+
+                deck_position: 0,
+
+                cards: [ {A: "Chat", B: "Cat"},  {A: "Mot", B: "Word"}],
+
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -152,62 +132,22 @@ Vue.component('vue-plugin-f',
         // ------------------------------------   METHODS   ------------------------------------
         methods: {
 
-            set_name()
-            /*  Invoked whenever a change of the URL field is detected while in editing mode
-                (when the user clicks away from that field);
-                if no name field is already present,
-                it attempts to retrieve the webpage title of the URL just entered by the user,
-                and it sets the "name" field (on the editing form) to it
-             */
+            flip_card()
             {
-                const url = this.current_data.url;
-                console.log(`Detected change in the URL ; new value: ${url}`);
+                this.side_shown = "B";
+            },
 
-                const current_name = this.current_data.name;
+            advance_card()
+            {
+                this.side_shown = "A";
 
-                if (current_name === null || current_name === undefined
-                        ||  (typeof current_name === 'string' && current_name.trim() === '') )
-                {
-                    // We'll retrieve a name only if the name field is null, undefined or a string of blanks
-                    Vue.set(this.current_data, "name", "[Fetching the page title...]"); // Temporary name assignment
-                    this.get_webpage_title(url);    // Query the server to find out the page title, and sets the "name" field to it
-                }
+                if (this.deck_position == this.cards.length - 1)
+                    this.deck_position = 0;
                 else
-                    console.log(`set_name(): we already have a name for this webpage; no action taken`);
+                    this.deck_position += 1;
             },
 
 
-
-            render_cell(cell_data)
-            /*  If the passed argument is a string that appears to be a URL,
-                convert it into a string with HTML code for a hyperlink that opens in a new window;
-                if the URL is very long, show it in abbreviated form in the hyperlink text.
-                In all other cases, just return the argument.
-
-                Note: this function is also found in records.js, single_record.js and site_links.js
-             */
-            {
-                const max_url_len = 35;     // NOT counting the protocol part (such as "https://")
-
-                if (typeof cell_data != "string")
-                     return cell_data;
-
-                let dest_name = "";         // Name of the destination of the link, if applicable
-                // Do a simple-minded check as to whether the cell content appear to be a hyperlink
-                if (cell_data.substring(0, 8) == "https://")
-                    dest_name = cell_data.substring(8);
-                else if (cell_data.substring(0, 7) == "http://")
-                    dest_name = cell_data.substring(7);
-
-                if (dest_name != "")  {     // If the cell data was determined to be a URL
-                    if (dest_name.length > max_url_len)
-                        dest_name = dest_name.substring(0, max_url_len) + "..."; // Display long links in abbreviated form
-
-                    return `<a href='${cell_data}' target='_blank' style='font-size:10px'>${dest_name}<a>`;
-                }
-                else
-                    return cell_data;
-            },
 
 
 
@@ -263,44 +203,6 @@ Vue.component('vue-plugin-f',
                 ---  SERVER CALLS  ---
              */
 
-            get_webpage_title(url)
-            /*  Asynchronously query the server to find out the title of the webpage identified by the given URL,
-                and, upon fetching the result, set the data field this.current_data.name to it.
-                (Note: letting the server handle this, to avoid running afoul of CORS.)
-             */
-            {
-                console.log(`Attempting to retrieve title of webpage: ${url}`);
-
-                // Send the request to the server, using a GET
-                const url_server_api = `/BA/api/fetch-remote-title?url=${url}`;
-
-                console.log(`About to contact the server at ${url_server_api}`);
-
-                // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {method: "GET",
-                             callback_fn: this.finish_get_webpage_title
-                            });
-            },
-
-            finish_get_webpage_title(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of get_webpage_title() upon getting a response from the server
-            {
-                console.log("Finalizing the get_webpage_title() operation...");
-
-                var new_name;
-
-                if (success)  {     // Server reported SUCCESS
-                    new_name = server_payload;
-                    // Note: if the user has already saved the record by the time this fetch terminates,
-                    //       then the modified field won't get saved in the database, nor shown in the UI
-                }
-                else  {             // Server reported FAILURE
-                    new_name = "Unable to extract webpage title";
-                }
-
-                Vue.set(this.current_data, "name", new_name);
-            },
 
 
             save()

@@ -1,0 +1,23 @@
+div.flash-card {
+    box-shadow: 5px 5px 10px #333;
+	margin: 10px;
+	border:1px solid gray;
+	background-color:#ffffff;
+	width:350px;
+	padding:12px;
+	font-size: 20px;
+}
+
+
+div.flash-card span.instructions {
+    font-size: 11px;
+    color: gray;
+}
+
+
+div.flash-card div.card-header {
+    background-color: black;
+    color: white;
+    font-weight: bold;
+    padding:8px;
+}

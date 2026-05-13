@@ -144,7 +144,7 @@ Vue.component('vue-plugin-d',
                             </select>
                         </p>
 
-                        <!-- CONTROLS to edit the document METADATA -->
+                        <!-- CONTROLS to edit the document fields -->
                         <p v-show="edit_metadata" style="text-align: right">
                             <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                             <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>

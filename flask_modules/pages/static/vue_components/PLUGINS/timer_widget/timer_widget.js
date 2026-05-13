@@ -41,7 +41,7 @@ Vue.component('vue-plugin-timer',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <!-- Display in NORMAL (non-editing) mode  -->
+                <!-- Display when in NORMAL (non-editing) mode  -->
                 <div v-if="!editing_mode" class='timerShell'>
 
                     <table border="0" class='timerTable' width="220px">
@@ -143,15 +143,15 @@ Vue.component('vue-plugin-timer',
                       get relayed to the parent of this component;
                       none get intercepted and handled here
                 -->
-                    <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
+                <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
-                                  v-bind:controls_to_hide="['edit']"
-                                  v-on="$listeners"
-                    >
-                    </vue-controls>
+                <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                              v-bind:controls_to_hide="['edit']"
+                              v-on="$listeners"
+                >
+                </vue-controls>
 
-                    <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
+                <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
 
 
             </div>		<!-- End of outer container -->

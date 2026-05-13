@@ -502,22 +502,17 @@
     <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
 
     {% for single_plugin in plugins %}
-        <button @click="add_new_item_at_bottom_NEW('{{single_plugin}}')" style="margin-right:10px">{{single_plugin}}</button>
+        {% if single_plugin != "image" and single_plugin != "document" %}
+            <button @click="add_new_item_at_bottom('{{single_plugin}}')" style="margin-right:10px">{{single_plugin}}</button>
+        {% endif %}
     {% endfor %}
-    <br><br><br>
+    <br>
 
-    <button @click="add_new_item_at_bottom('h', 'Header')" style="margin-right:10px">Header</button>
-    <button @click="add_new_item_at_bottom('n', 'Note')" style="margin-right:10px">Note</button>
-    <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
-    <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
-    <button @click="add_new_item_at_bottom('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation (deprecated)</button>
-    &nbsp;&nbsp;&nbsp;
-    <button @click="add_new_item_at_bottom('timer', 'Timer Widget')" style="margin-right:10px">Timer Widget</button>
 
     <!-- Show all leaf Classes that are direct instances of "Records" -->
     <br>Add new record of type:
     {% for class_name in records_types %}
-        <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
+        <button @click='add_new_record_at_bottom("{{class_name}}")'
                 class="record-picker"
                 style="color: {% if (loop.index % 7) == 1 %}#ae9cd6{% elif (loop.index % 7) == 2 %}#8bb9d4{% elif (loop.index % 7) == 3 %}#a6cfa1{% elif (loop.index % 7) == 4 %}#dad6a1{% elif (loop.index % 7) == 5 %}#e1b298{% elif (loop.index % 7) == 6 %}#e59ca0{% elif (loop.index % 7) == 0 %}gray{% else %}black{% endif %}">
             {{class_name}}
@@ -693,8 +688,9 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
-        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs", "timer"],
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs", "timer", "f"],
                                     // "r" not included here, because a generic core one - see plugin_component_name()
+                                    // TODO: switch to using plugin names
                                     // TODO: either pass from the database, or infer from some config file
                                     // IMPORTANT: the items in the list MUST correspond to the folders in
                                     //            flask_modules/pages/static/vue_components/PLUGINS
@@ -1310,10 +1306,10 @@ new Vue({
 
 
         /**
-         * Add a new Content Item of the specified type,
+         * Add a new Content Item managed by the specified plugin handler,
          *  placed at the bottom of the page (past the last Content Item)
          */
-        add_new_item_at_bottom_NEW(plugin_name)
+        add_new_item_at_bottom(plugin_name)
         {
             console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item managed by plugin '${plugin_name}'`);
 
@@ -1361,19 +1357,19 @@ new Vue({
 
 
         /**
-         * Add a new Content Item of the specified type,
+         * Add a new Content Item of the generic "record" type,
          *  placed at the bottom of the page (past the last Content Item)
          */
-        add_new_item_at_bottom(schema_code, class_name)
+        add_new_record_at_bottom(class_name)
         {
-            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
+            console.log(`In root component, add_new_record_at_bottom()`);
 
             // Assemble the data for a new Content Item
             let blank_record =
                 {
                     fields:     {},
                     metadata:   {entity_id: this.next_new_item_uri,
-                                 schema_code: schema_code,
+                                 schema_code: "r",
                                  class_name: class_name,
                                  insert_after_uri: "BOTTOM"}
                 };  // It's a new record; so, only metadata is present
