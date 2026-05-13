@@ -1590,10 +1590,13 @@ class DataManager:
         :param filter_dict: A dictionary, with keys:
                                 "label"         The name of a node label
                                 "class_name"    TODO: NOT CURRENTLY IMPLEMENTED
-                                "key_name"      A string with the name of a node attribute;
+
+                                "key_name"      Property (field) name - or list of names - to search;
+                                                    an implicit *OR* is used if more than one is given.
                                                     if provided, key_value must be passed, too
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
                                                     Note: no requirement for the key to be primary
+
                                 "case_sensitive" Boolean
                                 "clause_key"    Name of a node property (field)
                                 "clause_value"  Value to match for the above property;

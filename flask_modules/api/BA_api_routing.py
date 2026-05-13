@@ -2287,7 +2287,7 @@ class ApiRouting:
 
 
         
-        @bp.route('/get_filtered')
+        @bp.route('/get-filtered')
         @login_required
         def get_filtered_api():
             """
@@ -2297,14 +2297,15 @@ class ApiRouting:
             For example, for the use of a record search form or the recordset plugin
 
             EXAMPLE of invocation:
-                http://localhost:5000//BA/api/get_filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
+                http://localhost:5000//BA/api/get-filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
 
             GET VARIABLE:
                 json    A JSON-encoded dict, containing the following entries:
 
                     label       The name of a database node label
                     class       Not yet used (will get turned into `label` if label is missing)
-                    key_name    A string, or list of strings, with the name of a node attribute;
+                    key_name    Property (field) name - or list of names - to search;
+                                    an implicit *OR* is used if more than one is given.
                                     if provided, key_value must be passed, too
                     key_value   The required value for the above key; if provided, key_name must be passed, too.
                                     Note: no requirement for the key to be primary
@@ -2320,6 +2321,8 @@ class ApiRouting:
                 total_count: The total number of nodes in the database with the given label - NOT considering the remainder of the filter
                                 if no label was provided, None
             """
+            #TODO: provide a way to only return specific fields
+
             # Extract the GET values
             get_data = request.args     # Example: Example: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
             #print("get_data: ", get_data)
@@ -2390,7 +2393,7 @@ class ApiRouting:
                                                 #   Note: jsonify() may fail if any parts of the response are not JSON serializable
 
             except Exception as ex:
-                response = {"status": "error", "error_message": f"/get_filtered web API endpoint: {ex}" }    # Error termination
+                response = {"status": "error", "error_message": f"/get-filtered web API endpoint: {ex}" }    # Error termination
                 #print(f"get_filtered() is returning with error: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
                                                 # Maybe, do this instead:

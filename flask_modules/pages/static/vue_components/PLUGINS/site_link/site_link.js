@@ -129,16 +129,17 @@ Vue.component('vue-plugin-sl',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                //      Note: for new Content Items, it only contains
-                //              `class_name`, `schema_code`, `entity_id`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
-                //            For existing Content Items, it contains
-                //              `class_name`, `schema_code`, `entity_id`, `pos`, and Content-specific fields
                 current_data:   Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 original_data:  Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
-                // Private copy of the metadata
+                /* Private copy of the metadata
+                        For new Content Items, it only contains:
+                            `class_name`, `schema_code`, `entity_id` (a negative integer), `insert_after_uri`
+                        For existing Content Items, it contains:
+                             `class_name`, `schema_code`, `entity_id`, `pos`
+                */
                 current_metadata:   Object.assign({}, this.item_metadata),
 
                 waiting: false,         // Whether any server request is still pending

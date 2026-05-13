@@ -2346,8 +2346,9 @@ class GraphSchema:
 
         :param class_name:  [OPTIONAL] String with the name of the desired Schema Class
         :param labels:      [OPTIONAL] String, or list/tuple of strings, with the desired node label(s)
-        :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search.
-                                An implicit *OR* is used if more than one is given
+        :param key_names:   [OPTIONAL] Property (field) name - or list of names - to search;
+                                an implicit *OR* is used if more than one is given.
+                                if provided, key_value must be passed, too
         :param key_value:   [OPTIONAL] Only applicable if arg `key_names` is present: match nodes with the
                                 specified key name/value (for each key, with an implicit OR, if there's more than 1).
                                 If key_value is a string, the match is case-sensitive;
@@ -2384,7 +2385,8 @@ class GraphSchema:
                                 2.  What the number of nodes would be in the absence of any limit/skip value
         """
         #TODO: add argument `hide_schema`
-        #TODO: maybe add argument `single_field` and/or `fields`
+        #TODO: provide a way to only return specific fields; maybe add argument `single_field` and/or `fields`
+
         allowed_patters = ["CONTAINS", "STARTS WITH", "ENDS WITH"]
         if string_match:
             assert string_match in allowed_patters, \

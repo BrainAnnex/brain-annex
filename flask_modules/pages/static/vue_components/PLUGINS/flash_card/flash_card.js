@@ -102,16 +102,17 @@ Vue.component('vue-plugin-f',
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
-                //      Note: for new Content Items, it only contains
-                //              `class_name`, `schema_code`, `entity_id`, `insert_after_uri`, PLUS anything dynamically added by v-model during data entry
-                //            For existing Content Items, it contains
-                //              `class_name`, `schema_code`, `entity_id`, `pos`, and Content-specific fields
                 current_data:   Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
                 // Clone of the above object, used to restore the data in case of a Cancel or failed save
                 original_data:  Object.assign({}, this.item_fields),    // Clone from the original data passed to this component
 
-                // Private copy of the metadata
+                /* Private copy of the metadata
+                        For new Content Items, it only contains:
+                            `class_name`, `schema_code`, `entity_id` (a negative integer), `insert_after_uri`
+                        For existing Content Items, it contains:
+                             `class_name`, `schema_code`, `entity_id`, `pos`
+                */
                 current_metadata:   Object.assign({}, this.item_metadata),
 
                 side_shown: "A",        // Either "A" or "B"
@@ -126,6 +127,25 @@ Vue.component('vue-plugin-f',
             }
         }, // data
 
+
+
+
+        // ------------------------------------   HOOKS   ------------------------------------
+
+        /**
+         * the "mounted" Vue hook is invoked later in the process of launching this component.
+         */
+        mounted()
+        {
+            console.log(`The flash_card component has been mounted`);
+
+            if (this.item_metadata.entity_id < 0)  {  // A negative entity_id is a convention to indicate a just-created Flash Card
+                //this.edit_recordset();
+                return;
+            }
+
+            this.fetch_card_data();      // Fetch from the server all the cards' data
+        },
 
 
 
@@ -200,8 +220,66 @@ Vue.component('vue-plugin-f',
 
 
             /*
-                ---  SERVER CALLS  ---
+                 ---------------  SERVER CALLS  ---------------
              */
+
+
+            /**
+             * Obtain the data for all the flash cards
+             */
+            fetch_card_data()
+            {
+                console.log(`In fetch_card_data()`);
+
+                // Send the request to the server, using a GET
+                const url_server_api = "/BA/api/get-filtered";
+
+                const get_obj = {label: this.current_data.source_label};
+
+                console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+                console.log(get_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {   method: "GET",
+                                data_obj: get_obj,
+                                json_encode_send: true,
+                                callback_fn: this.finish_fetch_card_data
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+            },  // fetch_card_data
+
+
+            /** Callback function to wrap up the action of fetch_card_data() upon getting a response from the server.
+             *
+             * @param {bool} success - Boolean indicating whether the server call succeeded
+             * @param server_payload - Whatever the server returned (stripped of information about the success of the operation)
+             * @param {string} error_message - Only applicable in case of failure
+             * @param custom_data            - NOT USED
+             */
+            finish_fetch_card_data(success, server_payload, error_message, custom_data)
+            {
+                console.log("Finalizing the fetch_card_data() operation...");
+                //console.log(`Custom data passed: ${custom_data}`);
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = "";       // `Operation completed`
+                    this.TBA = server_payload.recordset;
+                    this.TBA2 = server_payload.total_count;
+
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            }, // finish_fetch_card_data
 
 
 
