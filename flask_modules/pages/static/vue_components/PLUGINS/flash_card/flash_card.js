@@ -34,30 +34,51 @@ Vue.component('vue-plugin-f',
 
 
                 <!----------  Display when in NORMAL (non-editing) mode  ---------->
+                <!-- SIDE A of the card -->
                 <div v-if="(!editing_mode) && (side_shown=='A')" class='flash-card'
                     @click="flip_card()"
                 >
                     <div class="card-header">FLASH CARD</div>
-                    <br><br><br>
-                    French:
+                    <br><br>
+                    <span class="field-name">{{this.current_data.sideA_field}}:</span>
                     <p>
-                        {{cards[deck_position][["A"]]}}
+                        {{cards[deck_position][this.current_data.sideA_field]}}
                     </p>
-                    <br><br><br><br><br>
+                    <br><br><br><br><br><br><br>
                     <span class="instructions">Click anywhere to FLIP the card</span>
                 </div>
 
 
+                <!-- SIDE B of the card -->
                 <div v-if="(!editing_mode) && (side_shown=='B')" class='flash-card'
                     @click="advance_card()"
                 >
                     <div class="card-header">ANSWER</div>
-                    <br><br><br>
-                    English:
+                    <br><br>
+
+                    <span class="field-name">{{this.current_data.sideA_field}}:</span>
                     <p>
-                        {{cards[deck_position][["B"]]}}
+                        {{cards[deck_position][this.current_data.sideA_field]}}
                     </p>
-                    <br><br><br><br><br>
+
+                    <br><hr>
+                    <span class="field-name">{{this.current_data.sideB_field}}:</span>
+                    <p>
+                        {{cards[deck_position][this.current_data.sideB_field]}}
+                    </p>
+
+                    <p v-for='(val, key) in cards[deck_position]'>
+                        <span v-if="(key != current_data.sideA_field)
+                                        && (key != current_data.sideB_field)
+                                        && (key[0] != '_')
+                                        && (key != 'entity_id')"
+                              class="extra-fields"
+                        >
+                            {{key}} : {{val}}
+                        <span>
+                    </p>
+
+                    <br>
                     <span class="instructions">Click anywhere to ADVANCE to the next card</span>
                 </div>
 
@@ -83,7 +104,6 @@ Vue.component('vue-plugin-f',
                 <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
                 <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
-                              v-bind:controls_to_hide="['edit']"
                               v-on="$listeners"
                 >
                 </vue-controls>
@@ -268,8 +288,13 @@ Vue.component('vue-plugin-f',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = "";       // `Operation completed`
-                    this.TBA = server_payload.recordset;
-                    this.TBA2 = server_payload.total_count;
+                    this.cards = server_payload.recordset;      // TODO: change format and reshuffle
+                    /* EXAMPLE:  [{English: "to slice", French: "trancher",
+                                   _CLASS: "French Vocabulary", entity_id: "515", grammar: "verb", notes: 'sounds like "trench"',
+                                   _internal_id: 59, _node_labels: Array [ "BA", "French Vocabulary" ]
+                                  }]
+                     */
+                    //this.not_used = server_payload.total_count;
 
                 }
                 else  {             // Server reported FAILURE
