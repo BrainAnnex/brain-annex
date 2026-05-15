@@ -40,12 +40,12 @@ Vue.component('vue-plugin-f',
                 >
                     <div class="card-header">FLASH CARD</div>
                     <br><br>
-                    <span class="field-name">{{this.current_data.sideA_field}}:</span>
+                    <span class="field-name">{{current_data.sideA_field}}:</span>
                     <p>
-                        {{cards[deck_position][this.current_data.sideA_field]}}
+                        {{cards[deck_position][current_data.sideA_field]}}
                     </p>
                     <br><br><br><br><br><br><br>
-                    <span class="instructions">Click anywhere to FLIP the card</span>
+                    <span class="instructions">{{deck_position+1}} out of {{number_cards}}.  Click anywhere to FLIP the card</span>
                 </div>
 
 
@@ -56,15 +56,15 @@ Vue.component('vue-plugin-f',
                     <div class="card-header">ANSWER</div>
                     <br><br>
 
-                    <span class="field-name">{{this.current_data.sideA_field}}:</span>
+                    <span class="field-name">{{current_data.sideA_field}}:</span>
                     <p>
-                        {{cards[deck_position][this.current_data.sideA_field]}}
+                        {{cards[deck_position][current_data.sideA_field]}}
                     </p>
 
                     <br><hr>
-                    <span class="field-name">{{this.current_data.sideB_field}}:</span>
+                    <span class="field-name">{{current_data.sideB_field}}:</span>
                     <p>
-                        {{cards[deck_position][this.current_data.sideB_field]}}
+                        {{cards[deck_position][current_data.sideB_field]}}
                     </p>
 
                     <p v-for='(val, key) in cards[deck_position]'>
@@ -75,7 +75,7 @@ Vue.component('vue-plugin-f',
                               class="extra-fields"
                         >
                             {{key}} : {{val}}
-                        <span>
+                        </span>
                     </p>
 
                     <br>
@@ -137,9 +137,10 @@ Vue.component('vue-plugin-f',
 
                 side_shown: "A",        // Either "A" or "B"
 
-                deck_position: 0,
-
                 cards: [ {A: "Chat", B: "Cat"},  {A: "Mot", B: "Word"}],
+
+                deck_position: 0,
+                number_cards: 2,
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -288,13 +289,14 @@ Vue.component('vue-plugin-f',
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = "";       // `Operation completed`
-                    this.cards = server_payload.recordset;      // TODO: change format and reshuffle
+                    this.cards = this.reshuffle_deck(server_payload.recordset);
                     /* EXAMPLE:  [{English: "to slice", French: "trancher",
-                                   _CLASS: "French Vocabulary", entity_id: "515", grammar: "verb", notes: 'sounds like "trench"',
+                                   grammar: "verb", notes: 'sounds like "trench"',
+                                   _CLASS: "French Vocabulary", entity_id: "515",
                                    _internal_id: 59, _node_labels: Array [ "BA", "French Vocabulary" ]
                                   }]
                      */
-                    //this.not_used = server_payload.total_count;
+                    this.number_cards = server_payload.total_count;
 
                 }
                 else  {             // Server reported FAILURE
@@ -305,6 +307,35 @@ Vue.component('vue-plugin-f',
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
             }, // finish_fetch_card_data
+
+
+
+            /**
+             * Shuffle the deck.  Return an in-place modification of the array containing the deck data
+             */
+            reshuffle_deck(arr)
+            {
+                this.deck_position = 0;
+                return this.shuffle_array(arr);
+            },
+
+
+            /**
+             * Randomly re-arrange in-place an array using the Fisher–Yates algorithm (also called the Knuth shuffle)
+             */
+            shuffle_array(arr)
+            {
+                for (let i = arr.length - 1; i > 0; i--) {
+
+                    // random integer from 0 to i
+                    const j = Math.floor(Math.random() * (i + 1));
+
+                    // swap
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+
+                return arr;
+            },
 
 
 
