@@ -210,10 +210,10 @@ Vue.component('vue-plugin-n',
                 this.editing_mode = true;
 
                 // Retrieve the CKEDITOR object, if present from an earlier edit (or Note creation), or create a new one
-                editor_obj = this.note_editor;
+                var editor_obj = this.note_editor;
                 if (!editor_obj) {
                     console.log("Creating a new CKEDITOR object");
-                    noteCurrentValue = this.body_of_note;
+                    const noteCurrentValue = this.body_of_note;
                     this.create_new_editor(noteCurrentValue);
                 }
                 else
@@ -499,7 +499,7 @@ Vue.component('vue-plugin-n',
              */
             cancel_edit()
             {
-                noteID = this.current_metadata.entity_id;    // A negative value indicates a new Note
+                const noteID = this.current_metadata.entity_id;    // A negative value indicates a new Note
 
                 console.log("Inside cancel_edit().  noteID = " + noteID);
 

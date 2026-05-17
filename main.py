@@ -1,7 +1,7 @@
 """
-MAIN PROGRAM : it starts up a server for web User Interface and an API
+MAIN PROGRAM : it starts up a server providing a web app and a web API
     Run this file, and then set the browser to http://localhost:5000/some_url
-    (the actual port number is configurable; the URL's are specified in the various modules)
+    (the actual port number is configurable)
 
 IMPORTANT: first change the config.ini file as needed
 
@@ -12,10 +12,11 @@ from app_build import create_app
 
 
 
-# The object for the Flask app (exposed, at the top level of this module,
-#                   so that this main program may also be started from the CLI
-#                   with the "flask run" command)
-app = create_app()
+# Instantiate the object for the Flask app
+#       (exposed, at the top level of this module,
+#        so that this main program may also be started from the CLI
+#        with the "flask run" command)
+app = create_app()  # Object of type "'flask.app.Flask'"
 
 
 ###  Fire up the web app

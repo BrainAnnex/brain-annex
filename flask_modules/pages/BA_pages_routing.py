@@ -70,9 +70,10 @@ class PagesRouting:
         # Register with the Flask app object the Blueprint object created above, and request the desired URL prefix
         flask_app_obj.register_blueprint(flask_blueprint, url_prefix = cls.url_prefix)
 
-        # Save the app configuration parameters in a class variable
+        # Make the app configuration parameters available to a class variable
         cls.config_pars = flask_app_obj.config
 
+        # Put together some key paramaters in a handy object to pass to most Flask pages
         cls.site_data =  {"site_pages": get_site_pages(),
                           "branding": cls.config_pars.get("BRANDING"),
                           "version": version()
@@ -109,7 +110,7 @@ class PagesRouting:
                 http://localhost:5000/BA/pages/viewer
                 http://localhost:5000/BA/pages/viewer/3
             """
-            template = "page_viewer.htm"
+            template = "page_viewer.htm"    # TODO: maybe rename "category_page_viewer.htm"
 
             # Get the Name and Remarks attached to the given Category
             category_info = Categories.get_category_info(category_uri)
@@ -177,6 +178,7 @@ class PagesRouting:
             '''
 
 
+            # TODO: consolidate the parameters passed to Flask
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
@@ -189,8 +191,11 @@ class PagesRouting:
                                    subcategories=subcategories, parent_categories=parent_categories,
                                    siblings_categories=siblings_categories,
                                    bread_crumbs=bread_crumbs, see_also_links=see_also_links,
+
                                    records_types=records_types, items_schema_data=items_schema_data,
-                                   upload_directories=upload_directories
+                                   upload_directories=upload_directories,
+
+                                   plugins=cls.config_pars.get("PLUGINS")
                                    )
 
 

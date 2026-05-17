@@ -28,7 +28,8 @@ from app_libraries.initialize import InitializeBrainAnnex
 
 def create_app(db=None, test=False, config_override=None):
     """
-    Create and return the Flask object
+    Create and return the Flask object,
+    upon reading in the config files
 
     :param db:
     :param config_override: NOT CURRENTLY USED
@@ -37,14 +38,7 @@ def create_app(db=None, test=False, config_override=None):
 
     app = Flask(__name__)   # The Flask object
 
-    #load_config(app)
 
-    #if config_override:
-        #app.config.update(config_override)
-
-    #initialize_graph_db(app)
-    #initialize_services(app)
-    #register_routes(app)
 
 
     #################################################################################
@@ -53,87 +47,50 @@ def create_app(db=None, test=False, config_override=None):
     #                                                                               #
     #################################################################################
 
+    #Save in the "app" object various global and module-specific data, to propagate to those modules
     if test:
-        UPLOAD_FOLDER = ""
-        MEDIA_FOLDER = ""
-        LOG_FOLDER = ""
-        INTAKE_FOLDER = ""
-        OUTTAKE_FOLDER = ""
+        # For testing, set the configuration parameters manually below
+        app.config['NEO4J_HOST'] = ""
+        app.config['NEO4J_USER'] = ""
+        app.config['NEO4J_PASSWORD'] = ""
 
+        app.config['DEPLOYMENT'] = "FLASK"
+        app.config['PORT_NUMBER'] = 5000
+
+        app.config['UPLOAD_FOLDER'] = ""
+        app.config['MEDIA_FOLDER'] = ""
+        app.config['LOG_FOLDER'] = ""
+        app.config['INTAKE_FOLDER'] = ""
+        app.config['OUTTAKE_FOLDER'] = ""
+
+        app.config['PLUGINS'] = ""
+
+        app.config['INDEX_PDF_FILES'] = True
+        app.config['BRANDING'] = "Brain Annex"
     else:
-        config = ConfigParser()
-
-        # Attempt to import parameters from the default config file first, then from 'config.ini' -
-        # possibly overwriting some or all values from the default config file
-        # with those from 'config.ini', which takes priority
-        found_files = config.read(['config.defaults.ini', 'config.ini'])
-        #print("found_files: ", found_files)    # This will be a list of the names of the config files that were found
-
-        if found_files == []:
-            raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
-
-        if found_files == ['config.defaults.ini']:
-            raise Exception("Only found a DEFAULT version of the config file ('config.defaults.ini'); "
-                            "make sure to duplicate it, name it 'config.ini' and optionally customize it")
-
-        if found_files == ['config.ini']:
-            print("A local, customized, version of the config file found ('config.ini'); all configuration will be based on this file")
-        else:
-            print("Two config files found: settings in 'config.ini' will take priority, and over-ride any counterpart in 'config.defaults.ini'")
+        load_config(app)
 
 
-        #print("Sections found in config file(s): ", config.sections())    # EXAMPLE: ['SETTINGS']
-
-        if "SETTINGS" not in config:
-            raise Exception("Incorrectly set up configuration file - the following line should be present at the top: [SETTINGS]")
+    #if config_override:
+        #app.config.update(config_override)
 
 
-        # Extract all the values that were set in the configuration file
-
-        SETTINGS = config['SETTINGS']
-        #print(SETTINGS)                 # EXAMPLE:  <Section: SETTINGS>
-
-        NEO4J_HOST = extract_par("NEO4J_HOST", SETTINGS)
-        NEO4J_USER = extract_par("NEO4J_USER", SETTINGS)
-        NEO4J_PASSWORD = extract_par("NEO4J_PASSWORD", SETTINGS, display=False)
-
-        MEDIA_FOLDER = extract_par("MEDIA_FOLDER", SETTINGS)
-        UPLOAD_FOLDER = extract_par("UPLOAD_FOLDER", SETTINGS)
-        LOG_FOLDER = extract_par("LOG_FOLDER", SETTINGS)
-        INTAKE_FOLDER = extract_par("INTAKE_FOLDER", SETTINGS)
-        OUTTAKE_FOLDER = extract_par("OUTTAKE_FOLDER", SETTINGS)
-
-        PORT_NUMBER = extract_par("PORT_NUMBER", SETTINGS)      # The Flask default is 5000
-        DEPLOYMENT = extract_par("DEPLOYMENT", SETTINGS)        # Should be either "FLASK" or "EXTERNAL"
-                                                                #     use FLASK if starting the app with Flask
-                                                                #     use EXTERNAL if starting the app with gunicorn (or other WSGI HTTP Server)
-
-
-        # TODO: PORT_NUMBER is only used for FLASK runs
-
-        try:
-            PORT_NUMBER = int(PORT_NUMBER)
-        except Exception:
-            raise Exception(f"The passed configuration value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
-
-        assert DEPLOYMENT == "FLASK" or DEPLOYMENT == "EXTERNAL", \
-            f"The passed configuration value for DEPLOYMENT (`{DEPLOYMENT}`) must be either 'FLASK' or 'EXTERNAL'"
-
-        # END OF CONFIGURATION IMPORT
-
-
-
-
+    #initialize_graph_db(app)
 
     ### INITIALIZATION of various static classes that need the database object
     #   (to avoid multiple dbase connections)
     if db is None:
-        APP_NEO4J_DBASE = GraphAccess(host=NEO4J_HOST, credentials=(NEO4J_USER, NEO4J_PASSWORD))
+        APP_NEO4J_DBASE = GraphAccess(host=app.config['NEO4J_HOST'],
+                                      credentials=(app.config['NEO4J_USER'], app.config['NEO4J_PASSWORD']))
     else:
         APP_NEO4J_DBASE = db
 
+    app.config['DATABASE'] = APP_NEO4J_DBASE
+
+
+    #initialize_services(app)
     InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
-    InitializeBrainAnnex.set_folders(MEDIA_FOLDER, LOG_FOLDER)
+    InitializeBrainAnnex.set_folders(app.config['MEDIA_FOLDER'], app.config['LOG_FOLDER'])
 
     #site_pages = get_site_pages()     # Data for the site navigation
 
@@ -145,37 +102,7 @@ def create_app(db=None, test=False, config_override=None):
     #   Note that all the classes used here are STATIC classes, that don't get initialized.
     #   ==> TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
 
-
-    ### Save in the "app" object various global and module-specific data, to propagate to those modules
-    app.config['DATABASE'] = APP_NEO4J_DBASE
-
-    if not test:
-        app.config['BRANDING'] = extract_par("BRANDING", SETTINGS)
-        index_pdf_files = extract_par("INDEX_PDF_FILES", SETTINGS)
-
-        if index_pdf_files.lower() == "true":
-            app.config['INDEX_PDF_FILES'] = True
-        elif index_pdf_files.lower() == "false":
-            app.config['INDEX_PDF_FILES'] = False
-        else:
-            raise Exception(f"The only valid values for the "
-                            f"configuration parameter `INDEX_PDF_FILES` are True or False ; the value you provided was: `{index_pdf_files}`")
-
-    if not test:
-        app.config['DEPLOYMENT'] = extract_par("DEPLOYMENT", SETTINGS)
-        app.config['PORT_NUMBER'] = extract_par("PORT_NUMBER", SETTINGS)
-
-
-    # TODO: add the final slash to all folders, if not already present
-
-    app.config['MEDIA_FOLDER'] = MEDIA_FOLDER
-    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER    # A temporary folder for file uploads.  EXAMPLE: "/tmp/"
-    # Parameters for Continuous Data Ingestion
-    app.config['INTAKE_FOLDER'] = INTAKE_FOLDER
-    app.config['OUTTAKE_FOLDER'] = OUTTAKE_FOLDER
-
-
-
+    #register_routes(app)
 
     # The site's home (i.e. top-level) pages, incl. login
     HomeRouting.setup(app)
@@ -183,10 +110,10 @@ def create_app(db=None, test=False, config_override=None):
     # The navbar
     Navigation.setup(app)
 
-    # The BrainAnnex-provided web app (UI for admin and Multimedia Content Management)
+    # The web app (UI for admin and Multimedia Content Management)
     PagesRouting.setup(app)
 
-    # The BrainAnnex-provided web API endpoints
+    # The web API endpoints
     ApiRouting.setup(app)
 
     # Examples of generic pages and web API
@@ -207,10 +134,111 @@ def create_app(db=None, test=False, config_override=None):
 
 
 
-def extract_par(name :str, d, display=True) -> str:
+def load_config(app) -> None:
+    """
+    Attempt to import parameters from the default config file first ('config.defaults.ini'),
+    then from the user-customized file 'config.ini',
+    possibly overwriting some or all values from the default config file
+    with those from 'config.ini', which takes priority.
+
+    The loaded values are stored in the passed `app` object
+
+    :return:    None
+    """
+    config = ConfigParser()
+
+    # Check whether the default and and custom config files are present
+    found_files = config.read(['config.defaults.ini', 'config.ini'])
+    #print("found_files: ", found_files)    # This will be a list of the names of the config files that were found
+
+    if found_files == []:
+        raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
+
+    if found_files == ['config.defaults.ini']:
+        raise Exception("Only found a DEFAULT version of the config file ('config.defaults.ini'); "
+                        "make sure to duplicate it, name the duplicate 'config.ini', and optionally customize it")
+
+    if found_files == ['config.ini']:
+        print("A local, customized, version of the config file found ('config.ini'); all configuration will be based on this file")
+    else:
+        print("Two config files found: settings in 'config.ini' will take priority, and over-ride any counterpart in 'config.defaults.ini'")
+
+
+    #print("Sections found in config file(s): ", config.sections())    # EXAMPLE: ['SETTINGS']
+
+    if "SETTINGS" not in config:
+        raise Exception("Incorrectly set up configuration file - the following line should be present at the top: [SETTINGS]")
+
+
+    # Extract all the values that were set in the configuration file(s)
+    # NOTE: if both files were present, values in the latter ('config.ini')
+    #       will override any same-named value in the former ('config.defaults.ini')
+
+    SETTINGS = config['SETTINGS']
+    #print(SETTINGS)                 # EXAMPLE:  <Section: SETTINGS>
+
+    app.config['NEO4J_HOST'] = _extract_par("NEO4J_HOST", SETTINGS)
+    app.config['NEO4J_USER'] = _extract_par("NEO4J_USER", SETTINGS)
+    app.config['NEO4J_PASSWORD'] = _extract_par("NEO4J_PASSWORD", SETTINGS, display=False)
+
+
+    DEPLOYMENT = _extract_par("DEPLOYMENT", SETTINGS)        # Should be either "FLASK" or "EXTERNAL"
+                                                            #     use FLASK if starting the app with Flask
+                                                            #     use EXTERNAL if starting the app with gunicorn (or other WSGI HTTP Server)
+
+    assert DEPLOYMENT == "FLASK" or DEPLOYMENT == "EXTERNAL", \
+        f"The passed configuration value for DEPLOYMENT (`{DEPLOYMENT}`) must be either 'FLASK' or 'EXTERNAL'"
+
+    app.config['DEPLOYMENT'] = DEPLOYMENT
+
+    # PORT_NUMBER is only used for FLASK runs
+    if (DEPLOYMENT == "FLASK"):
+        PORT_NUMBER = _extract_par("PORT_NUMBER", SETTINGS)      # The Flask default is 5000
+        try:
+            app.config['PORT_NUMBER'] = int(PORT_NUMBER)
+        except Exception:
+            raise Exception(f"The passed configuration value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
+
+
+
+    # TODO: add the final slash to all folders, if not already present
+    app.config['MEDIA_FOLDER'] = _extract_par("MEDIA_FOLDER", SETTINGS)
+    app.config['UPLOAD_FOLDER'] = _extract_par("UPLOAD_FOLDER", SETTINGS)    # A temporary folder for file uploads.  EXAMPLE: "/tmp/"
+    app.config['LOG_FOLDER'] = _extract_par("LOG_FOLDER", SETTINGS)
+
+    # Parameters for Continuous Data Ingestion
+    app.config['INTAKE_FOLDER'] = _extract_par("INTAKE_FOLDER", SETTINGS)
+    app.config['OUTTAKE_FOLDER'] = _extract_par("OUTTAKE_FOLDER", SETTINGS)
+
+
+    # List of plugins to be used by the web app
+    PLUGINS = _extract_par("PLUGINS", SETTINGS)
+
+    try:
+        # Split by commas and strip whitespace from each item
+        app.config['PLUGINS'] = [item.strip() for item in PLUGINS.split(",")]
+    except Exception:
+        raise Exception(f"The passed configuration value for PLUGINS is not a series of comma-separated names as expected")
+
+
+    index_pdf_files = _extract_par("INDEX_PDF_FILES", SETTINGS)
+
+    if index_pdf_files.lower() == "true":
+        app.config['INDEX_PDF_FILES'] = True
+    elif index_pdf_files.lower() == "false":
+        app.config['INDEX_PDF_FILES'] = False
+    else:
+        raise Exception(f"The only valid values for the "
+                        f"configuration parameter `INDEX_PDF_FILES` are True or False ; the value you provided was: `{index_pdf_files}`")
+
+    app.config['BRANDING'] = _extract_par("BRANDING", SETTINGS)
+
+
+
+def _extract_par(name :str, d, display=True) -> str:
     """
     Extract the parameter with the given name,
-    from an object containing the parameters and their values.
+    from a "configparser" object containing the parameters and their values.
     If not found, an Exception is raised
 
     :param name:    Name of the config parameter of interest.  EXAMPLE: "PORT_NUMBER"

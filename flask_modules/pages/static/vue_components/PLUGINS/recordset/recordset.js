@@ -1049,7 +1049,7 @@ Vue.component('vue-plugin-rs',
                 //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
                 // Send the request to the server, using a GET
-                const url_server_api = "/BA/api/get_filtered";
+                const url_server_api = "/BA/api/get-filtered";
 
                 // Note: we're actually doing a database search by node label,
                 //       rather than by Schema Class
@@ -1079,8 +1079,15 @@ Vue.component('vue-plugin-rs',
                 this.status_message = "";   // Clear any message from the previous operation
             }, // get_recordset
 
+
+            /** Callback function to wrap up the action of get_recordset() upon getting a response from the server.
+             *
+             * @param {bool} success - Boolean indicating whether the server call succeeded
+             * @param server_payload - Whatever the server returned (stripped of information about the success of the operation)
+             * @param {string} error_message - Only applicable in case of failure
+             * @param custom_data            - Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+             */
             finish_get_recordset(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of get_recordset() upon getting a response from the server
             {
                 //console.log("Finalizing the get_recordset() operation...");
                 //console.log(`Custom data passed: ${custom_data}`);

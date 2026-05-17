@@ -1,0 +1,48 @@
+div.flash-card {
+    box-shadow: 5px 5px 10px #333;
+	margin: 10px;
+	border:1px solid gray;
+	background-color:#ffffff;
+	width:350px;
+	padding:12px;
+	font-size: 20px;
+}
+
+
+div.flash-card div.card-header {
+    background-color: black;
+    color: white;
+    font-weight: bold;
+    padding:8px;
+}
+
+div.flash-card div.card-header-answer {
+    background-color: navy;
+    color: white;
+    font-weight: bold;
+    padding:8px;
+}
+
+
+div.flash-card span.card-name {
+    font-size: 11px;
+    font-style: italic;
+}
+
+
+div.flash-card span.field-name {
+    font-size: 12px;
+    font-style: italic;
+}
+
+
+div.flash-card span.extra-fields {
+    font-size: 10px;
+    color: #666;
+}
+
+
+div.flash-card span.instructions {
+    font-size: 11px;
+    color: gray;
+}

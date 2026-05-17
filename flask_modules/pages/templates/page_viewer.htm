@@ -10,6 +10,12 @@
         current_page
         username
 
+        item_array:     A list with the data for each the Content Items on this page
+                        Each element is an object with 2 keys: `fields` and `metadata`
+                            EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
+                            EXAMPLE of value of `metadata`:
+                                {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
+
         category_uri        A string with the Entity ID of the Category featured on this page
         category_name       The name of the above Category
         category_remarks    Descriptive extra text about this Category (may be missing)
@@ -43,17 +49,14 @@
                                   "Site Link": ["url", "name", "date", "comments", "rating", "read"]
                                  }
 
-        item_array:     A list with the data for each the Content Items on this page
-                        Each element is an object with 2 keys: `fields` and `metadata`
-                            EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
-                            EXAMPLE of value of `metadata`:
-                                {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
-
-
         upload_directories: A list of folders registered with BrainAnnex
                             EXAMPLE:
                                 ["documents/Ebooks & Articles",
                                  "documents/Ebooks & Articles/Computer Science"]
+
+        plugins:            A list of names of plugins to use
+                            EXAMPLE: ['documents', 'flash_card', 'headers', 'images', 'notes', 'records', 'recordsets', 'site_link', 'timer']
+
 
     -----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
@@ -88,16 +91,15 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
 
-    <!-- PLUGIN-specific styling -->
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/headers/headers.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/images/images.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/documents/documents.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/timer/timer.css">
+
+
+
+    <!-- PLUGIN-specific styling -->
+    {% for single_plugin in plugins %}
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/{{single_plugin}}/{{single_plugin}}.css">
+    {% endfor %}
+
 
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -188,15 +190,15 @@
  **************************************************************** -->
 
 {#  Uncomment for DEBUGGING! (to view some of the Flask-passed parameters)
-    <br><b>siblings_categories</b>:<br>{{siblings_categories}}<br><br>
-    <br><b>all_categories</b>:<br>{{all_categories}}<br><br>
+    <br><b>plugins</b>:<br>{{plugins}}<br><br>
+
 
     <b>item_array</b>:<br>
     {% for el in item_array %}
         {{el}}<br>
     {% endfor %}
     <br><br>
- #}
+#}
 
 
 
@@ -498,18 +500,19 @@
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
     <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
-    <button @click="add_new_item_at_bottom('h', 'Header')" style="margin-right:10px">Header</button>
-    <button @click="add_new_item_at_bottom('n', 'Note')" style="margin-right:10px">Note</button>
-    <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
-    <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
-    <button @click="add_new_item_at_bottom('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation (deprecated)</button>
-    &nbsp;&nbsp;&nbsp;
-    <button @click="add_new_item_at_bottom('timer', 'Timer Widget')" style="margin-right:10px">Timer Widget</button>
+
+    {% for single_plugin in plugins %}
+        {% if single_plugin != "image" and single_plugin != "document" %}
+            <button @click="add_new_item_at_bottom('{{single_plugin}}')" style="margin-right:10px">{{single_plugin}}</button>
+        {% endif %}
+    {% endfor %}
+    <br>
+
 
     <!-- Show all leaf Classes that are direct instances of "Records" -->
     <br>Add new record of type:
     {% for class_name in records_types %}
-        <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
+        <button @click='add_new_record_at_bottom("{{class_name}}")'
                 class="record-picker"
                 style="color: {% if (loop.index % 7) == 1 %}#ae9cd6{% elif (loop.index % 7) == 2 %}#8bb9d4{% elif (loop.index % 7) == 3 %}#a6cfa1{% elif (loop.index % 7) == 4 %}#dad6a1{% elif (loop.index % 7) == 5 %}#e1b298{% elif (loop.index % 7) == 6 %}#e59ca0{% elif (loop.index % 7) == 0 %}gray{% else %}black{% endif %}">
             {{class_name}}
@@ -640,18 +643,21 @@
 
 <script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
 
+<script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
 
-<!-- PLUGIN-specific Vue components -->
+
+
+<!-- PLUGIN-specific Vue components  (NOW ADDED DYNAMICALLY>
 <script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/documents/documents.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/timer/timer.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/timer_widget/timer.js"></script>
+-->
 
-<script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
 
 
 
@@ -659,8 +665,14 @@
 
 // Import the JS module (it will register the component globally - and it will be completed
 // prior to the instantiation of Vue, below)
-import '/BA/pages/static/vue_components/multiselect/multiselect.js';
-import '/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js';
+import '/BA/pages/static/vue_components/multiselect/multiselect.js';    // A general tool also used by the core module
+
+
+//import '/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js';
+
+{% for single_plugin in plugins %}
+    import '/BA/pages/static/vue_components/PLUGINS/{{single_plugin}}/{{single_plugin}}.js';
+{% endfor %}
 
 
 // Instantiation of the ROOT component must come after the definition of the descendant components
@@ -676,8 +688,9 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
-        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs", "timer"],
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs", "timer", "f"],
                                     // "r" not included here, because a generic core one - see plugin_component_name()
+                                    // TODO: switch to using plugin names
                                     // TODO: either pass from the database, or infer from some config file
                                     // IMPORTANT: the items in the list MUST correspond to the folders in
                                     //            flask_modules/pages/static/vue_components/PLUGINS
@@ -1293,19 +1306,70 @@ new Vue({
 
 
         /**
-         * Add a new Content Item of the specified type,
+         * Add a new Content Item managed by the specified plugin handler,
          *  placed at the bottom of the page (past the last Content Item)
          */
-        add_new_item_at_bottom(schema_code, class_name)
+        add_new_item_at_bottom(plugin_name)
         {
-            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
+            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item managed by plugin '${plugin_name}'`);
+
+            // Replace underscores with blanks, and Capitalize all words
+            // EXAMPLES: "flash_card" -> "Flash Card"    ,   "image" -> "Image"
+            const class_name =  plugin_name.split('_')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+
+            // Deal with a few special cases.  TODO: phase out schema_code in favor of plugin_name
+            var schema_code;
+            if (plugin_name == "codedoc")
+                schema_code = "cd";
+            else if (plugin_name == "site_link")
+                schema_code = "sl";
+            else if (plugin_name == "recordset")
+                schema_code = "rs";
+            else if (plugin_name == "timer_widget")
+                schema_code = "timer";
+            else
+                schema_code = plugin_name.charAt(0);
+
 
             // Assemble the data for a new Content Item
             let blank_record =
                 {
                     fields:     {},
                     metadata:   {entity_id: this.next_new_item_uri,
+                                 class_name: class_name,
+                                 plugin_name: plugin_name,
                                  schema_code: schema_code,
+                                 insert_after_uri: "BOTTOM"}
+                };  // It's a new record; so, only metadata is present
+
+            console.log("blank_record:");
+            console.log(structuredClone(blank_record));      // Log a frozen deep snapshot of the object
+
+
+            this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
+                                                    // Using a negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
+
+            this.item_array.push(blank_record);     // Insert a new blank Item at the end of the page's Content Items
+
+        }, // add_new_item_at_bottom
+
+
+        /**
+         * Add a new Content Item of the generic "record" type,
+         *  placed at the bottom of the page (past the last Content Item)
+         */
+        add_new_record_at_bottom(class_name)
+        {
+            console.log(`In root component, add_new_record_at_bottom()`);
+
+            // Assemble the data for a new Content Item
+            let blank_record =
+                {
+                    fields:     {},
+                    metadata:   {entity_id: this.next_new_item_uri,
+                                 schema_code: "r",
                                  class_name: class_name,
                                  insert_after_uri: "BOTTOM"}
                 };  // It's a new record; so, only metadata is present

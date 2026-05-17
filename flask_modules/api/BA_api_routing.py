@@ -8,7 +8,7 @@ from flask_login import login_required
 from app_libraries.data_manager import DataManager
 from app_libraries.documentation_generator import DocumentationGenerator
 from app_libraries.media_manager import MediaManager, ImageProcessing
-from app_libraries.PLUGINS.documents import Documents
+from app_libraries.PLUGINS.document import Document
 from app_libraries.PLUGINS import plugin_support
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories, PyGraphVisual
@@ -1420,7 +1420,7 @@ class ApiRouting:
                 json    (REQUIRED) A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
-                REQUIRED    `uri` and `class_name`
+                REQUIRED    `entity_id` and `class_name`
                                 OR  `internal_id`
                 OPTIONAL    whichever fields are being edited
 
@@ -1455,22 +1455,22 @@ class ApiRouting:
 
             # TODO: create a helper function for the unpacking/validation below
             # The following values will be None if missing
-            uri = data_dict.get('entity_id')
+            entity_id = data_dict.get('entity_id')
             class_name = data_dict.get('class_name')
             label = data_dict.get('label')
             internal_id = data_dict.get('internal_id')
 
             # Enforce required parameters (TODO: turn this into a general utility function)
-            if (not uri or not class_name) and (not internal_id):
+            if (not entity_id or not class_name) and (not internal_id):
                 err_details = f"update_content_item_JSON(): some required parameters are missing; " \
-                              f"`uri` and `class_name` (or, alternatively `internal_id`) are required"
+                              f"`entity_id` and `class_name` (or, alternatively `internal_id`) are required"
                 response_data = {"status": "error", "error_message": err_details}
                 #print("Sending the following error data: ", response_data)
                 return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
 
 
             # Take out special fields that aren't meant to be set in the Data Node being edited
-            if uri:
+            if entity_id:
                 del data_dict["entity_id"]
             if class_name:
                 del data_dict["class_name"]
@@ -1479,10 +1479,10 @@ class ApiRouting:
             if internal_id:
                 del data_dict["internal_id"]
 
-            if uri:
-                # Scenario where `uri` and (`class_name` and/or `label`) are used
+            if entity_id:
+                # Scenario where `entity_id` and (`class_name` and/or `label`) are used
                 try:
-                    DataManager.update_content_item(entity_id=uri, class_name=class_name, label=label,
+                    DataManager.update_content_item(entity_id=entity_id, class_name=class_name, label=label,
                                                     update_data=data_dict)
                     response_data = {"status": "ok"}                                    # If no errors
                 except Exception as ex:
@@ -1816,7 +1816,7 @@ class ApiRouting:
                             -d "category_id=708&insert_after_uri=711&schema_code=h&text=New Header&class_name=Headers"
 
             POST FIELDS:
-                category_id         URI identifying the Category to which attach the new Content Item
+                category_id         Entity ID identifying the Category to which attach the new Content Item
                 class_name          The name of the Class of the new Content Item
                 insert_after_uri    Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
@@ -2287,7 +2287,7 @@ class ApiRouting:
 
 
         
-        @bp.route('/get_filtered')
+        @bp.route('/get-filtered')
         @login_required
         def get_filtered_api():
             """
@@ -2297,29 +2297,36 @@ class ApiRouting:
             For example, for the use of a record search form or the recordset plugin
 
             EXAMPLE of invocation:
-                http://localhost:5000//BA/api/get_filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
+                http://localhost:5000//BA/api/get-filtered?json={"label":"German Vocabulary","key_name":["English","German"],"key_value":"sucht"}
 
             GET VARIABLE:
                 json    A JSON-encoded dict, containing the following entries:
 
                     label       The name of a database node label
                     class       Not yet used (will get turned into `label` if label is missing)
-                    key_name    A string, or list of strings, with the name of a node attribute;
+                    key_name    Property (field) name - or list of names - to search;
+                                    an implicit *OR* is used if more than one is given.
                                     if provided, key_value must be passed, too
                     key_value   The required value for the above key; if provided, key_name must be passed, too.
                                     Note: no requirement for the key to be primary
                     order_by    Field name, or comma-separated list;
                                     each name may optionally be followed by "DESC"
                     skip        The number of initial entries (in the context of specified order) to skip
-                    limit       The max number of entries to return
+                    limit       The max number of entries to return.  Default: 25
 
             RETURNED JSON PAYLOAD:
                 recordset:   A list of dicts with the filtered data; each dict contains the data for a node,
                                 including a field called "_internal_id" that has the internal database ID,
-                                and a field called "_node_labels" with a list of the node's label names
+                                and a field called "_node_labels" with a list of the node's label names.
+                                EXAMPLE:  [{English: "to slice", French: "trancher",
+                                            _CLASS: "French Vocabulary", entity_id: "515",
+                                            _internal_id: 59, _node_labels: Array [ "BA", "French Vocabulary" ]
+                                           }]
                 total_count: The total number of nodes in the database with the given label - NOT considering the remainder of the filter
                                 if no label was provided, None
             """
+            #TODO: provide a way to only return specific fields
+
             # Extract the GET values
             get_data = request.args     # Example: Example: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
             #print("get_data: ", get_data)
@@ -2390,7 +2397,7 @@ class ApiRouting:
                                                 #   Note: jsonify() may fail if any parts of the response are not JSON serializable
 
             except Exception as ex:
-                response = {"status": "error", "error_message": f"/get_filtered web API endpoint: {ex}" }    # Error termination
+                response = {"status": "error", "error_message": f"/get-filtered web API endpoint: {ex}" }    # Error termination
                 #print(f"get_filtered() is returning with error: `{response}`")
                 return jsonify(response)        # This function also takes care of the Content-Type header
                                                 # Maybe, do this instead:
@@ -2837,9 +2844,9 @@ class ApiRouting:
 
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Document":    # TODO: move to plugin_support.py
-                    Documents.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
-                                                          upload_folder=post_data.get("upload_folder"),
-                                                          index_pdf=current_app.config['INDEX_PDF_FILES'])
+                    Document.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
+                                                         upload_folder=post_data.get("upload_folder"),
+                                                         index_pdf=current_app.config['INDEX_PDF_FILES'])
                                                           # 'INDEX_PDF_FILES' setting is defined in main file
                 response = ""
 
