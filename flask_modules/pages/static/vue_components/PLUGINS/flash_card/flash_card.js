@@ -73,8 +73,8 @@ Vue.component('vue-plugin-f',
                     <p>
                         {{cards[deck_position][current_data.sideA_field]}}
 
-                        <button @click.stop="copy_to_clipboard(cards[deck_position][current_data.sideA_field])">
-                            Copy
+                        <button @click.stop="copy_to_clipboard(0, cards[deck_position][current_data.sideA_field])">
+                            {{ copied[0] ? "Copied!" : "Copy" }}
                         </button>
                     </p>
 
@@ -85,8 +85,8 @@ Vue.component('vue-plugin-f',
                     <p>
                         {{cards[deck_position][current_data.sideB_field]}}
 
-                        <button @click.stop="copy_to_clipboard(cards[deck_position][current_data.sideB_field])">
-                            Copy
+                        <button @click.stop="copy_to_clipboard(1, cards[deck_position][current_data.sideB_field])">
+                            {{ copied[1] ? "Copied!" : "Copy" }}
                         </button>
                     </p>
 
@@ -195,6 +195,8 @@ Vue.component('vue-plugin-f',
                 deck_position: 0,       // Index in the randomized deck
                 number_cards: 2,        // Size of the deck
 
+                copied: [false, false], // Array of "copied" status, for each of the buttons offering that function
+
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
                 status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
@@ -227,7 +229,7 @@ Vue.component('vue-plugin-f',
         methods: {
 
             /**
-             * Show the side with all the info
+             * Show the side with all the info (the "answer")
              */
             flip_card()
             {
@@ -338,13 +340,20 @@ Vue.component('vue-plugin-f',
 
 
             /**
-             * Copy the given value to the clipboard
+             * Copy the given value to the clipboard.
+             * The index refers to multiple buttons offering the "copy to clipboard" function
              */
-            async copy_to_clipboard(text)
+            async copy_to_clipboard(index, text)
             {
                 try {
                     await navigator.clipboard.writeText(text);
                     console.log("Copied:", text);
+
+                    // The following lines are used to flash a "Copied!" message to the user
+                    Vue.set(this.copied, index, true);
+                    setTimeout(() => {
+                        Vue.set(this.copied, index, false);
+                    }, 1500);   // In milliseconds
                 }
                 catch (err) {
                     console.error("Clipboard copy failed:", err);

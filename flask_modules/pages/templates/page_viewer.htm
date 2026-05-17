@@ -649,13 +649,13 @@
 
 
 <!-- PLUGIN-specific Vue components  (NOW ADDED DYNAMICALLY>
-<script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/documents/documents.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/header/header.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/image/image.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/document/document.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/note/note.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/codedoc/codedoc.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/timer_widget/timer.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/timer_widget/timer_widget.js"></script>
 -->
 
 
@@ -668,7 +668,7 @@
 import '/BA/pages/static/vue_components/multiselect/multiselect.js';    // A general tool also used by the core module
 
 
-//import '/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js';
+//import '/BA/pages/static/vue_components/PLUGINS/recordset/recordset.js';
 
 {% for single_plugin in plugins %}
     import '/BA/pages/static/vue_components/PLUGINS/{{single_plugin}}/{{single_plugin}}.js';
