@@ -1420,7 +1420,7 @@ class ApiRouting:
                 json    (REQUIRED) A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
-                REQUIRED    `uri` and `class_name`
+                REQUIRED    `entity_id` and `class_name`
                                 OR  `internal_id`
                 OPTIONAL    whichever fields are being edited
 
@@ -1455,22 +1455,22 @@ class ApiRouting:
 
             # TODO: create a helper function for the unpacking/validation below
             # The following values will be None if missing
-            uri = data_dict.get('entity_id')
+            entity_id = data_dict.get('entity_id')
             class_name = data_dict.get('class_name')
             label = data_dict.get('label')
             internal_id = data_dict.get('internal_id')
 
             # Enforce required parameters (TODO: turn this into a general utility function)
-            if (not uri or not class_name) and (not internal_id):
+            if (not entity_id or not class_name) and (not internal_id):
                 err_details = f"update_content_item_JSON(): some required parameters are missing; " \
-                              f"`uri` and `class_name` (or, alternatively `internal_id`) are required"
+                              f"`entity_id` and `class_name` (or, alternatively `internal_id`) are required"
                 response_data = {"status": "error", "error_message": err_details}
                 #print("Sending the following error data: ", response_data)
                 return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
 
 
             # Take out special fields that aren't meant to be set in the Data Node being edited
-            if uri:
+            if entity_id:
                 del data_dict["entity_id"]
             if class_name:
                 del data_dict["class_name"]
@@ -1479,10 +1479,10 @@ class ApiRouting:
             if internal_id:
                 del data_dict["internal_id"]
 
-            if uri:
-                # Scenario where `uri` and (`class_name` and/or `label`) are used
+            if entity_id:
+                # Scenario where `entity_id` and (`class_name` and/or `label`) are used
                 try:
-                    DataManager.update_content_item(entity_id=uri, class_name=class_name, label=label,
+                    DataManager.update_content_item(entity_id=entity_id, class_name=class_name, label=label,
                                                     update_data=data_dict)
                     response_data = {"status": "ok"}                                    # If no errors
                 except Exception as ex:
@@ -1816,7 +1816,7 @@ class ApiRouting:
                             -d "category_id=708&insert_after_uri=711&schema_code=h&text=New Header&class_name=Headers"
 
             POST FIELDS:
-                category_id         URI identifying the Category to which attach the new Content Item
+                category_id         Entity ID identifying the Category to which attach the new Content Item
                 class_name          The name of the Class of the new Content Item
                 insert_after_uri    Either an URI of an existing Content Item attached to this Category,
                                     or one of the special values "TOP" or "BOTTOM"
@@ -2312,7 +2312,7 @@ class ApiRouting:
                     order_by    Field name, or comma-separated list;
                                     each name may optionally be followed by "DESC"
                     skip        The number of initial entries (in the context of specified order) to skip
-                    limit       The max number of entries to return
+                    limit       The max number of entries to return.  Default: 25
 
             RETURNED JSON PAYLOAD:
                 recordset:   A list of dicts with the filtered data; each dict contains the data for a node,

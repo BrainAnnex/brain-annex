@@ -16,6 +16,19 @@ div.flash-card div.card-header {
     padding:8px;
 }
 
+div.flash-card div.card-header-answer {
+    background-color: navy;
+    color: white;
+    font-weight: bold;
+    padding:8px;
+}
+
+
+div.flash-card span.card-name {
+    font-size: 11px;
+    font-style: italic;
+}
+
 
 div.flash-card span.field-name {
     font-size: 12px;

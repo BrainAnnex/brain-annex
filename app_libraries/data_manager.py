@@ -1606,7 +1606,7 @@ class DataManager:
                                                     NOTE: if ordering by a non-existing field, "skip" may not work as expected;
                                                           this seems to be a Cypher/Neo4j bug
                                 "skip"          The number of initial entries (in the context of specified order) to skip
-                                "limit"         The max number of entries to return
+                                "limit"         The max number of entries to return.  Default: 25
 
                             EXAMPLES:
                                 {"label": "BA", "key_name": "entity_id", "key_value": "sl-123"}

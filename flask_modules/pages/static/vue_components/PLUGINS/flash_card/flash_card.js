@@ -8,7 +8,12 @@ Vue.component('vue-plugin-f',
         /*  item_fields:    An object with the editable properties of this Flash-Card item.
                                 EXAMPLE: {source_label: "French Vocabulary",
                                           sideA_field: "French",
-                                          sideB_field: "English"}
+                                          sideB_field: "English",
+                                          reverse_odds: 0.5
+                                          }
+                                `reverse_odds` is the probability of temporarily inverting the given A/B sides,
+                                        on any single showing, from the designated order.
+                                        Use 0 to remain consistent, up to 0.5 for complete randomness
 
             item_metadata:  An object with the metadata of this Site Link item.
                                 For a newly-created Content Item, not yet registered with the server,
@@ -21,7 +26,8 @@ Vue.component('vue-plugin-f',
                                          entity_id:"8809"
                                         }
 
-            edit_mode:      A boolean indicating whether in editing mode
+            edit_mode:      A boolean indicating whether the page containing this element is in editing mode
+                                (to pass to the controls)  TODO: rename to "page_edit_mode"
             category_id:    The entity ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of this Site Link item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -33,14 +39,20 @@ Vue.component('vue-plugin-f',
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
 
-                <!----------  Display when in NORMAL (non-editing) mode  ---------->
+                <!----------  Display when in NORMAL (non-editing) mode, for side A  ---------->
                 <!-- SIDE A of the card -->
                 <div v-if="(!editing_mode) && (side_shown=='A')" class='flash-card'
                     @click="flip_card()"
                 >
-                    <div class="card-header">FLASH CARD</div>
+                    <div class="card-header">
+                        FLASH CARD<br>
+                        <span class="card-name">{{current_data.source_label}}</span>
+                    </div>
+
                     <br><br>
-                    <span class="field-name">{{current_data.sideA_field}}:</span>
+                    <span class="field-name">
+                        {{current_data.sideA_field}}:
+                    </span>
                     <p>
                         {{cards[deck_position][current_data.sideA_field]}}
                     </p>
@@ -49,22 +61,33 @@ Vue.component('vue-plugin-f',
                 </div>
 
 
+                <!----------  Display when in NORMAL (non-editing) mode, for side B  ---------->
                 <!-- SIDE B of the card -->
                 <div v-if="(!editing_mode) && (side_shown=='B')" class='flash-card'
                     @click="advance_card()"
                 >
-                    <div class="card-header">ANSWER</div>
+                    <div class="card-header-answer">ANSWER</div>
                     <br><br>
 
                     <span class="field-name">{{current_data.sideA_field}}:</span>
                     <p>
                         {{cards[deck_position][current_data.sideA_field]}}
+
+                        <button @click.stop="copy_to_clipboard(cards[deck_position][current_data.sideA_field])">
+                            Copy
+                        </button>
                     </p>
+
+
 
                     <br><hr>
                     <span class="field-name">{{current_data.sideB_field}}:</span>
                     <p>
                         {{cards[deck_position][current_data.sideB_field]}}
+
+                        <button @click.stop="copy_to_clipboard(cards[deck_position][current_data.sideB_field])">
+                            Copy
+                        </button>
                     </p>
 
                     <p v-for='(val, key) in cards[deck_position]'>
@@ -85,9 +108,33 @@ Vue.component('vue-plugin-f',
 
 
                 <!----------  Display when in EDITING MODE  ---------->
-                <div v-if="editing_mode">
+                <div v-show="editing_mode" class='flash-card'>
 
-                    EDITING MODE TBA
+                    <br>
+
+                    <span class="label">Source Label</span> <input v-model="current_data.source_label" size="40">
+                    <br><br>
+
+                    <span class="label">Name of 'side A' field</span> <input v-model="current_data.sideA_field" size="40">
+                    <br><br>
+
+                    <span class="label">Name of 'side B' field</span> <input v-model="current_data.sideB_field" size="40">
+                    <br><br>
+
+                    <span class="label">Odds of reversing sides</span> <input v-model="current_data.reverse_odds" size="3">
+                    <br><span class="instructions">Use 0 to remain consistent, up to 0.5 for complete randomness</span>
+                    <br><br>
+
+                    <!-- CONTROLS to edit the document fields -->
+                    <p style="text-align: right">
+                        <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
+                        <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
+                        <br>
+                        <span v-if="waiting" class="waiting">Performing the update</span>
+                    </p>
+
+                    <!-- STATUS line -->
+                    <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
 
                 </div>
 
@@ -95,20 +142,25 @@ Vue.component('vue-plugin-f',
 
                 <br>
 
-                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls),
-                      EXCEPT for the "edit" control, which is provided by this Vue component itself.
+                <!--  Start of STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls).
                       Signals from the Vue child component "vue-controls", below,
-                      get relayed to the parent of this component;
-                      none get intercepted and handled here
+                      get relayed to the parent of this component,
+                      but some get intercepted and handled here, namely:
+
+                              v-on:edit-content-item
                 -->
-                <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
-                              v-on="$listeners"
-                >
-                </vue-controls>
+                    <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
+                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                                  v-on="$listeners"
+                                  v-on:edit-content-item="edit_content_item">
+                    >
+                    </vue-controls>
+
+                    <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
+
+                <!--  End of STANDARD CONTROLS -->
 
             </div>		<!-- End of outer container -->
             `,
@@ -135,12 +187,13 @@ Vue.component('vue-plugin-f',
                 */
                 current_metadata:   Object.assign({}, this.item_metadata),
 
-                side_shown: "A",        // Either "A" or "B"
+                side_shown: "A",        // Either "A" (Question side) or "B" (Answer side)
 
-                cards: [ {A: "Chat", B: "Cat"},  {A: "Mot", B: "Word"}],
+                cards: [ {French: "Chat", English: "Cat"},  {French: "Mot", English: "Word", Notes: "some note"}],
+                                        // Extra fields allowed - and will be shown with the answer card
 
-                deck_position: 0,
-                number_cards: 2,
+                deck_position: 0,       // Index in the randomized deck
+                number_cards: 2,        // Size of the deck
 
                 waiting: false,         // Whether any server request is still pending
                 error: false,           // Whether the last server communication resulted in error
@@ -173,11 +226,18 @@ Vue.component('vue-plugin-f',
         // ------------------------------------   METHODS   ------------------------------------
         methods: {
 
+            /**
+             * Show the side with all the info
+             */
             flip_card()
             {
                 this.side_shown = "B";
             },
 
+
+            /**
+             * Move onto the next card in the deck.  If at the end of it, cycle back to the beginning
+             */
             advance_card()
             {
                 this.side_shown = "A";
@@ -186,18 +246,39 @@ Vue.component('vue-plugin-f',
                     this.deck_position = 0;
                 else
                     this.deck_position += 1;
+
+                if (Math.random() < this.current_data.reverse_odds) {   // Flip the sideA/B order, with some probability
+                    console.log(`In advance_card(): temporarily flipping the sides for this round`);
+                    //[this.current_data.sideA_field, this.current_data.sideB_field] = [this.current_data.sideB_field, this.current_data.sideA_field];
+                    [this.current_data.sideA_field, this.current_data.sideB_field] = [this.item_fields.sideB_field, this.item_fields.sideA_field];
+                }
+                else    // Use the normal order
+                    [this.current_data.sideA_field, this.current_data.sideB_field] = [this.item_fields.sideA_field, this.item_fields.sideB_field];
             },
 
 
 
+            /**
+             * Enable the flash_card edit mode.
+             * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
+             * (which is generated there when clicking on the Edit button)
+             */
+            edit_content_item()
+            {
+                console.log(`'flash_card' component received Event to edit its contents`);
+                this.enter_editing_mode();
+            },
 
 
+            /**
+             * Switch to the editing mode of this Vue component
+             */
             enter_editing_mode()
-            // Switch to the editing mode of this Vue component
+            //
             {
                 console.log(`In enter_editing_mode()`);
 
-                // Clear any old value
+                // Clear any old value.  TODO: verify that this is really necessary
                 this.waiting = false;
                 this.error = false;
                 this.status_message = "";
@@ -205,18 +286,6 @@ Vue.component('vue-plugin-f',
                 this.editing_mode = true;       // Enter editing mode
             },
 
-
-            edit_content_item()
-            /*  Handler for the "edit_content_item" Event received from the child component "vue-controls"
-                (which is generated there when clicking on the Edit button)
-             */
-            {
-                console.log(`'Site Links' component received Event to edit its contents`);
-                //this.editing_mode = true;
-                this.enter_editing_mode();
-
-                //this.display_all_fields();      // Consult the schema
-            },
 
 
             /**
@@ -239,6 +308,51 @@ Vue.component('vue-plugin-f',
 
 
 
+            /**
+             * Shuffle the deck.  Return an in-place modification of the array containing the deck data
+             */
+            reshuffle_deck(arr)
+            {
+                this.deck_position = 0;
+                return this.shuffle_array(arr);
+            },
+
+
+            /**
+             * Randomly re-arrange in-place an array using the Fisher–Yates algorithm (also called the Knuth shuffle)
+             */
+            shuffle_array(arr)
+            {
+                for (let i = arr.length - 1; i > 0; i--) {
+
+                    // Generate a random integer from 0 to i
+                    const j = Math.floor(Math.random() * (i + 1));
+
+                    // Swap the i and j-the array elements
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+
+                return arr;
+            },
+
+
+
+            /**
+             * Copy the given value to the clipboard
+             */
+            async copy_to_clipboard(text)
+            {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    console.log("Copied:", text);
+                }
+                catch (err) {
+                    console.error("Clipboard copy failed:", err);
+                }
+            },
+
+
+
 
             /*
                  ---------------  SERVER CALLS  ---------------
@@ -255,7 +369,8 @@ Vue.component('vue-plugin-f',
                 // Send the request to the server, using a GET
                 const url_server_api = "/BA/api/get-filtered";
 
-                const get_obj = {label: this.current_data.source_label};
+                const get_obj = {label: this.current_data.source_label,
+                                 limit: 1000};
 
                 console.log(`About to contact the server at ${url_server_api} .  GET object:`);
                 console.log(get_obj);
@@ -306,77 +421,69 @@ Vue.component('vue-plugin-f',
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+
             }, // finish_fetch_card_data
 
 
 
             /**
-             * Shuffle the deck.  Return an in-place modification of the array containing the deck data
+             * Perform an EDIT operation.
+             * Send a request to the server, to update the flash card's fields.
+             * TODO: maybe save/cancel should be a sub-component shared among various plugins?
              */
-            reshuffle_deck(arr)
+            save_edit()
             {
-                this.deck_position = 0;
-                return this.shuffle_array(arr);
+                // Enforce required fields
+                if (! 'source_label' in this.current_data) {
+                    alert("Cannot save an empty `source_label`. If you want to get rid of this Flash Card, delete it instead");
+                    return;
+                }
+                if (! 'sideA_field' in this.current_data) {
+                    alert("Cannot save an empty `sideA_field`. If you want to get rid of this Flash Card, delete it instead");
+                    return;
+                }
+                if (! 'sideB_field' in this.current_data) {
+                    alert("Cannot save an empty `sideB_field`. If you want to get rid of this Flash Card, delete it instead");
+                    return;
+                }
+
+
+                if (this.current_metadata.entity_id < 0)     // Negative entity_id is a convention indicating a new Content Item to create
+                    // Needed for NEW Content Items
+                    this.save_new_item();
+                else
+                    // Update an EXISTING Flash Card
+                    this.save_existing_item();
+
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
             },
 
 
             /**
-             * Randomly re-arrange in-place an array using the Fisher–Yates algorithm (also called the Knuth shuffle)
+             * Create a NEW Flash Card
              */
-            shuffle_array(arr)
+            save_new_item()
             {
-                for (let i = arr.length - 1; i > 0; i--) {
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/add_item_to_category";
 
-                    // random integer from 0 to i
-                    const j = Math.floor(Math.random() * (i + 1));
+                const post_obj = {
+                                  class_name: "Flash Card",
 
-                    // swap
-                    [arr[i], arr[j]] = [arr[j], arr[i]];
-                }
+                                  category_id: this.category_id,
 
-                return arr;
-            },
+                                  insert_after_uri: this.current_metadata.insert_after_uri,       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                                  insert_after_class: this.current_metadata.insert_after_class,   // Class of Content Item to insert after
 
+                                  source_label: this.current_data.source_label,
+                                  sideA_field: this.current_data.sideA_field,
+                                  sideB_field: this.current_data.sideB_field
+                                  };
 
-
-            save()
-            // Conclude an EDIT operation.  TODO: maybe save/cancel should be a sub-component shared among various plugins?
-            {
-                // Enforce required field
-                if (! 'url' in this.current_data) {
-                    post_obj.text = this.current_data.text;
-                    alert("Cannot save an empty URL. If you want to get rid of this Site Link (bookmark), delete it instead");
-                    return;
-                }
-
-                // Start the body of the POST to send to the server
-                let post_obj = {class_name: this.current_metadata.class_name,
-
-                                url:        this.current_data.url,
-                                name:       this.current_data.name,
-                                date:       this.current_data.date,
-                                comments:   this.current_data.comments,
-                                rating:     this.current_data.rating,
-                                read:       this.current_data.read
-                               };
-
-
-                if (this.current_metadata.entity_id < 0)  {     // Negative entity_id is a convention indicating a new Content Item to create
-                    // Needed for NEW Content Items
-                    post_obj.category_id = this.category_id;
-                    post_obj.insert_after_uri = this.current_metadata.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                    post_obj.insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
-
-                    var url_server_api = `/BA/api/add_item_to_category`;   // URL to communicate with the server's endpoint
-                }
-                else  {     // Update an EXISTING Site Link
-                    post_obj.entity_id = this.current_metadata.entity_id;
-
-                    url_server_api = `/BA/api/update_content_item`;   // URL to communicate with the server's endpoint
-                }
-
-
-                console.log(`In 'vue-plugin-sl', save().  About to contact the server at ${url_server_api}.  POST object:`);
+                console.log(`In 'vue-plugin-f'.  About to contact the server at "${url_server_api}" .  POST object:`);
                 console.log(post_obj);
 
                 // Initiate asynchronous contact with the server, using POST data
@@ -384,27 +491,54 @@ Vue.component('vue-plugin-f',
                             {method: "POST",
                              data_obj: post_obj,
                              json_encode_send: false,
-                             callback_fn: this.finish_save});
-
-                this.waiting = true;        // Entering a waiting-for-server mode
-                this.error = false;         // Clear any error from the previous operation
-                this.status_message = "";   // Clear any message from the previous operation
-            }, // save
+                             callback_fn: this.finish_save_edit});
+            },
 
 
-            finish_save(success, server_payload, error_message)
-            /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
-
-                success:        boolean indicating whether the server call succeeded
-                server_payload: whatever the server returned (stripped of information about the success of the operation)
-                error_message:  a string only applicable in case of failure
+            /**
+             * Update an EXISTING Flash Card
              */
+            save_existing_item()
             {
-                console.log("Finalizing the SiteLink save() operation...");
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/update_content_item_JSON";
+
+                const post_obj = {entity_id: this.current_metadata.entity_id,
+                                  class_name: "Flash Card",
+
+                                  source_label: this.current_data.source_label,
+                                  sideA_field: this.current_data.sideA_field,
+                                  sideB_field: this.current_data.sideB_field
+                                  };
+
+                console.log(`In 'vue-plugin-f'.  About to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_edit
+                            });
+            },
+
+
+            /** Callback function to wrap up the action of save_edit() upon getting a response from the server.
+             *  In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
+             *
+             * @param {bool} success - Boolean indicating whether the server call succeeded
+             * @param server_payload - Whatever the server returned (stripped of information about the success of the operation)
+             * @param {string} error_message - Only applicable in case of failure
+             */
+            finish_save_edit(success, server_payload, error_message)
+            {
+                console.log("Finalizing the FlashCard save_edit() operation...");
 
                 if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Successful edit`;
+
 
                     // If this was a new item (with the temporary negative entity_id),
                     // update its entity_id with the value assigned by the server
@@ -414,29 +548,36 @@ Vue.component('vue-plugin-f',
                         delete this.current_metadata.insert_after_class;       // No longer needed
                     }
 
+
                     // Inform the parent component of the new state of the data; pass clones of the relevant objects
                     const signal_data = {
                         item_fields:   Object.assign({}, this.current_data),
                         item_metadata: Object.assign({}, this.current_metadata)
                     };
-                    console.log("'Site Links' component sending `updated-item` SIGNAL to its parent with the following data:");
+                    console.log("'flash_card' component sending `updated-item` signal to its parent");
                     console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
                     this.$emit('updated-item', signal_data);
 
-                    // Synchronize the baseline data to the current one
+
+                    // Synchronize the baseline data to the finalized current data
                     this.original_data = Object.assign({}, this.current_data);  // Clone
+
+
+                    // Reload the flash cards with the new parameters
+                    this.fetch_card_data();
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
-                    this.status_message = `FAILED edit`;
-                    this.cancel_edit();     // Restore the data to how it was prior to the failed changes
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    // Revert to pre-edit data
+                    this.current_data = Object.assign({}, this.original_data);  // Clone
                 }
 
                 // Final wrap-up, regardless of error or success
-                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
-                this.editing_mode = false;      // Exit the editing mode
+                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.editing_mode = false;  // Leave the editing mode
 
-            } // finish_save
+            } // finish_save_edit
 
         }  // METHODS
 

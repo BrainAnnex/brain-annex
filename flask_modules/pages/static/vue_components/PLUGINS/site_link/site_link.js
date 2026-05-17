@@ -25,7 +25,8 @@ Vue.component('vue-plugin-sl',
                                          entity_id:"8809"
                                         }
 
-            edit_mode:      A boolean indicating whether in editing mode
+            edit_mode:      A boolean indicating whether the page containing this element is in editing mode
+                                (to pass to the controls)  TODO: rename to "page_edit_mode"
             category_id:    The entity ID of the Category page where this record is displayed (used when creating new records)
             index:          The zero-based position of this Site Link item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -262,7 +263,7 @@ Vue.component('vue-plugin-sl',
 
 
             /*
-                ---  SERVER CALLS  ---
+                ---------------  SERVER CALLS  ---------------
              */
 
             get_webpage_title(url)
@@ -305,12 +306,15 @@ Vue.component('vue-plugin-sl',
             },
 
 
+            /**
+             * Perform an EDIT operation.
+             * Send a request to the server, to update the document's metadata.
+             * TODO: maybe save/cancel should be a sub-component shared among various plugins?
+             */
             save()
-            // Conclude an EDIT operation.  TODO: maybe save/cancel should be a sub-component shared among various plugins?
             {
                 // Enforce required field
                 if (! 'url' in this.current_data) {
-                    post_obj.text = this.current_data.text;
                     alert("Cannot save an empty URL. If you want to get rid of this Site Link (bookmark), delete it instead");
                     return;
                 }
@@ -358,19 +362,21 @@ Vue.component('vue-plugin-sl',
             }, // save
 
 
-            finish_save(success, server_payload, error_message)
-            /*  Callback function to wrap up the action of save() upon getting a response from the server.
-                In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
-
-                success:        boolean indicating whether the server call succeeded
-                server_payload: whatever the server returned (stripped of information about the success of the operation)
-                error_message:  a string only applicable in case of failure
+            /** Callback function to wrap up the action of save() upon getting a response from the server.
+             *  In case of newly-created items, if successful, the server_payload will contain the newly-assigned entity_id
+             *
+             * @param {bool} success - Boolean indicating whether the server call succeeded
+             * @param server_payload - Whatever the server returned (stripped of information about the success of the operation)
+             * @param {string} error_message - Only applicable in case of failure
              */
+            finish_save(success, server_payload, error_message)
             {
                 console.log("Finalizing the SiteLink save() operation...");
 
                 if (success)  {     // Server reported SUCCESS
+                    //console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Successful edit`;
+
 
                     // If this was a new item (with the temporary negative entity_id),
                     // update its entity_id with the value assigned by the server
@@ -380,6 +386,7 @@ Vue.component('vue-plugin-sl',
                         delete this.current_metadata.insert_after_class;       // No longer needed
                     }
 
+
                     // Inform the parent component of the new state of the data; pass clones of the relevant objects
                     const signal_data = {
                         item_fields:   Object.assign({}, this.current_data),
@@ -388,6 +395,7 @@ Vue.component('vue-plugin-sl',
                     console.log("'Site Links' component sending `updated-item` SIGNAL to its parent with the following data:");
                     console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
                     this.$emit('updated-item', signal_data);
+
 
                     // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);  // Clone
