@@ -2832,13 +2832,14 @@ class ApiRouting:
                 insertion_location = post_data.get('insert_after_uri')
                 insertion_class = post_data.get('insert_after_class')
                 if (insertion_location == "INSERT_AT_BOTTOM") or (not insertion_location) or (not insertion_class):
-                    # Note: in case the insertion position isn't fully specified, the Item will inserted at the bottom of the Category Page
+                    # Note: in case the insertion position isn't fully specified,
+                    #       the Item will inserted at the bottom of the Category Page
                     print(f"    Inserting new Media Item at *bottom* of the Category page")
                     _, new_uri = Categories.add_content_at_end(category_entity_id=category_uri,
                                                                item_class_name=class_name, item_properties=properties)
                 else:
                     print(f"    Inserting new Media Item after Category page element with URI `{insertion_location}`")
-                    _, new_uri = Categories.add_content_after_element(category_uri=category_uri,
+                    new_uri = Categories.add_content_after_element(category_uri=category_uri,
                                                                    item_class_name=class_name, item_properties=properties,
                                                                    insert_after_uri=insertion_location, insert_after_class=insertion_class)
 
