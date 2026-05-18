@@ -34,7 +34,7 @@ Vue.component('vue-record-navigator-graph',
                 <!--  For each item in the current recordset -->
                 <p v-for="(item, index) in recordset_array"
                             class="record"
-                            v-bind:class="{'record-active': !item.controls.duplicate, 'record-inactive': item.controls.duplicate}"
+                            v-bind:class="{'record-active': !item.controls.duplicate, 'record-inactive': item.controls.duplicate, 'record-child': item.controls.indent > 0}"
                             v-bind:style="{'margin-left': item.controls.indent * 50 + 'px'}">
 
 
