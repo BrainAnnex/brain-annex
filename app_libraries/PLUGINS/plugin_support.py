@@ -1,6 +1,6 @@
-from .documents import Documents
-from .images import Images
-from .notes import Notes
+from .document import Document
+from .image import Image
+from .note import Note
 
 
 def default_folder(class_name :str) -> str:
@@ -11,13 +11,13 @@ def default_folder(class_name :str) -> str:
     :return:            A folder name, with no slashes.  EXAMPLE: "documents"
     """
     if class_name == "Document":
-        return Documents.default_folder()
+        return Document.default_folder()
 
     if class_name == "Image":
-        return Images.default_folder()
+        return Image.default_folder()
 
     if class_name == "Note":
-        return Notes.default_folder()
+        return Note.default_folder()
 
     raise Exception(f"plugin_support.default_folder(): unknown or missing value for "
                     f"`class_name` ({class_name})")
@@ -32,9 +32,9 @@ def all_default_folders() -> dict:
     """
     d = {}
 
-    d["Document"] = Documents.default_folder()
-    d["Image"] = Images.default_folder()
-    d["Note"] = Notes.default_folder()
+    d["Document"] = Document.default_folder()
+    d["Image"] = Image.default_folder()
+    d["Note"] = Note.default_folder()
 
     return d
 

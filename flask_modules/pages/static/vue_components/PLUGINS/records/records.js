@@ -1,11 +1,10 @@
 /*  Vue component to display and edit Content Items that lack any ah-hoc handler.
 
-    Historically, these Content Items are sometimes referred as being of type "r" (generic Records);
-    the new terminology is class_handler:"records"
+    Historically, these Content Items are sometimes referred as being of type "r" (generic Records).
 
-    At present, this is used in the Category Page Viewer.
+    This is a CORE component, not a plugin
 
-    TODO: rename 'vue-plugin-records'
+    TODO: rename 'vue-plugin-records' , and separate it from the plugins
  */
 
 Vue.component('vue-plugin-r',
@@ -276,7 +275,7 @@ Vue.component('vue-plugin-r',
                 let all_keys = [];
 
                 for (let i = 0; i < this.schema_data.length; i++) { // Loop thru all field names prescribed by the Schema...
-                    key_in_schema = this.schema_data[i];
+                    var key_in_schema = this.schema_data[i];
                     if (key_in_schema in this.current_data)         // ... if the field name is actually present, add it to the all_keys array
                         all_keys.push(key_in_schema);
                 }

@@ -1607,7 +1607,7 @@ class GraphAccess(InterGraph):
 
     def link_nodes_on_matching_property(self, label1:str, label2:str, property1:str, rel:str, property2=None) -> None:
         """
-        Locate any pair of Neo4j nodes where all of the following hold:
+        Locate any pair of database nodes where all of the following hold:
                             1) the first one has label1
                             2) the second one has label2
                             3) the two nodes agree in the value of property1 (if property2 is None),
@@ -1680,6 +1680,7 @@ class GraphAccess(InterGraph):
         """
         # TODO: add an option to only retrieve SOME of the properties
         # TODO: add an option to also retrieve some or all the properties of the relationships
+        # TODO: make `rel_name` optional
 
         #match_structure = CypherUtils.process_match_structure(match, caller_method="follow_links")
 
@@ -1717,7 +1718,65 @@ class GraphAccess(InterGraph):
 
 
 
-    def count_links(self, match: Union[int, CypherBuilder], rel_name: str, rel_dir="OUT", neighbor_labels = None) -> int:
+    def get_link_summary(self, internal_id :str|int, omit_names = None) -> dict:
+        """
+        Return a dictionary structure identifying the names and counts of all
+        inbound and outbound links to and from the given node.
+
+        :param internal_id: The internal database ID of the node of interest
+        :param omit_names:  [OPTIONAL] List of relationship names to disregard
+
+        :return:            A dictionary with the names and counts of the inbound and outbound links.
+                            This dictionary has two keys, "in" and "out";
+                            their respective values are (possibly empty) lists.
+                            Each list entry is a pair of the form (link_name, count)
+                            EXAMPLE:
+                                {
+                                    "in": [
+                                        ("served_at", 1)
+                                    ],
+                                    "out": [
+                                        ("located_in", 1),
+                                        ("cuisine_type", 2)
+                                    ]
+                                }
+        """
+        # TODO: generalize to accept a match structure instead of just internal_id
+
+        id_clause = f"id(n) = {internal_id}"
+
+        if omit_names:
+            assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
+            where_clause = f"WHERE NOT type(r) IN {omit_names} AND {id_clause}"
+        else:
+            where_clause = f"WHERE {id_clause}"
+
+        # Get outbound links (names and counts)
+        q_out = f'''
+                MATCH (n)-[r]->(n2)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
+        result = self.query(q_out)
+        rel_out = [ ( l["rel_name"], l["rel_count"] ) for l in result ]
+
+
+        # Get inbound links (names and counts)
+        q_in = f'''
+                MATCH (n)<-[r]-(n2)
+                {where_clause}
+                RETURN type(r) AS rel_name, count(n2) AS rel_count
+                '''
+
+        result = self.query(q_in)
+        rel_in = [ ( l["rel_name"], l["rel_count"] ) for l in result ]
+
+        return  {"in": rel_in, "out": rel_out}
+
+
+
+    def count_links(self, match :int|CypherBuilder, rel_name: str, rel_dir="OUT", neighbor_labels = None) -> int:
         """
         From the given starting node(s), count all the relationships OF THE GIVEN NAME to and/or from it,
         into/from neighbor nodes (optionally having the given labels)
@@ -1731,6 +1790,7 @@ class GraphAccess(InterGraph):
         :return:                The total number of inbound and/or outbound relationships to the given node(s)
         """
         #TODO: change default of `rel_dir` to "BOTH"
+        #TODO: make argument 'rel_name' optional
         #match_structure = CypherUtils.process_match_structure(match, caller_method="count_links")
 
         # Unpack needed values from the match dictionary
@@ -1753,7 +1813,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_parents_and_children(self, internal_id :int|str) -> ():
+    def get_parents_and_children(self, internal_id :str|int) -> ():
         """
         Fetch all the nodes connected to the given one by IN-bound relationships to it (its "parents"),
         as well as by OUT-bound relationships to it (its "children")
@@ -1789,7 +1849,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_siblings(self, internal_id :int|str, rel_name: str, rel_dir="OUT", order_by=None) -> [int]:
+    def get_siblings(self, internal_id :str|int, rel_name: str, rel_dir="OUT", order_by=None) -> [int]:
         """
         Return the data of all the "sibling" nodes of the given one.
         By "sibling", we mean: "sharing a link (by default outbound) of the specified name,
@@ -1850,65 +1910,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_link_summary(self, internal_id, omit_names = None) -> dict:
-        """
-        Return a dictionary structure identifying the names and counts of all
-        inbound and outbound links to and from the given node.
-
-        :param internal_id: The internal database ID of the node of interest
-        :param omit_names:  [OPTIONAL] List of relationship names to disregard
-
-        :return:            A dictionary with the names and counts of the inbound and outbound links.
-                            This dictionary has two keys, "in" and "out";
-                            their respective values are (possibly empty) lists.
-                            Each list entry is a pair of the form (link_name, count)
-                            EXAMPLE:
-                                {
-                                    "in": [
-                                        ("served_at", 1)
-                                    ],
-                                    "out": [
-                                        ("located_in", 1),
-                                        ("cuisine_type", 2)
-                                    ]
-                                }
-        """
-        # TODO: generalize to accept a match structure instead of just internal_id
-
-        id_clause = f"id(n) = {internal_id}"
-
-        if omit_names:
-            assert type(omit_names) == list, "If the `omit_names` argument is specified, it MUST be a LIST"
-            where_clause = f"WHERE NOT type(r) IN {omit_names} AND {id_clause}"
-        else:
-            where_clause = f"WHERE {id_clause}"
-
-        # Get outbound links (names and counts)
-        q_out = f'''
-                MATCH (n)-[r]->(n2)
-                {where_clause}
-                RETURN type(r) AS rel_name, count(n2) AS rel_count
-                '''
-
-        result = self.query(q_out)
-        rel_out = [ ( l["rel_name"], l["rel_count"] ) for l in result ]
-
-
-        # Get inbound links (names and counts)
-        q_in = f'''
-                MATCH (n)<-[r]-(n2)
-                {where_clause}
-                RETURN type(r) AS rel_name, count(n2) AS rel_count
-                '''
-
-        result = self.query(q_in)
-        rel_in = [ ( l["rel_name"], l["rel_count"] ) for l in result ]
-
-        return  {"in": rel_in, "out": rel_out}
-
-
-
-    def explore_neighborhood(self, start_id :int|str, max_hops=2,
+    def explore_neighborhood(self, start_id :str|int, max_hops=2,
                              avoid_links=None, follow_links=None,
                              avoid_label=None,
                              include_start_node=False) -> [dict]:
@@ -1919,7 +1921,7 @@ class GraphAccess(InterGraph):
         Optionally, include the start node as well.
         Included nodes will only appear once in the result, even if there might be multiple paths to get to them
 
-        :param start_id:        The value of the internal database ID of the starting node
+        :param start_id:        The internal database ID of the starting node
         :param max_hops:        [OPTIONAL] Integer >= 1 with the maximum number of links to follow in the graph traversal;
                                     i.e. the max distance to travel away from the starting node
         :param follow_links:    [OPTIONAL] Name, or list/tuple of names, of the links that we're allowed to follow in the traversal

@@ -2,9 +2,9 @@ from brainannex import GraphAccess, GraphSchema, \
                        Categories, FullTextIndexing, PyGraphVisual
 
 import app_libraries.PLUGINS.plugin_support as plugin_support
-from app_libraries.PLUGINS.notes import Notes
-from app_libraries.PLUGINS.documents import Documents
-from app_libraries.PLUGINS.images import Images
+from app_libraries.PLUGINS.note import Note
+from app_libraries.PLUGINS.document import Document
+from app_libraries.PLUGINS.image import Image
 from app_libraries.upload_helper import UploadHelper
 from app_libraries.media_manager import MediaManager
 
@@ -671,11 +671,11 @@ class DataManager:
 
         # Do some special handling specific to various types of Content Items
         if class_name == "Note":
-            update_data = Notes.before_update_content(update_data)
+            update_data = Note.before_update_content(update_data)
         elif class_name == "Document":
-            update_data = Documents.before_update_content(entity_id=entity_id, item_data=update_data)
+            update_data = Document.before_update_content(entity_id=entity_id, item_data=update_data)
         elif class_name == "Image":
-            update_data = Images.before_update_content(entity_id=entity_id, item_data=update_data)
+            update_data = Image.before_update_content(entity_id=entity_id, item_data=update_data)
         #elif plugin_support.is_media_class(class_name):
             # If the Content Item is a Media Item (other than Document)
             #MediaManager.before_update_content(entity_id=entity_id, set_dict=update_data, class_name=class_name)
@@ -687,7 +687,7 @@ class DataManager:
 
 
         if class_name == "Note":
-            Notes.update_content_item_successful(entity_id, original_post_data)
+            Note.update_content_item_successful(entity_id, original_post_data)
 
 
         # If the update was NOT for a "note" (in which case it might only be about the note's body rather than its metadata)
@@ -701,7 +701,7 @@ class DataManager:
 
 
         #if class_name == "Document":
-        #    Documents.update_content_item_successful(entity_id, original_post_data)
+        #    Document.update_content_item_successful(entity_id, original_post_data)
 
 
 
@@ -731,14 +731,14 @@ class DataManager:
             MediaManager.delete_media_file(uri=uri, class_name=class_name)
 
         if class_name == "Image":
-            # TODO: move this to the Images plugin, which should provide an Images.delete_content_before() method
+            # TODO: move this to the Images plugin, which should provide an Image.delete_content_before() method
             # Extra processing for the "Images" plugin (for the thumbnail images)
             #record = cls.lookup_media_record(uri)
             #if record is not None:
             MediaManager.delete_media_file(uri=uri, class_name=class_name, thumb=True)
 
         if class_name == "Note":
-            Notes.delete_content_before(uri)
+            Note.delete_content_before(uri)
 
 
         # Perform the actual deletion of the Content Item node
@@ -749,7 +749,7 @@ class DataManager:
         if number_deleted == 1:
             if class_name == "Note":
                 # Extra processing for the "Note" plugin
-                Notes.delete_content_successful(uri)    # Not actually needed for notes, but setting up the general system
+                Note.delete_content_successful(uri)    # Not actually needed for notes, but setting up the general system
 
             return       # Successful termination, with 1 Content Item deleted, as expected
 
@@ -841,7 +841,7 @@ class DataManager:
         original_post_data = item_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
 
         if class_name == "Note":
-            item_data = Notes.add_content(new_uri, item_data)
+            item_data = Note.add_content(new_uri, item_data)
 
 
         #print("add_new_content_item_to_category() - Revised post_data: ", item_data)
@@ -860,9 +860,9 @@ class DataManager:
                                                 item_class_name=class_name, item_properties=item_data,
                                                 new_uri=new_uri)
         elif insert_after_uri == "BOTTOM":
-            Categories.add_content_at_end(category_uri=category_uri,
+            Categories.add_content_at_end(category_entity_id=category_uri,
                                           item_class_name=class_name, item_properties=item_data,
-                                          new_uri=new_uri)
+                                          new_entity_id=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_uri,
                                                  item_class_name=class_name, item_properties=item_data,
@@ -872,7 +872,7 @@ class DataManager:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Note":
-            Notes.new_content_item_successful(new_uri, original_post_data)
+            Note.new_content_item_successful(new_uri, original_post_data)
 
 
         return new_uri     # Success
@@ -956,7 +956,7 @@ class DataManager:
         original_post_data = post_data.copy()   # Clone an independent copy of the dictionary - that won't be affected by changes to the original dictionary
 
         if class_name == "Note":
-            post_data = Notes.add_content(new_uri, post_data)
+            post_data = Note.add_content(new_uri, post_data)
 
 
         #print("Revised post_data: ", post_data)
@@ -975,9 +975,9 @@ class DataManager:
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         elif insert_after_uri == "BOTTOM":
-            Categories.add_content_at_end(category_uri=category_id,
+            Categories.add_content_at_end(category_entity_id=category_id,
                                           item_class_name=class_name, item_properties=post_data,
-                                          new_uri=new_uri)
+                                          new_entity_id=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
@@ -987,7 +987,7 @@ class DataManager:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Note":
-            Notes.new_content_item_successful(new_uri, original_post_data)
+            Note.new_content_item_successful(new_uri, original_post_data)
 
 
         return new_uri     # Success
@@ -1005,9 +1005,9 @@ class DataManager:
                                                 item_class_name=class_name, item_properties=post_data,
                                                 new_uri=new_uri)
         elif insert_after_uri == "BOTTOM":
-            Categories.add_content_at_end(category_uri=category_id,
+            Categories.add_content_at_end(category_entity_id=category_id,
                                           item_class_name=class_name, item_properties=post_data,
-                                          new_uri=new_uri)
+                                          new_entity_id=new_uri)
         else:   # Insert at a position that is not the top nor bottom
             Categories.add_content_after_element(category_uri=category_id,
                                                  item_class_name=class_name, item_properties=post_data,
@@ -1017,9 +1017,9 @@ class DataManager:
 
         # A final round of PLUGIN-SPECIFIC OPERATIONS
         if class_name == "Note":
-            Notes.new_content_item_successful(new_uri, original_post_data)
+            Note.new_content_item_successful(new_uri, original_post_data)
         elif class_name == "Document":
-            Documents.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
+            Document.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
                                                                                                         #TODO: add arg `upload_folder`
 
 
@@ -1091,28 +1091,32 @@ class DataManager:
     @classmethod
     def switch_category(cls, data_dict :dict) -> None:
         """
-        Switch one or more Content Items from being attached to a given Category,
+        Relocate one or more Content Items from being attached to a given Category,
         to another one
 
         :param data_dict:   Dict with 3 keys:
-                                items   list of string URI's of Content Items
-                                        to relocate across Categories
-                                from    URI of the old Category
-                                to      URI of the new Category
+                                "items"   List of internal database ID's of Content Items
+                                                to relocate across Categories
+                                "from"    Entity ID of the old Category
+                                "to"      Entity ID of the new Category
+
+                            EXAMPLE: {'items': ['i-3332', 'i-3278'],
+                                      'from': '3676', 'to': '3677'}
+
         :return:            None
         """
-        #print("In switch_category(): ", data_dict)     # EXAMPLE: {'items': ['i-3332', 'i-3278'], 'from': '3676', 'to': '3677'}
+        #print("In switch_category(): ", data_dict)
 
         items = data_dict["items"]
 
         assert type(items) == list, \
-            f"switch_category(): The passed POST value `items` ({items}) doesn't evaluate to a list"
+            f"switch_category(): The passed value `items` ({items}) isn't a list"
 
         assert type(data_dict['from']) == str, \
-            f"switch_category(): The passed POST value `from` ({data_dict['from']}) doesn't evaluate to a string"
+            f"switch_category(): The passed value `from` ({data_dict['from']}) isn't a string"
 
         assert type(data_dict['to']) == str, \
-            f"switch_category(): The passed POST value `from` ({data_dict['to']}) doesn't evaluate to a string"
+            f"switch_category(): The passed value `from` ({data_dict['to']}) isn't a string"
 
 
         number_items = len(items)
@@ -1586,10 +1590,13 @@ class DataManager:
         :param filter_dict: A dictionary, with keys:
                                 "label"         The name of a node label
                                 "class_name"    TODO: NOT CURRENTLY IMPLEMENTED
-                                "key_name"      A string with the name of a node attribute;
+
+                                "key_name"      Property (field) name - or list of names - to search;
+                                                    an implicit *OR* is used if more than one is given.
                                                     if provided, key_value must be passed, too
                                 "key_value"     The required value for the above key; if provided, key_name must be passed, too.
                                                     Note: no requirement for the key to be primary
+
                                 "case_sensitive" Boolean
                                 "clause_key"    Name of a node property (field)
                                 "clause_value"  Value to match for the above property;
@@ -1599,7 +1606,7 @@ class DataManager:
                                                     NOTE: if ordering by a non-existing field, "skip" may not work as expected;
                                                           this seems to be a Cypher/Neo4j bug
                                 "skip"          The number of initial entries (in the context of specified order) to skip
-                                "limit"         The max number of entries to return
+                                "limit"         The max number of entries to return.  Default: 25
 
                             EXAMPLES:
                                 {"label": "BA", "key_name": "entity_id", "key_value": "sl-123"}

@@ -42,7 +42,7 @@ Vue.component('vue-content-items',
             index:              The zero-based position of this Content Items on the above Category-specific page
             item_count:         The total number of Content Items (of all types) on the above Category-specific page
             registered_plugins: A list of codes of Content Items that have a dedicated Vue plugin
-                                    EXAMPLE: ["n", "i", "h", "cd", "d", "sl", "rs"]
+                                    EXAMPLE: ["n", "i", "h", "cd", "d", "sl", "rs", "timer", "f"]
             records_types:      A list of all the Classes that can be used for new Records
                                     (i.e. classes that are INSTANCE_OF the "Records" class)
             schema_data:        Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.

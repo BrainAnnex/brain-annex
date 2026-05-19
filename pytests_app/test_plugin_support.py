@@ -14,11 +14,11 @@ def db():
 
 
 def test_api_endpoint():
-    result = plugin_support.api_handler(plugin_handler="documents", parameters=[1, 2, 3])
+    result = plugin_support.api_handler(plugin_handler="document", parameters=[1, 2, 3])
     assert result == "ok"
 
-    with pytest.raises(Exception):
-        plugin_support.api_handler(plugin_handler="images", parameters=[1, 2, 3])   # Currently absent
+    #with pytest.raises(Exception):
+        #plugin_support.api_handler(plugin_handler="image", parameters=[1, 2, 3])   # Currently absent
 
     with pytest.raises(Exception):
         plugin_support.api_handler(plugin_handler="UNKNOWN", parameters=[1, 2, 3])

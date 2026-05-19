@@ -25,7 +25,8 @@ Vue.component('vue-plugin-d',
                                           internal_id": 123
                                         }
 
-            edit_mode:      A boolean indicating whether in editing mode
+            edit_mode:      A boolean indicating whether the page containing this element is in editing mode
+                                (to pass to the controls)  TODO: rename to "page_edit_mode"
             category_id:    The Entity ID of the Category page where this document is displayed (used when creating new documents)
             index:          The zero-based position of this Document on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
@@ -41,7 +42,7 @@ Vue.component('vue-plugin-d',
 
 
                     <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
-                    <div v-show="!edit_metadata"   @dblclick="edit_content_item()">
+                    <div v-show="!editing_mode"   @dblclick="edit_content_item()">
                         <span style='font-weight:bold; font-size:12px'>&ldquo;{{current_data.caption}}&rdquo;</span>
                         <br><br>
 
@@ -88,7 +89,7 @@ Vue.component('vue-plugin-d',
 
 
                     <!----------  EDITABLE version (shown when in editing mode)  ---------->
-                    <div v-show="edit_metadata">
+                    <div v-show="editing_mode">
                         <br><br>
                         <span class="label">Caption</span>
                         <textarea v-model="current_data.caption" rows="2" cols="40" style="font-weight: bold"></textarea>
@@ -144,8 +145,8 @@ Vue.component('vue-plugin-d',
                             </select>
                         </p>
 
-                        <!-- CONTROLS to edit the document METADATA -->
-                        <p v-show="edit_metadata" style="text-align: right">
+                        <!-- CONTROLS to edit the document fields -->
+                        <p v-show="editing_mode" style="text-align: right">
                             <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
                             <button @click="save_edit" style="margin-left: 15px; font-weight: bold; padding: 10px">SAVE</button>
                             <br>
@@ -160,7 +161,7 @@ Vue.component('vue-plugin-d',
                 </div>		<!-- End of Document container -->
 
 
-                <!--  Start of STANDARD CONTROLS (inline elements that can be extended with extra controls)
+                <!--  Start of STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls).
                       Signals from the Vue child component "vue-controls", below,
                       get relayed to the parent of this component,
                       but some get intercepted and handled here, namely:
@@ -171,10 +172,15 @@ Vue.component('vue-plugin-d',
                       or after (will appear to the right) of the standard controls
                 -->
 
+                    <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
+
                     <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
                                   v-on="$listeners"
-                                  v-on:edit-content-item="edit_content_item">
+                                  v-on:edit-content-item="edit_content_item"
+                    >
                     </vue-controls>
+
+                    <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
 
                 <!--  End of STANDARD CONTROLS -->
 
@@ -187,7 +193,7 @@ Vue.component('vue-plugin-d',
         // ------------------------------   DATA   ------------------------------
         data: function() {
             return {
-                edit_metadata: false,   // Editing mode for the metadata
+                editing_mode: false,   // Editing mode for the fields of the record
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -246,18 +252,30 @@ Vue.component('vue-plugin-d',
 
 
             /**
-             * Enable the document edit mode
+             * Enable the document edit mode.
              * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
              * (which is generated there when clicking on the Edit button)
              */
             edit_content_item()
             {
                 console.log(`'Documents' component received SIGNAL to edit its contents`);
-                this.edit_metadata = true;
+                this.enter_editing_mode();
+
+            },
+
+
+            /**
+             * Switch to the editing mode of this Vue component
+             */
+            enter_editing_mode()
+            //
+            {
+                this.editing_mode = true;
 
                 console.log("Retrieving folder location");
                 this.retrieve_document_folders(this.current_metadata.internal_id);
             },
+
 
 
             /**
@@ -271,7 +289,7 @@ Vue.component('vue-plugin-d',
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
-                this.edit_metadata = false;      // Exit the editing mode
+                this.editing_mode = false;      // Exit the editing mode
             }, // cancel_edit
 
 
@@ -323,12 +341,17 @@ Vue.component('vue-plugin-d',
 
 
 
+
             /*
-                ------------   SERVER CALLS   ------------
+                ----------------   SERVER CALLS   ----------------
              */
 
+
+            /**
+             * Conclude an EDIT operation.
+             * Send a request to the server, to update the document's metadata
+             */
             save_edit()
-            // Conclude an EDIT operation.  Send a request to the server, to update the document's metadata
             {
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item_JSON";
@@ -398,7 +421,7 @@ Vue.component('vue-plugin-d',
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;       // Make a note that the asynchronous operation has come to an end
-                this.edit_metadata = false; // Leave the editing mode
+                this.editing_mode = false;  // Leave the editing mode
             },
 
 

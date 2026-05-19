@@ -1,6 +1,6 @@
 import pytest
 from brainannex import GraphAccess, GraphSchema
-from app_libraries.PLUGINS.documents import Documents
+from app_libraries.PLUGINS.document import Document
 
 
 
@@ -14,5 +14,5 @@ def db():
 
 
 def test_api_endpoint():
-    result = Documents.api_endpoint(parameters=[1, 2, 3])
+    result = Document.api_endpoint(parameters=[1, 2, 3])
     assert result == "ok"

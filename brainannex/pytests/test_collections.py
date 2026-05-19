@@ -258,20 +258,25 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     create_sample_collections_class(db)     # Creates a "Photo Album" Class
 
-    # Create 2 Collections : "Jamaica" and a "Brazil" photo albums
+    # Create 2 Collections nodes, representing "Jamaica" and a "Brazil" photo albums
     GraphSchema.create_namespace(name="ALBUMS", prefix="album-")
+
     jamaica_uri = GraphSchema.reserve_next_entity_id(namespace="ALBUMS")
-    GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_entity_id=jamaica_uri)
+    jamaica_id = GraphSchema.create_data_node(class_name="Photo Album", properties ={"name": "Jamaica vacation"}, new_entity_id=jamaica_uri)
+
     brazil_uri = GraphSchema.reserve_next_entity_id(namespace="ALBUMS")
     GraphSchema.create_data_node(class_name="Photo Album",
                                  properties ={"name": "Winter in Brazil"}, new_entity_id=brazil_uri)
 
-    # Create a Collection Item : a Carnaval photo "accidentally" placed in the Jamaica album
+    # Creates a "Photo" Class
     create_sample_collection_item_class()
+
+    # Create a Collection Item : a Carnaval photo "accidentally" linked to the Jamaica album
     GraphSchema.create_namespace(name="PHOTOS", prefix="photo-")
     carnaval_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS", prefix="photo-")
-    GraphSchema.create_data_node(class_name="Photo",
-                                 properties ={"caption": "Dancers at Carnaval"}, new_entity_id=carnaval_photo_uri)
+    carnaval_photo_id = GraphSchema.create_data_node(class_name="Photo",
+                                                    properties ={"caption": "Dancers at Carnaval"},
+                                                    new_entity_id=carnaval_photo_uri)
 
     Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=carnaval_photo_uri,
                                           collection_class_name="Photo Album", collection_entity_id=jamaica_uri,
@@ -283,59 +288,73 @@ def test_bulk_relocate_to_other_collection_at_end(db):
 
     # Using wrong relationship name
     assert 0 == \
-        Collections.bulk_relocate_to_other_collection_at_end(items=[carnaval_photo_uri],
+        Collections.bulk_relocate_to_other_collection_at_end(items=[carnaval_photo_id],
+                                                        collection_class="Photo Album",
                                                         from_collection=jamaica_uri, to_collection=brazil_uri,
                                                         membership_rel_name="I don't exist")
+
     # Reversed "from" and "to" Collections
     assert 0 == \
-        Collections.bulk_relocate_to_other_collection_at_end(items=["photo-1"],
-                                                         from_collection="album-2", to_collection="album-1",
-                                                         membership_rel_name="in_album")
+        Collections.bulk_relocate_to_other_collection_at_end(items=[carnaval_photo_id],
+                                                        collection_class="Photo Album",
+                                                        from_collection="album-2", to_collection="album-1",
+                                                        membership_rel_name="in_album")
     # Non-existing Collection Items
     assert 0 == \
-        Collections.bulk_relocate_to_other_collection_at_end(items=["Some junk that does not exist"],
+        Collections.bulk_relocate_to_other_collection_at_end(items=[carnaval_photo_id+1000],
+                                                        collection_class="Photo Album",
                                                         from_collection=jamaica_uri, to_collection=brazil_uri,
                                                         membership_rel_name="in_album")
     # Non-existing "from" Collection
     assert 0 == \
-        Collections.bulk_relocate_to_other_collection_at_end(items=[carnaval_photo_uri],
+        Collections.bulk_relocate_to_other_collection_at_end(items=[carnaval_photo_id],
+                                                        collection_class="Photo Album",
                                                         from_collection="Nonexistent URI", to_collection=brazil_uri,
                                                         membership_rel_name="in_album")
 
 
     # Verify that the carnaval photo is STILL linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {entity_id: $carnaval_photo_uri})
+        MATCH p=(photo :Photo)
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
+        WHERE id(photo) = $carnaval_photo_id
         RETURN COUNT(p) AS number_paths
         '''
-    result = db.query(q, data_binding={"carnaval_photo_uri": carnaval_photo_uri}, single_cell="number_paths")
+    result = db.query(q, data_binding={"carnaval_photo_id": carnaval_photo_id}, single_cell="number_paths")
     assert result == 1
 
 
     # Relocate the carnaval photo from the Jamaica album to the empty Brazil album
-    Collections.bulk_relocate_to_other_collection_at_end(items=carnaval_photo_uri,
+    result = Collections.bulk_relocate_to_other_collection_at_end(items=carnaval_photo_id,
+                                                         collection_class="Photo Album",
                                                          from_collection=jamaica_uri, to_collection=brazil_uri,
                                                          membership_rel_name="in_album")
+    assert result == 1
 
     # Verify that the carnaval photo is now linked to the Brazil album, with position 0
     q = '''
-        MATCH p=(:Photo {entity_id: $carnaval_photo_uri})
+        MATCH p=(photo :Photo)
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Winter in Brazil"}) 
+        WHERE id(photo) = $carnaval_photo_id
         RETURN COUNT(p) AS number_paths
         '''
-    result = db.query(q, data_binding={"carnaval_photo_uri": carnaval_photo_uri}, single_cell="number_paths")
+    result = db.query(q, data_binding={"carnaval_photo_id": carnaval_photo_id}, single_cell="number_paths")
     assert result == 1
 
+    # Verify that the Jamaica photo album now isn't linked to anything
+    jamaica_links = db.get_link_summary(jamaica_id)
+    assert jamaica_links == {"in": [], "out": []}
 
-    # Create 2 other Collection Items : a photo of landing in Jamaica and a photo at a Jamaica resort,
+
+
+    # Create 2 other Collection Items : a photo of "Landing in Jamaica" and a photo "At the resort in Jamaica",
     # both "accidentally" placed in the Brazil album
     landing_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
-    GraphSchema.create_data_node(class_name="Photo",
+    landing_photo_id = GraphSchema.create_data_node(class_name="Photo",
                                  properties ={"caption": "Landing in Jamaica"}, new_entity_id=landing_photo_uri)
 
     resort_photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
-    GraphSchema.create_data_node(class_name="Photo",
+    resort_photo_id = GraphSchema.create_data_node(class_name="Photo",
                                  properties ={"caption": "At the resort in Jamaica"}, new_entity_id=resort_photo_uri)
 
     Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=landing_photo_uri,
@@ -346,49 +365,56 @@ def test_bulk_relocate_to_other_collection_at_end(db):
                                           collection_class_name="Photo Album", collection_entity_id=brazil_uri,
                                           membership_link_name="in_album")
 
-    # At this point we have 3 photos ("Collection Items") - all of them in the Brazil album
+    # At this point we have 3 photos ("Collection Items") - all of them linked to the "Winter in Brazil" album
 
     # Relocate BOTH the landing photo and the the resort photo
     # from the Brazil album to the Jamaica one
-    Collections.bulk_relocate_to_other_collection_at_end(items=[landing_photo_uri, resort_photo_uri],
+    result = Collections.bulk_relocate_to_other_collection_at_end(items=[landing_photo_id, resort_photo_id],
+                                                         collection_class="Photo Album",
                                                          from_collection=brazil_uri, to_collection=jamaica_uri,
                                                          membership_rel_name="in_album")
+    assert result == 2
 
     # Verify that the landing photo is now linked to the Jamaica album, with position 0
     q = '''
-        MATCH p=(:Photo {entity_id: $landing_photo_uri})
+        MATCH p=(photo :Photo)
         -[:in_album {pos: 0}]->(:`Photo Album` {name: "Jamaica vacation"}) 
+        WHERE id(photo) = $landing_photo_id
         RETURN COUNT(p) AS number_paths
         '''
-    result = db.query(q, data_binding={"landing_photo_uri": landing_photo_uri}, single_cell="number_paths")
+    result = db.query(q, data_binding={"landing_photo_id": landing_photo_id}, single_cell="number_paths")
     assert result == 1
 
     # Verify that the resort photo is now linked to the Jamaica album, with position 20
     q = '''
-        MATCH p=(:Photo {entity_id: $resort_photo_uri})
+        MATCH p=(photo :Photo)
         -[:in_album {pos: 20}]->(:`Photo Album` {name: "Jamaica vacation"}) 
+        WHERE id(photo) = $resort_photo_id
         RETURN COUNT(p) AS number_paths
         '''
-    result = db.query(q, data_binding={"resort_photo_uri": resort_photo_uri}, single_cell="number_paths")
+    result = db.query(q, data_binding={"resort_photo_id": resort_photo_id}, single_cell="number_paths")
     assert result == 1
 
 
     # Add 2 photos to the Brazil album
-    all_photo_uris = [0, 0]
+    all_photo_ids = [0, 0]
     for i in range(2):
         photo_uri = GraphSchema.reserve_next_entity_id(namespace="PHOTOS")
-        all_photo_uris[i] = photo_uri
-        GraphSchema.create_data_node(class_name="Photo",
-                                     properties ={"caption": f"photo_{i}"}, new_entity_id=photo_uri)
+        all_photo_ids[i] = GraphSchema.create_data_node(class_name="Photo",
+                                                        properties ={"caption": f"photo_{i}"},
+                                                        new_entity_id=photo_uri)
         Collections.link_to_collection_at_end(item_class_name="Photo", item_entity_id=photo_uri,
                                               collection_class_name="Photo Album", collection_entity_id=brazil_uri,
                                               membership_link_name="in_album")
 
-    #print("**************", all_photo_uris)
+    #print("**************", all_photo_ids)
+
     # Now, relocate those 2 photos to the Jamaica album
-    Collections.bulk_relocate_to_other_collection_at_end(items=all_photo_uris,
+    result = Collections.bulk_relocate_to_other_collection_at_end(items=all_photo_ids,
+                                                         collection_class="Photo Album",
                                                          from_collection=brazil_uri, to_collection=jamaica_uri,
                                                          membership_rel_name="in_album")
+    assert result == 2
 
     # Verify that those photos are now linked to the Jamaica album, with positions 40 and 60
     q = '''
@@ -407,6 +433,6 @@ def test_bulk_relocate_to_other_collection_at_end(db):
     result = db.query(q, single_cell="number_paths")
     assert result == 1
 
-    # Verify that just 1 photo remains in teh Brazil album
+    # Verify that just 1 photo remains in the Brazil album
     match = db.match(key_name="name", key_value="Winter in Brazil")
     assert 1 == db.count_links(match=match, rel_name="in_album", rel_dir="IN", neighbor_labels = "Photo")

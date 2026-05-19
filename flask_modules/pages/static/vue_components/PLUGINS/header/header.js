@@ -143,12 +143,12 @@ Vue.component('vue-plugin-h',
                      post_obj.insert_after_uri = this.current_metadata.insert_after_uri;       // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                      post_obj.insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
 
-                     url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
+                     var url_server_api = `/BA/api/add_item_to_category`;       // URL to communicate with the server's endpoint
                 }
                 else {   // Update an EXISTING Content Item
                     post_obj.entity_id = this.current_metadata.entity_id;
 
-                    url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
+                    var url_server_api = `/BA/api/update_content_item`;        // URL to communicate with the server's endpoint
                 }
 
                 // Enforce required field

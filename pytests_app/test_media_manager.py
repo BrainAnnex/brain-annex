@@ -3,9 +3,9 @@ import os
 from brainannex import GraphAccess, GraphSchema
 from app_libraries.media_manager import MediaManager
 import app_libraries.PLUGINS.plugin_support as plugin_support
-from app_libraries.PLUGINS.documents import Documents
-from app_libraries.PLUGINS.images import Images
-from app_libraries.PLUGINS.notes import Notes
+from app_libraries.PLUGINS.document import Document
+from app_libraries.PLUGINS.image import Image
+from app_libraries.PLUGINS.note import Note
 
 
 
@@ -49,7 +49,7 @@ def test_default_file_path():
 
 def test_retrieve_full_path(db):
     db.empty_dbase()
-    Images.add_to_schema()
+    Image.add_to_schema()
 
     # Create an Image node, with the default folder for its type    TODO: turn all the various sample setup into a utility function
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
@@ -75,7 +75,7 @@ def test_retrieve_full_path(db):
 
 def test_lookup_media_file(db):
     db.empty_dbase()
-    Images.add_to_schema()
+    Image.add_to_schema()
 
     # Create an Image node, with the default folder for its type
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
@@ -103,7 +103,7 @@ def test_lookup_media_file(db):
 
 def test_get_media_item_file(db):
     db.empty_dbase()
-    Images.add_to_schema()
+    Image.add_to_schema()
 
     # Create an Image node, with the default folder for its type
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
@@ -129,7 +129,7 @@ def test_get_media_item_file(db):
 
 def test_get_full_filename(db):
     db.empty_dbase()
-    Images.add_to_schema()
+    Image.add_to_schema()
 
     # Create an Image node, with the default folder for its type
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},

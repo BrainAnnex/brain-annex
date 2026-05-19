@@ -10,6 +10,12 @@
         current_page
         username
 
+        item_array:     A list with the data for each the Content Items on this page
+                        Each element is an object with 2 keys: `fields` and `metadata`
+                            EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
+                            EXAMPLE of value of `metadata`:
+                                {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
+
         category_uri        A string with the Entity ID of the Category featured on this page
         category_name       The name of the above Category
         category_remarks    Descriptive extra text about this Category (may be missing)
@@ -43,17 +49,14 @@
                                   "Site Link": ["url", "name", "date", "comments", "rating", "read"]
                                  }
 
-        item_array:     A list with the data for each the Content Items on this page
-                        Each element is an object with 2 keys: `fields` and `metadata`
-                            EXAMPLE of value of `fields`:   {"German":"Tier", "English":"animal"}
-                            EXAMPLE of value of `metadata`:
-                                {class_name: "Image",pos:50,"entity_id":"i-8"class_handler:"images",schema_code:"i"}
-
-
         upload_directories: A list of folders registered with BrainAnnex
                             EXAMPLE:
                                 ["documents/Ebooks & Articles",
                                  "documents/Ebooks & Articles/Computer Science"]
+
+        plugins:            A list of names of plugins to use
+                            EXAMPLE: ['documents', 'flash_card', 'headers', 'images', 'notes', 'records', 'recordsets', 'site_link', 'timer']
+
 
     -----------------------------------------------------------------------------------
     MIT License.  Copyright (c) 2021-2026 Julian A. West and the BrainAnnex.org project
@@ -88,16 +91,15 @@
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/content_items/content_items.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/controls/controls.css">
 
-    <!-- PLUGIN-specific styling -->
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/headers/headers.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/images/images.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/documents/documents.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/notes/notes.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/records/records.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/timer/timer.css">
+
+
+
+    <!-- PLUGIN-specific styling -->
+    {% for single_plugin in plugins %}
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/PLUGINS/{{single_plugin}}/{{single_plugin}}.css">
+    {% endfor %}
+
 
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -188,15 +190,15 @@
  **************************************************************** -->
 
 {#  Uncomment for DEBUGGING! (to view some of the Flask-passed parameters)
-    <br><b>siblings_categories</b>:<br>{{siblings_categories}}<br><br>
-    <br><b>all_categories</b>:<br>{{all_categories}}<br><br>
+    <br><b>plugins</b>:<br>{{plugins}}<br><br>
+
 
     <b>item_array</b>:<br>
     {% for el in item_array %}
         {{el}}<br>
     {% endfor %}
     <br><br>
- #}
+#}
 
 
 
@@ -498,18 +500,19 @@
     <h3>Add at the bottom of page</h3>
     <span style="margin-right:10px">Add new:</span>
     <!-- TODO: automate these choices, based on Schema.  Merge with similar box in content_items.js -->
-    <button @click="add_new_item_at_bottom('h', 'Header')" style="margin-right:10px">Header</button>
-    <button @click="add_new_item_at_bottom('n', 'Note')" style="margin-right:10px">Note</button>
-    <button @click="add_new_item_at_bottom('sl', 'Site Link')" style="margin-right:10px">Site Link (Bookmark)</button>
-    <button @click="add_new_item_at_bottom('rs', 'Recordset')" style="margin-right:10px">Recordset</button>
-    <button @click="add_new_item_at_bottom('cd', 'Code Documentation')" style="margin-right:10px">Code Documentation (deprecated)</button>
-    &nbsp;&nbsp;&nbsp;
-    <button @click="add_new_item_at_bottom('timer', 'Timer Widget')" style="margin-right:10px">Timer Widget</button>
+
+    {% for single_plugin in plugins %}
+        {% if single_plugin != "image" and single_plugin != "document" %}
+            <button @click="add_new_item_at_bottom('{{single_plugin}}')" style="margin-right:10px">{{single_plugin}}</button>
+        {% endif %}
+    {% endfor %}
+    <br>
+
 
     <!-- Show all leaf Classes that are direct instances of "Records" -->
     <br>Add new record of type:
     {% for class_name in records_types %}
-        <button @click='add_new_item_at_bottom("r", "{{class_name}}")'
+        <button @click='add_new_record_at_bottom("{{class_name}}")'
                 class="record-picker"
                 style="color: {% if (loop.index % 7) == 1 %}#ae9cd6{% elif (loop.index % 7) == 2 %}#8bb9d4{% elif (loop.index % 7) == 3 %}#a6cfa1{% elif (loop.index % 7) == 4 %}#dad6a1{% elif (loop.index % 7) == 5 %}#e1b298{% elif (loop.index % 7) == 6 %}#e59ca0{% elif (loop.index % 7) == 0 %}gray{% else %}black{% endif %}">
             {{class_name}}
@@ -640,18 +643,21 @@
 
 <script src="/BA/pages/static/modules/vue-clipboard2/vue-clipboard.js"></script>
 
-
-<!-- PLUGIN-specific Vue components -->
-<script src="/BA/pages/static/vue_components/PLUGINS/headers/headers.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/images/images.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/documents/documents.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/notes/notes.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/codedocs/codedocs.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/timer/timer.js"></script>
-
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/records/records_linked.js"></script>
+
+
+
+<!-- PLUGIN-specific Vue components  (NOW ADDED DYNAMICALLY>
+<script src="/BA/pages/static/vue_components/PLUGINS/header/header.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/image/image.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/document/document.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/note/note.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/codedoc/codedoc.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
+<script src="/BA/pages/static/vue_components/PLUGINS/timer_widget/timer_widget.js"></script>
+-->
+
 
 
 
@@ -659,8 +665,14 @@
 
 // Import the JS module (it will register the component globally - and it will be completed
 // prior to the instantiation of Vue, below)
-import '/BA/pages/static/vue_components/multiselect/multiselect.js';
-import '/BA/pages/static/vue_components/PLUGINS/recordsets/recordsets.js';
+import '/BA/pages/static/vue_components/multiselect/multiselect.js';    // A general tool also used by the core module
+
+
+//import '/BA/pages/static/vue_components/PLUGINS/recordset/recordset.js';
+
+{% for single_plugin in plugins %}
+    import '/BA/pages/static/vue_components/PLUGINS/{{single_plugin}}/{{single_plugin}}.js';
+{% endfor %}
 
 
 // Instantiation of the ROOT component must come after the definition of the descendant components
@@ -676,8 +688,9 @@ new Vue({
     data: {     // GLOBAL DATA for the whole page (Vue root element).
                 // This is the handover of data from Flask to Vue
 
-        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs", "timer"],
+        registered_plugins: ["n", "i", "h", "cd", "d", "sl", "rs", "timer", "f"],
                                     // "r" not included here, because a generic core one - see plugin_component_name()
+                                    // TODO: switch to using plugin names
                                     // TODO: either pass from the database, or infer from some config file
                                     // IMPORTANT: the items in the list MUST correspond to the folders in
                                     //            flask_modules/pages/static/vue_components/PLUGINS
@@ -832,12 +845,16 @@ new Vue({
             window.getSelection().removeAllRanges();
         },
 
+
+        /**
+         * Clear all the checkboxes for the bulk operations
+         */
         clear_checkboxes()
-        // Clear all the checkboxes for the bulk operations
         {
+            // Go over all the Content Items on this page, looking for those with a marked checkbox
             for (let i = 0; i < this.item_array.length; ++i)  {
                 let ci = this.item_array[i];
-                let uri = ci.entity_id;
+                let uri = ci.metadata.entity_id;
                 console.log(`    resetting checkmark for Entity ID "${uri}"`);
                 let checkbox_element_arr = this.$refs[uri];         // Pluck out the entry for the specific checkbox HTML element (<INPUT>)
                                                                     // that we're looping over
@@ -990,8 +1007,10 @@ new Vue({
 
 
 
+        /**
+         * Invoked when the user presses the "BULK RE-CLASSIFY" button
+         */
         perform_bulk_operation()
-        // Invoked when the user presses the "BULK RE-CLASSIFY" button
         {
             // Make sure that the selection isn't empty  (TODO: the button should be greyed out if no checkboxes are selected)
             if (this.checkboxes_selected.length == 0)  {
@@ -1008,29 +1027,25 @@ new Vue({
             const category_to_uri = this.category_to_move_to.entity_id;
             const category_to_name = this.category_to_move_to.name;
 
-            console.log(`Bulk reclassifying the Content Items in the following index positions:  ${this.checkboxes_selected}`);
+            console.log(`Bulk reclassifying the Content Item(s) in the following index positions:  ${this.checkboxes_selected}`);
             console.log(`    moving them from Category Entity ID '${category_from_uri}' ("${this.category_name}") to Entity ID '${category_to_uri}' ("${category_to_name}")`);
 
             this.checkboxes_selected.sort((a, b) => a - b);     // Sorting must be done this way, to work on numerical values!!  Damn JS!
             console.log(`    checkboxes_selected (sorted) : ${this.checkboxes_selected}`);  // Sorted index positions of the selected items
 
-            var uri_list_sorted = [];
+            var internal_ids_sorted = [];
 
             for (var index of this.checkboxes_selected) {     // Loop over the list of selected checkboxes
-                const {class_name, entity_id} = this.item_array[index];    // Extract some properties from this Content Item
-                // TODO: for now, the class_name isn't being passed to the server
-                console.log(`    Readying Content Item -> class_name : "${class_name}" , Entity ID : "${entity_id}"`);
-                uri_list_sorted.push(entity_id);
+                const internal_id = this.item_array[index].metadata.internal_id;    // Extract the internal database ID of this selected Content Item
+                console.log(`    Readying Content Item -> internal_id : "${internal_id}"`);
+                internal_ids_sorted.push(internal_id);
             }
-            console.log(`    uri_list_sorted : ${uri_list_sorted}`);
+            console.log(`    internal_ids_sorted : ${internal_ids_sorted}`);
 
-
-            // TODO: in the future, both the URI's and the class names will be sent to the server, as soon as the backend is upgraded
-            //       (or maybe use internal database ID's instead)
 
             // Send the request to the server, using a POST
-            const url_server_api = "/BA/api/switch_category";
-            const post_obj = {items: JSON.stringify(uri_list_sorted),
+            const url_server_api = "/BA/api/switch-category";
+            const post_obj = {items: JSON.stringify(internal_ids_sorted),
                               from: JSON.stringify(category_from_uri),
                               to: JSON.stringify(category_to_uri)};
             // TODO: maybe let contact_server() handle the JSON.stringify calls
@@ -1081,19 +1096,19 @@ new Vue({
                 for (let i = this.checkboxes_selected.length - 1 ; i >= 0  ; --i) {
                      let index = this.checkboxes_selected[i];
                      console.log(`    making note to remove from the page the Content Item with array index ${index}`);
-                     indexes_to_remove.push(index);                                 // Save for the round of actual elimination
-                     let {class_name , entity_id} = this.item_array[index];      // Unpack some properties of this Content Item
+                     indexes_to_remove.push(index);                                     // Save for the round of actual elimination
+                     let {class_name , entity_id} = this.item_array[index].metadata;    // Unpack some properties of this Content Item
                      console.log(`       -> from that index position will be removing item with  Entity ID '${entity_id}' and Class '${class_name}'`);
                 }
 
                 // Carry out the actual removal from the page of the moved Content Items
                 // Note: doing this loop and the previous loop in just 1 pass seems to run afoul of Vue
-                for (let i in indexes_to_remove) {   // Note:  i will be an integer, not an array element!!
+                for (let i in indexes_to_remove) {      // Note:  i will be an integer, not an array element!!
                     let index = indexes_to_remove[i];
                     console.log(`      * about to actually remove Content Item from index ${index}`);
-                    this.item_array.splice(index, 1);                    // Deletes 1 array element from the specified index position
-                                                                            // (note: the index position of the remaining Items - earlier in
-                                                                            //        this.item_array - won't be affected)
+                    this.item_array.splice(index, 1);                   // Deletes 1 array element from the specified index position
+                                                                        // (note: the index position of the remaining Items - earlier in
+                                                                        //        this.item_array - won't be affected)
                 }
 
 
@@ -1291,19 +1306,70 @@ new Vue({
 
 
         /**
-         * Add a new Content Item of the specified type,
+         * Add a new Content Item managed by the specified plugin handler,
          *  placed at the bottom of the page (past the last Content Item)
          */
-        add_new_item_at_bottom(schema_code, class_name)
+        add_new_item_at_bottom(plugin_name)
         {
-            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item of type '${schema_code}' | class_name: '${class_name}'`);
+            console.log(`In root component, add_new_item_at_bottom().  Adding at the bottom of page new Content Item managed by plugin '${plugin_name}'`);
+
+            // Replace underscores with blanks, and Capitalize all words
+            // EXAMPLES: "flash_card" -> "Flash Card"    ,   "image" -> "Image"
+            const class_name =  plugin_name.split('_')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+
+            // Deal with a few special cases.  TODO: phase out schema_code in favor of plugin_name
+            var schema_code;
+            if (plugin_name == "codedoc")
+                schema_code = "cd";
+            else if (plugin_name == "site_link")
+                schema_code = "sl";
+            else if (plugin_name == "recordset")
+                schema_code = "rs";
+            else if (plugin_name == "timer_widget")
+                schema_code = "timer";
+            else
+                schema_code = plugin_name.charAt(0);
+
 
             // Assemble the data for a new Content Item
             let blank_record =
                 {
                     fields:     {},
                     metadata:   {entity_id: this.next_new_item_uri,
+                                 class_name: class_name,
+                                 plugin_name: plugin_name,
                                  schema_code: schema_code,
+                                 insert_after_uri: "BOTTOM"}
+                };  // It's a new record; so, only metadata is present
+
+            console.log("blank_record:");
+            console.log(structuredClone(blank_record));      // Log a frozen deep snapshot of the object
+
+
+            this.next_new_item_uri -= 1;            // Auto-increment, towards more negative numbers
+                                                    // Using a negative number as a temporary Entity ID is a convention to indicate a NEW Content Item
+
+            this.item_array.push(blank_record);     // Insert a new blank Item at the end of the page's Content Items
+
+        }, // add_new_item_at_bottom
+
+
+        /**
+         * Add a new Content Item of the generic "record" type,
+         *  placed at the bottom of the page (past the last Content Item)
+         */
+        add_new_record_at_bottom(class_name)
+        {
+            console.log(`In root component, add_new_record_at_bottom()`);
+
+            // Assemble the data for a new Content Item
+            let blank_record =
+                {
+                    fields:     {},
+                    metadata:   {entity_id: this.next_new_item_uri,
+                                 schema_code: "r",
                                  class_name: class_name,
                                  insert_after_uri: "BOTTOM"}
                 };  // It's a new record; so, only metadata is present

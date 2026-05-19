@@ -115,9 +115,9 @@ class Categories:
     @classmethod
     def is_root_category(cls, category_entity_id :str) -> bool:
         """
-        Return True if the given ID corresponds to the ROOT Category, or False otherwise
+        Return True if the given Entity ID corresponds to the ROOT Category, or False otherwise
 
-        :param category_entity_id:  A string identifying the desired Category
+        :param category_entity_id:  The Entity ID of the desired Category
         :return:                    True if the given ID corresponds to the ROOT Category, or False otherwise
         """
         assert GraphSchema.is_valid_entity_id(category_entity_id), \
@@ -134,9 +134,9 @@ class Categories:
     @classmethod
     def get_root_entity_id(cls) -> str | None:
         """
-        Fetch the Entity ID of the root category
+        Fetch the Entity ID of the root Category
 
-        :return:    The Entity ID of the root category; if not found, return None.
+        :return:    The Entity ID of the root Category; if not found, return None.
                     If more than one root exists, raise an Exception
         """
         #match = cls.db.match(label="Category", properties={"root": True})
@@ -396,6 +396,9 @@ class Categories:
         :return:            The pair (internal database ID, string URI)
                                 of the new Data Node just created
         """
+        assert cls.get_root_entity_id() is None, \
+            "create_categories_root(): a root Category ALREADY exists"
+
         if data_dict is None:
             data_dict = {"name": "HOME", "remarks": "top level"}
 
@@ -777,7 +780,7 @@ class Categories:
     @classmethod
     def create_bread_crumbs(cls, category_entity_id :str) -> list:
         """
-        Return a list of Category uri's together with token strings, providing directives for the HTML structure of
+        Return a list of Category Entity ID's together with token strings, providing directives for the HTML structure of
         the bread crumbs
 
         :param category_entity_id:A string with the Entity ID of the Category whose "ancestry bread crumbs" we want to construct
@@ -1011,79 +1014,6 @@ class Categories:
 
 
 
-    @classmethod
-    def get_content_items_by_category_OLD(cls, entity_id :str) -> [dict]:
-        """
-        Return the records for all nodes linked
-        to the Category node identified by its Entity ID value
-
-        :param entity_id:   A string identifying the desired Category
-        :return:            A list of dictionaries
-                            EXAMPLE:
-                            [{'schema_code': 'i', 'entity_id': '1','width': 450, 'basename': 'my_pic', 'suffix': 'PNG', pos: 0, 'class_name': 'Image'},
-                             {'schema_code': 'h', 'entity_id': '1', 'text': 'Overview', pos: 10, 'class_name': 'Header'},
-                             {'schema_code': 'n', 'entity_id': '1', 'basename': 'overview', 'suffix': 'htm', pos: 20, 'class_name': 'Note'},
-                             {'schema_code': 'rs', 'class_name': 'Recordset', 'class_handler': 'recordsets', 'entity_id': '6965', 'pos': 86, 'n_group': '4', 'order_by': 'name', 'class': 'YouTube Channel'}
-                            ]
-        """
-
-        # Locate all the Content Items linked to the given Category, and also extract the name of the schema Class they belong to
-        # TODO: phase out in favor of get_content_items_by_category()
-
-        q = '''
-            MATCH (n) -[r :BA_in_category]-> (:Category {entity_id: $category_id}),
-            (cl :CLASS)
-            WHERE cl.name = n.`_CLASS`
-            RETURN n, 
-                   r.pos AS pos, cl.name AS class_name, cl.handler AS class_handler, cl.code AS class_code, id(n) AS internal_id
-            ORDER BY r.pos
-            '''
-
-        # TODO: class_code is being phased out in favor of the new class_handler
-
-        result = cls.db.query(q, data_binding={"category_id": entity_id})
-        #cls.db.debug_query_print(q, data_binding={"category_id": entity_id})
-
-
-        content_item_list = []
-        for elem in result:
-            item_record = elem["n"]             # A dictionary with the various fields
-
-            # TODO: eliminate possible conflict if the node happens to have
-            #       attributes named "pos" or "class_name"!
-            #       Ought to return elements that are dictionaries such as:
-            #           {"pos": 15, "class_name": "Recordset", "class_handler": "recordsets", "properties": {...}}
-            #           OR: {"metadata": {...}, "properties": {...}}
-
-            item_record["pos"] = elem["pos"]                # Inject into the record a positional value
-            item_record["class_name"] = elem["class_name"]  # Inject into the record the name of its Class
-            item_record["internal_id"] = elem["internal_id"]  # Inject into the record the internal node ID
-
-            if elem.get("class_handler"):
-                item_record["class_handler"] = elem["class_handler"]    # Inject into the record the handler of its Class (not always present)
-
-            if elem.get("class_code"):
-                item_record["schema_code"] = elem["class_code"]         # Inject into the record the Class code (renamed "schema_code")
-                                                                        # TODO: temp, during phaseout of "schema_code" in favor of "class_handler"
-            #if ("schema_code" in elem) and (elem["schema_code"]) and ("schema_code" not in item_record):
-                #item_record["schema_code"] = elem["schema_code"]
-
-
-            if "date_created" in item_record:   # TODO: this is a hack, to clean up!
-                del item_record["date_created"] # Datetime objects aren't serializable and lead to Flask errors
-                                                # TODO: let GraphAccess handle the conversion to string
-                                                # TODO: utilize a "type" attribute in the Schema Property node,
-                                                #       to inform of the "datetime" data type
-
-            content_item_list.append(item_record)
-
-        #print(f"****** content_item_list: ", content_item_list)
-        GraphSchema.remove_schema_info(content_item_list)    # Zap any low-level Schema-related data
-
-        return content_item_list
-
-
-
 
 
 
@@ -1152,41 +1082,44 @@ class Categories:
 
 
     @classmethod
-    def add_content_at_end(cls, category_uri :str, item_class_name: str, item_properties: dict, new_uri=None, namespace="data_node") -> str:
+    def add_content_at_end(cls, category_entity_id :str, item_class_name: str, item_properties: dict,
+                           new_entity_id=None, namespace="data_node") -> (str, str|int):
         """
         Add a NEW Content Item, with the given properties and Class, to the end of the specified Category collection.
-        First, create a new Data Node, and then link it to the given Category, positioned at the end.
+        First, create a new Data Node, and then link it to the given Category, marking it as being positioned at the end.
 
-        :param category_uri:    A string to identify the Category
-                                    to which this Content Media being newly-created is to be attached
-        :param item_class_name: For example, "Image"
-        :param item_properties: A dictionary with keys such as "width", "height", "caption","basename", "suffix"
-                                    NOTE: if the Class was declared as "strict",
-                                          then any key not declared in the Schema gets silently ignored
-        :param new_uri:         Normally, if None (default) the Item ID is auto-generated,
-                                    but it can also be provided (if provided, it MUST be unique)
-        :param namespace:       Only applicable if new_uri is None : the namespace to use for automatically generating a URI
-        :return:                The "entity_id" (passed or created) of the newly-created data node
+        :param category_entity_id:  The Entity ID to identify the Category
+                                        to which this Content Item being newly-created is to be attached
+        :param item_class_name:     For example, "Image"
+        :param item_properties:     A dictionary with keys such as "width", "height", "caption","basename", "suffix"
+                                        NOTE: if the Class was declared as "strict",
+                                              then any key not declared in the Schema gets silently ignored
+        :param new_entity_id:       Normally, if None (default) the Item ID is auto-generated,
+                                        but it can also be provided (if provided, it MUST be unique within "Category" nodes)
+        :param namespace:           Only applicable if `new_entity_id` is None : the namespace to use
+                                        for automatically generating a new Entity ID
+        :return:                    A pair with the internal database ID,
+                                        and the Entity ID (passed or created), of the newly-created data node
         """
-        # TODO: maybe also return the internal database ID of the newly-created node
-        if new_uri is None:
+        # TODO: make similar functions also return the internal database ID of the newly-created node
+        if new_entity_id is None:
             # If a URI was not provided for the newly-created node,
             # then auto-generate it: obtain (and reserve) the next auto-increment value in the given namespace
-            new_uri = GraphSchema.reserve_next_entity_id(namespace=namespace)    # Returns a string
+            new_entity_id = GraphSchema.reserve_next_entity_id(namespace=namespace)    # Returns a string
 
 
-        GraphSchema.create_data_node(class_name=item_class_name, properties=item_properties,
-                                     extra_labels="BA", new_entity_id=new_uri,
-                                     silently_drop=True)
+        new_internal_id = GraphSchema.create_data_node(class_name=item_class_name, properties=item_properties,
+                                                       extra_labels="BA", new_entity_id=new_entity_id,
+                                                       silently_drop=True)
         # NOTE: properties such as  "basename", "suffix" are stored with the Image or Document node,
         #       NOT with the Content Item node ;
         #       this is allowed by our convention about "INSTANCE_OF" relationships
 
         #print(f"add_content_at_end(): Created new Data Node with new_internal_id = {new_internal_id} and new_uri = '{new_uri}'")
 
-        cls.link_content_at_end(category_entity_id=category_uri, item_entity_id=new_uri, item_class_name=item_class_name)
+        cls.link_content_at_end(category_entity_id=category_entity_id, item_entity_id=new_entity_id, item_class_name=item_class_name)
 
-        return new_uri
+        return (new_internal_id, new_entity_id)
 
 
 
@@ -1263,7 +1196,7 @@ class Categories:
 
 
     @classmethod
-    def relocate_across_categories(cls, items :Union[List[str], str], from_category :str, to_category :str):
+    def relocate_across_categories(cls, items :list|str|int, from_category :str, to_category :str):
         """
         Given an existing list of data nodes (representing "Content Items" attached to the specified "from" Category),
         switch each of them to become a "Content Item" of the "to" Category, positioned at the end of it.
@@ -1273,14 +1206,15 @@ class Categories:
 
         Return the number of Content Items successfully relocated.
 
-        :param items:           URI, or list of URI's, of Data Node(s)
+        :param items:           Internal database ID of a of Data Node, or a list of them,
                                     representing a "Content Items" attached to the "from" Category below
-        :param from_category:   The URI of a Category Data Node to which the above Content Item(s) are connected
-        :param to_category:     The URI of a Category Data Node to which the above Content Item(s) needs to be switched to
+        :param from_category:   The Entity ID of a Category Data Node to which the above Content Item(s) are connected
+        :param to_category:     The Entity ID of a Category Data Node to which the above Content Item(s) needs to be switched to
         :return:                The number of Content Items successfully relocated
         """
         # TODO: Don't relocate Content Items that are already tagged with the new Category!!
         return Collections.bulk_relocate_to_other_collection_at_end(items=items,
+                                                             collection_class="Category",
                                                              from_collection=from_category, to_collection=to_category,
                                                              membership_rel_name="BA_in_category")
 

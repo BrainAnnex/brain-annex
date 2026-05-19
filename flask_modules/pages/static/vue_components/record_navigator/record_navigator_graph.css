@@ -12,12 +12,34 @@ div.records-outerbox {
 
 /* Box around each individual record */
 p.record {
+    position: relative;
     border: 1px solid #CCC;
     padding-bottom: 5px;
     padding-left: 3px;
     margin-bottom:2px;
     margin-top:3px;
+}
 
+/* draw the horizontal connector */
+p.record.record-child::before {
+    content: "";
+    position: absolute;
+    left: -20px;
+    top: 1.2em;
+
+    width: 14px;
+    border-top: 1px solid #888;
+}
+
+/* draw the vertical connector */
+p.record.record-child::after {
+    content: "";
+    position: absolute;
+    left: -20px;
+    top: -4px;
+    height: 24px;
+
+    border-left: 1px solid #888;
 }
 
 p.record-active {

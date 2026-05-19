@@ -21,6 +21,7 @@ class SiteLink:
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
+
         if not GraphSchema.class_name_exists("Content Item"):
             Categories.add_to_schema()
 
@@ -32,4 +33,3 @@ class SiteLink:
 
             # Ensure that the URL's will be constrained to be unique
             GraphSchema.db.create_constraint(label="Site Link", key="url", name="unique_bookmarks")
-
