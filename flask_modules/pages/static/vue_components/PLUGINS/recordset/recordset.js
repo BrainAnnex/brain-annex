@@ -1,5 +1,5 @@
 /*  Vue component to display and edit Content Items of type "rs" (Recordsets)
-    TODO: rename 'vue-plugin-recordsets'
+    TODO: rename 'vue-plugin-recordset'
  */
 
 Vue.component('vue-plugin-rs',
@@ -11,7 +11,7 @@ Vue.component('vue-plugin-rs',
                                             caption: "Restaurants - Berkeley locations",
                                             fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields;
                                                                             //      this might be blank or missing
-                                                                            //      TODO: rename to something like `fields_to_show` (but avoid collision with local names)
+                                                                            //      TODO: rename to `fields_to_show` (but avoid collision with local names)
                                             filter_label: "Restaurants",
                                             n_group: 10,
                                             order_by: "name",
@@ -70,6 +70,7 @@ Vue.component('vue-plugin-rs',
                 </div>
 
 
+                <!-- The DATA TABLE -->
 
                 <!-- For the max-width attribute to work, there must not be a 'display: inline-block' in any of its ancestors -->
                 <div class="dragscroll" style="margin-top: 0; max-width: 99%; overflow: auto">
@@ -79,6 +80,9 @@ Vue.component('vue-plugin-rs',
                         <tr>
                             <th v-for="field_name in headers_to_include">
                                 {{insert_blanks(field_name)}}
+                                <img src='/BA/pages/static/graphics/block_24_10233565.png'
+                                 title="Remove from filter. The data won't be affected"
+                                 alt="Remove from filter. The data won't be affected">
                             </th>
                             <th v-show="editing_mode">
                                 EDIT
@@ -219,8 +223,7 @@ Vue.component('vue-plugin-rs',
                         <tr>
                             <td style="text-align: right">Filter Label</td>
                             <td>
-                                <!--<input v-model="current_data.filter_label" size="35" style="font-weight: bold">-->
-                                <select v-model="current_data.filter_label">
+                                <select  @change='label_selected'  v-model="current_data.filter_label">
                                     <option disabled value='-1'>[Choose an option]</option>
                                     <option v-for="item in all_labels"
                                             v-bind:value="item">
@@ -241,7 +244,8 @@ Vue.component('vue-plugin-rs',
                             <td style="text-align: right">Order by</td>
                             <td>
                                 <input v-model="current_data.order_by" size="40">
-                                </td>
+                                <span style="color:gray">(Comma-separated field names, optionally followed by DESC)</span>
+                            </td>
                         </tr>
 
                         <!--
@@ -338,7 +342,8 @@ Vue.component('vue-plugin-rs',
 
 
             return {
-                headers: [],            // EXAMPLE:  ["quote", "attribution", "notes"]
+                headers: [],            // The name of the table columns being shown
+                                        // EXAMPLE:  ["quote", "attribution", "notes"]
 
                 recordset: [],          // Array of records to show together (in the context of previous/next navigation)
                                         // This will get set by querying the server when the page loads
@@ -662,9 +667,20 @@ Vue.component('vue-plugin-rs',
 
 
 
+            /**
+             * Invoked when the user picks a new label from a pulldown menu (only visible in editing mode)
+             */
+            label_selected()
+            {
+               console.log(`Just selected the label: "${this.current_data.filter_label}"`);
+               this.get_fields();   // Make a server call
+            },
+
+
+
 
             /*
-                -------------   SERVER CALLS   -------------
+                ------------------   SERVER CALLS   ------------------
              */
 
             save_record_edit()
@@ -923,12 +939,13 @@ Vue.component('vue-plugin-rs',
 
 
 
-            get_all_labels()
-            /*  Make a server call to obtain all the node labels present in the database
+            /**
+             * Make a server call to obtain all the node labels present in the database
                 EXAMPLE:   ['label_1', 'label_2']
 
                 If successful, it will update the value for this.all_labels
-            */
+             */
+            get_all_labels()
             {
                 console.log(`In get_all_labels()`);
 
@@ -968,15 +985,17 @@ Vue.component('vue-plugin-rs',
 
 
 
-            get_fields()
-            /*  Make a server call to obtain all Schema field of the Class that this recordset is based on
+            /**
+             * Make a server call to obtain all the field names associated to a sample of nodes with the given label.
+                TODO: also attemp to extract the Schema fields of the Class that this recordset is based on
                 E.g.
                     GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                 to fetch:
                     ['quote', 'attribution', 'notes']
 
                 If successful, it will update the value for this.headers
-            */
+             */
+            get_fields()
             {
                 console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
@@ -985,7 +1004,7 @@ Vue.component('vue-plugin-rs',
                 const data_obj = {label: this.current_data.filter_label,
                                   include_ancestors: true,
                                   exclude_system: true
-                                 };
+                                 };     // TODO: also consider passing `class_name`, if present
 
                 console.log(`About to contact the server at ${url_server_api} .  GET object:`);
                 console.log(data_obj);
