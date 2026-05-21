@@ -449,7 +449,7 @@ Vue.component('vue-plugin-rs',
                 fields_array = this.string_to_array(this.current_data.fields);
 
             this.fields_to_show = fields_array;
-            this.fields_to_show_pre_edit = Object.values(fields_array);     // Clone of array, to store a backup copy, in case edit is cancelled
+            this.fields_to_show_pre_edit = Array.from(fields_array);     // Clone of array, to store a backup copy, in case edit is cancelled
 
             this.current_data.fields_array =  Object.values(fields_array);       // TODO: phase out?
             this.original_data.fields_array = Object.values(fields_array);       // TODO: phase out?
@@ -601,7 +601,7 @@ Vue.component('vue-plugin-rs',
                 // Restore the data to how it was prior to the aborted changes
 
                 this.current_data = Object.assign({}, this.original_data);              // Clone from original_data
-                this.fields_to_show = Object.assign({}, this.fields_to_show_pre_edit);  // Clone from pre-edit data
+                this.fields_to_show = Array.from(this.fields_to_show_pre_edit);  // Clone from pre-edit data
 
                 this.recordset_editing = false;               // Exit the editing mode for the recordset definition
             }, // cancel_recordset_edit
@@ -940,7 +940,7 @@ Vue.component('vue-plugin-rs',
 
                     // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);              // Clone
-                    this.fields_to_show_pre_edit = Object.assign({}, this.fields_to_show);  // Clone
+                    this.fields_to_show_pre_edit = Array.from(this.fields_to_show);  // Clone
 
                     this.get_fields();          // Fetch from the server the field names for this Recordset
                     this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
