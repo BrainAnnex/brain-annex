@@ -698,6 +698,12 @@ Vue.component('vue-plugin-rs',
                     alert("Cannot remove the last field");
                     return;
                 }
+                if (this.fields_to_show.length == 0)  {     // An empty list by our convention means "show all"
+                    console.log(`remove_from_filter(): re-building the fields_to_show variable`);
+                    this.fields_to_show = Array.from(this.headers);          // Clone the array of all available headers
+                    this.fields_to_show_pre_edit = Array.from(this.headers); // Clone the array of all available headers
+                }
+
                 const index = this.fields_to_show.indexOf(field_name);
                 if (index !== -1)  {
                     this.fields_to_show.splice(index, 1);
