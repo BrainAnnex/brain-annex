@@ -364,7 +364,7 @@ Vue.component('vue-plugin-f',
 
 
             /*
-                 ---------------  SERVER CALLS  ---------------
+                 ---------------------  SERVER CALLS  ---------------------
              */
 
 
@@ -455,7 +455,11 @@ Vue.component('vue-plugin-f',
                     alert("Cannot save an empty `sideB_field`. If you want to get rid of this Flash Card, delete it instead");
                     return;
                 }
-
+                if (! 'reverse_odds' in this.current_data) {
+                    // TODO: also enforce data type and range [0-0.5]
+                    alert("Cannot save an empty `reverse_odds`. If you want to get rid of this Flash Card, delete it instead");
+                    return;
+                }
 
                 if (this.current_metadata.entity_id < 0)     // Negative entity_id is a convention indicating a new Content Item to create
                     // Needed for NEW Content Items
@@ -488,8 +492,9 @@ Vue.component('vue-plugin-f',
                                   insert_after_class: this.current_metadata.insert_after_class,   // Class of Content Item to insert after
 
                                   source_label: this.current_data.source_label,
-                                  sideA_field: this.current_data.sideA_field,
-                                  sideB_field: this.current_data.sideB_field
+                                  sideA_field:  this.current_data.sideA_field,
+                                  sideB_field:  this.current_data.sideB_field,
+                                  reverse_odds: this.current_data.reverse_odds
                                   };
 
                 console.log(`In 'vue-plugin-f'.  About to contact the server at "${url_server_api}" .  POST object:`);
@@ -516,8 +521,9 @@ Vue.component('vue-plugin-f',
                                   class_name: "Flash Card",
 
                                   source_label: this.current_data.source_label,
-                                  sideA_field: this.current_data.sideA_field,
-                                  sideB_field: this.current_data.sideB_field
+                                  sideA_field:  this.current_data.sideA_field,
+                                  sideB_field:  this.current_data.sideB_field,
+                                  reverse_odds: this.current_data.reverse_odds
                                   };
 
                 console.log(`In 'vue-plugin-f'.  About to contact the server at "${url_server_api}" .  POST object:`);
