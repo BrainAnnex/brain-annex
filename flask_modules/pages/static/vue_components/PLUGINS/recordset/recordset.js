@@ -1,5 +1,5 @@
 /*  Vue component to display and edit Content Items of type "rs" (Recordsets)
-    TODO: rename 'vue-plugin-recordsets'
+    TODO: rename 'vue-plugin-recordset'
  */
 
 Vue.component('vue-plugin-rs',
@@ -11,7 +11,7 @@ Vue.component('vue-plugin-rs',
                                             caption: "Restaurants - Berkeley locations",
                                             fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields;
                                                                             //      this might be blank or missing
-                                                                            //      TODO: rename to something like `fields_to_show` (but avoid collision with local names)
+                                                                            //      TODO: rename to `fields_to_show` (but avoid collision with local names)
                                             filter_label: "Restaurants",
                                             n_group: 10,
                                             order_by: "name",
@@ -70,6 +70,7 @@ Vue.component('vue-plugin-rs',
                 </div>
 
 
+                <!-- The DATA TABLE -->
 
                 <!-- For the max-width attribute to work, there must not be a 'display: inline-block' in any of its ancestors -->
                 <div class="dragscroll" style="margin-top: 0; max-width: 99%; overflow: auto">
@@ -79,6 +80,11 @@ Vue.component('vue-plugin-rs',
                         <tr>
                             <th v-for="field_name in headers_to_include">
                                 {{insert_blanks(field_name)}}
+                                <img @click="remove_from_filter(field_name)" class="clickable-icon"
+                                 src='/BA/pages/static/graphics/block_24_10233565.png'
+                                 title="Remove from filter. The data won't be affected"
+                                 alt="Remove from filter. The data won't be affected"
+                                 style="margin-left:10px">
                             </th>
                             <th v-show="editing_mode">
                                 EDIT
@@ -219,8 +225,7 @@ Vue.component('vue-plugin-rs',
                         <tr>
                             <td style="text-align: right">Filter Label</td>
                             <td>
-                                <!--<input v-model="current_data.filter_label" size="35" style="font-weight: bold">-->
-                                <select v-model="current_data.filter_label">
+                                <select  @change='label_selected'  v-model="current_data.filter_label">
                                     <option disabled value='-1'>[Choose an option]</option>
                                     <option v-for="item in all_labels"
                                             v-bind:value="item">
@@ -241,7 +246,8 @@ Vue.component('vue-plugin-rs',
                             <td style="text-align: right">Order by</td>
                             <td>
                                 <input v-model="current_data.order_by" size="40">
-                                </td>
+                                <span style="color:gray">(Comma-separated field names, optionally followed by DESC)</span>
+                            </td>
                         </tr>
 
                         <!--
@@ -338,7 +344,8 @@ Vue.component('vue-plugin-rs',
 
 
             return {
-                headers: [],            // EXAMPLE:  ["quote", "attribution", "notes"]
+                headers: [],            // A complete list of ALL the names of the table columns
+                                        // EXAMPLE:  ["quote", "attribution", "notes"]
 
                 recordset: [],          // Array of records to show together (in the context of previous/next navigation)
                                         // This will get set by querying the server when the page loads
@@ -371,18 +378,20 @@ Vue.component('vue-plugin-rs',
                 /* This `current_data` object - with the metadata of the recordset - contains the values bound
                       to the editing fields in the UI, initially cloned from the prop data;
                       it'll change in the course of the edit-in-progress.
-                      EXAMPLE: {class_name: "Recordset", class_handler: "recordsets", pos: 12, entity_id: "rs-4",
-                                caption: "Verbs", filter_label: "French Vocabulary", n_group: 5}
+                      EXAMPLE: {caption: "Verbs", filter_label: "French Vocabulary", n_group: 5,
+                                clause_key: "grammar", clause_value: "noun", order_by: "cluster, French DESC"}
                       NOTE:  the property `fields_to_show` is managed separately
 
                  */
                 current_data: Object.assign({}, this.item_fields),    // Initially clone from the original data passed to this component
-
+                // TODO: rename to `pre_edit_data`, for consistency?
 
                 // Clone of the above object, used to restore the original data in case of a Cancel or failed save
                 original_data: Object.assign({}, this.item_fields),   // Initially clone from the original data passed to this component
 
                 // Private copy of the metadata
+                // EXAMPLE: {class_name: "Recordset", class_handler: "recordsets", pos: 12, entity_id: "rs-4",
+                //           internal_id : 252, schema_code: "rs"}
                 current_metadata:   Object.assign({}, this.item_metadata),
                 
                 // The following applies to the single record currently being edited (just one at most).
@@ -531,11 +540,14 @@ Vue.component('vue-plugin-rs',
 
 
 
+            /**
+             *  For the purpose of facilitating the breakup, by the browser,
+             *  of long headers into multiple lines,
+             *  insert a blank space after each underscore and each "/".
+             *  EXAMPLE: "max_temp/safe_temp" will be returned as "max_ temp/ safe_ temp"
+             */
             insert_blanks(str)
-            /*  For the purpose of facilitating the breakup by the browser
-                of long headers into multiple lines,
-                insert a blank space after each underscore and each "/".
-                EXAMPLE: "max_temp/safe_temp" will be returned as "max_ temp/ safe_ temp"
+            /*
              */
             {
                 var transformed = str.replace(/_/g, '_ ');      // Insert a blank after each of the underscores in the string
@@ -564,9 +576,11 @@ Vue.component('vue-plugin-rs',
             },
 
 
+            /**
+             * Invoked by the clicking on the EDIT button for the overall recordset definition,
+             * as well as in cases of a new recordset, upon the "mounting" of the component
+             */
             edit_recordset()
-            // Invoked the clicking on the EDIT button for the overall recordset definition,
-            // as well as in cases of new recordset upon the "mounting" of the component
             {
                 console.log(`In edit_recordset(): editing entire recordset`);
                 this.recordset_editing = true;
@@ -586,8 +600,8 @@ Vue.component('vue-plugin-rs',
             {
                 // Restore the data to how it was prior to the aborted changes
 
-                this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
-                this.fields_to_show = this.fields_to_show_pre_edit;         // Restored from pre-edit data
+                this.current_data = Object.assign({}, this.original_data);              // Clone from original_data
+                this.fields_to_show = Object.assign({}, this.fields_to_show_pre_edit);  // Clone from pre-edit data
 
                 this.recordset_editing = false;               // Exit the editing mode for the recordset definition
             }, // cancel_recordset_edit
@@ -662,9 +676,47 @@ Vue.component('vue-plugin-rs',
 
 
 
+            /**
+             * Invoked when the user picks a new label from a pulldown menu (only visible in editing mode)
+             */
+            label_selected()
+            {
+               console.log(`label_selected(): just selected "${this.current_data.filter_label}"`);
+               this.get_fields();   // Make a server call
+            },
+
+
+
+            /**
+             * Invoked when the user click on any of the icons to drop columns
+             */
+            remove_from_filter(field_name)
+            {
+                console.log(`remove_from_filter(): removing field "${field_name}"`);
+
+                if (this.fields_to_show.length == 1)  {
+                    alert("Cannot remove the last field");
+                    return;
+                }
+                if (this.fields_to_show.length == 0)  {     // An empty list by our convention means "show all"
+                    console.log(`remove_from_filter(): re-building the fields_to_show variable`);
+                    this.fields_to_show = Array.from(this.headers);          // Clone the array of all available headers
+                    this.fields_to_show_pre_edit = Array.from(this.headers); // Clone the array of all available headers
+                }
+
+                const index = this.fields_to_show.indexOf(field_name);
+                if (index !== -1)  {
+                    this.fields_to_show.splice(index, 1);
+                    this.save_recordset_edit();
+                }
+                else
+                    alert(`Unable to remove the field "${field_name}" from the filter. Try refreshing the page`);
+            },
+
+
 
             /*
-                -------------   SERVER CALLS   -------------
+                ------------------   SERVER CALLS   ------------------
              */
 
             save_record_edit()
@@ -680,7 +732,7 @@ Vue.component('vue-plugin-rs',
                                     internal_id: this.record_latest._internal_id
                                  };     // Note: not using (at least for now, `entity_id` nor `class_name`)
 
-                // Go over each field name of the recordset
+                // Go over each field name (ALL the fields) of the recordset
                 for (let field_name of this.headers)    // Looping over array
                     post_obj[field_name] = this.record_latest[field_name];
 
@@ -719,23 +771,6 @@ Vue.component('vue-plugin-rs',
 
                     // Update the item in the recordset array that corresponds to the current record
                     this.refresh_current_page();    // Refresh the current page
-
-                    /*
-                    var internal_id = this.record_latest._internal_id;
-
-                    const recordset_length = this.recordset.length;
-
-                    for (var i = 0; i < recordset_length; i++) {
-                        if (this.recordset[i]._internal_id == internal_id)  {
-                            //console.log("    record to update was located in recordset at position: ", i);
-                            break;
-                        }
-                    }
-                    if (i == recordset_length)
-                        alert("Unable to refresh record : try reloading the page");
-                    else
-                        Vue.set(this.recordset, i, this.record_latest);
-                    */
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -853,9 +888,8 @@ Vue.component('vue-plugin-rs',
                     var post_obj = {entity_id: this.current_metadata.entity_id,
                                     class_name: this.current_metadata.class_name,
 
-                                    filter_label: this.current_data.filter_label,  // Used to identify nodes considered part of  this Recordset
-                                    //fields: this.current_data.fields,
-                                    fields: this.fields_to_show.join(", "),             // EXAMPLE: "name, city, rating"
+                                    filter_label: this.current_data.filter_label,   // Used to identify nodes considered part of  this Recordset
+                                    fields: this.fields_to_show.join(", "),         // EXAMPLE: "name, city, rating"
                                     n_group: n_group,
                                     order_by: this.current_data.order_by,
                                     clause_key: this.current_data.clause_key,
@@ -905,7 +939,8 @@ Vue.component('vue-plugin-rs',
                     this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the current one
-                    this.original_data = Object.assign({}, this.current_data);  // Clone
+                    this.original_data = Object.assign({}, this.current_data);              // Clone
+                    this.fields_to_show_pre_edit = Object.assign({}, this.fields_to_show);  // Clone
 
                     this.get_fields();          // Fetch from the server the field names for this Recordset
                     this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
@@ -923,12 +958,13 @@ Vue.component('vue-plugin-rs',
 
 
 
-            get_all_labels()
-            /*  Make a server call to obtain all the node labels present in the database
+            /**
+             * Make a server call to obtain all the node labels present in the database
                 EXAMPLE:   ['label_1', 'label_2']
 
                 If successful, it will update the value for this.all_labels
-            */
+             */
+            get_all_labels()
             {
                 console.log(`In get_all_labels()`);
 
@@ -968,15 +1004,17 @@ Vue.component('vue-plugin-rs',
 
 
 
-            get_fields()
-            /*  Make a server call to obtain all Schema field of the Class that this recordset is based on
+            /**
+             * Make a server call to obtain all the field names associated to a sample of nodes with the given label.
+                TODO: also attemp to extract the Schema fields of the Class that this recordset is based on
                 E.g.
                     GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                 to fetch:
                     ['quote', 'attribution', 'notes']
 
                 If successful, it will update the value for this.headers
-            */
+             */
+            get_fields()
             {
                 console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_metadata.entity_id}'`);
 
@@ -985,7 +1023,7 @@ Vue.component('vue-plugin-rs',
                 const data_obj = {label: this.current_data.filter_label,
                                   include_ancestors: true,
                                   exclude_system: true
-                                 };
+                                 };     // TODO: also consider passing `class_name`, if present
 
                 console.log(`About to contact the server at ${url_server_api} .  GET object:`);
                 console.log(data_obj);

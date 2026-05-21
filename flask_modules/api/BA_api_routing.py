@@ -446,7 +446,9 @@ class ApiRouting:
         def get_class_properties_api():
             """
             Get all Properties of the given Class node (as specified by its name),
-            optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
+            OR all field names associated to a sample of nodes with the given label.
+
+            Optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class;
             if no Class node is found, an empty list is returned.
 
@@ -542,13 +544,15 @@ class ApiRouting:
 
             try:
                 # Fetch all the Properties
-                if class_name:
+                if class_name:      # Lookup by Schema
                     prop_list = GraphSchema.get_class_properties(**json_data, class_node=class_name)
-                else:
-                    prop_set = GraphSchema.db.sample_properties(label=label, sample_size=30)    # Estimate the list of properties by label
+                    #print("SCHEMA PATH.  prop_list: ", prop_list)
+                else:               # Lookup by a sample of nodes with the given label
+                    prop_set = GraphSchema.db.sample_properties(label=label, sample_size=300)    # Estimate the list of properties by label
+                    #print("LABEL PATH.  prop_set: ", prop_set)
                     # Take out Schema-related properties, if present
-                    prop_set.discard("_CLASS")      # Remove if present
-                    prop_set.discard("entity_id")         # Remove if present
+                    prop_set.discard("_CLASS")          # Remove if present
+                    prop_set.discard("entity_id")       # Remove if present
                     prop_list = list(prop_set)
 
                 response_data = {"status": "ok", "payload": prop_list}
