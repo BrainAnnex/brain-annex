@@ -1170,136 +1170,44 @@ def test_get_data_node_id(db):
 
 
 
-def test_data_node_exists_OLD(db):
+def test_data_node_exists_by_id(db):
     db.empty_dbase()
 
-    assert not GraphSchema.data_node_exists_OLD(node_id=123)
-    assert not GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="entity_id", class_name="Car")
-    assert not GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id", class_name="Employee")
+    assert not GraphSchema.data_node_exists_by_id(internal_id=123)
 
     GraphSchema.create_class(name="Car", strict = True)
-    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="c-88")
-    assert GraphSchema.data_node_exists_OLD(node_id=internal_id)
-    assert GraphSchema.data_node_exists_OLD(node_id=internal_id, class_name="Car")
-    assert not GraphSchema.data_node_exists_OLD(node_id=internal_id, class_name="BOAT")
-    assert GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="entity_id", class_name="Car")
-    assert not GraphSchema.data_node_exists_OLD(node_id="c-88", id_key="entity_id", class_name="BOAT")
+    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="car-88")    # Non-existent
 
-    GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
-    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
-    assert GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id", class_name="Employee")
-    assert not GraphSchema.data_node_exists_OLD(node_id=666, id_key="employee id", class_name="Employee")   # Non-existent
-
-    with pytest.raises(Exception):
-        GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id")    # Missing `class_name`
-
-    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45, "remarks": "duplicate"})
-
-    with pytest.raises(Exception):
-        GraphSchema.data_node_exists_OLD(node_id=45, id_key="employee id", class_name="Employee")   # Bad primary key
+    assert GraphSchema.data_node_exists_by_id(internal_id=internal_id)
 
 
-
-def test_data_node_exists(db):
+def test_data_node_exists_by_entity(db):
     db.empty_dbase()
 
-    assert not GraphSchema.data_node_exists(find=123)
-    assert not GraphSchema.data_node_exists(find=("Car", "c-88"))
+    with pytest.raises(Exception):
+        GraphSchema.data_node_exists_by_entity(class_name=666, entity_id="car-88")          # Bad class name
+
+    assert not GraphSchema.data_node_exists_by_entity(class_name="Car", entity_id="car-88")   # Non-existent
 
     GraphSchema.create_class(name="Car", strict = True)
-    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="c-88")
-    assert GraphSchema.data_node_exists(find=internal_id)
-    assert GraphSchema.data_node_exists(find=("Car", "c-88"))
-    assert not GraphSchema.data_node_exists(find=("BOAT", "c-88"))
+    GraphSchema.create_data_node(class_name="Car", new_entity_id="car-88")
+
+    assert not GraphSchema.data_node_exists_by_entity(class_name="Car", entity_id="car-123")    # Non-existent
+    assert not GraphSchema.data_node_exists_by_entity(class_name="Boat", entity_id="car-88")    # Non-existent
+    assert GraphSchema.data_node_exists_by_entity(class_name="Car", entity_id="car-88")
+
+    GraphSchema.create_data_node(class_name="Car", new_entity_id="car-123", extra_labels="Vehicle")
+
+    assert GraphSchema.data_node_exists_by_entity(class_name="Car", entity_id="car-88")
+    assert GraphSchema.data_node_exists_by_entity(class_name="Car", entity_id="car-123")
+
+
+    # Create 2 fake Data Nodes that have duplicate entity ID's
+    db.create_node(labels="Boat", properties={"_CLASS": "Boat", "entity_id": "boat-1"})
+    db.create_node(labels="Boat", properties={"_CLASS": "Boat", "entity_id": "boat-1"})
 
     with pytest.raises(Exception):
-        GraphSchema.data_node_exists(find={})
-
-    with pytest.raises(Exception):
-        GraphSchema.data_node_exists(find=(1, 2, 3))
-
-
-
-
-def test_data_node_exists_EXPERIMENTAL_2(db):
-    db.empty_dbase()
-
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=123, class_name="Unknown")
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("entity_id", "c-88"), class_name="Car")
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee")
-
-    with pytest.raises(Exception):
-        GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("entity_id", "c-88"), class_name="")     # Bad Class bane
-
-    with pytest.raises(Exception):
-        assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=([1, 2], 45), class_name="Employee")  # Bad value for "key_name" (1st element of pair)
-
-    GraphSchema.create_class(name="Car", strict = True)
-    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="c-88")
-    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=internal_id, class_name="Car")
-    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("entity_id", "c-88"), class_name="Car")
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("entity_id", "c-88"), class_name="BOAT")
-
-    GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
-    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
-    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee")
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 666),
-                                                           class_name="Employee")   # Non-existent node
-
-
-    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45, "remarks": "duplicate"})
-
-    # A non-unique search
-    assert GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee",
-                                                       require_unique=False)
-    with pytest.raises(Exception):
-        GraphSchema.data_node_exists_EXPERIMENTAL_2(search=("employee id", 45), class_name="Employee",
-                                                    require_unique=True)   # Bad primary key
-
-
-    # Now try it on a generic database node that is NOT a Data Node
-    internal_id = db.create_node(labels="Truck", properties={"make": "BMW"})    # NOT a Data Node
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL_2(search=internal_id, class_name="Truck")
-
-
-
-def test_data_node_exists_EXPERIMENTAL(db):
-    db.empty_dbase()
-
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(search=123)
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(search={"class_name": "Car", "key_value": "c-88"})
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(
-            search={"class_name": "Employee", "key_name": "employee id", "key_value": 45})
-
-    with pytest.raises(Exception):
-        GraphSchema.data_node_exists_EXPERIMENTAL(search={"class_name": "", "key_value": "c-88"})     # Bad Class bane
-
-    with pytest.raises(Exception):
-        assert not GraphSchema.data_node_exists_EXPERIMENTAL(
-            search={"class_name": "Employee", "key_name": [1, 2], "key_value": 45})  # Bad value for "key_name"
-
-    GraphSchema.create_class(name="Car", strict = True)
-    internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="c-88")
-    assert GraphSchema.data_node_exists_EXPERIMENTAL(search=internal_id)
-    assert GraphSchema.data_node_exists_EXPERIMENTAL(search={"class_name": "Car", "key_value": "c-88"})
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(search={"class_name": "BOAT", "key_value": "c-88"})
-
-    GraphSchema.create_class_with_properties(name="Employee", properties=["employee id", "remarks"], strict=True)
-    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45})
-    assert GraphSchema.data_node_exists_EXPERIMENTAL(
-            search={"class_name": "Employee", "key_name": "employee id", "key_value": 45})
-    assert not GraphSchema.data_node_exists_EXPERIMENTAL(
-            search={"class_name": "Employee", "key_name": "employee id", "key_value": 666})   # Non-existent node
-
-
-    GraphSchema.create_data_node(class_name="Employee", properties={"employee id": 45, "remarks": "duplicate"})
-
-    # A non-unique search
-    assert GraphSchema.data_node_exists_EXPERIMENTAL(
-            search={"class_name": "Employee", "key_name": "employee id", "key_value": 45}, require_unique=False)
-    with pytest.raises(Exception):
-        GraphSchema.data_node_exists_EXPERIMENTAL(
-            search={"class_name": "Employee", "key_name": "employee id", "key_value": 45}, require_unique=True)   # Bad primary key
+        GraphSchema.data_node_exists_by_entity(class_name="Boat", entity_id="boat-1")
 
 
 

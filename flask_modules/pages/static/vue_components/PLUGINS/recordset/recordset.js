@@ -600,7 +600,7 @@ Vue.component('vue-plugin-rs',
             {
                 // Restore the data to how it was prior to the aborted changes
 
-                this.current_data = Object.assign({}, this.original_data);              // Clone from original_data
+                this.current_data = Object.assign({}, this.original_data);       // Clone from original_data
                 this.fields_to_show = Array.from(this.fields_to_show_pre_edit);  // Clone from pre-edit data
 
                 this.recordset_editing = false;               // Exit the editing mode for the recordset definition

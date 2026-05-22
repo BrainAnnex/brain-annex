@@ -1784,81 +1784,89 @@ class GraphSchema:
 
 
     @classmethod
-    def data_node_exists_BEST(cls, internal_id=None, entity=None) -> bool:
+    def data_node_exists_by_id(cls, internal_id :int|str) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
-        If more than 1 node comes up, an Exception is raised.
-
-        EXAMPLES:       data_node_exists(internal_id=123)
-                        data_node_exists(entity_name="Image", entity_id="i-88")
 
         :param internal_id: Internal database ID to identify a Data Node
-        :param entity:      A pair (tuple or list) of strings representing the entity (Class) name and the entity id
-                                of a Data Node
-
-        :return:        True if the specified Data Node exists, or False otherwise
+        :return:            True if the specified Data Node exists, or False otherwise
         """
-        if internal_id is not None:
-            assert entity is None, \
-                "get_single_data_node(): cannot pass both arguments `internal_id` and `entity`"
-            return cls.data_node_exists_OLD(node_id=internal_id)
+        assert CypherUtils.valid_internal_id(internal_id), \
+                f"data_node_exists_by_id(): the argument `internal_id` ({internal_id}) " \
+                f"is not a valid internal database ID value"
 
-        assert type(entity) == tuple or type(entity) == list, \
-            "data_node_exists(): the argument `entity` must either be an internal node id (int or str), or a pair of strings"
+        where_clause = f"WHERE id(dn) = $internal_id"
+        data_binding = {"internal_id" : internal_id}
 
-        assert len(entity) == 2, \
-            "data_node_exists(): if the argument `entity` is passed as a tuple or list, it must have length 2"
+        number_found = cls._data_node_exists(where_clause=where_clause, data_binding=data_binding)
 
-        return cls.data_node_exists_OLD(node_id=entity[1], id_key="entity_id", class_name=entity[0])
-
+        return True if number_found == 1 else False
 
 
     @classmethod
-    def data_node_exists(cls, find :int|str|tuple|list) -> bool:
+    def data_node_exists_by_entity(cls, class_name :str, entity_id :str) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
         If more than 1 node comes up, an Exception is raised.
 
-        EXAMPLES:   data_node_exists(find=123)
-                    data_node_exists(find=("Image", "i-88"))
-
-        :param find:    Either an internal node id (int or str),
-                            or a pair/list of strings representing the entity (Class) name and the entity id
-        :return:        True if the specified Data Node exists, or False otherwise
+        :param class_name:  The name of the schema Class that the Data Node is associated to
+        :param entity_id:   The entity id of the Data Node (in the context of its Class)
+        :return:            True if the specified Data Node exists, or False otherwise
         """
-        '''
-        TODO: *** This form will probably be the MODEL for functions in this class, as far as argument passing goes ***
-              Example of alternate approaches  (maybe #1 is best??):
-                1) data_node_exists(internal_id=123)
-                   data_node_exists(entity=("Image", "i-88"))
-                   
-                2) data_node_exists(internal_id=123)
-                   data_node_exists(entity_name="Image", entity_id="i-88")
-                   
-                3) data_node_exists(search=123)
-                   data_node_exists(search=("entity_id", "i-88"), class_name="Image")
-                   data_node_exists(search=("root", True), class_name="Category")
-        '''
-        if type(find) == int or type(find) == str:
-            return cls.data_node_exists_OLD(node_id=find)
+        assert cls.is_valid_class_name(class_name), \
+                f"data_node_exists_by_entity(): the value passed " \
+                f"to the argument `class_name` ({class_name}) is not a valid Schema Class name"
 
-        assert type(find) == tuple or type(find) == list, \
-            "data_node_exists(): the argument `find` must either be an internal node id (int or str), or a pair of strings"
+        where_clause = f"WHERE (dn.`_CLASS` = $class_name) AND (dn.`entity_id` = $entity_id)"
+        data_binding = {"class_name": class_name, "entity_id" : entity_id}
+        label_str = f":`{class_name}`"
 
-        assert len(find) == 2, \
-            "data_node_exists(): if the argument `find` is passed as a tuple or list, it must have length 2"
+        number_found = cls._data_node_exists(where_clause=where_clause, data_binding=data_binding, label_str=label_str)
 
-        return cls.data_node_exists_OLD(node_id=find[1], id_key="entity_id", class_name=find[0])
+        if number_found == 0:
+            return False
+        elif number_found == 1:
+            return True
+        else:
+            raise Exception(f"data_node_exists_by_entity(): more than 1 node of Class `{class_name}` was found "
+                            f"with the same `entity_id` ({entity_id}), which ought to be unique")
+
+
+    @classmethod
+    def _data_node_exists(cls, where_clause :str, data_binding :dict, label_str=""):
+        """
+        Common helper method.
+        Return the number of database nodes that match on the given label (possibly blank)
+        and the given WHERE clause (using "dn" as dummy name),
+        in the context of the given data_binding dictionary
+
+        :param where_clause:    EXAMPLE: "WHERE (dn.`_CLASS` = $class_name) AND (dn.`entity_id` = $entity_id)"
+        :param data_binding:    EXAMPLE: {"class_name": "Car", "entity_id" : "car-123"}
+        :param label_str:       [OPTIONAL] Database node label name
+        :return:                The number of database nodes that match the given criteria
+        """
+        # TODO: contrast with where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key, class_name=class_name, method="data_node_exists")
+        # TODO: contrast with _data_node_match_helper() and _data_node_match_helper_OLD()
+        q = f'''
+            MATCH (dn {label_str}) 
+            {where_clause}
+            RETURN COUNT(dn) AS number_found
+            '''
+
+        #cls.db.debug_query_print(q, data_binding)
+        number_found = cls.db.query(q, data_binding=data_binding,
+                                    single_cell="number_found")
+
+        return number_found
 
 
 
     @classmethod
-    def data_node_exists_EXPERIMENTAL_2(cls, search :int|str|(tuple), class_name :str, require_unique=True) -> bool:
+    def data_note_search_EXPERIMENTAL(cls, search :int|str|(tuple), class_name :str, require_unique=True) -> list:
         """
-        Return True if the specified Data Node exist, or False otherwise.
-        Optionally, require the result to be unique.
-        TODO: probably a dead end to drop.
-              OR, better yet, turn into a data_note_search() function that returns a list of results; i.e. a simpler version of get_nodes_by_filter()
+        TODO: turn into a data_note_search() function that returns a list of results;
+              i.e. a simpler version of get_nodes_by_filter()
+
         :param search:      Either an internal database ID (int or str),
                             OR a pair consisting of a key_name string and a key_value
 
@@ -1913,145 +1921,13 @@ class GraphSchema:
         q = f'''
             MATCH (dn {label_str}) 
             {where_clause}
-            RETURN COUNT(dn) AS number_found
+            RETURN dn
             '''
 
         #cls.db.debug_query_print(q, data_binding)
-        number_found = cls.db.query(q, data_binding=data_binding,
-                                    single_cell="number_found")
+        result = cls.db.query(q, data_binding=data_binding)
 
-        if number_found == 0:
-            return False
-
-        if require_unique and (dt == tuple):
-            assert number_found == 1, f"data_node_exists(): more than 1 `{class_name}` data node was found " \
-                                      f"with the same value ({key_value}) of what is supposed to be primary (unique) key `{key_name}`"
-
-        return True
-
-
-    @classmethod
-    def data_node_exists_EXPERIMENTAL(cls, search :int|str|dict, require_unique=True) -> bool:
-        """
-        Return True if the specified Data Node exist, or False otherwise.
-        Optionally, require the result to be unique.
-
-        :param search: Either an internal database ID (int or str),
-                        OR a dictionary with the keys
-                                "class_name"
-                                "key_name" (default value "entity_id")
-                                "key_value"
-
-                        EXAMPLES:   123
-                                    {"class_name": "Header", "key_value": "h-88"}
-                                    {"class_name": "Header", "key_value": "h-88", "key_name": "entity_id"}
-                                    {"class_name": "Category", "key_value": True, "key_name": "root"}
-
-                        TODO: alternate names: "node", "node_id", "id", "find_by"
-        :param require_unique:  [OPTIONAL]
-        :return:                True if the specified Data Node exists, or False otherwise
-        """
-        #TODO: explore this style of argument passing as a possible model to adopt class-wide
-        #TODO: consider adding an `include_ancestors` option
-
-        #TODO: use the helper function, as follows:
-        #label_str, where_clause, data_binding = cls._data_node_match_helper(search)
-
-        dt = type(search)
-        assert dt == int or dt == str or dt == dict, \
-            f"data_node_exists(): the argument `search` must be an int or a string or a dict"
-
-        if dt == dict:
-            class_name = search.get("class_name")
-            assert class_name is not None, \
-                f"data_node_exists(): if the argument `search` is a dict, it must contain the key 'class_name'"
-            assert cls.is_valid_class_name(class_name), \
-                f"data_node_exists(): the value `{class_name}` passed " \
-                f"as 'class_name' is not a valid Schema Class name"
-
-            key_value = search.get("key_value")
-            assert class_name is not None, \
-                f"data_node_exists(): if the argument `search` is a dict, it must contain the key 'key_value'"
-
-            key_name = search["key_name"]  if "key_name" in search  else "entity_id"
-            assert type(key_name) == str, \
-                f"data_node_exists(): the value ({key_name}) passed " \
-                f"as 'key_name' must be a string; the passed value was {type(key_name)}"
-
-            # Prepare a Cypher query to locate the number of the data nodes
-            where_clause = f"WHERE (dn.`{key_name}` = $key_value) AND (dn.`_CLASS` = $class_name)"
-            data_binding = {"key_value" : key_value, "class_name": class_name}
-            label_str = f":`{class_name}`"
-        else:
-            # Match by internal database ID
-            assert CypherUtils.valid_internal_id(search), \
-                f"data_node_exists(): the argument `internal_id` ({search}) " \
-                f"is not a valid internal database ID value"
-
-            where_clause = f"WHERE (id(dn) = $node_id)"
-            data_binding = {"node_id" : search}
-            label_str = ""
-
-
-        q = f'''
-            MATCH (dn {label_str}) 
-            {where_clause}
-            RETURN COUNT(dn) AS number_found
-            '''
-
-        #cls.db.debug_query_print(q, data_binding)
-        number_found = cls.db.query(q, data_binding=data_binding,
-                                    single_cell="number_found")
-
-        if number_found == 0:
-            return False
-
-        if require_unique and (dt == dict):
-            assert number_found == 1, f"data_node_exists(): more than 1 `{class_name}` data node was found " \
-                                      f"with the same value ({key_value}) of the primary key `{key_name}`, which ought to be unique"
-
-        return True
-
-
-
-    @classmethod
-    def data_node_exists_OLD(cls, node_id, id_key=None, class_name=None) -> bool:
-        """
-        Return True if the specified Data Node exists, or False otherwise.
-        If opting to search by primary key, and more than 1 node comes up, an Exception is raised.
-
-        EXAMPLES:       data_node_exists(123)
-                        data_node_exists(node_id="i-123", id_key="entity_id", class_name="Image")
-
-        :param node_id:     Either an internal database ID (int or str), or a primary key value
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "entity_id" or "entity_id".
-                                Alternatively, leave blank to use the internal database ID
-        :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
-        :return:            True if the specified Data Node exists, or False otherwise
-        """
-        #TODO: consider adding an `include_ancestors` option
-
-        # Prepare a Cypher query to locate the number of the data nodes
-        where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key, class_name=class_name, method="data_node_exists")
-
-        q = f'''
-            MATCH (dn) 
-            {where_clause}
-            RETURN COUNT(dn) AS number_found
-            '''
-
-        #cls.db.debug_query_print(q, data_binding)
-        number_found = cls.db.query(q, data_binding=data_binding,
-                                    single_cell="number_found")
-
-        if number_found == 0:
-            return False
-        elif number_found == 1:
-            return True
-        else:
-            raise Exception(f"data_node_exists(): more than 1 `{class_name}` node was found "
-                            f"with the same `{id_key}` ({node_id}), which ought to be unique")
-
+        return result
 
 
 
@@ -3589,7 +3465,7 @@ class GraphSchema:
                                 Blanks at the start/end of string values are zapped
         :param drop_blanks: If True, then any blank field is interpreted as a request to drop that property
                                 (as opposed to setting its value to "")
-        :param class_name:  [OPTIONAL] The name of the Class to which the given Data Node is part of;
+        :param class_name:  [OPTIONAL] The name of the Class that the given Data Node is part of;
                                 if provided, it gets enforced
         :param label:       [OPTIONAL] The name of a Label on the given Data Node;
                                 if provided, it gets enforced (but `class_name` takes priority over `label`, FOR NOW)

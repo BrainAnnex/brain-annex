@@ -538,13 +538,13 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def create_node(self, labels, properties=None) -> int|str:
+    def create_node(self, labels :str|list|tuple, properties=None) -> int|str:
         """
         Create a new node with the given label(s),
         and with the attributes/values specified in the properties dictionary.
         Return the internal database ID of the node just created.
 
-        :param labels:      A string, or list/tuple of strings, specifying Neo4j labels (ok to have blank spaces);
+        :param labels:      A string, or list/tuple of strings, specifying graph-database labels (ok to have blank spaces);
                                 it's acceptable to be None
         :param properties:  OPTIONAL (possibly empty or None) dictionary of properties to set for the new node.
                                 EXAMPLE: {'age': 22, 'gender': 'F'}
@@ -1151,7 +1151,7 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def set_fields(self, match: Union[int, str, CypherBuilder], set_dict: dict, drop_blanks=True) -> int:
+    def set_fields(self, match :int|str|CypherBuilder, set_dict: dict, drop_blanks=True) -> int:
         """
         Update, possibly adding and/or dropping fields, the properties of an existing node or group of nodes.
 
