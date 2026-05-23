@@ -1862,7 +1862,7 @@ class GraphSchema:
 
 
     @classmethod
-    def data_note_search_EXPERIMENTAL(cls, search :int|str|(tuple), class_name :str, require_unique=True) -> list:
+    def data_node_search_EXPERIMENTAL(cls, search :int|str|tuple, class_name :str, require_unique=True) -> list:
         """
         TODO: turn into a data_note_search() function that returns a list of results;
               i.e. a simpler version of get_nodes_by_filter()
@@ -1932,7 +1932,7 @@ class GraphSchema:
 
 
     @classmethod
-    def get_single_data_node_EXPERIMENTAL_2(cls, search :int|str|(tuple), class_name :str, hide_schema=True) -> dict | None:
+    def get_single_data_node_EXPERIMENTAL_2(cls, search :int|str|tuple, class_name :str, hide_schema=True) -> dict | None:
         """
         TODO: phase out in favor of search_data_nodes()
         :param search:      Either an internal database ID (int or str),
@@ -2162,7 +2162,6 @@ class GraphSchema:
             match_structure = cls.db.match(internal_id=node_id)
 
         return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
-
 
 
 
