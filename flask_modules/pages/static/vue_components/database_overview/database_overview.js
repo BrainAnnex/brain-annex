@@ -10,17 +10,6 @@ Vue.component('vue-database-summary',
 
                 <h2>{{all_labels.length}} <i>labels</i> found in graph database:</h2>
 
-                <vue-record-cluster
-                    v-bind:item_fields="{filter_label: 'BA', n_group: 3}"
-                    v-bind:item_metadata="item_metadata"
-                    v-bind:edit_mode="false"
-                    v-bind:category_id="0"
-                    v-bind:index="0"
-                    v-bind:item_count="0"
-                    v-bind:schema_data="['class', 'order_by', 'clause', 'n_group', 'caption']"
-                >
-                </vue-record-cluster>
-
                 <div v-for="(label, index) in all_labels" >
 
                     <span style="color: gray">{{String(index).padStart(2, '0')}} </span> *
@@ -33,15 +22,20 @@ Vue.component('vue-database-summary',
                                 src="/BA/pages/static/graphics/tabular_16_9040670.png"
                                 title="Show sample node (record)" alt="Show sample node (record)">
 
-                    <span style="font-size: 14px">{{label}}</span>
+                    <span style="font-size: 14px">
+                        {{label}}
+                    </span>
+
                     <br>
 
                     <div v-if="show_schema_arr[index]" style="border: 1px solid gray; margin-bottom:10px">
                         Schema info here!
                     </div>
 
-                    <div v-if="show_sample_arr[index]" style="border: 1px solid gray; margin-bottom:10px">
-                        Sample info here!  Plugin below:
+                    <div v-if="show_sample_arr[index]"
+                         style="margin-bottom:30px; padding:10px; background-color: aliceblue"
+                    >
+                        Sample records (database nodes) with the label <span class='label-name'>{{label}}</span>:
 
                         <vue-record-cluster
                             v-bind:item_fields="{filter_label: label, n_group: 3}"
