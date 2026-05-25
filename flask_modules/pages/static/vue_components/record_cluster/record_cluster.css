@@ -1,0 +1,62 @@
+table.rs-main {
+    border:1px solid #DDD;
+    border-collapse: collapse;
+    margin-top:10px;
+    margin-bottom:5px;
+}
+
+table.rs-main td, th {
+    border:1px solid #DDD;
+    padding:5px;
+}
+
+/* For the header row */
+table.rs-main th {
+    background-color: #444;
+    color:#DDD;
+    font-size:12px;
+}
+
+/* For the header row repeated at bottom of table */
+table.rs-main th.repeated {
+    background-color: #777;
+    color:#E3E3E3;
+    font-size:12px;
+}
+
+table.rs-main tr:nth-child(odd)  {
+    /* formatting for odd-numbered rows */
+    background-color: #e3e3e3;
+}
+table.rs-main tr:nth-child(even)  {
+    /* formatting for even-numbered rows */
+    background-color: #d2d2d2;
+}
+
+/* Table cells */
+table.rs-main td {
+    border:1px solid #DDD;
+    padding:5px;
+    font-size:12px;
+}
+
+
+span.table-caption {
+    font-weight: bold;
+    color: rgb(108, 181, 181);
+    font-size: 14px;
+}
+
+
+/* To navigate between pages */
+div.navigator-controls {
+    display: inline-block;
+
+    border: 1px solid gray;
+    border-radius: 14px;
+    background-color: #f9f9f9;
+    padding-top: 3px;
+    padding-left: 20px;
+    padding-right: 10px;
+    padding-bottom: 8px;
+}

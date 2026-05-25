@@ -1,0 +1,1121 @@
+/*  Vue component
+ */
+
+Vue.component('vue-record-cluster',
+    {
+        props: ['item_fields', 'item_metadata',
+                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+        /*  item_fields:    An object with the editable properties of this Recordset item.
+                                EXAMPLE: {
+                                            caption: "Restaurants - Berkeley locations",
+                                            fields: "name, address, city"   // fields to include in table; not to be confused with ALL available fields;
+                                                                            //      this might be blank or missing
+                                                                            //      TODO: rename to `fields_to_show` (but avoid collision with local names)
+                                            filter_label: "Restaurants",
+                                            n_group: 10,
+                                            order_by: "name",
+                                            clause_key: "city",
+                                            clause_value: "Berkeley"
+                                         }
+
+            item_metadata:  An object with the metadata of this Recordset item.
+                                For a newly-created Content Item, not yet registered with the server,
+                                the value of `entity_id` will be a negative number (unique on the page),
+                                and there will be the additional keys `insert_after_uri` and `insert_after_class`
+                                EXAMPLE of existing Recordset item:
+                                        {   class_name: "Recordset",
+                                            class_handler:"recordsets",
+                                            pos:0,
+                                            schema_code:"rs",
+                                            entity_id:"rs-7",
+                                            internal_id: 123
+                                        }
+
+            edit_mode:      A boolean indicating whether in editing mode
+            category_id:    The entity ID of the Category page where this recordset is displayed (used when creating new recordsets)
+            index:          The zero-based position of this Recordset on the page
+            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
+            schema_data:    An array of field names (for the Recordset entity, not its records!), in Schema order.
+                                EXAMPLE: ["class", "order_by", "clause", "n_group", "caption"]
+         */
+
+        template: `
+            <div @dblclick="enter_editing_mode">	<!-- Outer container, serving as Vue-required template root  -->
+
+                <!-- Recordset PAGE NAVIGATION (hidden if newly-created recordset)  TODO: turn into a sub-component -->
+                <div class="navigator-controls">
+                    <span class="table-caption" style="margin-right:15px">{{this.current_data.caption}}</span>
+                    <span class="table-caption" style="margin-right:15px; font-size:10px">{{this.current_data.filter_label}}</span>
+
+                    <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
+                    <span v-if="current_page > 2" @click="get_recordset(1)"
+                        class="clickable-icon" style="color:blue; font-size:16px" title="first"> &laquo; </span>
+                    <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
+                            class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
+
+                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span>
+                    <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+
+                    <!-- If not on last page, show right arrows -->
+                    <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
+                            class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="next"> > </span>
+                    <span v-if="current_page < number_of_pages-1" @click="get_recordset(number_of_pages)"
+                        class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="last"> &raquo; </span>
+
+                    <!-- Show a summary -->
+                    <span v-if="total_count" style="margin-left: 60px; color: white; background-color:#6cb5b5; padding: 4px; padding-left:10px; padding-right:10px;">
+                        {{recordset.length}} records &nbsp; ({{page_range[0]}} &ndash; {{page_range[1]}} of total {{total_count}})
+                    </span>
+                </div>
+
+
+                <!-- The DATA TABLE -->
+
+                <!-- For the max-width attribute to work, there must not be a 'display: inline-block' in any of its ancestors -->
+                <div class="dragscroll" style="margin-top: 0; max-width: 99%; overflow: auto">
+                    <table class='rs-main'>
+
+                        <!-- HEADER row  -->
+                        <tr>
+                            <th v-for="field_name in headers_to_include">
+                                {{insert_blanks(field_name)}}
+                                <img @click="remove_from_filter(field_name)" class="clickable-icon"
+                                 src='/BA/pages/static/graphics/block_24_10233565.png'
+                                 title="Remove from filter. The data won't be affected"
+                                 alt="Remove from filter. The data won't be affected"
+                                 style="margin-left:10px">
+                            </th>
+                            <th v-show="editing_mode">
+                                EDIT
+                            </th>
+                        </tr>
+
+                        <!--
+                            All the various DATA ROWS
+                         -->
+                        <tr v-for="record in recordset">
+
+                            <!-- The various data fields -->
+                            <td v-for="field_name in headers_to_include">
+
+                                <!-- VIEW mode -->
+                                <span v-if="record._internal_id != record_being_editing"
+                                    v-html="render_cell(record[field_name])"
+                                ></span>
+
+                                <!-- vs. EDIT mode (some field names to show in larger boxes are for now hardwired) -->
+                                <template v-else>
+                                    <textarea v-if="field_name=='Comments' || field_name=='name' || field_name=='notes'"
+                                        rows="5" cols="40"
+                                        v-model="record_latest[field_name]"
+                                    >
+                                    </textarea>
+                                    <input v-else type="text" size="25"
+                                             v-model="record_latest[field_name]"
+                                    >
+                                </template>
+                            </td>
+
+                            <!-- The control cell (for editing a single existing record) -->
+                            <td v-show="editing_mode" style="background-color: #f2f2f2">
+                                <span v-if="record._internal_id == record_being_editing">
+                                    <button @click="save_record_edit">SAVE</button>
+                                    <a @click.prevent="cancel_record_edit" href="#" style="margin-left:15px">Cancel</a>
+                                </span>
+                                <img v-if="record_being_editing === null"
+                                     src="/BA/pages/static/graphics/edit_16_pencil2.png"
+                                     @click="edit_record(record)"
+                                     class="control" title="EDIT" alt="EDIT"
+                                >
+                            </td>
+                        </tr>
+
+                        <!-- Header row, repeated at bottom of table  -->
+                        <tr>
+                            <th v-for="field_name in headers_to_include" class="repeated">
+                                {{insert_blanks(field_name)}}
+                            </th>
+                            <th v-show="editing_mode">
+                                NEW RECORD
+                            </th>
+                        </tr>
+
+
+                        <!-- ROW FOR ENTRY OF A NEW DATA RECORD, if in editing mode  -->
+                        <tr v-if="editing_mode">
+                            <td v-for="field_name in headers_to_include">
+                                <input v-model="new_record[field_name]">
+                            </td>
+                            <td v-show="editing_mode">
+                                <!-- Button will be disabled until something is typed in any of the field,
+                                     so that the new_record object is not empty
+                                  -->
+                                <button @click="save_new_record"
+                                        v-bind:disabled="hide_new_record_button()"
+                                >
+                                    SAVE
+                                </button>
+                                <span @click="editing_mode=false" class="clickable-icon" style="color:blue">Cancel</span>
+                            </td>
+                        </tr>
+
+                    </table>
+                </div>
+
+
+                <!-- Recordset PAGE NAVIGATION (hidden if newly-created recordset)  TODO: maybe turn into a sub-component -->
+                <div class="navigator-controls">
+                    <span class="table-caption" style="margin-right:15px">{{this.current_data.caption}}</span>
+                    <span class="table-caption" style="margin-right:15px; font-size:10px">{{this.current_data.filter_label}}</span>
+
+                    <!-- If not on 1st page, show left arrows (double arrow, and single arrow) -->
+                    <span v-if="current_page > 2" @click="get_recordset(1)"
+                        class="clickable-icon" style="color:blue; font-size:16px" title="first"> &laquo; </span>
+                    <span v-if="current_page > 1" @click="get_recordset(current_page-1)"
+                            class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="prev"> < </span>
+
+                    <span style="margin-left:20px; font-size:12px">Page <b>{{current_page}}</b></span>
+                    <span style="color:gray; margin-left:7px">(of {{number_of_pages}})</span>
+
+                    <!-- If not on last page, show right arrows -->
+                    <span v-if="current_page < number_of_pages" @click="get_recordset(current_page+1)"
+                            class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="next"> > </span>
+                    <span v-if="current_page < number_of_pages-1" @click="get_recordset(number_of_pages)"
+                        class="clickable-icon" style="color:blue; margin-left:20px; font-size:16px" title="last"> &raquo; </span>
+
+                    <!-- Show a summary -->
+                    <span v-if="total_count" style="margin-left: 60px; color: white; background-color:#6cb5b5; padding: 4px; padding-left:10px; padding-right:10px;">
+                        {{recordset.length}} records &nbsp; ({{page_range[0]}} &ndash; {{page_range[1]}} of total {{total_count}})
+                    </span>
+                </div>
+
+
+
+                <!-- Status info -->
+                <p style="float: right; display: inline-block; padding: 5px; margin-top: 8px; margin-right: 5px; text-align: right; background-color:#f4f7f9">
+                    <span v-if="waiting" class="waiting">Contacting the server...</span>
+                    <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
+                </p>
+
+
+                <!-- RECORDSET EDITOR (for the overall structure): in ***VIEWING*** MODE -->
+                <div v-if="editing_mode && !recordset_editing"
+                     style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
+                    <b>RECORDSET definition</b>
+                    <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 30px"
+                         @click="edit_recordset"  class="control" title="EDIT" alt="EDIT">
+
+                    <p style="margin-left: 10px">
+                        Filter label: "{{current_data.filter_label}}"<br>
+                        Order by: "{{current_data.order_by}}"<br>
+                        Fields to include (blank = ALL): "{{current_data.fields}}"<br>
+                        Filter: \`{{current_data.clause_key}}\` = <span style="background-color: #cdf6fd">{{current_data.clause_value}}</span>
+                           (If value is string, then case-sensitive CONTAINS)<br>
+                        Number records shown per page: {{current_data.n_group}}<br>
+                        Caption: {{current_data.caption}}
+                    </p>
+                </div>
+
+
+                <!-- RECORDSET EDITOR (for the overall structure): in ***EDITING*** MODE -->
+                <div v-if="recordset_editing" style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
+                    <b>RECORDSET definition</b><br>
+                    <table>
+                        <tr>
+                            <td style="text-align: right">Filter Label</td>
+                            <td>
+                                <select  @change='label_selected'  v-model="current_data.filter_label">
+                                    <option disabled value='-1'>[Choose an option]</option>
+                                    <option v-for="item in all_labels"
+                                            v-bind:value="item">
+                                        {{item}}
+                                    </option>
+                                </select>
+                            </td>
+
+                            <td rowspan=3 style="vertical-align: bottom; padding-left: 50px">
+                                <button @click="save_recordset_edit" style="font-size: 14px; font-weight: bold; padding: 10px">SAVE</button>
+                                <span @click="cancel_recordset_edit" class="clickable-icon" style="color:blue; margin-left: 15px; font-size: 11px">CANCEL</span>
+                                <br>
+                                <span v-if="waiting" class="waiting">Performing the update</span>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="text-align: right">Order by</td>
+                            <td>
+                                <input v-model="current_data.order_by" size="40">
+                                <span style="color:gray">(Comma-separated field names, optionally followed by DESC)</span>
+                            </td>
+                        </tr>
+
+                        <!--
+                        <tr>
+                            <td style="text-align: right">Fields to include (blank = ALL)</td>
+                            <td>
+                                <input v-model="current_data.fields" size="70">
+                            </td>
+                        </tr>
+                        -->
+
+                        <tr>
+                            <td style="text-align: right">Filter</td>
+                            <td>
+                                <input v-model="current_data.clause_key" size="15">
+                                <span style="font-weight: bold; font-size: 18px">=</span>
+                                <input v-model="current_data.clause_value" size="30">  (If value is string, then case-sensitive CONTAINS)
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="text-align: right">Number records shown per page</td>
+                            <td>
+                                <select v-model="current_data.n_group">
+                                    <option disabled value='-1'>[Choose an option]</option>
+                                    <option v-for="item in size_choices"
+                                            v-bind:value="item">
+                                        {{item}}
+                                    </option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="text-align: right">Caption</td>
+                            <td>
+                                <input v-model="current_data.caption" size="25">
+                            </td>
+                        </tr>
+
+                    </table>
+                </div>
+
+            </div>		<!-- End of outer container -->
+            `,
+
+
+
+        // ------------------------------   DATA   ------------------------------
+        data: function() {
+
+            // Prepare an object used for the entry of new records,
+            // with an auto-fill value containing the recordsets' filter clause, if present
+            // EXAMPLE : {"grammar": "noun"}
+            const prefilled_new_record = {};
+
+            if ((this.item_fields.clause_key !== null)  &&  (this.item_fields.clause_key !== undefined))
+                prefilled_new_record[this.item_fields.clause_key] = this.item_fields.clause_value;
+
+
+            return {
+                headers: [],            // A complete list of ALL the names of the table columns
+                                        // EXAMPLE:  ["quote", "attribution", "notes"]
+
+                recordset: [],          // Array of records to show together (in the context of previous/next navigation)
+                                        // This will get set by querying the server when the page loads
+
+                record_class: null,     // The Schema Class of the individual records, if present
+                                        // This will get set by querying the server when the page loads
+
+                all_labels: [],         // Array of all the node labels present in the database
+
+                current_page: 1,        // For the navigation of the groups of records
+
+                total_count: null,      // Size of our filtered recordset in the absence of the "limit" option
+
+                size_choices: [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,75,100,125,150,200,250,300,400,500], // Options for pull-down menu
+
+                fields_to_show: [],             // Array of chosen field names.
+                                                // Note: kept separate from the field in the object "this.current_data",
+                                                //       in order to be reactive
+                                                //       when changed by the multiselect menu
+                fields_to_show_pre_edit: [],    // Array of chosen field names; a backup copy, in case edit is cancelled
+
+                record_being_editing: null, // The "ID" of the record currently being edited, if any;
+                                            // for now, only one record at a time may be edited
+
+                editing_mode: ((this.item_metadata.entity_id < 0) || this.edit_mode  ? true : false), // Flag indicating whether this record is being edited
+                                                                                            // Negative entity_id means "new Item"
+
+                recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
+
+                /* This `current_data` object - with the metadata of the recordset - contains the values bound
+                      to the editing fields in the UI, initially cloned from the prop data;
+                      it'll change in the course of the edit-in-progress.
+                      EXAMPLE: {caption: "Verbs", filter_label: "French Vocabulary", n_group: 5,
+                                clause_key: "grammar", clause_value: "noun", order_by: "cluster, French DESC"}
+                      NOTE:  the property `fields_to_show` is managed separately
+
+                 */
+                current_data: Object.assign({}, this.item_fields),    // Initially clone from the original data passed to this component
+                // TODO: rename to `pre_edit_data`, for consistency?
+
+                // Clone of the above object, used to restore the original data in case of a Cancel or failed save
+                original_data: Object.assign({}, this.item_fields),   // Initially clone from the original data passed to this component
+
+                // Private copy of the metadata
+                // EXAMPLE: {class_name: "Recordset", class_handler: "recordsets", pos: 12, entity_id: "rs-4",
+                //           internal_id : 252, schema_code: "rs"}
+                current_metadata:   Object.assign({}, this.item_metadata),
+                
+                // The following applies to the single record currently being edited (just one at most).
+                // This object contains the values bound to the editing fields,
+                //      initially cloned from the record being edited in the current recordset;
+                //      it'll change in the course of the edit-in-progress
+                record_latest: null,
+
+
+                // Used for the addition of new record; note that it's valid
+                // to do a Vue <input v-models="obj[key]"> to non-existing keys of an object;
+                // Vue will automatically add the key/value pairs as they get entered in the form
+                new_record: prefilled_new_record,
+
+
+                waiting: false,         // Whether any server request is still pending
+                error: false,           // Whether the last server communication resulted in error
+                status_message: ""      // Message for user about status of last operation upon server response (NOT for "waiting" status)
+            }
+        }, // data
+
+
+
+
+        // ------------------------------------   HOOKS   ------------------------------------
+
+        mounted()
+        /* Note: the "mounted" Vue hook is invoked later in the process of launching this component.
+                 TODO: investigate if earlier would be better
+         */
+        {
+            console.log(`The Recordsets component has been mounted`);
+
+            if (this.item_metadata.entity_id < 0)  {  // A negative entity_id is a convention to indicate a just-created Recordset
+                this.edit_recordset();
+                return;
+            }
+
+            this.get_fields();      // Fetch from the server the field names for this Recordset
+
+            this.get_recordset(1);  // Fetch contents of the 1st block of the Recordset from the server
+        },
+
+
+        beforeMount()
+        {
+            //console.log("~~~~~~~~~ In beforeMount()");
+
+            let fields_array;
+
+            // Note that current_data.fields may be missing
+            if (this.current_data.fields === null || this.current_data.fields === undefined)
+                fields_array = [];
+            else
+                fields_array = this.string_to_array(this.current_data.fields);
+
+            this.fields_to_show = fields_array;
+            this.fields_to_show_pre_edit = Array.from(fields_array);     // Clone of array, to store a backup copy, in case edit is cancelled
+
+            this.current_data.fields_array =  Object.values(fields_array);       // TODO: phase out?
+            this.original_data.fields_array = Object.values(fields_array);       // TODO: phase out?
+        },
+
+
+
+        // ------------------------------------   COMPUTED   ------------------------------------
+
+        computed: {
+
+            /**
+             * For page navigation
+             */
+            number_of_pages()
+            {
+                return Math.ceil(this.total_count / this.current_data.n_group);
+            },
+
+
+            /**
+             * For page navigation
+             */
+            page_range()
+            {
+                var from = (this.current_page - 1) * this.current_data.n_group + 1;
+                var to =   from + this.recordset.length - 1;
+                return [from, to];
+            },
+
+
+
+            headers_to_include()
+            {
+                if (this.fields_to_show.length > 0)     // If any headers were specified
+                    return this.fields_to_show;         //      then just return them
+
+                return this.headers;        // Otherwise, use ALL the headers
+            }
+
+        },
+
+
+
+
+        // ------------------------------   METHODS   ------------------------------
+        methods: {
+
+            /**
+             *  Return true if the Add button for a new record ought to be hidden
+             *  (to prevent the use from accidentally entering a new record
+             *   that is completely blank, or just includes pre-filled values);
+             *  return false if ok to show
+             */
+            hide_new_record_button()
+            {
+                // Count the number of non-blank fields in the record with data entered in them
+                // (filled in by the user as part of the new-record edit)
+                const count_filled_fields = Object.values(this.new_record)
+                                                  .filter(v => (typeof v === "string" && v.trim() !== ""))
+                                                  .length;
+
+                if (this.current_data.clause_key === null || this.current_data.clause_key=== undefined)
+                    return (count_filled_fields == 0)   // Nothing has been entered yet
+
+                return (count_filled_fields <= 1)       // Only a pre-filled value has been entered so far
+            },
+
+
+
+            /**
+             *  Generate an array of headers to use for the tabular listings,
+             *  from a string of comma-separated field names
+             */
+            string_to_array(s)
+            {
+                //console.log(`string_to_array() called on argument: ${s}`);
+
+                const fields = s;    // String of comma-separated field names.  EXAMPLE: "French, English, notes"
+
+                if (fields.trim() == "")
+                    return this.headers;    // Use all the headers
+
+                const arr = fields.split(",").map(x => x.trim());    // Turn into array, and zap leading/trailing blanks from each entry
+
+                return arr;
+            },
+
+
+
+            /**
+             *  For the purpose of facilitating the breakup, by the browser,
+             *  of long headers into multiple lines,
+             *  insert a blank space after each underscore and each "/".
+             *  EXAMPLE: "max_temp/safe_temp" will be returned as "max_ temp/ safe_ temp"
+             */
+            insert_blanks(str)
+            /*
+             */
+            {
+                var transformed = str.replace(/_/g, '_ ');      // Insert a blank after each of the underscores in the string
+
+                return transformed.replace(/\//g, '/ ');        // Insert a blank after each of the forward slashes in the string
+            },
+
+
+
+            enter_editing_mode()
+            // Invoked when a double-click is detected: enter the recordset's editing mode
+            // Note: no individual record is exposed to editing; only the overall recordset definition is exposed
+            {
+                console.log(`In enter_editing_mode()`);
+
+                // Clear any old value
+                //this.waiting = false;
+                //this.error = false;
+                //this.status_message = "";
+
+                this.editing_mode = true;       // Enter editing mode
+
+                if (this.all_labels.length === 0)
+                    // If the available database labels aren't yet known, fetch them from the server
+                    this.get_all_labels();
+            },
+
+
+            /**
+             * Invoked by the clicking on the EDIT button for the overall recordset definition,
+             * as well as in cases of a new recordset, upon the "mounting" of the component
+             */
+            edit_recordset()
+            {
+                console.log(`In edit_recordset(): editing entire recordset`);
+                this.recordset_editing = true;
+
+                if (this.all_labels.length === 0)
+                    // If the available database labels aren't yet known, fetch them from the server
+                    this.get_all_labels();
+            },
+
+
+            /**
+             * Invoked when the user cancels the edit-in-progress for the recordset definition,
+             * or when the save operation fails.
+             * Revert any changes, and exit the edit mode
+             */
+            cancel_recordset_edit()
+            {
+                // Restore the data to how it was prior to the aborted changes
+
+                this.current_data = Object.assign({}, this.original_data);       // Clone from original_data
+                this.fields_to_show = Array.from(this.fields_to_show_pre_edit);  // Clone from pre-edit data
+
+                this.recordset_editing = false;               // Exit the editing mode for the recordset definition
+            }, // cancel_recordset_edit
+
+
+
+            edit_record(record)
+            /*  Edit an individual row (record).
+                Invoked when the user clicks on the "EDIT" control for that record
+
+                :param record:  An object with the standard properties
+                                    "_internal_id", "_node_labels", and "entity_id" [may or may not have a value],
+                                    plus whatever fields are part of the given particular record (node)
+                                    EXAMPLE:  {_internal_id: 123, _node_labels: ["Restaurant"], entity_id: "r-88",
+                                               name: "Pizzeria NY", city: "NYC"}
+             */
+            {
+                console.log(`Editing the following individual record in the current recordset:`);
+                console.log(record);
+
+                this.record_being_editing = record._internal_id;     // Specify that editing is in progress for this record
+
+                this.record_latest = Object.assign({}, record);     // Clone the record object into a temporary variable
+                                                                    // to which the editing fields are bound
+            },
+
+
+            /**
+             * Invoked by clicking on the "CANCEL" link on an INDIVIDUAL record (only visible in editing mode)
+             */
+            cancel_record_edit()
+            {
+                this.record_being_editing = null;       // To indicate that no record is being edited
+
+                // Clear the temporary variable used for the editing
+                this.record_latest = null;
+            }, // cancel_record_edit
+
+
+
+            render_cell(cell_data)
+            /*  If the passed argument is a string that appears to be a URL, convert it into a string with HTML code
+                for a hyperlink that opens in a new window;
+                if the URL is very long, show it in abbreviated form in the hyperlink text.
+                In all other cases, just return the argument.
+
+                Note: this function is also found in records.js and single_records.js
+             */
+            {
+                const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")
+
+                let dest_name = "";         // Name of the destination of the link, if applicable
+
+                if (typeof cell_data != "string")
+                     return cell_data;
+
+                // Do a simple-minded check as to whether the cell content appear to be a hyperlink
+                if (cell_data.substring(0, 8) == "https://")
+                    dest_name = cell_data.substring(8);
+                else if (cell_data.substring(0, 7) == "http://")
+                    dest_name = cell_data.substring(7);
+
+                if (dest_name != "")  {     // If the cell data was determined to be a URL
+                    if (dest_name.length > max_url_len)
+                        dest_name = dest_name.substring(0, max_url_len) + "..."; // Display long links in abbreviated form
+
+                    return `<a href='${cell_data}' target='_blank' style='font-size:10px'>${dest_name}<a>`;
+                }
+                else
+                    return cell_data;
+            },
+
+
+
+            /**
+             * Invoked when the user picks a new label from a pulldown menu (only visible in editing mode)
+             */
+            label_selected()
+            {
+               console.log(`label_selected(): just selected "${this.current_data.filter_label}"`);
+               this.get_fields();   // Make a server call
+            },
+
+
+
+            /**
+             * Invoked when the user click on any of the icons to drop columns
+             */
+            remove_from_filter(field_name)
+            {
+                console.log(`remove_from_filter(): removing field "${field_name}"`);
+
+                if (this.fields_to_show.length == 1)  {
+                    alert("Cannot remove the last field");
+                    return;
+                }
+                if (this.fields_to_show.length == 0)  {     // An empty list by our convention means "show all"
+                    console.log(`remove_from_filter(): re-building the fields_to_show variable`);
+                    this.fields_to_show = Array.from(this.headers);          // Clone the array of all available headers
+                    this.fields_to_show_pre_edit = Array.from(this.headers); // Clone the array of all available headers
+                }
+
+                const index = this.fields_to_show.indexOf(field_name);
+                if (index !== -1)  {
+                    this.fields_to_show.splice(index, 1);
+                    this.save_recordset_edit();
+                }
+                else
+                    alert(`Unable to remove the field "${field_name}" from the filter. Try refreshing the page`);
+            },
+
+
+
+            /*
+                ------------------   SERVER CALLS   ------------------
+             */
+
+            save_record_edit()
+            /*  Invoked when the user asks to save the edit-in-progress
+                of an EXISTING INDIVIDUAL record.
+                NOT used for new records, nor to change the definition of the recordset
+             */
+            {
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/update_content_item_JSON";
+
+                const post_obj = {
+                                    internal_id: this.record_latest._internal_id
+                                 };     // Note: not using (at least for now, `entity_id` nor `class_name`)
+
+                // Go over each field name (ALL the fields) of the recordset
+                for (let field_name of this.headers)    // Looping over array
+                    post_obj[field_name] = this.record_latest[field_name];
+
+                console.log(`In save_record_edit(): about to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_record_edit
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+                this.record_being_editing = null;       // To indicate that no record is being edited
+                //this.cancel_record_edit();  // Clean up and leave the editing mode for the record being edited
+            },
+
+            finish_save_record_edit(success, server_payload, error_message)
+            /* Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+
+                success:        Boolean indicating whether the server call succeeded
+                server_payload: Whatever the server returned (stripped of information about the success of the operation)
+                error_message:  A string only applicable in case of failure
+            */
+            {
+                console.log("Finalizing the save_record_edit() operation...");
+
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+
+                    // Update the item in the recordset array that corresponds to the current record
+                    this.refresh_current_page();    // Refresh the current page
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    // Clear the temporary variable used for the editing
+                    this.record_latest = null;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            },
+
+
+
+            save_new_record()
+            // Send a request to the server, to save a record NEWLY ENTERED thru a form
+            // (NOT for editing existing records)
+            {
+                console.log(`In save_new_record(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
+
+                var url_server_api = "/BA/api/create_data_node_JSON";
+
+                if (! this.record_class)  {
+                    alert("Creation of new records without Schema is not implemented yet, sorry");
+                    return;
+                }
+
+                // Start putting together the POST object
+                let post_obj = {class_name: this.record_class};  // Class of the the individual records
+
+                //console.log("New record just entered:");
+                //console.log(this.new_record);
+
+                for (let k in this.new_record ) {
+                    //console.log(`key: '${k}' , value: ${this.new_record[k]}`);
+                    post_obj[k] = this.new_record[k];
+                }
+
+                console.log(`About to contact the server at '${url_server_api}' .  POST object:`);
+                console.log(post_obj);      // EXAMPLE:  {class_name: "Quote", quote: "Inspiration exists, but it has to find us working"}
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_new_record
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_save_new_record(success, server_payload, error_message)
+            // Callback function to wrap up the action of save_new_record() upon getting a response from the server
+            {
+                console.log("Finalizing the save_new_record() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `New record added`;
+                    this.refresh_current_page();    // Refresh the current page
+                                                    // (which may or may not be affected by the newly-added record)
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;       // Make a note that the asynchronous operation has come to an end
+                this.new_record = {};       // Clear the data-entry fields
+            },
+
+
+
+            /**
+             * Send a request to the server, to update or create this RECORDSET's definition
+             * (note: NOT to be confused with editing of individual records)
+             */
+            save_recordset_edit()
+            {
+                console.log(`In save_recordset_edit(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
+
+                // Send the request to the server, using a POST
+
+                let n_group = parseInt(this.current_data.n_group);
+                if (Number.isNaN(n_group))
+                    n_group = 15;   // DEFAULT value to use if missing or not a valid integer
+
+                if (this.current_metadata.entity_id < 0) {    // A negative entity_id is a convention to indicate a just-created Recordset
+                    // Create a new Recordset
+                    var url_server_api = "/BA/api/add_item_to_category_JSON";
+                    var post_obj = {category_uri: this.category_id,
+                                    class_name: this.current_metadata.class_name,
+                                    insert_after_uri: this.current_metadata.insert_after_uri,      // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
+                                    insert_after_class: this.current_metadata.insert_after_class,  // Class of Content Item to insert after
+
+                                    // Node properties (in particular,
+                                    //     note that "class" and "label" are properties, not Schema data)
+                                    filter_label: this.current_data.filter_label,     // Used to identify nodes considered part of  this Recordset
+                                    //fields: this.current_data.fields,
+                                    fields: this.fields_to_show.join(", "),             // EXAMPLE: "name, city, rating"
+                                    n_group: n_group,
+                                    order_by: this.current_data.order_by,
+                                    clause_key: this.current_data.clause_key,
+                                    clause_value: this.current_data.clause_value,
+                                    caption: this.current_data.caption
+                                   };
+                }
+                else  {
+                    // Update an existing Recordset
+                    var url_server_api = "/BA/api/update_content_item_JSON";
+
+                    var post_obj = {entity_id: this.current_metadata.entity_id,
+                                    class_name: this.current_metadata.class_name,
+
+                                    filter_label: this.current_data.filter_label,   // Used to identify nodes considered part of  this Recordset
+                                    fields: this.fields_to_show.join(", "),         // EXAMPLE: "name, city, rating"
+                                    n_group: n_group,
+                                    order_by: this.current_data.order_by,
+                                    clause_key: this.current_data.clause_key,
+                                    clause_value: this.current_data.clause_value,
+                                    caption: this.current_data.caption
+                                   };
+                }
+
+                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
+                console.log(post_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "POST",
+                             data_obj: post_obj,
+                             json_encode_send: true,
+                             callback_fn: this.finish_save_recordset_edit
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_save_recordset_edit(success, server_payload, error_message, custom_data)
+            // Callback function to wrap up the action of save_recordset_edit(() upon getting a response from the server
+            {
+                console.log("Finalizing the save_recordset_edit() operation...");
+                //console.log(`Custom data passed: ${custom_data}`);
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    if (this.current_metadata.entity_id < 0)  {
+                        // If this was a newly-created item (with the temporary negative ID)
+                        this.status_message = `Recordset creation completed`;
+                        this.current_metadata.entity_id = server_payload;     // Update the temporary entity_id with the value assigned by the server
+                    }
+                    else
+                        this.status_message = `Recordset update completed`;
+
+                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
+                    const signal_data = {
+                        item_fields:   Object.assign({}, this.current_data),
+                        item_metadata: Object.assign({}, this.current_metadata)
+                    };
+                    console.log("'Recordsets' component sending `updated-item` SIGNAL to its parent, with the following data:");
+                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);
+
+                    // Synchronize the baseline data to the current one
+                    this.original_data = Object.assign({}, this.current_data);              // Clone
+                    this.fields_to_show_pre_edit = Array.from(this.fields_to_show);  // Clone
+
+                    this.get_fields();          // Fetch from the server the field names for this Recordset
+                    this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    this.current_data = Object.assign({}, this.original_data);  // Clone, to restore the data to how it was prior to the failed changes
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;           // Make a note that the asynchronous operation has come to an end
+                this.recordset_editing = false; // Leave the editing mode
+            },
+
+
+
+            /**
+             * Make a server call to obtain all the node labels present in the database
+                EXAMPLE:   ['label_1', 'label_2']
+
+                If successful, it will update the value for this.all_labels
+             */
+            get_all_labels()
+            {
+                console.log(`In get_all_labels()`);
+
+                const url_server_api = "/BA/api/all_labels";
+
+                console.log(`About to contact the server at ${url_server_api}`);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {
+                                callback_fn: this.finish_get_all_labels
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_get_all_labels(success, server_payload, error_message)
+            // Callback function to wrap up the action of get_all_labels() upon getting a response from the server
+            {
+                //console.log("Finalizing the get_all_labels() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    //console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    this.all_labels = server_payload;       // Final effect of the server call, if successful
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+
+            }, // finish_get_all_labels
+
+
+
+            /**
+             * Make a server call to obtain all the field names associated to a sample of nodes with the given label.
+                TODO: also attemp to extract the Schema fields of the Class that this recordset is based on
+                E.g.
+                    GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
+                to fetch:
+                    ['quote', 'attribution', 'notes']
+
+                If successful, it will update the value for this.headers
+             */
+            get_fields()
+            {
+                console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_metadata.entity_id}'`);
+
+                const url_server_api = "/BA/api/get_class_properties";
+
+                const data_obj = {label: this.current_data.filter_label,
+                                  include_ancestors: true,
+                                  exclude_system: true
+                                 };     // TODO: also consider passing `class_name`, if present
+
+                console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+                console.log(data_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {   data_obj: data_obj,
+                                json_encode_send: true,
+                                callback_fn: this.finish_get_fields
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+            finish_get_fields(success, server_payload, error_message)
+            // Callback function to wrap up the action of get_fields() upon getting a response from the server
+            {
+                //console.log("Finalizing the get_fields() operation...");
+                if (success)  {     // Server reported SUCCESS
+                    //console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    this.headers = server_payload;
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+
+            }, // finish_get_fields
+
+
+
+            refresh_current_page()
+            {
+                //console.log(`In refresh_current_page()`);
+                this.get_recordset(this.current_page);
+            },
+
+
+
+            /**
+             * Used for record navigation.
+             * Request from the server the specified "page" (group of records) of the recordset.
+             * If successful, it will fetch and update the values for:
+             *           this.recordset
+             *           this.total_count
+             *           this.current_page
+             * Note: changing those values will update the record display
+             *
+             * @param {number} page - To identify the desired chunk of consecutive records
+             */
+            get_recordset(page)
+            {
+                let skip = (page-1) * this.current_data.n_group;
+
+                //console.log(`In get_recordset(): attempting to retrieve page ${page} of recordset with entity_id '${this.current_metadata.entity_id}'`);
+
+                // Send the request to the server, using a GET
+                const url_server_api = "/BA/api/get-filtered";
+
+                // Note: we're actually doing a database search by node label,
+                //       rather than by Schema Class
+                const get_obj = {label: this.current_data.filter_label,
+                                 order_by: this.current_data.order_by,
+                                 limit: this.current_data.n_group,
+                                 skip: skip,
+                                 key_name: this.current_data.clause_key,
+                                 key_value: this.current_data.clause_value};
+
+                const my_var = page;        // Optional parameter to pass
+
+                //console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+                //console.log(get_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {   method: "GET",
+                                data_obj: get_obj,
+                                json_encode_send: true,
+                                callback_fn: this.finish_get_recordset,
+                                custom_data: my_var
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            }, // get_recordset
+
+
+            /** Callback function to wrap up the action of get_recordset() upon getting a response from the server.
+             *
+             * @param {bool} success - Boolean indicating whether the server call succeeded
+             * @param server_payload - Whatever the server returned (stripped of information about the success of the operation)
+             * @param {string} error_message - Only applicable in case of failure
+             * @param custom_data            - Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+             */
+            finish_get_recordset(success, server_payload, error_message, custom_data)
+            {
+                //console.log("Finalizing the get_recordset() operation...");
+                //console.log(`Custom data passed: ${custom_data}`);
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = "";       // `Operation completed`
+                    this.recordset = server_payload.recordset;
+                    this.total_count = server_payload.total_count;
+                    this.current_page = custom_data;
+
+                    // Attempt to extract the Schema Class of the individual records,
+                    //      by examining the first one (if present)
+                    if (this.recordset.length > 0)
+                         if ('_CLASS' in this.recordset[0])
+                            this.record_class = this.recordset[0]._CLASS;
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            } // finish_get_recordset
+
+        }  // methods
+
+    }
+); // end component

@@ -1,4 +1,4 @@
-/*  Vue component
+/*  Vue component used by database_overview.htm
  */
 
 Vue.component('vue-database-summary',
@@ -9,6 +9,17 @@ Vue.component('vue-database-summary',
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
                 <h2>{{all_labels.length}} <i>labels</i> found in graph database:</h2>
+
+                <vue-record-cluster
+                    v-bind:item_fields="{filter_label: 'BA', n_group: 3}"
+                    v-bind:item_metadata="item_metadata"
+                    v-bind:edit_mode="false"
+                    v-bind:category_id="0"
+                    v-bind:index="0"
+                    v-bind:item_count="0"
+                    v-bind:schema_data="['class', 'order_by', 'clause', 'n_group', 'caption']"
+                >
+                </vue-record-cluster>
 
                 <div v-for="(label, index) in all_labels" >
 
@@ -30,7 +41,19 @@ Vue.component('vue-database-summary',
                     </div>
 
                     <div v-if="show_sample_arr[index]" style="border: 1px solid gray; margin-bottom:10px">
-                        Sample info here!
+                        Sample info here!  Plugin below:
+
+                        <vue-record-cluster
+                            v-bind:item_fields="{filter_label: label, n_group: 3}"
+                            v-bind:item_metadata="item_metadata"
+                            v-bind:edit_mode="false"
+                            v-bind:category_id="0"
+                            v-bind:index="0"
+                            v-bind:item_count="0"
+                            v-bind:schema_data="['class', 'order_by', 'clause', 'n_group', 'caption']"
+                        >
+                        </vue-record-cluster>
+
                     </div>
 
                 </div>
@@ -46,7 +69,13 @@ Vue.component('vue-database-summary',
                 all_labels: this.all_database_labels,
 
                 show_schema_arr: Array(this.all_database_labels.length).fill(false),
-                show_sample_arr: Array(this.all_database_labels.length).fill(false)
+                show_sample_arr: Array(this.all_database_labels.length).fill(false),
+                item_metadata: {    class_name: "Recordset",
+                                    class_handler:"recordsets",
+                                    pos:0,
+                                    schema_code:"rs",
+                                    entity_id:"fake"
+                               }
             }
         }, // data
 
