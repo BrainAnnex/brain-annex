@@ -25,7 +25,6 @@ Vue.component('vue-record-cluster',
                                 EXAMPLE of existing Recordset item:
                                         {   class_name: "Recordset",
                                             class_handler:"recordsets",
-                                            pos:0,
                                             schema_code:"rs",
                                             entity_id:"rs-7",
                                             internal_id: 123
@@ -80,7 +79,7 @@ Vue.component('vue-record-cluster',
                             <th v-for="field_name in headers_to_include">
                                 {{insert_blanks(field_name)}}
                                 <img @click="remove_from_filter(field_name)" class="clickable-icon"
-                                 src='/BA/pages/static/graphics/eye_hidden_16_315219.png'
+                                 src='/BA/pages/static/graphics/block_24_10233565.png'
                                  title="Remove from filter. The data won't be affected"
                                  alt="Remove from filter. The data won't be affected"
                                  style="margin-left:10px">

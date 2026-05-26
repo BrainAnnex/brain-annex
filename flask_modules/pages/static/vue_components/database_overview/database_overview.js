@@ -3,7 +3,10 @@
 
 Vue.component('vue-database-summary',
     {
-        props: ['all_database_labels'],
+        props: ['all_database_labels', 'all_class_names'],
+        /*  all_database_labels
+            all_class_names
+         */
 
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
@@ -29,7 +32,16 @@ Vue.component('vue-database-summary',
                     <br>
 
                     <div v-if="show_schema_arr[index]" style="border: 1px solid gray; margin-bottom:10px">
-                        Schema info here!
+                        <p v-if="(all_classes.includes(label))" style="font-size: 18px">
+                            CLASS <span class='label-name'>{{label}}</span> FOUND
+                        </p>
+
+                        <p v-else style="font-size: 18px">
+                            NO schema information found. <button>Add to Schema</button><br>
+                            The Schema is a way to store information - such as descriptions and list of fields - about database entities.<br>
+                            Use only for database entities that have well-defined prescribed structures; don't use 
+                            for database labels meant to index heterogeneous data
+                        </p>
                     </div>
 
                     <div v-if="show_sample_arr[index]"
@@ -61,12 +73,12 @@ Vue.component('vue-database-summary',
         data: function() {
             return {
                 all_labels: this.all_database_labels,
+                all_classes: this.all_class_names,
 
                 show_schema_arr: Array(this.all_database_labels.length).fill(false),
                 show_sample_arr: Array(this.all_database_labels.length).fill(false),
                 item_metadata: {    class_name: "Recordset",
                                     class_handler:"recordsets",
-                                    pos:0,
                                     schema_code:"rs",
                                     entity_id:"fake"
                                }
@@ -78,15 +90,22 @@ Vue.component('vue-database-summary',
 
         // ------------------------------------   METHODS   ------------------------------------
         methods: {
+            /**
+             * Invoked when the user click to toggle the display of the Schema information
+             */
             toggle_schema(index)
             {
-                console.log(index);
+                //console.log(index);
                 Vue.set(this.show_schema_arr, index, !this.show_schema_arr[index]);
             },
 
+
+            /**
+             * Invoked when the user click to toggle the display of sample records
+             */
             toggle_sample(index)
             {
-                console.log(index);
+                //console.log(index);
                 Vue.set(this.show_sample_arr, index, !this.show_sample_arr[index]);
             },
 

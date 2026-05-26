@@ -66,7 +66,9 @@
         <!-- Vue component -->
         {#  Pass a Flask parameter as an argument to the following Vue component #}
         <vue-database-summary
-            v-bind:all_database_labels="{{label_list}}">
+            v-bind:all_database_labels="{{label_list}}"
+             v-bind:all_class_names="{{class_list}}"
+        >
         </vue-database-summary>
 
     </div>
