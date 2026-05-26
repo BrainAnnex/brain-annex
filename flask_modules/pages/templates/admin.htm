@@ -31,8 +31,21 @@
 <h2 class="page-title">Admin Functions</h2>
 <span style="color:#666">Brain Annex {{site_data.version}}. &nbsp; Logged in as '<b>{{username}}</b>' <a href="/logout">(log out)</a></span>
 
-<br><br><br>
-<div class="content-block">
+
+
+
+<div class="content-block" style="margin-top:50px">
+    <div class="content-block-title">Database Overview</div>
+
+    <p style="padding:25px">
+        <a href="/BA/pages/database-overview">Database in Tabular form, and Schema Documentation</a>
+    </p>
+</div>
+
+
+
+
+<div class="content-block" style="margin-top:50px">
     <div class="content-block-title">Database Dumps</div>
 
     <p style="padding:25px">
@@ -42,8 +55,8 @@
 
 
 
-<br><br><br>
-<div class="content-block">
+
+<div class="content-block" style="margin-top:50px">
     <div class="content-block-title">Database Loads</div>
 
     <form enctype="multipart/form-data" action="/BA/api/import_json_dump" method="POST">
@@ -55,8 +68,8 @@
 
 
 
-<br><br><br>
-<div class="content-block">
+
+<div class="content-block" style="margin-top:50px">
     <div class="content-block-title">Schema</div>
 
     <p><a href="/BA/pages/schema-manager">SCHEMA MANAGER</a></p>
@@ -64,8 +77,8 @@
 
 
 
-<br><br><br>
-<div class="content-block">
+
+<div class="content-block" style="margin-top:50px">
     <div class="content-block-title">Data Import</div>
 
     <p><a href="/BA/pages/data-import">DATA IMPORT</a></p>
@@ -73,8 +86,8 @@
 
 
 
-<br><br><br>
-<div class="content-block">
+
+<div class="content-block" style="margin-top:50px">
     <div class="content-block-title">Search</div>
     <form method='GET' action='search'>
         <input type='text' name='term'  size="25" maxlength="35" placeholder="Enter a single word to search for">

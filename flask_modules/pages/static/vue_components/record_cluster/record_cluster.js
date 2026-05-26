@@ -1,8 +1,7 @@
-/*  Vue component to display and edit Content Items of type "rs" (Recordsets)
-    TODO: rename 'vue-plugin-recordset'
+/*  Vue component
  */
 
-Vue.component('vue-plugin-rs',
+Vue.component('vue-record-cluster',
     {
         props: ['item_fields', 'item_metadata',
                 'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
@@ -26,7 +25,6 @@ Vue.component('vue-plugin-rs',
                                 EXAMPLE of existing Recordset item:
                                         {   class_name: "Recordset",
                                             class_handler:"recordsets",
-                                            pos:0,
                                             schema_code:"rs",
                                             entity_id:"rs-7",
                                             internal_id: 123
@@ -191,140 +189,11 @@ Vue.component('vue-plugin-rs',
                 </div>
 
 
-
                 <!-- Status info -->
                 <p style="float: right; display: inline-block; padding: 5px; margin-top: 8px; margin-right: 5px; text-align: right; background-color:#f4f7f9">
                     <span v-if="waiting" class="waiting">Contacting the server...</span>
                     <span v-bind:class="{'error-message': error, 'status-message': !error }">{{status_message}}</span>
                 </p>
-
-
-                <!-- RECORDSET EDITOR (for the overall structure): in ***VIEWING*** MODE -->
-                <div v-if="editing_mode && !recordset_editing"
-                     style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
-                    <b>RECORDSET definition</b>
-                    <img src="/BA/pages/static/graphics/edit_16_pencil2.png" style="margin-left: 30px"
-                         @click="edit_recordset"  class="control" title="EDIT" alt="EDIT">
-
-                    <p style="margin-left: 10px">
-                        Filter label: "{{current_data.filter_label}}"<br>
-                        Order by: "{{current_data.order_by}}"<br>
-                        Fields to include (blank = ALL): "{{current_data.fields}}"<br>
-                        Filter: \`{{current_data.clause_key}}\` = <span style="background-color: #cdf6fd">{{current_data.clause_value}}</span>
-                           (If value is string, then case-sensitive CONTAINS)<br>
-                        Number records shown per page: {{current_data.n_group}}<br>
-                        Caption: {{current_data.caption}}
-                    </p>
-                </div>
-
-
-                <!-- RECORDSET EDITOR (for the overall structure): in ***EDITING*** MODE -->
-                <div v-if="recordset_editing" style="border: 1px solid gray; background-color: white; padding: 5px; margin-top: 3px; margin-bottom: 3px">
-                    <b>RECORDSET definition</b><br>
-                    <table>
-                        <tr>
-                            <td style="text-align: right">Filter Label</td>
-                            <td>
-                                <select  @change='label_selected'  v-model="current_data.filter_label">
-                                    <option disabled value='-1'>[Choose an option]</option>
-                                    <option v-for="item in all_labels"
-                                            v-bind:value="item">
-                                        {{item}}
-                                    </option>
-                                </select>
-                            </td>
-
-                            <td rowspan=3 style="vertical-align: bottom; padding-left: 50px">
-                                <button @click="save_recordset_edit" style="font-size: 14px; font-weight: bold; padding: 10px">SAVE</button>
-                                <span @click="cancel_recordset_edit" class="clickable-icon" style="color:blue; margin-left: 15px; font-size: 11px">CANCEL</span>
-                                <br>
-                                <span v-if="waiting" class="waiting">Performing the update</span>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="text-align: right">Order by</td>
-                            <td>
-                                <input v-model="current_data.order_by" size="40">
-                                <span style="color:gray">(Comma-separated field names, optionally followed by DESC)</span>
-                            </td>
-                        </tr>
-
-                        <!--
-                        <tr>
-                            <td style="text-align: right">Fields to include (blank = ALL)</td>
-                            <td>
-                                <input v-model="current_data.fields" size="70">
-                            </td>
-                        </tr>
-                        -->
-
-                        <tr>
-                            <td style="text-align: right">Filter</td>
-                            <td>
-                                <input v-model="current_data.clause_key" size="15">
-                                <span style="font-weight: bold; font-size: 18px">=</span>
-                                <input v-model="current_data.clause_value" size="30">  (If value is string, then case-sensitive CONTAINS)
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="text-align: right">Number records shown per page</td>
-                            <td>
-                                <select v-model="current_data.n_group">
-                                    <option disabled value='-1'>[Choose an option]</option>
-                                    <option v-for="item in size_choices"
-                                            v-bind:value="item">
-                                        {{item}}
-                                    </option>
-                                </select>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="text-align: right">Caption</td>
-                            <td>
-                                <input v-model="current_data.caption" size="25">
-                            </td>
-                        </tr>
-
-
-                        <tr>
-                            <td style="text-align: right">Fields to include (blank = ALL)</td>
-                            <td>
-                                <vue-multiselect
-                                    v-model="fields_to_show"
-                                    v-bind:options=headers
-                                    placeholder="Select fields to include (in order)"
-                                    v-bind:multiple="true">
-                                </vue-multiselect>
-                                <br>
-                                <span style="color: gray">SELECTED: {{fields_to_show}}</span>
-                            </td>
-                        </tr>
-
-
-                    </table>
-                </div>
-
-
-                <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls),
-                      EXCEPT for the "edit" control, which is provided by this Vue component itself.
-                      Signals from the Vue child component "vue-controls", below,
-                      get relayed to the parent of this component;
-                      none get intercepted and handled here
-                -->
-                    <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
-
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
-                                  v-bind:controls_to_hide="['edit']"
-                                  v-on="$listeners"
-                    >
-                    </vue-controls>
-
-                    <!-- OPTIONAL MORE CONTROLS to the RIGHT of the standard ones would go here -->
-
-                <!--  End of Standard Controls -->
 
             </div>		<!-- End of outer container -->
             `,
@@ -707,7 +576,7 @@ Vue.component('vue-plugin-rs',
                 const index = this.fields_to_show.indexOf(field_name);
                 if (index !== -1)  {
                     this.fields_to_show.splice(index, 1);
-                    this.save_recordset_edit();
+                    //this.save_recordset_edit();
                 }
                 else
                     alert(`Unable to remove the field "${field_name}" from the filter. Try refreshing the page`);
