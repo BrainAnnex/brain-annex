@@ -2795,7 +2795,7 @@ class ApiRouting:
                     return make_response(err_status, 500)
 
         
-            category_uri = post_data["category_id"]
+            category_entity_id = post_data["category_id"]
 
 
             (basename, suffix) = os.path.splitext(tmp_filename_for_upload)  # EXAMPLE: "test.jpg" becomes
@@ -2832,31 +2832,38 @@ class ApiRouting:
 
             # Update the database
             # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
+            response = ""
             try:
                 insertion_location = post_data.get('insert_after_uri')
                 insertion_class = post_data.get('insert_after_class')
                 if (insertion_location == "INSERT_AT_BOTTOM") or (not insertion_location) or (not insertion_class):
                     # Note: in case the insertion position isn't fully specified,
                     #       the Item will inserted at the bottom of the Category Page
-                    print(f"    Inserting new Media Item at *bottom* of the Category page")
-                    _, new_uri = Categories.add_content_at_end(category_entity_id=category_uri,
+                    print(f"    Inserting new Media Item at *bottom* of the Category page (category Entity ID `{category_entity_id}`)")
+                    _, new_uri = Categories.add_content_at_end(category_entity_id=category_entity_id,
                                                                item_class_name=class_name, item_properties=properties)
                 else:
                     print(f"    Inserting new Media Item after Category page element with URI `{insertion_location}`")
-                    new_uri = Categories.add_content_after_element(category_uri=category_uri,
+                    new_uri = Categories.add_content_after_element(category_uri=category_entity_id,
                                                                    item_class_name=class_name, item_properties=properties,
                                                                    insert_after_uri=insertion_location, insert_after_class=insertion_class)
+            except Exception as ex:
+                err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)
+                print("upload_media(): ", err_status)
+                response = make_response(err_status, 500)
+                return response
 
+
+            try:
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Document":    # TODO: move to plugin_support.py
-                    Document.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
+                    Document.new_content_item_successful(entity_id=new_uri, pars=properties, mime_type=mime_type,
                                                          upload_folder=post_data.get("upload_folder"),
                                                          index_pdf=current_app.config['INDEX_PDF_FILES'])
                                                           # 'INDEX_PDF_FILES' setting is defined in main file
-                response = ""
 
             except Exception as ex:
-                err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)
+                err_status = f"Unable to perform plugin-specific operations for {class_name} with entity ID {new_uri} " + exceptions.exception_helper(ex)
                 print("upload_media(): ", err_status)
                 response = make_response(err_status, 500)
 

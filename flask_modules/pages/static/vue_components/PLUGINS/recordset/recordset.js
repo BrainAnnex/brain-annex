@@ -1006,7 +1006,7 @@ Vue.component('vue-plugin-rs',
 
             /**
              * Make a server call to obtain all the field names associated to a sample of nodes with the given label.
-                TODO: also attemp to extract the Schema fields of the Class that this recordset is based on
+                TODO: also attempt to extract the Schema fields of the Class that this recordset is based on
                 E.g.
                     GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                 to fetch:

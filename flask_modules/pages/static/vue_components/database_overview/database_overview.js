@@ -34,6 +34,13 @@ Vue.component('vue-database-summary',
                     <div v-if="show_schema_arr[index]" style="border: 1px solid gray; margin-bottom:10px">
                         <p v-if="(all_classes.includes(label))" style="font-size: 18px">
                             CLASS <span class='label-name'>{{label}}</span> FOUND
+
+                            <!-- Vue component -->
+                            <vue-schema-editor
+                                v-bind:class_name="label"
+                            >
+                            </vue-schema-editor>
+
                         </p>
 
                         <p v-else style="font-size: 18px">
@@ -49,6 +56,7 @@ Vue.component('vue-database-summary',
                     >
                         Sample records (database nodes) with the label <span class='label-name'>{{label}}</span>:
 
+                        <!-- Vue component -->
                         <vue-record-cluster
                             v-bind:item_fields="{filter_label: label, n_group: 3}"
                             v-bind:item_metadata="item_metadata"
