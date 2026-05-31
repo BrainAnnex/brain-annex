@@ -768,6 +768,8 @@ def test_get_class_properties_full_data(db):
     db.empty_dbase()
 
     GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
+    prop_ids = [GraphSchema.get_property_internal_id(class_name="Quote", property_name=p)
+                    for p in ["text", "attribution", "verified"] ]
 
     GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
                                        attribute_name="description", attribute_value="the body of the quote")
@@ -791,12 +793,11 @@ def test_get_class_properties_full_data(db):
                                        attribute_name="required", attribute_value=False)
 
     result = GraphSchema.get_class_properties_full_data(class_name="Quote")
-    print(result)
-    assert result == [  {'name': 'text', 'entity_id': 'schema-2', '_internal_id': 24,        'dtype': 'string', 'system': False, 'format': '6,50', 'description': 'the body of the quote', 'required': True, '_node_labels': ['SCHEMA', 'PROPERTY']},
-                        {'name': 'attribution', 'entity_id': 'schema-3', '_internal_id': 25, '_node_labels': ['SCHEMA', 'PROPERTY']},
-                        {'name': 'verified', 'entity_id': 'schema-4', '_internal_id': 26,    'dtype': 'boolean', 'required': False, '_node_labels': ['SCHEMA', 'PROPERTY']}
-                     ]
 
+    assert result == [  {'name': 'text',        'entity_id': 'schema-2', '_internal_id': prop_ids[0],  'dtype': 'string', 'system': False, 'format': '6,50', 'description': 'the body of the quote', 'required': True},
+                        {'name': 'attribution', 'entity_id': 'schema-3', '_internal_id': prop_ids[1]},
+                        {'name': 'verified',    'entity_id': 'schema-4', '_internal_id': prop_ids[2],  'dtype': 'boolean', 'required': False}
+                     ]
 
 
 

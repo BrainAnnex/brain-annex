@@ -512,11 +512,11 @@ class InterGraph:
                                             {'age': 20}
         :param flatten:             Flag indicating whether the Graph Data Types need to remain clustered by record,
                                         or all placed in a single flattened list
-        :param fields_to_exclude:   [OPTIONAL] list of strings with name of fields
-                                        (in the database, or special keys added by this function)
-                                        that wishes to drop.  No harm in listing fields that aren't present.
-                                        For example, if the query returns relationships, there will be 3 keys
-                                        named 'neo4j_start_node', 'neo4j_end_node', 'neo4j_type' ('type' is the name of the relationship)
+        :param fields_to_exclude:   [OPTIONAL] String, or list of strings, with name(s) of fields
+                                        (in the database nodes, or special keys added by this function)
+                                        that we wish to leave out.  No harm in listing fields that aren't present.
+                                        For example, if the query returns nodes,
+                                        we might elect to exclude the automatically-added field  '_node_labels'
 
         :return:        A (possibly empty) list of dictionaries, if flatten is True,
                         or a list of list, if flatten is False.
@@ -543,7 +543,7 @@ class InterGraph:
                              '_internal_id': 2,
                              'neo4j_start_node': <Node id=11 labels=frozenset() properties={}>,
                              'neo4j_end_node': <Node id=14 labels=frozenset() properties={}>,
-                             'neo4j_type': 'bought_by'}]
+                             'neo4j_type': 'bought_by'}]    # 'type' is the name of the relationship
         """
         #TODO: rename neo4j_start_node to start_node, etc
         #TODO: perhaps merge with query()
@@ -557,6 +557,9 @@ class InterGraph:
             print(f"    flatten: {flatten} , fields_to_exclude: {fields_to_exclude}")
             if self.block_query_execution:
                 return []
+
+        if (type(fields_to_exclude) == str) and (fields_to_exclude != ""):
+            fields_to_exclude = [fields_to_exclude]
 
         # Start a new session, use it, and then immediately close it
         with self.driver.session() as new_session:
@@ -585,7 +588,7 @@ class InterGraph:
 
                 data = []
                 for item in record:
-                    # Note: item is a neo4j.graph.Node object
+                    # Note: item is EITHER a neo4j.graph.Node object
                     #       OR a neo4j.graph.Relationship object
                     #       OR a neo4j.graph.Path object
                     #       See https://neo4j.com/docs/api/python-driver/current/api.html#node
@@ -597,6 +600,8 @@ class InterGraph:
 
                     neo4j_properties = dict(item.items())   # EXAMPLE: {'gender': 'M', 'age': 99}
 
+                    # Add extra, special fields depending on whether the returned item represents
+                    # a database node, relationship or path
                     if isinstance(item, neo4j.graph.Node):
                         neo4j_properties["_internal_id"] = item.id              # Example: 227
                         neo4j_properties["_node_labels"] = list(item.labels)    # Example: ['person', 'client']

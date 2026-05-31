@@ -1276,10 +1276,17 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_properties_full_data(cls, class_name: str):
+    def get_class_properties_full_data(cls, class_name: str) -> [dict]:
         """
+        Return the full data (not just the names) for all the Properties of the given schema Class,
+        as a list of dictionaries.
 
-        :param class_name:
+        EXAMPLE:
+            [{'name': 'text', 'entity_id': 'schema-2', '_internal_id': 123,
+              'dtype': 'string', 'system': False, 'format': '6,50', 'description': 'the body of the quote', 'required': True}
+            ]
+
+        :param class_name:  The name of a Schema Class
         :return:
         """
         q = f'''
@@ -1291,15 +1298,30 @@ class GraphSchema:
         data_binding = {"class_name": class_name}
         return cls.db.query_extended(q, data_binding=data_binding, flatten=True, fields_to_exclude="_node_labels")
 
-        '''
-        class_node_match = cls.db.match(labels="CLASS",
-                                        key_name="_CLASS", key_value=class_name)
 
-        result = cls.db.follow_links(match=class_node_match, rel_name="HAS_PROPERTY",
-                                     neighbor_labels="PROPERTY", include_id=True,
-                                     limit=1000)
-        '''
 
+    @classmethod
+    def get_property_internal_id(cls, class_name :str, property_name :str) -> int|str:
+        """
+        Look up, and return, the internal database ID of the given schema Property
+
+        :param class_name:      The name of the Class node
+        :param property_name:   The name of the Property node
+        :return:                None
+        """
+        #TODO: pytest.  Look into edge cases.  Maybe allow simultaneous lookup of multiple Properties
+        q = '''
+            MATCH (c :CLASS { name: $class_name })
+                  -[:HAS_PROPERTY]
+                  ->(p :PROPERTY { name: $property_name})
+            RETURN id(p) AS property_id
+            '''
+        data_binding = {"class_name": class_name, "property_name": property_name}
+        #cls.db.debug_print_query(data_binding, data_binding)
+
+        result = cls.db.query(q, data_binding=data_binding, single_cell="property_id")
+
+        return result
 
 
 
