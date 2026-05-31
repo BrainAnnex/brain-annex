@@ -299,7 +299,7 @@ class PagesRouting:
 
         @bp.route('/schema-manager')
         @login_required
-        def schema_manager() -> str:
+        def schema_manager_api() -> str:
             """
             Generate an administrative page to manage the Schema
             EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager

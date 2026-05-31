@@ -21,8 +21,8 @@
 
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
 
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/schema_creator/schema_creator.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/schema_editor/schema_editor.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/CORE/schema_creator/schema_creator.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/CORE/schema_editor/schema_editor.css">
 
     <!-- JavaScript -->
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
@@ -110,8 +110,8 @@
 <!--
     Vue components (and other JS).  This must appear AFTER the Vue-containing elements
   -->
-<script src="/BA/pages/static/vue_components/schema_creator/schema_creator.js"></script>
-<script src="/BA/pages/static/vue_components/schema_editor/schema_editor.js"></script>
+<script src="/BA/pages/static/vue_components/CORE/schema_creator/schema_creator.js"></script>
+<script src="/BA/pages/static/vue_components/CORE/schema_editor/schema_editor.js"></script>
 
 
 <script>
@@ -127,25 +127,6 @@ new Vue({
        class_list: {{class_list | tojson}}     // List of all the names of the Classes in the Schema
 
     }, // DATA
-
-
-
-    // ---------------------  HOOKS  ----------------------
-
-    mounted() {
-    },
-
-
-
-    // ---------------------  COMPUTED  ----------------------
-
-    computed: {
-
-        computed_var()
-        {
-        }
-
-    }, // COMPUTED
 
 
 

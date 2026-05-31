@@ -1648,16 +1648,17 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def follow_links(self, match :int|CypherBuilder, rel_name :str, rel_dir ="OUT",
+    def follow_links(self, match :int|str|CypherBuilder, rel_name :str, rel_dir ="OUT",
                            neighbor_labels=None, include_id=False, include_labels=False, limit=100) -> [dict]:
         """
         From the given starting node(s), follow all the relationships that have the specified name,
         from/into neighbor nodes (optionally requiring those nodes to have the given labels),
-        and return all the properties of the located neighbor nodes, optionally also including their internal database ID's.
+        and return all the properties of the located neighbor nodes,
+        optionally also including their internal database ID's.
 
-        :param match:           EITHER an integer with an internal database node id,
+        :param match:           EITHER an integer or string with an internal database node id,
                                     OR a "CypherBuilder" object, as returned by match(),
-                                    with data to identify a node or set of nodes
+                                    containing data to identify a node or set of nodes
         :param rel_name:        A string with the name of relationship to follow.
                                     (Note: any other relationships are ignored)
         :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
@@ -1681,8 +1682,7 @@ class GraphAccess(InterGraph):
         # TODO: add an option to only retrieve SOME of the properties
         # TODO: add an option to also retrieve some or all the properties of the relationships
         # TODO: make `rel_name` optional
-
-        #match_structure = CypherUtils.process_match_structure(match, caller_method="follow_links")
+        # TODO: add an option to sort by some property of the relationship
 
         if limit is not None:
             assert (type(limit) == int) and (limit >= 1), \

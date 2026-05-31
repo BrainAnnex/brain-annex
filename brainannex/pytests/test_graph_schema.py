@@ -16,7 +16,7 @@ def db():
 
 
 
-# ************  CREATE SAMPLE SCHEMAS for the testing  **************
+# ************  CREATE SAMPLE SCHEMAS : utility functions optionally used for the testing  **************
 
 def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
@@ -764,6 +764,42 @@ def test_get_class_properties(db):
 
 
 
+def test_get_class_properties_full_data(db):
+    db.empty_dbase()
+
+    GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="description", attribute_value="the body of the quote")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="system", attribute_value=False)
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="dtype", attribute_value="string")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="required", attribute_value=True)
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name= "format", attribute_value="6,50")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
+                                       attribute_name="dtype", attribute_value="boolean")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
+                                       attribute_name="required", attribute_value=False)
+
+    result = GraphSchema.get_class_properties_full_data(class_name="Quote")
+    print(result)
+    assert result == [  {'name': 'text', 'entity_id': 'schema-2', '_internal_id': 24,        'dtype': 'string', 'system': False, 'format': '6,50', 'description': 'the body of the quote', 'required': True, '_node_labels': ['SCHEMA', 'PROPERTY']},
+                        {'name': 'attribution', 'entity_id': 'schema-3', '_internal_id': 25, '_node_labels': ['SCHEMA', 'PROPERTY']},
+                        {'name': 'verified', 'entity_id': 'schema-4', '_internal_id': 26,    'dtype': 'boolean', 'required': False, '_node_labels': ['SCHEMA', 'PROPERTY']}
+                     ]
+
+
+
+
 def test_add_properties_to_class(db):
     db.empty_dbase()
 
@@ -820,13 +856,13 @@ def test_create_class_with_properties(db):
 
 def test_set_property_attribute(db):
     db.empty_dbase()
-    create_sample_schema_2()    # Schema with quotes and categories
+    GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
 
-    GraphSchema.set_property_attribute(class_name="quotes", prop_name="verified",
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
                                        attribute_name="dtype", attribute_value="boolean")
 
     q = '''
-        MATCH (c :CLASS {name: "quotes"})-[:HAS_PROPERTY]->(p :PROPERTY {name: "verified"}) 
+        MATCH (c :CLASS {name: "Quote"})-[:HAS_PROPERTY]->(p :PROPERTY {name: "verified"}) 
         RETURN p.dtype AS DTYPE
         '''
     result = db.query(q, single_cell="DTYPE")

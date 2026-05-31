@@ -1276,6 +1276,34 @@ class GraphSchema:
 
 
     @classmethod
+    def get_class_properties_full_data(cls, class_name: str):
+        """
+
+        :param class_name:
+        :return:
+        """
+        q = f'''
+            MATCH (c :CLASS)-[r :HAS_PROPERTY]->(p :PROPERTY)
+            WHERE c.name=$class_name
+            RETURN p
+            ORDER BY r.index
+            '''
+        data_binding = {"class_name": class_name}
+        return cls.db.query_extended(q, data_binding=data_binding, flatten=True, fields_to_exclude="_node_labels")
+
+        '''
+        class_node_match = cls.db.match(labels="CLASS",
+                                        key_name="_CLASS", key_value=class_name)
+
+        result = cls.db.follow_links(match=class_node_match, rel_name="HAS_PROPERTY",
+                                     neighbor_labels="PROPERTY", include_id=True,
+                                     limit=1000)
+        '''
+
+
+
+
+    @classmethod
     def add_properties_to_class(cls, class_node :int|str, properties = None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
@@ -1400,6 +1428,7 @@ class GraphSchema:
         #       (with a "HAS_URI_GENERATOR" relationship)
 
         # TODO: maybe add argument 'extra_labels'
+        # TODO: maybe also return the internal ID's of all the newly-created Property nodes
 
         if class_to_link_to:
             assert link_name, \
@@ -1452,15 +1481,27 @@ class GraphSchema:
                     set_property_attribute(class_name="User", prop_name="username",
                                            attribute_name="required", attribute_value=True)
 
+                    set_property_attribute(class_name="Pump", prop_name="flow",
+                                           attribute_name="description",
+                                           attribute_value="Rated safe max flow in L/min")
+
         :param class_name:      The name of an existing CLASS node
         :param prop_name:       The name of an existing PROPERTY node
         :param attribute_name:  The name of an attribute (field) of the PROPERTY node.
-                                    EXAMPLES:  "system", "dtype", "required", "description"
+                                    EXAMPLES:  "description", "system", "dtype", "required"
         :param attribute_value: The value to give to the above attribute (field) of the PROPERTY node;
                                     if a value was already set, it will be over-written
         :return:                None
         """
-        #TODO: provide support for some attributes, such as "dtype", "required", "system"
+        ALLOWED_ATTRIBUTES = ["description", "system", "dtype", "required", "format"]
+
+        assert attribute_name in ALLOWED_ATTRIBUTES, \
+            f"set_property_attribute(): allowed values for argument `attribute_name` are {ALLOWED_ATTRIBUTES}"
+        assert attribute_value is not None, \
+            f"set_property_attribute(): argument `attribute_value` must be provided"
+
+        #TODO: provide validation for some attributes, such as "dtype", "required", "system"
+        #       E.g. "required" and "system" must pass boolean values
         q = f'''
             MATCH (:CLASS {{name: $class_name}})-[:HAS_PROPERTY]->(p :PROPERTY {{name: $prop_name}})
             SET p.`{attribute_name}`= $attribute_value

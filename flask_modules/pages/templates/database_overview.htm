@@ -1,5 +1,10 @@
 <!DOCTYPE html>
 {#
+    Page for:
+        1) tabular display of samples of the database
+        2) viewing and editing database Schema
+
+
     Flask-passed parameters:
 
         current_page, site_pages,
@@ -18,9 +23,9 @@
     <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
     <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
 
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/database_overview/database_overview.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/CORE/database_overview/database_overview.css">
     <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/record_cluster/record_cluster.css">
-    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/CORE/schema_editor/schema_editor.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/CORE/schema_manager/schema_manager.css">
 
     <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
     <script src="/BA/api/static/server_communication.js"></script>
@@ -66,11 +71,11 @@
 
         <!-- Vue component -->
         {#  Pass a Flask parameter as an argument to the following Vue component #}
-        <vue-database-summary
+        <vue-database-overview
             v-bind:all_database_labels="{{label_list}}"
              v-bind:all_class_names="{{class_list}}"
         >
-        </vue-database-summary>
+        </vue-database-overview>
 
     </div>
     
@@ -81,9 +86,9 @@
 
 
 <!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements -->
-<script src="/BA/pages/static/vue_components/database_overview/database_overview.js"></script>
+<script src="/BA/pages/static/vue_components/CORE/database_overview/database_overview.js"></script>
 <script src="/BA/pages/static/vue_components/record_cluster/record_cluster.js"></script>
-<script src="/BA/pages/static/vue_components/CORE/schema_editor/schema_editor.js"></script>
+<script src="/BA/pages/static/vue_components/CORE/schema_manager/schema_manager.js"></script>
 
 
 

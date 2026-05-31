@@ -446,7 +446,7 @@ class ApiRouting:
         def get_class_properties_api():
             """
             Get all Properties of the given Class node (as specified by its name),
-            OR all field names associated to a sample of nodes with the given label.
+            OR all field names found in a sample of nodes with the given label.
 
             Optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class;
@@ -606,7 +606,7 @@ class ApiRouting:
 
         @bp.route('/get_class_schema', methods=['POST'])
         @login_required
-        def get_class_schema():
+        def get_class_schema_api():
             """
             Get all Schema data - both Properties and Links - of the given Class node
             (as specified by its name passed as a POST variable),
@@ -718,7 +718,7 @@ class ApiRouting:
         @login_required
         def get_properties_by_uri(uri):
             """
-            Get all properties of a DATA node specified by its URI
+            Get all properties of a DATA node specified by its URI (Entity ID)
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_properties_by_uri/123
 
@@ -2278,6 +2278,7 @@ class ApiRouting:
                                     }
             """
             #TODO: for now, we're just searching by label, rather than by Class
+            #TODO: merge with get_class_properties_api()
             try:
                 # Fetch all the Properties of the given Class
                 all_props = GraphSchema.db.sample_properties(label=class_name, sample_size=10)    # Set of strings
@@ -2705,7 +2706,7 @@ class ApiRouting:
         
         @bp.route('/upload_media', methods=['POST'])
         @login_required
-        def upload_media():
+        def upload_media_api():
             """
             Upload new media Content, to the (specified or default) media folder, and attach it to the Category
             specified in the POST variable "category_id"

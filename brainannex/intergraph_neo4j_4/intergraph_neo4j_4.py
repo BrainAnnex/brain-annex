@@ -598,11 +598,11 @@ class InterGraph:
                     neo4j_properties = dict(item.items())   # EXAMPLE: {'gender': 'M', 'age': 99}
 
                     if isinstance(item, neo4j.graph.Node):
-                        neo4j_properties["_internal_id"] = item.id               # Example: 227
+                        neo4j_properties["_internal_id"] = item.id              # Example: 227
                         neo4j_properties["_node_labels"] = list(item.labels)    # Example: ['person', 'client']
 
                     elif isinstance(item, neo4j.graph.Relationship):
-                        neo4j_properties["_internal_id"] = item.id               # Example: 227
+                        neo4j_properties["_internal_id"] = item.id              # Example: 227
                         neo4j_properties["neo4j_start_node"] = item.start_node  # A neo4j.graph.Node object with "id", "labels" and "properties"
                         neo4j_properties["neo4j_end_node"] = item.end_node      # A neo4j.graph.Node object with "id", "labels" and "properties"
                         #   Example: <Node id=118 labels=frozenset({'car'}) properties={'color': 'white'}>

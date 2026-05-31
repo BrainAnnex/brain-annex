@@ -6,7 +6,8 @@ from app_libraries.data_manager import DataManager
 from app_build import create_app
 
 
-# Provide a Flask app (with a test database connection) that can be used by the various pytests that need it
+# Provide a Flask app object (with a test database connection)
+# that can be used by the various pytests that need it
 @pytest.fixture(scope="module")
 def app():
     """
@@ -16,7 +17,7 @@ def app():
     :return:    The object for the Flask app
     """
     graph_db_obj = GraphAccess(debug=False)
-    app = create_app(db=graph_db_obj, test=True)
+    app = create_app(db=graph_db_obj, test=True)    # An instantiated Flask object
     yield app
 
 
@@ -24,11 +25,12 @@ def app():
 @pytest.fixture
 def client(app):
     """
-    This fixture is created once per test function (using the default scope="function").
+    This fixture is created once per test function (using the default pytest scope="function").
 
     The test database gets emptied out.
 
-    It makes use of test_client(), a built-in testing utility of Flask. It creates an object that behaves like an HTTP client,
+    It makes use of test_client(), a built-in testing utility of Flask.
+    It creates an object that behaves like an HTTP client,
     but instead of sending real network requests,
     it calls your Flask application directly inside the same Python process
 

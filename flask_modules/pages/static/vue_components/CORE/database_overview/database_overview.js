@@ -1,7 +1,7 @@
-/*  Vue component used by database_overview.htm
+/*  Vue components used by database_overview.htm
  */
 
-Vue.component('vue-database-summary',
+Vue.component('vue-database-overview',
     {
         props: ['all_database_labels', 'all_class_names'],
         /*  all_database_labels
@@ -9,7 +9,7 @@ Vue.component('vue-database-summary',
          */
 
         template: `
-            <div>	<!-- Outer container, serving as Vue-required template root  -->
+            <div class="database-overview">	<!-- Outer container, serving as Vue-required template root  -->
 
                 <h2>{{all_labels.length}} <i>labels</i> found in graph database:</h2>
 
@@ -31,25 +31,26 @@ Vue.component('vue-database-summary',
 
                     <br>
 
-                    <div v-if="show_schema_arr[index]" style="border: 1px solid gray; margin-bottom:10px">
+                    <div v-if="show_schema_arr[index]" class="schema">
                         <p v-if="(all_classes.includes(label))" style="font-size: 18px">
-                            CLASS <span class='label-name'>{{label}}</span> FOUND
+                            CLASS <span class='label-name'>"{{label}}"</span>
 
                             <!-- Vue component -->
-                            <vue-schema-editor
+                            <vue-schema-manager
                                 v-bind:class_name="label"
                             >
-                            </vue-schema-editor>
+                            </vue-schema-manager>
 
                         </p>
 
-                        <p v-else style="font-size: 18px">
-                            NO schema information found. <button>Add to Schema</button><br>
+                        <p v-else class="not-found">
+                            NO schema information found for Class "{{label}}" &nbsp; <button>Add to Schema</button><br>
                             The Schema is a way to store information - such as descriptions and list of fields - about database entities.<br>
                             Use only for database entities that have well-defined prescribed structures; don't use
                             for database labels meant to index heterogeneous data
                         </p>
                     </div>
+
 
                     <div v-if="show_sample_arr[index]"
                          style="margin-bottom:30px; padding:10px; background-color: aliceblue"
