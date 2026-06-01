@@ -2374,7 +2374,8 @@ class ApiRouting:
         def field_names_by_class(class_name):
             """
             Get all the field (property) names
-            registered with that class name or, if no such class exists,
+            registered with that class name
+            OR, if no such class exists,
             retrieve field names typically associated with nodes with that label
 
             EXAMPLES of invocation: http://localhost:5000/BA/api/field-names-by-class/cars

@@ -127,7 +127,7 @@ Vue.component('vue-schema-manager',
                 E.g.
                     GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                 to fetch:
-                    ['quote', 'attribution', 'notes']
+                    TBA
 
                 If successful, it will update the value for this.class_properties
              */

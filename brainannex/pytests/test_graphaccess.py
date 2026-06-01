@@ -376,6 +376,40 @@ def test_find_first_duplicate(db):
 
 
 
+def test_sample_properties(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        db.sample_properties(label="NON_EXISTENT")  # No such nodes exist
+
+
+    db.create_node(labels="Car")    # This node lacks any properties
+    assert db.sample_properties(label="Car") == set()   # Empty set
+
+    db.create_node(labels="Car")    # This node lacks any properties
+    assert db.sample_properties(label="Car") == set()   # Empty set
+
+    db.create_node(labels="Person", properties={"name": "Julian"})
+    assert db.sample_properties(label="Person") == {"name"}
+    assert db.sample_properties(label="Car") == set()   # Empty set
+
+    db.create_node(labels="Car", properties={"color": "white"})
+    assert db.sample_properties(label="Person") == {"name"}
+    assert db.sample_properties(label="Car") == {"color"}   # Set with 1 element
+
+    db.create_node(labels="Car", properties={"model": "Toyota"})
+    assert db.sample_properties(label="Person") == {"name"}
+    assert db.sample_properties(label="Car") == {"color", "model"}  # Set with 2 elements
+
+    db.create_node(labels="Person", properties={"name": "Val", "age": 22})
+    assert db.sample_properties(label="Person") == {"name", "age"}
+    assert db.sample_properties(label="Car") == {"color", "model"}
+
+    result = db.sample_properties(label="Person", sample_size=1)    # Only sampling 1 node
+    assert result == {"name"} or result == {"age"}                  # Only 1 property will be captured
+
+
+
 
 ###  ~ FOLLOW LINKS ~
 

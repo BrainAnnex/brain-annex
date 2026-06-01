@@ -498,25 +498,32 @@ class GraphAccess(InterGraph):
 
 
 
-    def sample_properties(self, label :str, sample_size=10) -> {str}:
+    def sample_properties(self, label :str, sample_size=20) -> {str}:
         """
         Take a sample of the given size of the database nodes with the given label,
         and assemble the set of ALL the properties that are present on any of those nodes.
 
-        Meant as an estimate of the properties (typically) used, in current usage of the database,
-        for nodes of a given label.
+        Meant as a best guess of the Properties (typically) used, in the current usage of the database,
+        for the nodes of the given label.
+
+        If no nodes with the given label exist, an Exception is raised.
 
         CAUTION: In a graph database, any node may freely deviate - and have, or not have, any Properties
-                 it wishes.  If any type of standardization is desired, make use of the GraphSchema layer
+                 (fields) it wishes.
+                 If any type of standardization is desired, make use of the GraphSchema layer
 
         :param label:       Name of the database label of interest
-        :param sample_size: Number of nodes to use as a representative sampler
+        :param sample_size: Number of database nodes to use as a representative sampler
         :return:            Set of property (aka field) names
         """
-        # TODO: Pytest
+        # TODO: look into sampling the existing data types
+        # TODO: return a sorted list instead
         m = self.match(labels=label)
 
-        result = self.get_nodes(match=m, limit=sample_size) # A list of dicts
+        result = self.get_nodes(match=m, limit=sample_size)     # A list of dicts
+        assert len(result) > 0, \
+            f"sample_properties(): no nodes with the label `{label}` were found"
+
 
         # Note: outer loop in set comprehension, below, is "for d in result" (for each dict in list);
         #       inner loop, "for k in d" (for each key in dict)

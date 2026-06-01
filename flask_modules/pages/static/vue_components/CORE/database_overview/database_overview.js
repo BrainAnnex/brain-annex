@@ -42,7 +42,9 @@ Vue.component('vue-database-overview',
                         </p>
 
                         <p v-else class="not-found">
-                            NO schema information found for Class "{{label}}" &nbsp; <button>Add to Schema</button><br>
+                            NO schema information found for Class "{{label}}" &nbsp;
+                            <button @click=add_to_schema(label)>Add to Schema</button>
+                            <br>
                             The Schema is a way to store information - such as descriptions and list of fields - about database entities.<br>
                             CAUTION: Use only for database entities that have well-defined prescribed structures; don't use
                             for database labels meant to index heterogeneous data
@@ -115,6 +117,52 @@ Vue.component('vue-database-overview',
                 //console.log(index);
                 Vue.set(this.show_sample_arr, index, !this.show_sample_arr[index]);
             },
+
+
+
+            /**
+             * Invoked when the user click on an "Add to Schema" button
+             */
+            add_to_schema(class_name)
+            {
+                alert(`Adding Class "${class_name}" to Schema not yet implemented`);
+            },
+
+
+
+            /*
+                ------------------   SERVER CALLS   ------------------
+             */
+
+            sample_properties(class_name)
+            {
+                console.log(`In sample_properties(): attempting to estimate the Properties of the Class '${lass_name}'`);
+
+                const url_server_api = "/BA/api/TBA";
+
+                const data_obj = {class_name: this.class_name
+                                  //, include_ancestors: true,
+                                  //exclude_system: true
+                                  };
+
+                console.log(`About to contact the server at ${url_server_api} .  GET object:`);
+                console.log(data_obj);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {   data_obj: data_obj,
+                                json_encode_send: true,
+                                callback_fn: this.finish_get_fields
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+
+            }
+
+
+
 
         }  // METHODS
 
