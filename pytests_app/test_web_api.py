@@ -91,34 +91,87 @@ def test_get_class_properties_api(client):
 
 
 
-def test_get_class_properties_full_data_api(client):
-    endpoint = "get-class-properties-full-data"
+def test_class_properties_full_data_api(client):
+    endpoint = "class-properties-full-data"
 
     json = '{"class_name": "Quote"}'
 
     request = f"/BA/api/{endpoint}?json={json}"
-    response = client.post(request)
+    response = client.get(request)
     # The response is an object of type 'werkzeug.test.WrapperTestResponse'
     assert response.status_code == 200
     assert response.json["status"] == "ok"
     assert response.json["payload"] == []   # The database is empty
 
-    return
+
     # Populate the database
-    GraphSchema.create_class_with_properties(name="Quote", properties =["Author", "Text"])
+    GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
+    prop_ids = [GraphSchema.get_property_internal_id(class_name="Quote", property_name=p)
+                    for p in ["text", "attribution", "verified"] ]
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="description", attribute_value="the body of the quote")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="system", attribute_value=False)
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="dtype", attribute_value="string")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="required", attribute_value=True)
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name= "format", attribute_value="6,50")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
+                                       attribute_name="dtype", attribute_value="boolean")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
+                                       attribute_name="required", attribute_value=False)
+
 
     response = client.get(request)
     assert response.status_code == 200
     assert response.json["status"] == "ok"
-    assert response.json["payload"] == ['Author', 'Text']
+    assert response.json["payload"] == [    {'name': 'text',        'entity_id': 'schema-2', '_internal_id': prop_ids[0],  'dtype': 'string', 'system': False,
+                                             'format': '6,50', 'description': 'the body of the quote', 'required': True},
+                                            {'name': 'attribution', 'entity_id': 'schema-3', '_internal_id': prop_ids[1]},
+                                            {'name': 'verified',    'entity_id': 'schema-4', '_internal_id': prop_ids[2],  'dtype': 'boolean', 'required': False}
+                                         ]
 
 
-    json = '{"fake_key": "Quote"}'      # Missing required key
+    json = '{"class_name": "I dont exist"}'      # Missing Class
     request = f"/BA/api/{endpoint}?json={json}"
     response = client.get(request)
     assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == [ ]
+
+
+    GraphSchema.create_class(name="Car")    # Class without Properties
+
+    json = '{"class_name": "Car"}'
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == [ ]
+
+
+    json = '{"class_name": "Car"}'
+    request = f"/BA/api/{endpoint}?jXYZson={json}"  # Malformed GET request
+    response = client.get(request)
+    assert response.status_code == 400
     assert response.json["status"] == "error"
-    assert response.json["error_message"] == "Missing required value for either `class_name` or `label` in the JSON data"
+
+    json = '{"class_name"::: "Car"}'                # Malformed JSON-encoded string
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    print(response.json["error_message"])
+
 
 
 def test_get_links_api(client):

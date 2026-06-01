@@ -179,6 +179,41 @@ class ApiRouting:
 
 
     @classmethod
+    def parse_json_from_GET_request(cls):
+        """
+        Extract and parse the JSON-encoded parameters for a GET request.
+        The calling function ought to account for the possibility of errors,
+        for example arising from a request lacking mimetype indicates "application/json",
+        or a JSON string that isn't parsable
+
+        :return:    The python data decoded from the JSON string that was passed in the GET request;
+                        note that this could be a variety of data types
+        """
+        # Extract the GET values
+        get_data = request.args    # EXAMPLE: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
+                                   # Note that the ImmutableMultiDict object that may contain multiple values for the same key.
+
+        data_dict = get_data.to_dict(flat=True)     # EXAMPLE: {'json': 123}
+                                                    # WARNING: if multiple identical keys occur in the `get_data` ImmutableMultiDict,
+                                                    #          the values associated to the later keys will be discarded
+
+        assert "json" in data_dict, \
+            f"The expected key 'json' is missing from the query string at end of the URL. The GET request: {data_dict}"
+
+        json_str = data_dict["json"]                # A string containing JSON-encoded data
+
+        # Parse the JSON-encoded string
+        request_parameters = json.loads(json_str)   # Turn the string into a Python object
+                                                    # An error will occur if the JSON string is not parsable
+
+        #print("request_parameters: ", request_parameters)
+        # `request_parameters` could be a string, int, list, dict, or other complex data structured passed by the client
+
+        return request_parameters
+
+
+
+    @classmethod
     def explain_flask_request(cls, request_obj :request) -> None:
         """
         Print out a bunch of information to elucidate the contents
@@ -565,9 +600,9 @@ class ApiRouting:
 
 
 
-        @bp.route('/get-class-properties-full-data', methods=['POST'])
+        @bp.route('/class-properties-full-data')
         @login_required
-        def get_class_properties_full_data_api():
+        def class_properties_full_data_api():
             """
             Retrieve the full data (not just the names) for all the Properties of the given Schema Class,
             as a list of dictionaries.
@@ -575,11 +610,10 @@ class ApiRouting:
             If only the names are needed, consider using the endpoint `/get_class_properties`
 
             ~~~ EXAMPLE ~~~
-                http://localhost:5000/BA/api/get-class-properties-full-data
-                using a POST with with Content-Type: application/json
-                and body:  {"class_name": "Quote"}
+                A GET request with the following URL:
+                http://localhost:5000/BA/api/class-properties-full-data?json={"class_name": "Quote"}
 
-            The body must contain a JSON-encoded dict with the following KEYS:
+            The JSON-encoded dict is expected to contain the following KEYS:
                 REQUIRED    "class_name"
 
             :return:
@@ -593,21 +627,23 @@ class ApiRouting:
 
                 Note the '_internal_id' key that gets added to the Property nodes' fields
             """
-            # Extract and parse the JSON-encoded POST body
+            # TODO: use this as a ***MODEL*** of future JSON web api calls with GET
+
+            # Extract and parse the JSON-encoded GET parameters
             try:
-                request_parameters = cls.parse_json_from_request_body()
+                request_parameters = cls.parse_json_from_GET_request()
             except Exception as ex:
-                err_details = f"/get-class-properties-full-data : Unable to parse JSON request.  " \
+                err_details = f"/class-properties-full-data : Unable to parse JSON-encoded string in GET request.  " \
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
-            #print("In directories_stored_in_api() -  request_parameters: ", request_parameters)
+            #print("In class_properties_full_data_api() -  request_parameters: ", request_parameters)
 
 
             # Validate the OVERALL data type of the passed JSON data
             if type(request_parameters) != dict:
-                err_details = f"/get-class-properties-full-data : the passed JSON value should be a dictionary; " \
+                err_details = f"/class-properties-full-data : the passed JSON value should be a dictionary; " \
                               f"instead, it's of type {type(request_parameters)}"
                 response_data = {"status": "error", "error_message": err_details}
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
@@ -621,11 +657,11 @@ class ApiRouting:
                 result = GraphSchema.get_class_properties_full_data(class_name = request_parameters.get("class_name")) # A list
                 response_data = {"status": "ok", "payload": result}                 # Successful termination
             except Exception as ex:
-                err_details = f"/get-class-properties-full-data : unable to retrieve the requested data.  " \
+                err_details = f"/class-properties-full-data : unable to retrieve the requested data.  " \
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
 
-            #print(f"/get-class-properties-full-data  is returning: `{response_data}`")
+            #print(f"/class-properties-full-data  is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
@@ -1314,6 +1350,7 @@ class ApiRouting:
             """
             # TODO: change this endpoint to using a GET
             # TODO: use this as a ***MODEL*** of future JSON web api calls with POST
+
             # Extract and parse the JSON-encoded POST body
             try:
                 request_parameters = cls.parse_json_from_request_body()
