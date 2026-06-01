@@ -1,22 +1,55 @@
-/*  Vue component
+/*  Vue component, to display and edit the database Schema.
+    Used in the "database_overview" page.
  */
 
 Vue.component('vue-schema-manager',
     {
         props: ['class_name'],
-        /*  class_list:     List of all the names of the Classes in the Schema
+        /*  class_name:     Name of the Schema Class of interest
          */
 
         template: `
             <div class='schema-manager'>	<!-- Outer container, serving as Vue-required template root  -->
 
+                CLASS <span class='label-name'>"{{class_name}}"</span><br>
+                <span style="color:gray">Description:</span>
+                N/A  <a v-on:click.prevent="add_description(class_name)"  href="#" style="margin-left:20px">ADD</a>
+
+
                 <p>PROPERTIES:</p>
 
                 <ul>
                     <li v-for="item in class_properties">
-                        <b>{{item}}</b><br>
-                        <span style="color:gray">Description:</span> N/A<br>
-                        <span style="color:gray">Data type:</span> N/A<br>
+                        <b>{{item.name}}</b>
+                        <span style="font-size: 11px; color: gray">(id {{item._internal_id}})</span>
+                        <br>
+
+                        <span style="color:gray">Description:</span>
+                        <span v-if="item.description !== undefined" style="background-color:white">{{item.description}}</span>
+                        <span v-else>N/A  <a v-on:click.prevent="add_description(item._internal_id)"  href="#" style="margin-left:20px">ADD</a></span>
+                        <br>
+
+                        <span style="color:gray">Data type:</span>
+                        <span v-if="item.dtype !== undefined" style="background-color:white">{{item.dtype}}</span>
+                        <span v-else>N/A  <a v-on:click.prevent="add_description(item._internal_id)"  href="#" style="margin-left:20px">CHOOSE</a></span>
+                        <br>
+
+                        <span style="color:gray">Required? :</span>
+                        <span v-if="item.required !== undefined" style="background-color:white">{{item.required}}</span>
+                        <span v-else>N/A</span>
+                        <br>
+
+                        <template v-if="item.system !== undefined">
+                            <span style="color:gray">System:</span>
+                            <span style="background-color:white">{{item.system}}</span>
+                            <br>
+                        </template>
+
+                        <template v-if="item.format !== undefined">
+                            <span style="color:gray">Format:</span>
+                            <span style="background-color:white">{{item.format}}</span>
+                            <br>
+                        </template>
                     </li>
                 </ul>
 
@@ -67,14 +100,20 @@ Vue.component('vue-schema-manager',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
+            add_description(internal_id)
+            {
+                alert("Not yet implemented");
+            },
+
+
 
             /*
                 ------------------   SERVER CALLS   ------------------
              */
 
             /**
-             * Retrieve all the Schema Properties associated to this Class,
-             * and return the array of their names
+             * Retrieve all the data of all the Schema Properties associated to this Class.
+             * Store the results in the Vue variable `class_properties`
              */
             fetch_properties()
             {
@@ -94,13 +133,14 @@ Vue.component('vue-schema-manager',
              */
             get_fields()
             {
-                console.log(`In get_fields(): attempting to retrieve property names of the Class '${this.class_name}'`);
+                console.log(`In get_fields(): attempting to retrieve Property data of the Class '${this.class_name}'`);
 
-                const url_server_api = "/BA/api/get_class_properties";
+                //const url_server_api = "/BA/api/get_class_properties";
+                const url_server_api = "/BA/api/class-properties-full-data";
 
-                const data_obj = {class_name: this.class_name,
-                                  include_ancestors: true,
-                                  exclude_system: true
+                const data_obj = {class_name: this.class_name
+                                  //, include_ancestors: true,
+                                  //exclude_system: true
                                   };
 
                 console.log(`About to contact the server at ${url_server_api} .  GET object:`);

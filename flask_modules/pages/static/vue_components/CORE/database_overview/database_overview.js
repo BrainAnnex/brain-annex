@@ -33,9 +33,7 @@ Vue.component('vue-database-overview',
 
                     <div v-if="show_schema_arr[index]" class="schema">
                         <p v-if="(all_classes.includes(label))" style="font-size: 18px">
-                            CLASS <span class='label-name'>"{{label}}"</span>
-
-                            <!-- Vue component -->
+                          <!-- Vue component -->
                             <vue-schema-manager
                                 v-bind:class_name="label"
                             >
@@ -46,7 +44,7 @@ Vue.component('vue-database-overview',
                         <p v-else class="not-found">
                             NO schema information found for Class "{{label}}" &nbsp; <button>Add to Schema</button><br>
                             The Schema is a way to store information - such as descriptions and list of fields - about database entities.<br>
-                            Use only for database entities that have well-defined prescribed structures; don't use
+                            CAUTION: Use only for database entities that have well-defined prescribed structures; don't use
                             for database labels meant to index heterogeneous data
                         </p>
                     </div>
