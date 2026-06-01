@@ -498,7 +498,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def sample_properties(self, label :str, sample_size=20) -> {str}:
+    def sample_properties(self, label :str, sample_size=20) -> [str]:
         """
         Take a sample of the given size of the database nodes with the given label,
         and assemble the set of ALL the properties that are present on any of those nodes.
@@ -514,10 +514,10 @@ class GraphAccess(InterGraph):
 
         :param label:       Name of the database label of interest
         :param sample_size: Number of database nodes to use as a representative sampler
-        :return:            Set of property (aka field) names
+        :return:            A sorted list of property (aka field) names; case-insensitive.
+                                EXAMPLE:    ["age", "Medical #", "name"]
         """
-        # TODO: look into sampling the existing data types
-        # TODO: return a sorted list instead
+        # TODO: look into sampling the existing database data types
         m = self.match(labels=label)
 
         result = self.get_nodes(match=m, limit=sample_size)     # A list of dicts
@@ -529,7 +529,7 @@ class GraphAccess(InterGraph):
         #       inner loop, "for k in d" (for each key in dict)
         all_keys = {k for d in result for k in d}   # Set of all the key that occur in ANY of the dicts in result
 
-        return all_keys
+        return sorted(all_keys, key=str.casefold)   # Case-insensitive sorting
 
 
 

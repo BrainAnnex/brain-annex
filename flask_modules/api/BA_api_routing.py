@@ -583,12 +583,18 @@ class ApiRouting:
                     prop_list = GraphSchema.get_class_properties(**json_data, class_node=class_name)
                     #print("SCHEMA PATH.  prop_list: ", prop_list)
                 else:               # Lookup by a sample of nodes with the given label
-                    prop_set = GraphSchema.db.sample_properties(label=label, sample_size=300)    # Estimate the list of properties by label
-                    #print("LABEL PATH.  prop_set: ", prop_set)
-                    # Take out Schema-related properties, if present
-                    prop_set.discard("_CLASS")          # Remove if present
-                    prop_set.discard("entity_id")       # Remove if present
-                    prop_list = list(prop_set)
+                    prop_list = GraphSchema.db.sample_properties(label=label, sample_size=300)    # Estimate the list of properties, by label
+
+                    # Take out Schema-related properties, if present.  We do a try/except to avoid doing 2 passes
+                    try:
+                        prop_list.remove("_CLASS")
+                    except ValueError:
+                        pass
+
+                    try:
+                        prop_list.remove("entity_id")
+                    except ValueError:
+                        pass
 
                 response_data = {"status": "ok", "payload": prop_list}
             except Exception as ex:
@@ -2392,8 +2398,7 @@ class ApiRouting:
             #TODO: merge with get_class_properties_api()
             try:
                 # Fetch all the Properties of the given Class
-                all_props = GraphSchema.db.sample_properties(label=class_name, sample_size=10)    # Set of strings
-                payload = list(all_props)       # Convert set to list
+                payload = GraphSchema.db.sample_properties(label=class_name, sample_size=10)    # list of strings
                 response = {"status": "ok", "payload": payload}    # Successful termination
             except Exception as ex:
                 err_details = f"/field-names-by-class :  {exceptions.exception_helper(ex)}"
