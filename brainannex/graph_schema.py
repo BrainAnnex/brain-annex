@@ -1278,20 +1278,24 @@ class GraphSchema:
     @classmethod
     def get_class_properties_full_data(cls, class_name: str) -> [dict]:
         """
-        Return the full data (not just the names) for all the Properties of the given schema Class,
+        Return the full data (not just the names) for all the Properties of the given Schema Class,
         as a list of dictionaries.
+
+        If only the names are needed, consider using get_class_properties()
 
         EXAMPLE:
             [{'name': 'text', 'entity_id': 'schema-2', '_internal_id': 123,
-              'dtype': 'string', 'system': False, 'format': '6,50', 'description': 'the body of the quote', 'required': True}
+              'dtype': 'string', 'description': 'the body of the quote', 'required': True, 'system': False, 'format': '6,50'}
             ]
 
         :param class_name:  The name of a Schema Class
-        :return:
+        :return:            A (possibly-empty) list of Property data for the above class.
+                                The node labels are excluded from the returned data,
+                                but the internal database ID's are returned, using the key '_internal_id'
         """
         q = f'''
             MATCH (c :CLASS)-[r :HAS_PROPERTY]->(p :PROPERTY)
-            WHERE c.name=$class_name
+                WHERE c.name=$class_name
             RETURN p
             ORDER BY r.index
             '''

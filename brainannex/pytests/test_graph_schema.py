@@ -800,6 +800,10 @@ def test_get_class_properties_full_data(db):
                      ]
 
 
+    GraphSchema.create_class(name="Car")    # Class without Properties
+    assert GraphSchema.get_class_properties_full_data(class_name="Car") == []
+
+
 
 def test_add_properties_to_class(db):
     db.empty_dbase()

@@ -91,6 +91,36 @@ def test_get_class_properties_api(client):
 
 
 
+def test_get_class_properties_full_data_api(client):
+    endpoint = "get-class-properties-full-data"
+
+    json = '{"class_name": "Quote"}'
+
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.post(request)
+    # The response is an object of type 'werkzeug.test.WrapperTestResponse'
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == []   # The database is empty
+
+    return
+    # Populate the database
+    GraphSchema.create_class_with_properties(name="Quote", properties =["Author", "Text"])
+
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == ['Author', 'Text']
+
+
+    json = '{"fake_key": "Quote"}'      # Missing required key
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "error"
+    assert response.json["error_message"] == "Missing required value for either `class_name` or `label` in the JSON data"
+
+
 def test_get_links_api(client):
     endpoint = "get_links"
 

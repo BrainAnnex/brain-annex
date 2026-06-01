@@ -565,6 +565,72 @@ class ApiRouting:
 
 
 
+        @bp.route('/get-class-properties-full-data', methods=['POST'])
+        @login_required
+        def get_class_properties_full_data_api():
+            """
+            Retrieve the full data (not just the names) for all the Properties of the given Schema Class,
+            as a list of dictionaries.
+
+            If only the names are needed, consider using the endpoint `/get_class_properties`
+
+            ~~~ EXAMPLE ~~~
+                http://localhost:5000/BA/api/get-class-properties-full-data
+                using a POST with with Content-Type: application/json
+                and body:  {"class_name": "Quote"}
+
+            The body must contain a JSON-encoded dict with the following KEYS:
+                REQUIRED    "class_name"
+
+            :return:
+                A response with Content-Type: application/json,
+                containing a dict with "status" and "payload" keys.
+
+                EXAMPLE of returned "payload" value:
+                    [{'name': 'text', 'entity_id': 'schema-2', '_internal_id': 123,
+                      'dtype': 'string', 'description': 'the body of the quote', 'required': True, 'system': False, 'format': '6,50'}
+                    ]
+
+                Note the '_internal_id' key that gets added to the Property nodes' fields
+            """
+            # Extract and parse the JSON-encoded POST body
+            try:
+                request_parameters = cls.parse_json_from_request_body()
+            except Exception as ex:
+                err_details = f"/get-class-properties-full-data : Unable to parse JSON request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            #print("In directories_stored_in_api() -  request_parameters: ", request_parameters)
+
+
+            # Validate the OVERALL data type of the passed JSON data
+            if type(request_parameters) != dict:
+                err_details = f"/get-class-properties-full-data : the passed JSON value should be a dictionary; " \
+                              f"instead, it's of type {type(request_parameters)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                # Validate the presence of the required parameters
+                assert "class_name" in request_parameters, \
+                    "A key named `class_name` must be present in the dictionary in the body of the request"
+
+                result = GraphSchema.get_class_properties_full_data(class_name = request_parameters.get("class_name")) # A list
+                response_data = {"status": "ok", "payload": result}                 # Successful termination
+            except Exception as ex:
+                err_details = f"/get-class-properties-full-data : unable to retrieve the requested data.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+
+            #print(f"/get-class-properties-full-data  is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
         @bp.route('/get_links/<class_name>')
         @login_required
         def get_links_api(class_name):
@@ -1225,16 +1291,20 @@ class ApiRouting:
         def directories_stored_in_api():
             """
 
-            POST VARIABLES:
-                json    (REQUIRED)
-                        EXAMPLE :   {"node_internal_id": 123}
-
             ~~~ EXAMPLE ~~~
                 http://localhost:5000/BA/api/directories-stored-in
-                using a POST with body:  {"node_internal_id" : 123}
+                using a POST with Content-Type: application/json
+                and body:  {"node_internal_id" : 123}
+
+            The body must contain a JSON-encoded dict with the following KEYS:
+                REQUIRED    "node_internal_id"
 
             :return:
-                EXAMPLE: {"location": "documents/Ebooks & Articles/SYSTEMS BIO",   # This value could be null
+                A response with Content-Type: application/json,
+                containing a dict with "status" and "payload" keys.
+
+                EXAMPLE of returned "payload" value:
+                         {"location": "documents/Ebooks & Articles/SYSTEMS BIO",   # This value could be null
                           "all_directories":
                                 [
                                     "documents/Ebooks & Articles/SYSTEMS BIO",
@@ -1242,7 +1312,8 @@ class ApiRouting:
                                 ]
                           }
             """
-            # TODO: use this as a ***MODEL*** of future JSON web api calls
+            # TODO: change this endpoint to using a GET
+            # TODO: use this as a ***MODEL*** of future JSON web api calls with POST
             # Extract and parse the JSON-encoded POST body
             try:
                 request_parameters = cls.parse_json_from_request_body()
@@ -1255,6 +1326,7 @@ class ApiRouting:
             #print("In directories_stored_in_api() -  request_parameters: ", request_parameters)
             # EXAMPLE :   {"node_internal_id": 123}
 
+
             # Validate the OVERALL data type of the passed JSON data
             if type(request_parameters) != dict:
                 err_details = f"/directories-stored-in : the passed JSON value should be a dictionary; " \
@@ -1264,6 +1336,10 @@ class ApiRouting:
 
 
             try:
+                # Validate the presence of the required parameters
+                assert "node_internal_id" in request_parameters, \
+                    "A key named `node_internal_id` must be present in the dictionary in the body of the request"
+
                 result = DataManager.directories_stored_in(internal_id = request_parameters.get("node_internal_id")) # A dict
                 response_data = {"status": "ok", "payload": result}                 # Successful termination
             except Exception as ex:
@@ -1419,9 +1495,6 @@ class ApiRouting:
             """
             Update an existing Data Node, possibly representing a Content Item.
             This is variation of '/update_content_item' that expects to receive JSON data
-
-            1 POST VARIABLE EXPECTED:
-                json    (REQUIRED) A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
                 REQUIRED    `entity_id` and `class_name`
