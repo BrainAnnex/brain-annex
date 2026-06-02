@@ -125,7 +125,7 @@ Vue.component('vue-schema-manager',
             /**
              * Make a server call to obtain all the field names associated to a sample of nodes with the given label.
                 E.g.
-                    GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
+                    GraphSchema.get_class_properties(class_node="Quote")
                 to fetch:
                     TBA
 

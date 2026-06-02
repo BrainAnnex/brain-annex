@@ -82,7 +82,7 @@ Vue.component('vue-database-overview',
         data: function() {
             return {
                 all_labels: this.all_database_labels,
-                all_classes: this.all_class_names,
+                all_classes: this.all_class_names,      // Array of all the Schema Classes in the dbase
 
                 show_schema_arr: Array(this.all_database_labels.length).fill(false),
                 show_sample_arr: Array(this.all_database_labels.length).fill(false),
@@ -90,9 +90,7 @@ Vue.component('vue-database-overview',
                                     class_handler:"recordsets",
                                     schema_code:"rs",
                                     entity_id:"fake"
-                               },
-
-                available_fields: []        // From the lookup of estimated fields for nodes with a specific database label
+                               }
             }
         }, // data
 
@@ -122,66 +120,68 @@ Vue.component('vue-database-overview',
 
 
 
-            /**
-             * Invoked when the user click on an "Add to Schema" button
-             */
-            add_to_schema(class_name)
-            {
-                alert(`Adding Class "${class_name}" to Schema not yet fully implemented`);
-
-                this.get_sample_properties(class_name);
-            },
-
-
 
             /*
                 ------------------   SERVER CALLS   ------------------
              */
 
-            get_sample_properties(class_name)
+
+            /**
+             * Invoked when the user click on an "Add to Schema" button
+             */
+            add_to_schema(label)
             {
-                console.log(`In sample_properties(): attempting to estimate the Properties of the Class '${class_name}'`);
+                alert(`Adding Class "${label}" to the database Schema`);
 
-                const url_server_api = `/BA/api/field-names-by-class/${class_name}`;
+                console.log(`In add_to_schema(): attempting to add Class '${label}' to the Schema`);
 
-                console.log(`About to contact the server at ${url_server_api} .  GET object:`);
-                console.log(data_obj);
+                const url_server_api = `/BA/api/create-schema-from-data`;
+
+                const post_data = {'label': label};
+
+                console.log(`In add_to_schema(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_data);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {   method: "GET",
-                                json_encode_send: false,
-                                callback_fn: this.finish_get_sample_properties
+                            {   method: "POST",
+                                data_obj: post_data,
+                                json_encode_send: true,
+                                callback_fn: this.finish_add_to_schema,
+                                custom_data: label
                             });
 
                 this.waiting = true;        // Entering a waiting-for-server mode
                 this.error = false;         // Clear any error from the previous operation
                 this.status_message = "";   // Clear any message from the previous operation
-            }
+            },
 
-            finish_get_sample_properties(success, server_payload, error_message, custom_data)
-            /* Callback function to wrap up the action of get_sample_properties() upon getting a response from the server.
-                    success:        boolean indicating whether the server call succeeded
-                    server_payload: whatever the server returned (stripped of information about the success of the operation)
-                    error_message:  a string only applicable in case of failure
-                    custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
-            */
+            /** Callback function to wrap up the action of add_to_schema() upon getting a response from the server.
+             *
+             * @param {bool} success - Boolean indicating whether the server call succeeded
+             * @param server_payload - Whatever the server returned (stripped of information about the success of the operation)
+             * @param {string} error_message - Only applicable in case of failure
+             * @param custom_data            - Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+             */
+            finish_add_to_schema(success, server_payload, error_message, custom_data)
             {
-                console.log("Finalizing the finish_get_sample_properties() operation...");
+                console.log("Finalizing the finish_add_to_schema() operation...");
+                console.log(`Custom pass-thru data:`);
+                console.log(custom_data);               // This contains the label for which a Schema Class was created
 
                 if (success)  {     // Server reported SUCCESS
                     console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    this.available_fields = server_payload;
+                    this.all_classes.push(custom_data);     // We now have a new Class available
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
                 }
 
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;      // Make a note that the asynchronous operation has come to an end
             }
-
 
 
         }  // METHODS

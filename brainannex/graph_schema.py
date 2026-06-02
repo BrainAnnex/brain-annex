@@ -1800,6 +1800,7 @@ class GraphSchema:
         :return:            The internal database ID of the new Class node
         """
         # TODO: look into also sampling the existing database data types
+        # TODO: offer option to link all the Data Nodes with that label to the new Class (with the "_CLASS" property)
         derived_properties = cls.db.sample_properties(label=label, sample_size=sample_size)
 
         return cls.create_class_with_properties(name=label, properties=derived_properties, strict=strict)
