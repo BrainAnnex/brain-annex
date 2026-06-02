@@ -498,31 +498,39 @@ class GraphAccess(InterGraph):
 
 
 
-    def sample_properties(self, label :str, sample_size=10) -> {str}:
+    def sample_properties(self, label :str, sample_size=20) -> [str]:
         """
         Take a sample of the given size of the database nodes with the given label,
         and assemble the set of ALL the properties that are present on any of those nodes.
 
-        Meant as an estimate of the properties (typically) used, in current usage of the database,
-        for nodes of a given label.
+        Meant as a best guess of the Properties (typically) used, in the current usage of the database,
+        for the nodes of the given label.
+
+        If no nodes with the given label exist, an Exception is raised.
 
         CAUTION: In a graph database, any node may freely deviate - and have, or not have, any Properties
-                 it wishes.  If any type of standardization is desired, make use of the GraphSchema layer
+                 (fields) it wishes.
+                 If any type of standardization is desired, make use of the GraphSchema layer
 
         :param label:       Name of the database label of interest
-        :param sample_size: Number of nodes to use as a representative sampler
-        :return:            Set of property (aka field) names
+        :param sample_size: Number of database nodes, with the above label,
+                                to use as a representative sampler
+        :return:            A sorted list of property (aka field) names; case-insensitive.
+                                EXAMPLE:    ["age", "Medical #", "name"]
         """
-        # TODO: Pytest
+        # TODO: look into also sampling the existing database data types
         m = self.match(labels=label)
 
-        result = self.get_nodes(match=m, limit=sample_size) # A list of dicts
+        result = self.get_nodes(match=m, limit=sample_size)     # A list of dicts
+        assert len(result) > 0, \
+            f"sample_properties(): no nodes with the label `{label}` were found"
+
 
         # Note: outer loop in set comprehension, below, is "for d in result" (for each dict in list);
         #       inner loop, "for k in d" (for each key in dict)
         all_keys = {k for d in result for k in d}   # Set of all the key that occur in ANY of the dicts in result
 
-        return all_keys
+        return sorted(all_keys, key=str.casefold)   # Case-insensitive sorting
 
 
 
@@ -1648,16 +1656,17 @@ class GraphAccess(InterGraph):
     #####################################################################################################
 
 
-    def follow_links(self, match :int|CypherBuilder, rel_name :str, rel_dir ="OUT",
+    def follow_links(self, match :int|str|CypherBuilder, rel_name :str, rel_dir ="OUT",
                            neighbor_labels=None, include_id=False, include_labels=False, limit=100) -> [dict]:
         """
         From the given starting node(s), follow all the relationships that have the specified name,
         from/into neighbor nodes (optionally requiring those nodes to have the given labels),
-        and return all the properties of the located neighbor nodes, optionally also including their internal database ID's.
+        and return all the properties of the located neighbor nodes,
+        optionally also including their internal database ID's.
 
-        :param match:           EITHER an integer with an internal database node id,
+        :param match:           EITHER an integer or string with an internal database node id,
                                     OR a "CypherBuilder" object, as returned by match(),
-                                    with data to identify a node or set of nodes
+                                    containing data to identify a node or set of nodes
         :param rel_name:        A string with the name of relationship to follow.
                                     (Note: any other relationships are ignored)
         :param rel_dir:         Either "OUT"(default), "IN" or "BOTH".  Direction(s) of the relationship to follow
@@ -1681,8 +1690,7 @@ class GraphAccess(InterGraph):
         # TODO: add an option to only retrieve SOME of the properties
         # TODO: add an option to also retrieve some or all the properties of the relationships
         # TODO: make `rel_name` optional
-
-        #match_structure = CypherUtils.process_match_structure(match, caller_method="follow_links")
+        # TODO: add an option to sort by some property of the relationship
 
         if limit is not None:
             assert (type(limit) == int) and (limit >= 1), \

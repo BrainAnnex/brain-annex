@@ -16,7 +16,7 @@ def db():
 
 
 
-# ************  CREATE SAMPLE SCHEMAS for the testing  **************
+# ************  CREATE SAMPLE SCHEMAS : utility functions optionally used for the testing  **************
 
 def create_sample_schema_1():
     # Schema with patient/result/doctor Classes (each with some Properties),
@@ -764,6 +764,50 @@ def test_get_class_properties(db):
 
 
 
+def test_get_class_properties_full_data(db):
+    db.empty_dbase()
+
+    GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
+    prop_ids = [GraphSchema.get_property_internal_id(class_name="Quote", property_name=p)
+                    for p in ["text", "attribution", "verified"] ]
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="description", attribute_value="the body of the quote")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="system", attribute_value=False)
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="dtype", attribute_value="string")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="required", attribute_value=True)
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name= "format", attribute_value="6,50")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
+                                       attribute_name="dtype", attribute_value="boolean")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
+                                       attribute_name="required", attribute_value=False)
+
+    result = GraphSchema.get_class_properties_full_data(class_name="Quote")
+
+    assert result == [  {'name': 'text',        'entity_id': 'schema-2', '_internal_id': prop_ids[0],  'dtype': 'string', 'system': False, 'format': '6,50', 'description': 'the body of the quote', 'required': True},
+                        {'name': 'attribution', 'entity_id': 'schema-3', '_internal_id': prop_ids[1]},
+                        {'name': 'verified',    'entity_id': 'schema-4', '_internal_id': prop_ids[2],  'dtype': 'boolean', 'required': False}
+                     ]
+
+
+    assert GraphSchema.get_class_properties_full_data(class_name="I dont exist") == []
+
+
+    GraphSchema.create_class(name="Car")    # Class without Properties
+    assert GraphSchema.get_class_properties_full_data(class_name="Car") == []
+
+
+
 def test_add_properties_to_class(db):
     db.empty_dbase()
 
@@ -820,13 +864,13 @@ def test_create_class_with_properties(db):
 
 def test_set_property_attribute(db):
     db.empty_dbase()
-    create_sample_schema_2()    # Schema with quotes and categories
+    GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
 
-    GraphSchema.set_property_attribute(class_name="quotes", prop_name="verified",
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
                                        attribute_name="dtype", attribute_value="boolean")
 
     q = '''
-        MATCH (c :CLASS {name: "quotes"})-[:HAS_PROPERTY]->(p :PROPERTY {name: "verified"}) 
+        MATCH (c :CLASS {name: "Quote"})-[:HAS_PROPERTY]->(p :PROPERTY {name: "verified"}) 
         RETURN p.dtype AS DTYPE
         '''
     result = db.query(q, single_cell="DTYPE")
@@ -977,7 +1021,41 @@ def test_allowable_props(db):
 
 
 
-#############   SCHEMA-CODE  RELATED   ###########
+####################   MISC. SCHEMA   ##################
+
+def test_setup_schema_from_data(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        GraphSchema.create_schema_from_data(label="NON_EXISTENT")  # No such nodes exist
+
+
+    db.create_node(labels="Car")    # This node lacks any properties
+    result = GraphSchema.create_schema_from_data(label="Car", strict=False)
+
+    # Verify we now have a `Car` Class, with no Properties
+    assert GraphSchema.class_name_exists("Car")
+    assert GraphSchema.get_class_internal_id("Car") == result
+    assert GraphSchema.get_class_properties(class_node="Car") == []
+    assert not GraphSchema.is_strict_class("Car")
+
+
+    db.create_node(labels="Person", properties={"name": "Julian"})
+    db.create_node(labels="Person", properties={"name": "Val", "age": 22})
+    db.create_node(labels="Person", properties={"name": "Liz", "Medical #": "0425"})
+
+    result = GraphSchema.create_schema_from_data(label="Person", strict=False)
+
+    # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
+    assert GraphSchema.class_name_exists("Person")
+    assert GraphSchema.get_class_internal_id("Person") == result
+    assert GraphSchema.get_class_properties(class_node="Person") == ["age", "Medical #", "name"]    # in alphabetic order
+    assert not GraphSchema.is_strict_class("Person")
+
+    with pytest.raises(Exception):
+        GraphSchema.create_schema_from_data(label="Person")  # A Class by that name already exists
+
+
 
 def test_get_schema_code(db):
     pass    # TODO

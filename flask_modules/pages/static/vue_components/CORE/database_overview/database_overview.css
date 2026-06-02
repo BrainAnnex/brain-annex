@@ -1,0 +1,55 @@
+div.database-overview  div.schema {
+    border: 1px solid #DDD;
+    margin-bottom:30px;
+    background-color: lavender;
+    padding: 10px;
+}
+
+
+div.database-overview  p.not-found {
+    color: #7a7c7f;
+    font-size: 29px;
+    font-family: "Libre Baskerville", serif;
+    line-height: 45px;
+    text-align: center;
+    text-shadow: 0 1px 1px #fff;
+}
+
+div.database-overview  button {
+    border-radius: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left:15px;
+    padding-right:15px;
+    font-weight: bold;
+}
+
+
+div.database-overview  span.label-name {
+    color: brown;
+    font-weight: bold;
+}
+
+
+/* Status messages for user operations */
+
+span.status-waiting {
+    color: #41baae;
+}
+
+span.status-error {
+    color: red;
+    font-weight:bold;
+}
+
+span.status-subdue {
+    color: gray;
+    font-size:10px;
+}
+
+
+
+
+
+
+

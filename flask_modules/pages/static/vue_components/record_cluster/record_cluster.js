@@ -546,17 +546,6 @@ Vue.component('vue-record-cluster',
 
 
             /**
-             * Invoked when the user picks a new label from a pulldown menu (only visible in editing mode)
-             */
-            label_selected()
-            {
-               console.log(`label_selected(): just selected "${this.current_data.filter_label}"`);
-               this.get_fields();   // Make a server call
-            },
-
-
-
-            /**
              * Invoked when the user click on any of the icons to drop columns
              */
             remove_from_filter(field_name)
@@ -576,7 +565,6 @@ Vue.component('vue-record-cluster',
                 const index = this.fields_to_show.indexOf(field_name);
                 if (index !== -1)  {
                     this.fields_to_show.splice(index, 1);
-                    //this.save_recordset_edit();
                 }
                 else
                     alert(`Unable to remove the field "${field_name}" from the filter. Try refreshing the page`);
@@ -717,117 +705,6 @@ Vue.component('vue-record-cluster',
 
 
             /**
-             * Send a request to the server, to update or create this RECORDSET's definition
-             * (note: NOT to be confused with editing of individual records)
-             */
-            save_recordset_edit()
-            {
-                console.log(`In save_recordset_edit(), for Recordset with entity_id '${this.current_metadata.entity_id}'`);
-
-                // Send the request to the server, using a POST
-
-                let n_group = parseInt(this.current_data.n_group);
-                if (Number.isNaN(n_group))
-                    n_group = 15;   // DEFAULT value to use if missing or not a valid integer
-
-                if (this.current_metadata.entity_id < 0) {    // A negative entity_id is a convention to indicate a just-created Recordset
-                    // Create a new Recordset
-                    var url_server_api = "/BA/api/add_item_to_category_JSON";
-                    var post_obj = {category_uri: this.category_id,
-                                    class_name: this.current_metadata.class_name,
-                                    insert_after_uri: this.current_metadata.insert_after_uri,      // entity_id of Content Item to insert after, or keyword "TOP" or "BOTTOM"
-                                    insert_after_class: this.current_metadata.insert_after_class,  // Class of Content Item to insert after
-
-                                    // Node properties (in particular,
-                                    //     note that "class" and "label" are properties, not Schema data)
-                                    filter_label: this.current_data.filter_label,     // Used to identify nodes considered part of  this Recordset
-                                    //fields: this.current_data.fields,
-                                    fields: this.fields_to_show.join(", "),             // EXAMPLE: "name, city, rating"
-                                    n_group: n_group,
-                                    order_by: this.current_data.order_by,
-                                    clause_key: this.current_data.clause_key,
-                                    clause_value: this.current_data.clause_value,
-                                    caption: this.current_data.caption
-                                   };
-                }
-                else  {
-                    // Update an existing Recordset
-                    var url_server_api = "/BA/api/update_content_item_JSON";
-
-                    var post_obj = {entity_id: this.current_metadata.entity_id,
-                                    class_name: this.current_metadata.class_name,
-
-                                    filter_label: this.current_data.filter_label,   // Used to identify nodes considered part of  this Recordset
-                                    fields: this.fields_to_show.join(", "),         // EXAMPLE: "name, city, rating"
-                                    n_group: n_group,
-                                    order_by: this.current_data.order_by,
-                                    clause_key: this.current_data.clause_key,
-                                    clause_value: this.current_data.clause_value,
-                                    caption: this.current_data.caption
-                                   };
-                }
-
-                console.log(`About to contact the server at "${url_server_api}" .  POST object:`);
-                console.log(post_obj);
-
-                // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {method: "POST",
-                             data_obj: post_obj,
-                             json_encode_send: true,
-                             callback_fn: this.finish_save_recordset_edit
-                            });
-
-                this.waiting = true;        // Entering a waiting-for-server mode
-                this.error = false;         // Clear any error from the previous operation
-                this.status_message = "";   // Clear any message from the previous operation
-            },
-
-            finish_save_recordset_edit(success, server_payload, error_message, custom_data)
-            // Callback function to wrap up the action of save_recordset_edit(() upon getting a response from the server
-            {
-                console.log("Finalizing the save_recordset_edit() operation...");
-                //console.log(`Custom data passed: ${custom_data}`);
-                if (success)  {     // Server reported SUCCESS
-                    console.log("    server call was successful; it returned: ", server_payload);
-                    if (this.current_metadata.entity_id < 0)  {
-                        // If this was a newly-created item (with the temporary negative ID)
-                        this.status_message = `Recordset creation completed`;
-                        this.current_metadata.entity_id = server_payload;     // Update the temporary entity_id with the value assigned by the server
-                    }
-                    else
-                        this.status_message = `Recordset update completed`;
-
-                    // Inform the parent component of the new state of the data; pass clones of the relevant objects
-                    const signal_data = {
-                        item_fields:   Object.assign({}, this.current_data),
-                        item_metadata: Object.assign({}, this.current_metadata)
-                    };
-                    console.log("'Recordsets' component sending `updated-item` SIGNAL to its parent, with the following data:");
-                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
-                    this.$emit('updated-item', signal_data);
-
-                    // Synchronize the baseline data to the current one
-                    this.original_data = Object.assign({}, this.current_data);              // Clone
-                    this.fields_to_show_pre_edit = Array.from(this.fields_to_show);  // Clone
-
-                    this.get_fields();          // Fetch from the server the field names for this Recordset
-                    this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
-                }
-                else  {             // Server reported FAILURE
-                    this.error = true;
-                    this.status_message = `FAILED operation: ${error_message}`;
-                    this.current_data = Object.assign({}, this.original_data);  // Clone, to restore the data to how it was prior to the failed changes
-                }
-
-                // Final wrap-up, regardless of error or success
-                this.waiting = false;           // Make a note that the asynchronous operation has come to an end
-                this.recordset_editing = false; // Leave the editing mode
-            },
-
-
-
-            /**
              * Make a server call to obtain all the node labels present in the database
                 EXAMPLE:   ['label_1', 'label_2']
 
@@ -875,7 +752,7 @@ Vue.component('vue-record-cluster',
 
             /**
              * Make a server call to obtain all the field names associated to a sample of nodes with the given label.
-                TODO: also attemp to extract the Schema fields of the Class that this recordset is based on
+                TODO: also attempt to extract the Schema fields of the Class that this recordset is based on
                 E.g.
                     GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
                 to fetch:

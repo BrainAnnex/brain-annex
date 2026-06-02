@@ -150,13 +150,13 @@ class Document:
 
 
     @classmethod
-    def new_content_item_successful(cls, uri :str, pars :dict,
+    def new_content_item_successful(cls, entity_id :str, pars :dict,
                                     mime_type :str, upload_folder=None, index_pdf=True) -> None:
         """
         Invoked after a new Content Item of this type (Document) gets successfully added to the database.
         Only text and PDF are currently supported.
 
-        :param uri:         A string with the URI of the Content Item
+        :param entity_id:   A string with the Entity ID of the Content Item
         :param pars:        Dict with the various properties of this Content Item
                                 For Document, "basename" and "suffix" keys are expected
         :param mime_type:   Standardized string representing the type of the document
@@ -165,22 +165,23 @@ class Document:
                                 otherwise, it's the name of the folder where this Document was uploaded
                                 (*exclusive* of the common path and of the final "/")
                                 EXAMPLE: 'documents/Ebooks & Articles'
-        :param index_pdf:       [OPTIONAL] If True (default), the contents of PDF files will be indexed
+        :param index_pdf:   [OPTIONAL] If True (default), the contents of PDF files will be indexed
         :return:            None
         """
         filename = pars["basename"] + "." + pars["suffix"]      # EXAMPLE: "my_file.txt"
 
         if not upload_folder:     # Document was uploaded to standard location
-            path = MediaManager.retrieve_full_path(uri=uri)         # Incl. the final "/"
+            path = MediaManager.retrieve_full_path(uri=entity_id)         # Incl. the final "/"
         else:
             # Link the new document to its specific directory node
+            # TODO: also introduce clause  _CLASS = cls.SCHEMA_CLASS_NAME or better yet let the Schema layer handle it
             q = '''
-                MATCH (doc :Document {uri: $uri}),
+                MATCH (doc :Document {entity_id: $entity_id}),
                       (dir :Directory {name: $upload_folder}) 
                 MERGE (doc)-[:BA_stored_in]->(dir)
                 '''
-            #GraphSchema.db.debug_query_print(q, data_binding={"entity_id": uri, "upload_folder": upload_folder})
-            GraphSchema.db.query(q, data_binding={"entity_id": uri, "upload_folder": upload_folder})
+            #GraphSchema.db.debug_query_print(q, data_binding={"entity_id": entity_id, "upload_folder": upload_folder})
+            GraphSchema.db.query(q, data_binding={"entity_id": entity_id, "upload_folder": upload_folder})
             path = MediaManager.MEDIA_FOLDER + upload_folder + "/"
 
 
@@ -206,15 +207,15 @@ class Document:
 
         n_words = len(unique_words)
         if n_words < 10:    # Give a more verbose feedback
-            print(f"new_content_item_successful(): CREATING INDEXING for document `{uri}`.  "
+            print(f"new_content_item_successful(): CREATING INDEXING for document `{entity_id}`.  "
                   f"Found {n_words} unique words: {unique_words}")
         else:               # Give abridged feedback
-            print(f"new_content_item_successful(): CREATING INDEXING for document `{uri}`.  "
+            print(f"new_content_item_successful(): CREATING INDEXING for document `{entity_id}`.  "
                   f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")
 
 
         # Carry out the actual indexing in the database
-        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
+        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
 
         # TODO: this ought to be done in a separate execution thread or process
         FullTextIndexing.new_indexing(internal_id=content_id, unique_words=unique_words)

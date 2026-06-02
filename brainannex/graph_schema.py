@@ -1276,6 +1276,60 @@ class GraphSchema:
 
 
     @classmethod
+    def get_class_properties_full_data(cls, class_name: str) -> [dict]:
+        """
+        Return the full data (not just the names) for all the Properties of the given Schema Class,
+        as a list of dictionaries.
+
+        If only the names are needed, consider using get_class_properties()
+
+        EXAMPLE:
+            [{'name': 'text', 'entity_id': 'schema-2', '_internal_id': 123,
+              'dtype': 'string', 'description': 'the body of the quote', 'required': True, 'system': False, 'format': '6,50'}
+            ]
+
+        :param class_name:  The name of a Schema Class
+        :return:            A (possibly-empty) list of Property data for the above class.
+                                The node labels are excluded from the returned data,
+                                but the internal database ID's are returned, using the key '_internal_id'
+        """
+        q = f'''
+            MATCH (c :CLASS)-[r :HAS_PROPERTY]->(p :PROPERTY)
+                WHERE c.name=$class_name
+            RETURN p
+            ORDER BY r.index
+            '''
+        data_binding = {"class_name": class_name}
+        return cls.db.query_extended(q, data_binding=data_binding, flatten=True, fields_to_exclude="_node_labels")
+
+
+
+    @classmethod
+    def get_property_internal_id(cls, class_name :str, property_name :str) -> int|str:
+        """
+        Look up, and return, the internal database ID of the given schema Property
+
+        :param class_name:      The name of the Class node
+        :param property_name:   The name of the Property node
+        :return:                None
+        """
+        #TODO: pytest.  Look into edge cases.  Maybe allow simultaneous lookup of multiple Properties
+        q = '''
+            MATCH (c :CLASS { name: $class_name })
+                  -[:HAS_PROPERTY]
+                  ->(p :PROPERTY { name: $property_name})
+            RETURN id(p) AS property_id
+            '''
+        data_binding = {"class_name": class_name, "property_name": property_name}
+        #cls.db.debug_print_query(data_binding, data_binding)
+
+        result = cls.db.query(q, data_binding=data_binding, single_cell="property_id")
+
+        return result
+
+
+
+    @classmethod
     def add_properties_to_class(cls, class_node :int|str, properties = None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
@@ -1358,23 +1412,25 @@ class GraphSchema:
     def create_class_with_properties(cls, name :str, properties :[str], code=None, handler=None, strict=False,
                                      class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> int|str:
         """
-        Create a new Class node, with the specified name, and also create the specified Properties nodes,
+        Create a new Class node, with the specified name, and also create the requested Properties nodes,
         and link them together with "HAS_PROPERTY" relationships.
 
-        Return the internal database ID and the auto-incremented unique ID ("scheme ID") assigned to the new Class.
-        Each Property node is also assigned a unique "schema ID";
-        the "HAS_PROPERTY" relationships are assigned an auto-increment index,
-        representing the default order of the Properties.
+        Return the internal database ID of the new Class node.
+        Each node is also assigned a "entity ID", unique within Schema nodes.
+
+        The "HAS_PROPERTY" relationships between the new Class node,
+        and each of the new Property nodes.
+        are assigned an auto-increment index, representing the default order of the Properties.
 
         If a class_to_link_to name is specified, link the newly-created Class node to that existing Class node,
         using an outbound relationship with the specified name.  Typically used to create "INSTANCE_OF"
-        relationships from new Classes.
+        relationships to an existing Class.
 
         If a Class with the given name already exists, an Exception is raised.
 
         NOTE: if the Class already exists, use add_properties_to_class() instead
 
-        :param name:            String with name to assign to the new class
+        :param name:            The name to assign to the new class
         :param properties:      List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            DEPRECATED!  [OPTIONAL] String indicative of the software handler for this Class and its subclasses.
         :param handler:         [OPTIONAL] Name of a software module that services this Class
@@ -1388,7 +1444,7 @@ class GraphSchema:
         :param link_name:       [OPTIONAL] Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
         :param link_dir:        [OPTIONAL] Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
-        :return:                The internal database ID assigned to the new Class
+        :return:                The internal database ID of the new Class node
         """
         # TODO: phase out the argument "code" in favor of the new (not-yet-used) "handler"
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
@@ -1400,6 +1456,7 @@ class GraphSchema:
         #       (with a "HAS_URI_GENERATOR" relationship)
 
         # TODO: maybe add argument 'extra_labels'
+        # TODO: maybe also return the internal ID's of all the newly-created Property nodes
 
         if class_to_link_to:
             assert link_name, \
@@ -1452,15 +1509,27 @@ class GraphSchema:
                     set_property_attribute(class_name="User", prop_name="username",
                                            attribute_name="required", attribute_value=True)
 
+                    set_property_attribute(class_name="Pump", prop_name="flow",
+                                           attribute_name="description",
+                                           attribute_value="Rated safe max flow in L/min")
+
         :param class_name:      The name of an existing CLASS node
         :param prop_name:       The name of an existing PROPERTY node
         :param attribute_name:  The name of an attribute (field) of the PROPERTY node.
-                                    EXAMPLES:  "system", "dtype", "required", "description"
+                                    EXAMPLES:  "description", "system", "dtype", "required"
         :param attribute_value: The value to give to the above attribute (field) of the PROPERTY node;
                                     if a value was already set, it will be over-written
         :return:                None
         """
-        #TODO: provide support for some attributes, such as "dtype", "required", "system"
+        ALLOWED_ATTRIBUTES = ["description", "system", "dtype", "required", "format"]
+
+        assert attribute_name in ALLOWED_ATTRIBUTES, \
+            f"set_property_attribute(): allowed values for argument `attribute_name` are {ALLOWED_ATTRIBUTES}"
+        assert attribute_value is not None, \
+            f"set_property_attribute(): argument `attribute_value` must be provided"
+
+        #TODO: provide validation for some attributes, such as "dtype", "required", "system"
+        #       E.g. "required" and "system" must pass boolean values
         q = f'''
             MATCH (:CLASS {{name: $class_name}})-[:HAS_PROPERTY]->(p :PROPERTY {{name: $prop_name}})
             SET p.`{attribute_name}`= $attribute_value
@@ -1701,11 +1770,42 @@ class GraphSchema:
 
     #####################################################################################################
 
-    '''                          ~   SCHEMA-CODE  RELATED   ~                                   '''
+    '''                          ~   SCHEMA MISC.   ~                                   '''
 
-    def ________SCHEMA_CODE________(DIVIDER):
+    def ________SCHEMA_MISC________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
+    @classmethod
+    def create_schema_from_data(cls, label: str, sample_size=500, strict=False) -> int | str:
+        """
+        Take a sample of the given size of the database nodes with the given label,
+        and assemble the set of ALL the properties that are present on any of those nodes.
+
+        Then create a database Schema with a Class name equal to the label,
+        and with all the inferred Properties.
+
+        Meant as a best guess of the Properties (typically) used, in the current usage of the database,
+        for the nodes of the given label.
+
+        If no nodes with the given label exist, or if a Schema Class by that name already exists,
+        an Exception is raised.
+
+        :param label:       Name of the database label of interest
+        :param sample_size: Number of database nodes, with the above label,
+                                to use as a representative sampler
+        :param strict:      [OPTIONAL] If True, the Class will be of the "Strict" type;
+                                    otherwise (default), it'll be of the "Lenient" type
+                                    Explained under the comments for the GraphSchema class
+        :return:            The internal database ID of the new Class node
+        """
+        # TODO: look into also sampling the existing database data types
+        # TODO: offer option to link all the Data Nodes with that label to the new Class (with the "_CLASS" property)
+        derived_properties = cls.db.sample_properties(label=label, sample_size=sample_size)
+
+        return cls.create_class_with_properties(name=label, properties=derived_properties, strict=strict)
+
+
 
     @classmethod
     def get_schema_code(cls, class_name: str) -> str:
