@@ -1021,7 +1021,39 @@ def test_allowable_props(db):
 
 
 
-#############   SCHEMA-CODE  RELATED   ###########
+#################   MISC. SCHEMA   ###############
+
+def test_setup_schema_from_data(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        GraphSchema.setup_schema_from_data(label="NON_EXISTENT")  # No such nodes exist
+
+
+    db.create_node(labels="Car")    # This node lacks any properties
+    GraphSchema.setup_schema_from_data(label="Car", strict=False)
+
+    # Verify we now have a `Car` Class, with no Properties
+    assert GraphSchema.class_name_exists("Car")
+    assert GraphSchema.get_class_properties(class_node="Car") == []
+    assert not GraphSchema.is_strict_class("Car")
+
+
+    db.create_node(labels="Person", properties={"name": "Julian"})
+    db.create_node(labels="Person", properties={"name": "Val", "age": 22})
+    db.create_node(labels="Person", properties={"name": "Liz", "Medical #": "0425"})
+
+    GraphSchema.setup_schema_from_data(label="Person", strict=False)
+
+    # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
+    assert GraphSchema.class_name_exists("Person")
+    assert GraphSchema.get_class_properties(class_node="Person") == ["age", "Medical #", "name"]    # in alphabetic order
+    assert not GraphSchema.is_strict_class("Person")
+
+    with pytest.raises(Exception):
+        GraphSchema.setup_schema_from_data(label="Person")  # A Class by that name already exists
+
+
 
 def test_get_schema_code(db):
     pass    # TODO

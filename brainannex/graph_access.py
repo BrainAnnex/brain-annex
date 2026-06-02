@@ -513,11 +513,12 @@ class GraphAccess(InterGraph):
                  If any type of standardization is desired, make use of the GraphSchema layer
 
         :param label:       Name of the database label of interest
-        :param sample_size: Number of database nodes to use as a representative sampler
+        :param sample_size: Number of database nodes, with the above label,
+                                to use as a representative sampler
         :return:            A sorted list of property (aka field) names; case-insensitive.
                                 EXAMPLE:    ["age", "Medical #", "name"]
         """
-        # TODO: look into sampling the existing database data types
+        # TODO: look into also sampling the existing database data types
         m = self.match(labels=label)
 
         result = self.get_nodes(match=m, limit=sample_size)     # A list of dicts

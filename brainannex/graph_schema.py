@@ -1412,23 +1412,25 @@ class GraphSchema:
     def create_class_with_properties(cls, name :str, properties :[str], code=None, handler=None, strict=False,
                                      class_to_link_to=None, link_name="INSTANCE_OF", link_dir="OUT") -> int|str:
         """
-        Create a new Class node, with the specified name, and also create the specified Properties nodes,
+        Create a new Class node, with the specified name, and also create the requested Properties nodes,
         and link them together with "HAS_PROPERTY" relationships.
 
-        Return the internal database ID and the auto-incremented unique ID ("scheme ID") assigned to the new Class.
-        Each Property node is also assigned a unique "schema ID";
-        the "HAS_PROPERTY" relationships are assigned an auto-increment index,
-        representing the default order of the Properties.
+        Return the internal database ID of the new Class node.
+        Each node is also assigned a "entity ID", unique within Schema nodes.
+
+        The "HAS_PROPERTY" relationships between the new Class node,
+        and each of the new Property nodes.
+        are assigned an auto-increment index, representing the default order of the Properties.
 
         If a class_to_link_to name is specified, link the newly-created Class node to that existing Class node,
         using an outbound relationship with the specified name.  Typically used to create "INSTANCE_OF"
-        relationships from new Classes.
+        relationships to an existing Class.
 
         If a Class with the given name already exists, an Exception is raised.
 
         NOTE: if the Class already exists, use add_properties_to_class() instead
 
-        :param name:            String with name to assign to the new class
+        :param name:            The name to assign to the new class
         :param properties:      List of strings with the names of the Properties, in their default order (if that matters)
         :param code:            DEPRECATED!  [OPTIONAL] String indicative of the software handler for this Class and its subclasses.
         :param handler:         [OPTIONAL] Name of a software module that services this Class
@@ -1442,7 +1444,7 @@ class GraphSchema:
         :param link_name:       [OPTIONAL] Name to use for the above relationship, if requested.  Default is "INSTANCE_OF"
         :param link_dir:        [OPTIONAL] Desired direction(s) of the relationships: either "OUT" (default) or "IN"
 
-        :return:                The internal database ID assigned to the new Class
+        :return:                The internal database ID of the new Class node
         """
         # TODO: phase out the argument "code" in favor of the new (not-yet-used) "handler"
         # TODO: it would be safer to use fewer Cypher transactions; right now, there's the risk of
@@ -1768,11 +1770,41 @@ class GraphSchema:
 
     #####################################################################################################
 
-    '''                          ~   SCHEMA-CODE  RELATED   ~                                   '''
+    '''                          ~   SCHEMA MISC.   ~                                   '''
 
-    def ________SCHEMA_CODE________(DIVIDER):
+    def ________SCHEMA_MISC________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
+    @classmethod
+    def setup_schema_from_data(cls, label: str, sample_size=500, strict=False) -> int | str:
+        """
+        Take a sample of the given size of the database nodes with the given label,
+        and assemble the set of ALL the properties that are present on any of those nodes.
+
+        Then create a database Schema with a Class name equal to the label,
+        and with all the inferred Properties.
+
+        Meant as a best guess of the Properties (typically) used, in the current usage of the database,
+        for the nodes of the given label.
+
+        If no nodes with the given label exist, or if a Schema Class by that name already exists,
+        an Exception is raised.
+
+        :param label:       Name of the database label of interest
+        :param sample_size: Number of database nodes, with the above label,
+                                to use as a representative sampler
+        :param strict:      [OPTIONAL] If True, the Class will be of the "Strict" type;
+                                    otherwise (default), it'll be of the "Lenient" type
+                                    Explained under the comments for the GraphSchema class
+        :return:            The internal database ID of the new Class node
+        """
+        # TODO: look into also sampling the existing database data types
+        derived_properties = cls.db.sample_properties(label=label, sample_size=sample_size)
+
+        return cls.create_class_with_properties(name=label, properties=derived_properties, strict=strict)
+
+
 
     @classmethod
     def get_schema_code(cls, class_name: str) -> str:

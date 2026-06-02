@@ -90,7 +90,9 @@ Vue.component('vue-database-overview',
                                     class_handler:"recordsets",
                                     schema_code:"rs",
                                     entity_id:"fake"
-                               }
+                               },
+
+                available_fields: []        // From the lookup of estimated fields for nodes with a specific database label
             }
         }, // data
 
@@ -125,7 +127,9 @@ Vue.component('vue-database-overview',
              */
             add_to_schema(class_name)
             {
-                alert(`Adding Class "${class_name}" to Schema not yet implemented`);
+                alert(`Adding Class "${class_name}" to Schema not yet fully implemented`);
+
+                this.get_sample_properties(class_name);
             },
 
 
@@ -134,33 +138,49 @@ Vue.component('vue-database-overview',
                 ------------------   SERVER CALLS   ------------------
              */
 
-            sample_properties(class_name)
+            get_sample_properties(class_name)
             {
-                console.log(`In sample_properties(): attempting to estimate the Properties of the Class '${lass_name}'`);
+                console.log(`In sample_properties(): attempting to estimate the Properties of the Class '${class_name}'`);
 
-                const url_server_api = "/BA/api/TBA";
-
-                const data_obj = {class_name: this.class_name
-                                  //, include_ancestors: true,
-                                  //exclude_system: true
-                                  };
+                const url_server_api = `/BA/api/field-names-by-class/${class_name}`;
 
                 console.log(`About to contact the server at ${url_server_api} .  GET object:`);
                 console.log(data_obj);
 
                 // Initiate asynchronous contact with the server
                 ServerCommunication.contact_server(url_server_api,
-                            {   data_obj: data_obj,
-                                json_encode_send: true,
-                                callback_fn: this.finish_get_fields
+                            {   method: "GET",
+                                json_encode_send: false,
+                                callback_fn: this.finish_get_sample_properties
                             });
 
                 this.waiting = true;        // Entering a waiting-for-server mode
                 this.error = false;         // Clear any error from the previous operation
                 this.status_message = "";   // Clear any message from the previous operation
-
             }
 
+            finish_get_sample_properties(success, server_payload, error_message, custom_data)
+            /* Callback function to wrap up the action of get_sample_properties() upon getting a response from the server.
+                    success:        boolean indicating whether the server call succeeded
+                    server_payload: whatever the server returned (stripped of information about the success of the operation)
+                    error_message:  a string only applicable in case of failure
+                    custom_data:    whatever JavaScript structure, if any, was passed by the contact_server() call
+            */
+            {
+                console.log("Finalizing the finish_get_sample_properties() operation...");
+
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    this.available_fields = server_payload;
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+            }
 
 
 

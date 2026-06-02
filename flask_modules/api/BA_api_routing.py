@@ -2397,14 +2397,16 @@ class ApiRouting:
             #TODO: for now, we're just searching by label, rather than by Class
             #TODO: merge with get_class_properties_api()
             try:
-                # Fetch all the Properties of the given Class
-                payload = GraphSchema.db.sample_properties(label=class_name, sample_size=10)    # list of strings
-                response = {"status": "ok", "payload": payload}    # Successful termination
+                # Fetch all the Properties attached to a sampling of database nodes with the given label
+                payload = GraphSchema.db.sample_properties(label=class_name, sample_size=300)    # list of strings
+                response_data = {"status": "ok", "payload": payload}    # Successful termination
             except Exception as ex:
-                err_details = f"/field-names-by-class :  {exceptions.exception_helper(ex)}"
-                response = {"status": "error", "error_message": err_details}    # Error termination
+                err_details = f"/field-names-by-class : Unable to extract Property names.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # Error termination
+                return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
 
-            return jsonify(response)   # This function also takes care of the Content-Type header
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
         
