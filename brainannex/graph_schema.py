@@ -1777,7 +1777,7 @@ class GraphSchema:
     #####################################################################################################
 
     @classmethod
-    def setup_schema_from_data(cls, label: str, sample_size=500, strict=False) -> int | str:
+    def create_schema_from_data(cls, label: str, sample_size=500, strict=False) -> int | str:
         """
         Take a sample of the given size of the database nodes with the given label,
         and assemble the set of ALL the properties that are present on any of those nodes.

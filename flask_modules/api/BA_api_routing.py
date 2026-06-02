@@ -656,7 +656,7 @@ class ApiRouting:
 
 
             try:
-                # Validate the presence of the required parameters
+                # Validate the presence of the required parameters (TODO: split into separate try/except)
                 assert "class_name" in request_parameters, \
                     "A key named `class_name` must be present in the dictionary in the body of the request"
 
@@ -666,6 +666,7 @@ class ApiRouting:
                 err_details = f"/class-properties-full-data : unable to retrieve the requested data.  " \
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
             #print(f"/class-properties-full-data  is returning: `{response_data}`")
 
@@ -1389,7 +1390,7 @@ class ApiRouting:
                 err_details = f"/directories-stored-in : unable to retrieve the requested data.  " \
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
-
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
             #print(f"/directories-stored-in  is returning: `{response_data}`")
 
@@ -2409,7 +2410,75 @@ class ApiRouting:
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
-        
+
+        @bp.route('/create-schema-from-data', methods=['POST'])
+        @login_required
+        def create_schema_from_data_POST():
+            """
+            Take a sample of 1,000 database nodes (or however many available) with the given label,
+            and assemble the set of ALL the properties that are present on any of those nodes.
+
+            Then create a database Schema with a Class name equal to the label in the POST request,
+            and with all the inferred Properties.
+
+            ~~~ EXAMPLE ~~~
+                http://localhost:5000/BA/api/create-schema-from-data
+                using a POST with Content-Type: application/json
+                and body:  {"label" : "Car"}
+
+            The body must contain a JSON-encoded dict with the following KEYS:
+                REQUIRED    "label"
+
+            :return:
+                A response with Content-Type: application/json,
+                containing a dict with "status" and "payload" keys.
+
+                EXAMPLE of returned "payload" value:
+                         {"internal_id": 123}
+            """
+            # Extract and parse the JSON-encoded POST body
+            try:
+                request_parameters = cls.parse_json_from_request_body()
+            except Exception as ex:
+                err_details = f"/create-schema-from-data : Unable to parse JSON request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            #print("In create-schema-from-data -  request_parameters: ", request_parameters)
+
+
+            # Validate the OVERALL data type of the passed JSON data
+            if type(request_parameters) != dict:
+                err_details = f"/create-schema-from-data : the passed JSON value should be a dictionary; " \
+                              f"instead, it's of type {type(request_parameters)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            # Validate the presence of the required parameters
+            if "label" not in request_parameters:
+                err_details = "/create-schema-from-data : A key named `label` must " \
+                              "be present in the dictionary in the body of the request"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                result = GraphSchema.create_schema_from_data(label=request_parameters.get("label"), sample_size=1000)
+                response_data = {"status": "ok", "payload": result}                 # Successful termination
+            except Exception as ex:
+                err_details = f"/create-schema-from-data : unable to retrieve the requested data.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
+
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+
         @bp.route('/get-filtered')
         @login_required
         def get_filtered_api():

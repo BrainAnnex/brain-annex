@@ -1,9 +1,9 @@
 import pytest
-from brainannex import GraphAccess, GraphSchema, Collections, Categories
+from brainannex import GraphAccess, GraphSchema
 from utilities.comparisons import compare_recordsets
 from app_libraries.data_manager import DataManager
 
-from app_build import create_app
+from app_build import create_app    # In top-level file app_build.py
 
 
 # Provide a Flask app object (with a test database connection)
@@ -18,6 +18,7 @@ def app():
     """
     graph_db_obj = GraphAccess(debug=False)
     app = create_app(db=graph_db_obj, test=True)    # An instantiated Flask object
+                                                    # This instantiation also initializes various modules, such as GraphSchema
     yield app
 
 
@@ -51,7 +52,7 @@ def client(app):
     db = app.config['DATABASE']
     db.empty_dbase()            # Empty out the test database
 
-    app.config["LOGIN_DISABLED"] = True     # Disable the enforcement of logins
+    app.config["LOGIN_DISABLED"] = True     # Disable the enforcement of logins (a built-in feature)
                                             # Otherwise, 302 status will be returned, as a re-direct to login page
 
     return app.test_client()
@@ -202,3 +203,64 @@ def test_get_links_api(client):
     assert response.status_code == 200
     assert response.json["status"] == "ok"
     assert response.json["payload"] == {"in" :[], "out": ["EMPLOYS"]}
+
+
+
+def test_create_schema_from_data_POST(client):
+    endpoint = "create-schema-from-data"
+    url = f"/BA/api/{endpoint}"
+
+    db = GraphSchema.db
+
+    # Populate the database
+    db.create_node(labels="Car")    # This node lacks any properties
+
+    response = client.post(url, json={"label": "Car"})
+    # The response is an object of type 'werkzeug.test.WrapperTestResponse'
+
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    result = response.json["payload"]   # The internal database ID of the newly-created Class node
+
+    # Verify we now have a `Car` Class, with no Properties
+    assert GraphSchema.class_name_exists("Car")
+    assert GraphSchema.get_class_internal_id("Car") == result
+    assert GraphSchema.get_class_properties(class_node="Car") == []
+    assert not GraphSchema.is_strict_class("Car")
+
+
+    db.create_node(labels="Person", properties={"name": "Julian"})
+    db.create_node(labels="Person", properties={"name": "Val", "age": 22})
+    db.create_node(labels="Person", properties={"name": "Liz", "Medical #": "0425"})
+
+
+    response = client.post(url, json={"label": "Person"})
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    result = response.json["payload"]   # The internal database ID of the newly-created Class node
+
+    # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
+    assert GraphSchema.class_name_exists("Person")
+    assert GraphSchema.get_class_internal_id("Person") == result
+    assert GraphSchema.get_class_properties(class_node="Person") == ["age", "Medical #", "name"]    # in alphabetic order
+    assert not GraphSchema.is_strict_class("Person")
+
+
+    response = client.post(url, json={"xyz": "Person"})   # Missing key 'label'
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    assert response.json["error_message"] == "/create-schema-from-data : A key named `label` must be present in the dictionary in the body of the request"
+
+
+    response = client.post(url, json={"label": "NON_EXISTENT"})     # No such nodes exist
+    assert response.status_code == 422
+    assert response.json["status"] == "error"
+    assert type(response.json["error_message"]) == str
+    #print(response.json["error_message"])
+
+
+    response = client.post(url, json={"label": "Person"})   # A Class by that name already exists
+    assert response.status_code == 422
+    assert response.json["status"] == "error"
+    assert type(response.json["error_message"]) == str
+    #print(response.json["error_message"])
