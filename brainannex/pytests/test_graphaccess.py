@@ -376,6 +376,44 @@ def test_find_first_duplicate(db):
 
 
 
+def test_sample_properties(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        db.sample_properties(label="NON_EXISTENT")  # No such nodes exist
+
+
+    db.create_node(labels="Car")    # This node lacks any properties
+    assert db.sample_properties(label="Car") == []
+
+    db.create_node(labels="Car")    # This node lacks any properties
+    assert db.sample_properties(label="Car") == []
+
+    db.create_node(labels="Person", properties={"name": "Julian"})
+    assert db.sample_properties(label="Person") == ["name"]
+    assert db.sample_properties(label="Car") == []
+
+    db.create_node(labels="Car", properties={"color": "white"})
+    assert db.sample_properties(label="Person") == ["name"]
+    assert db.sample_properties(label="Car") == ["color"]
+
+    db.create_node(labels="Car", properties={"model": "Toyota"})
+    assert db.sample_properties(label="Person") == ["name"]
+    assert db.sample_properties(label="Car") == ["color", "model"]
+
+    db.create_node(labels="Person", properties={"name": "Val", "age": 22})
+    assert db.sample_properties(label="Person") == ["age", "name"]       # Sorted
+    assert db.sample_properties(label="Car") == ["color", "model"]
+
+    result = db.sample_properties(label="Person", sample_size=1)    # Only sampling 1 node
+    assert result == ["name"] or result == ["age"]                  # Only 1 property will be captured
+
+    db.create_node(labels="Person", properties={"name": "Raul", "Medical #": "0425"})
+    assert db.sample_properties(label="Person") == ["age", "Medical #", "name"]  # Sorted, disregarding capitalization
+
+
+
+
 
 ###  ~ FOLLOW LINKS ~
 

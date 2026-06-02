@@ -6,7 +6,7 @@ const bus = new Vue();
 
 Vue.component('vue-show-node-labels',
     {
-        props: ['my_labels', 'wakeup'],
+        props: ['my_labels'],
 
         template: `
             <div class="content-block">

@@ -276,9 +276,30 @@ class PagesRouting:
 
 
 
+        @bp.route('/database-overview')
+        @login_required
+        def database_overview() -> str:
+            """
+            Generate an administrative page to show Database in Tabular form, and manage Schema Documentation
+            EXAMPLE invocation: http://localhost:5000/BA/pages/database-overview
+            """
+            template = "database_overview.htm"
+
+            label_list = GraphSchema.db.get_all_node_labels()   # EXAMPLE: ["my_label_1", "my_label_2"]
+            class_list = DataManager.all_schema_classes()
+            number_nodes = GraphSchema.db.count_nodes()
+
+            return render_template(template,
+                                   site_data = cls.site_data,
+                                   current_page=request.path, username=current_user.username,
+                                   number_nodes = number_nodes,
+                                   label_list = label_list, class_list=class_list)
+
+
+
         @bp.route('/schema-manager')
         @login_required
-        def schema_manager() -> str:
+        def schema_manager_api() -> str:
             """
             Generate an administrative page to manage the Schema
             EXAMPLE invocation: http://localhost:5000/BA/pages/schema-manager

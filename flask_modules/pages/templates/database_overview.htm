@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+{#
+    Page for:
+        1) tabular display of samples of the database
+        2) viewing and editing database Schema
+
+
+    Flask-passed parameters:
+
+        current_page, site_pages,
+        number_nodes,
+        label_list,
+        class_list
+ #}
+
+<html lang="en">
+<head>
+    <title>Database Overview</title>
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/brain_annex.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/css/control_panels.css">
+
+    <link type="text/css" rel="stylesheet" href="/navigation/static/horiz_status_bar.css">
+    <link type="text/css" rel="stylesheet" href="/navigation/static/navbar_top.css">
+
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/CORE/database_overview/database_overview.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/record_cluster/record_cluster.css">
+    <link type="text/css" rel="stylesheet" href="/BA/pages/static/vue_components/CORE/schema_manager/schema_manager.css">
+
+    <script src="/BA/pages/static/Vue2/vue2.js"></script>   <!-- Vue.js (version 2) -->
+    <script src="/BA/api/static/server_communication.js"></script>
+</head>
+
+
+<body>
+
+{# HORIZONTAL STATUS BAR (fixed at the top) #}
+{% include "horiz_status_bar.htm" %}
+
+<div class="menu-wrapper">
+    {# TOP NAVIGATION BAR #}
+    {% include "navbar_top.htm" %}
+</div>
+
+
+
+<a href='/BA/pages/admin'>Admin</a> &raquo; Database Overview
+
+<h2 class="page-title">Database Overview</h2>
+
+
+<br>
+
+
+<!-- Brief Database Summary -->
+<div class="content-block">
+    <div class="content-block-title">Database Summary</div>
+    <p style="">
+        {{number_nodes}} nodes
+    </p>
+</div>
+
+<br><br>
+
+
+
+<div id="vue-root">   <!-- Container for Vue components -->
+
+    <div class="content-block">
+        <div class="content-block-title">Data Overview</div>
+
+        <!-- Vue component -->
+        {#  Pass a Flask parameter as an argument to the following Vue component #}
+        <vue-database-overview
+            v-bind:all_database_labels="{{label_list}}"
+             v-bind:all_class_names="{{class_list}}"
+        >
+        </vue-database-overview>
+
+    </div>
+    
+
+</div>         <!-- End of Vue container "vue-root-1" -->
+
+<br><br>
+
+
+<!-- Vue-related code (and other JS).  This must appear AFTER the Vue-containing elements -->
+<script src="/BA/pages/static/vue_components/CORE/database_overview/database_overview.js"></script>
+<script src="/BA/pages/static/vue_components/record_cluster/record_cluster.js"></script>
+<script src="/BA/pages/static/vue_components/CORE/schema_manager/schema_manager.js"></script>
+
+
+
+<script>
+// Instantiation of the ROOT component must come after the definition of the descendant components
+new Vue({
+    el: '#vue-root',
+
+    data: {
+    },
+});
+</script>
+
+</body>
+</html>

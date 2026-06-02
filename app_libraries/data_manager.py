@@ -653,7 +653,7 @@ class DataManager:
                 f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
-        assert GraphSchema.data_node_exists(find=(class_name, entity_id)), \
+        assert GraphSchema.data_node_exists_by_entity(class_name=class_name, entity_id=entity_id), \
                 f"update_content_item(): no Content Item found with class `{class_name}` and entity ID `{entity_id}`"
 
 
@@ -720,8 +720,7 @@ class DataManager:
         assert uri, "delete_content_item(): argument `uri` is missing"
 
         # Make sure that the requested Content Item exists
-        #assert GraphSchema.data_node_exists_OLD(node_id=uri, id_key="entity_id", class_name=class_name), \
-        assert GraphSchema.data_node_exists(find=(class_name, uri)), \
+        assert GraphSchema.data_node_exists_by_entity(class_name=class_name, entity_id=uri), \
             f"delete_content_item(): no Content Item found with URI `{uri}` and class `{class_name}`"
 
 

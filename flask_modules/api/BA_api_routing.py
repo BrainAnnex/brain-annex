@@ -179,6 +179,41 @@ class ApiRouting:
 
 
     @classmethod
+    def parse_json_from_GET_request(cls):
+        """
+        Extract and parse the JSON-encoded parameters for a GET request.
+        The calling function ought to account for the possibility of errors,
+        for example arising from a request lacking mimetype indicates "application/json",
+        or a JSON string that isn't parsable
+
+        :return:    The python data decoded from the JSON string that was passed in the GET request;
+                        note that this could be a variety of data types
+        """
+        # Extract the GET values
+        get_data = request.args    # EXAMPLE: ImmutableMultiDict([('json', 'SOME_JSON_ENCODED_DATA')])
+                                   # Note that the ImmutableMultiDict object that may contain multiple values for the same key.
+
+        data_dict = get_data.to_dict(flat=True)     # EXAMPLE: {'json': 123}
+                                                    # WARNING: if multiple identical keys occur in the `get_data` ImmutableMultiDict,
+                                                    #          the values associated to the later keys will be discarded
+
+        assert "json" in data_dict, \
+            f"The expected key 'json' is missing from the query string at end of the URL. The GET request: {data_dict}"
+
+        json_str = data_dict["json"]                # A string containing JSON-encoded data
+
+        # Parse the JSON-encoded string
+        request_parameters = json.loads(json_str)   # Turn the string into a Python object
+                                                    # An error will occur if the JSON string is not parsable
+
+        #print("request_parameters: ", request_parameters)
+        # `request_parameters` could be a string, int, list, dict, or other complex data structured passed by the client
+
+        return request_parameters
+
+
+
+    @classmethod
     def explain_flask_request(cls, request_obj :request) -> None:
         """
         Print out a bunch of information to elucidate the contents
@@ -446,7 +481,7 @@ class ApiRouting:
         def get_class_properties_api():
             """
             Get all Properties of the given Class node (as specified by its name),
-            OR all field names associated to a sample of nodes with the given label.
+            OR all field names found in a sample of nodes with the given label.
 
             Optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class;
@@ -548,18 +583,92 @@ class ApiRouting:
                     prop_list = GraphSchema.get_class_properties(**json_data, class_node=class_name)
                     #print("SCHEMA PATH.  prop_list: ", prop_list)
                 else:               # Lookup by a sample of nodes with the given label
-                    prop_set = GraphSchema.db.sample_properties(label=label, sample_size=300)    # Estimate the list of properties by label
-                    #print("LABEL PATH.  prop_set: ", prop_set)
-                    # Take out Schema-related properties, if present
-                    prop_set.discard("_CLASS")          # Remove if present
-                    prop_set.discard("entity_id")       # Remove if present
-                    prop_list = list(prop_set)
+                    prop_list = GraphSchema.db.sample_properties(label=label, sample_size=300)    # Estimate the list of properties, by label
+
+                    # Take out Schema-related properties, if present.  We do a try/except to avoid doing 2 passes
+                    try:
+                        prop_list.remove("_CLASS")
+                    except ValueError:
+                        pass
+
+                    try:
+                        prop_list.remove("entity_id")
+                    except ValueError:
+                        pass
 
                 response_data = {"status": "ok", "payload": prop_list}
             except Exception as ex:
                 response_data = {"status": "error", "error_message": str(ex)}
 
             #print("get_class_properties_api() - response_data: ", response_data)
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/class-properties-full-data')
+        @login_required
+        def class_properties_full_data_api():
+            """
+            Retrieve the full data (not just the names) for all the Properties of the given Schema Class,
+            as a list of dictionaries.
+
+            If only the names are needed, consider using the endpoint `/get_class_properties`
+
+            ~~~ EXAMPLE ~~~
+                A GET request with the following URL:
+                http://localhost:5000/BA/api/class-properties-full-data?json={"class_name": "Quote"}
+
+            The JSON-encoded dict is expected to contain the following KEYS:
+                REQUIRED    "class_name"
+
+            :return:
+                A response with Content-Type: application/json,
+                containing a dict with "status" and "payload" keys.
+
+                EXAMPLE of returned "payload" value:
+                    [{'name': 'text', 'entity_id': 'schema-2', '_internal_id': 123,
+                      'dtype': 'string', 'description': 'the body of the quote', 'required': True, 'system': False, 'format': '6,50'}
+                    ]
+
+                Note the '_internal_id' key that gets added to the Property nodes' fields
+            """
+            # TODO: use this as a ***MODEL*** of future JSON web api calls with GET
+
+            # Extract and parse the JSON-encoded GET parameters
+            try:
+                request_parameters = cls.parse_json_from_GET_request()
+            except Exception as ex:
+                err_details = f"/class-properties-full-data : Unable to parse JSON-encoded string in GET request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            #print("In class_properties_full_data_api() -  request_parameters: ", request_parameters)
+
+
+            # Validate the OVERALL data type of the passed JSON data
+            if type(request_parameters) != dict:
+                err_details = f"/class-properties-full-data : the passed JSON value should be a dictionary; " \
+                              f"instead, it's of type {type(request_parameters)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                # Validate the presence of the required parameters (TODO: split into separate try/except)
+                assert "class_name" in request_parameters, \
+                    "A key named `class_name` must be present in the dictionary in the body of the request"
+
+                result = GraphSchema.get_class_properties_full_data(class_name = request_parameters.get("class_name")) # A list
+                response_data = {"status": "ok", "payload": result}                 # Successful termination
+            except Exception as ex:
+                err_details = f"/class-properties-full-data : unable to retrieve the requested data.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            #print(f"/class-properties-full-data  is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
 
@@ -606,7 +715,7 @@ class ApiRouting:
 
         @bp.route('/get_class_schema', methods=['POST'])
         @login_required
-        def get_class_schema():
+        def get_class_schema_api():
             """
             Get all Schema data - both Properties and Links - of the given Class node
             (as specified by its name passed as a POST variable),
@@ -718,7 +827,7 @@ class ApiRouting:
         @login_required
         def get_properties_by_uri(uri):
             """
-            Get all properties of a DATA node specified by its URI
+            Get all properties of a DATA node specified by its URI (Entity ID)
 
             EXAMPLE invocation: http://localhost:5000/BA/api/get_properties_by_uri/123
 
@@ -1225,16 +1334,20 @@ class ApiRouting:
         def directories_stored_in_api():
             """
 
-            POST VARIABLES:
-                json    (REQUIRED)
-                        EXAMPLE :   {"node_internal_id": 123}
-
             ~~~ EXAMPLE ~~~
                 http://localhost:5000/BA/api/directories-stored-in
-                using a POST with body:  {"node_internal_id" : 123}
+                using a POST with Content-Type: application/json
+                and body:  {"node_internal_id" : 123}
+
+            The body must contain a JSON-encoded dict with the following KEYS:
+                REQUIRED    "node_internal_id"
 
             :return:
-                EXAMPLE: {"location": "documents/Ebooks & Articles/SYSTEMS BIO",   # This value could be null
+                A response with Content-Type: application/json,
+                containing a dict with "status" and "payload" keys.
+
+                EXAMPLE of returned "payload" value:
+                         {"location": "documents/Ebooks & Articles/SYSTEMS BIO",   # This value could be null
                           "all_directories":
                                 [
                                     "documents/Ebooks & Articles/SYSTEMS BIO",
@@ -1242,7 +1355,9 @@ class ApiRouting:
                                 ]
                           }
             """
-            # TODO: use this as a ***MODEL*** of future JSON web api calls
+            # TODO: change this endpoint to using a GET
+            # TODO: use this as a ***MODEL*** of future JSON web api calls with POST
+
             # Extract and parse the JSON-encoded POST body
             try:
                 request_parameters = cls.parse_json_from_request_body()
@@ -1255,6 +1370,7 @@ class ApiRouting:
             #print("In directories_stored_in_api() -  request_parameters: ", request_parameters)
             # EXAMPLE :   {"node_internal_id": 123}
 
+
             # Validate the OVERALL data type of the passed JSON data
             if type(request_parameters) != dict:
                 err_details = f"/directories-stored-in : the passed JSON value should be a dictionary; " \
@@ -1264,13 +1380,17 @@ class ApiRouting:
 
 
             try:
+                # Validate the presence of the required parameters
+                assert "node_internal_id" in request_parameters, \
+                    "A key named `node_internal_id` must be present in the dictionary in the body of the request"
+
                 result = DataManager.directories_stored_in(internal_id = request_parameters.get("node_internal_id")) # A dict
                 response_data = {"status": "ok", "payload": result}                 # Successful termination
             except Exception as ex:
                 err_details = f"/directories-stored-in : unable to retrieve the requested data.  " \
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
-
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
             #print(f"/directories-stored-in  is returning: `{response_data}`")
 
@@ -1419,9 +1539,6 @@ class ApiRouting:
             """
             Update an existing Data Node, possibly representing a Content Item.
             This is variation of '/update_content_item' that expects to receive JSON data
-
-            1 POST VARIABLE EXPECTED:
-                json    (REQUIRED) A JSON-encoded dict
 
             KEYS in the JSON-encoded dict:
                 REQUIRED    `entity_id` and `class_name`
@@ -2264,7 +2381,8 @@ class ApiRouting:
         def field_names_by_class(class_name):
             """
             Get all the field (property) names
-            registered with that class name or, if no such class exists,
+            registered with that class name
+            OR, if no such class exists,
             retrieve field names typically associated with nodes with that label
 
             EXAMPLES of invocation: http://localhost:5000/BA/api/field-names-by-class/cars
@@ -2278,19 +2396,89 @@ class ApiRouting:
                                     }
             """
             #TODO: for now, we're just searching by label, rather than by Class
+            #TODO: merge with get_class_properties_api()
             try:
-                # Fetch all the Properties of the given Class
-                all_props = GraphSchema.db.sample_properties(label=class_name, sample_size=10)    # Set of strings
-                payload = list(all_props)       # Convert set to list
-                response = {"status": "ok", "payload": payload}    # Successful termination
+                # Fetch all the Properties attached to a sampling of database nodes with the given label
+                payload = GraphSchema.db.sample_properties(label=class_name, sample_size=300)    # list of strings
+                response_data = {"status": "ok", "payload": payload}    # Successful termination
             except Exception as ex:
-                err_details = f"/field-names-by-class :  {exceptions.exception_helper(ex)}"
-                response = {"status": "error", "error_message": err_details}    # Error termination
+                err_details = f"/field-names-by-class : Unable to extract Property names.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}    # Error termination
+                return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
 
-            return jsonify(response)   # This function also takes care of the Content-Type header
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
 
 
-        
+
+        @bp.route('/create-schema-from-data', methods=['POST'])
+        @login_required
+        def create_schema_from_data_POST():
+            """
+            Take a sample of 1,000 database nodes (or however many available) with the given label,
+            and assemble the set of ALL the properties that are present on any of those nodes.
+
+            Then create a database Schema with a Class name equal to the label in the POST request,
+            and with all the inferred Properties.
+
+            ~~~ EXAMPLE ~~~
+                http://localhost:5000/BA/api/create-schema-from-data
+                using a POST with Content-Type: application/json
+                and body:  {"label" : "Car"}
+
+            The body must contain a JSON-encoded dict with the following KEYS:
+                REQUIRED    "label"
+
+            :return:
+                A response with Content-Type: application/json,
+                containing a dict with "status" and "payload" keys.
+
+                EXAMPLE of returned "payload" value:
+                         {"internal_id": 123}
+            """
+            # Extract and parse the JSON-encoded POST body
+            try:
+                request_parameters = cls.parse_json_from_request_body()
+            except Exception as ex:
+                err_details = f"/create-schema-from-data : Unable to parse JSON request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            #print("In create-schema-from-data -  request_parameters: ", request_parameters)
+
+
+            # Validate the OVERALL data type of the passed JSON data
+            if type(request_parameters) != dict:
+                err_details = f"/create-schema-from-data : the passed JSON value should be a dictionary; " \
+                              f"instead, it's of type {type(request_parameters)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            # Validate the presence of the required parameters
+            if "label" not in request_parameters:
+                err_details = "/create-schema-from-data : A key named `label` must " \
+                              "be present in the dictionary in the body of the request"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            try:
+                result = GraphSchema.create_schema_from_data(label=request_parameters.get("label"), sample_size=1000)
+                response_data = {"status": "ok", "payload": result}                 # Successful termination
+            except Exception as ex:
+                err_details = f"/create-schema-from-data : unable to retrieve the requested data.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                return jsonify(response_data), 422      # "Unprocessable Entity", for parsed but invalid content
+
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+
         @bp.route('/get-filtered')
         @login_required
         def get_filtered_api():
@@ -2705,7 +2893,7 @@ class ApiRouting:
         
         @bp.route('/upload_media', methods=['POST'])
         @login_required
-        def upload_media():
+        def upload_media_api():
             """
             Upload new media Content, to the (specified or default) media folder, and attach it to the Category
             specified in the POST variable "category_id"
@@ -2795,7 +2983,7 @@ class ApiRouting:
                     return make_response(err_status, 500)
 
         
-            category_uri = post_data["category_id"]
+            category_entity_id = post_data["category_id"]
 
 
             (basename, suffix) = os.path.splitext(tmp_filename_for_upload)  # EXAMPLE: "test.jpg" becomes
@@ -2832,31 +3020,38 @@ class ApiRouting:
 
             # Update the database
             # TODO: switch over to using DataManager.new_content_item_in_category_final_step()
+            response = ""
             try:
                 insertion_location = post_data.get('insert_after_uri')
                 insertion_class = post_data.get('insert_after_class')
                 if (insertion_location == "INSERT_AT_BOTTOM") or (not insertion_location) or (not insertion_class):
                     # Note: in case the insertion position isn't fully specified,
                     #       the Item will inserted at the bottom of the Category Page
-                    print(f"    Inserting new Media Item at *bottom* of the Category page")
-                    _, new_uri = Categories.add_content_at_end(category_entity_id=category_uri,
+                    print(f"    Inserting new Media Item at *bottom* of the Category page (category Entity ID `{category_entity_id}`)")
+                    _, new_uri = Categories.add_content_at_end(category_entity_id=category_entity_id,
                                                                item_class_name=class_name, item_properties=properties)
                 else:
                     print(f"    Inserting new Media Item after Category page element with URI `{insertion_location}`")
-                    new_uri = Categories.add_content_after_element(category_uri=category_uri,
+                    new_uri = Categories.add_content_after_element(category_uri=category_entity_id,
                                                                    item_class_name=class_name, item_properties=properties,
                                                                    insert_after_uri=insertion_location, insert_after_class=insertion_class)
+            except Exception as ex:
+                err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)
+                print("upload_media(): ", err_status)
+                response = make_response(err_status, 500)
+                return response
 
+
+            try:
                 # Let the appropriate plugin handle anything they need to wrap up the operation
                 if class_name == "Document":    # TODO: move to plugin_support.py
-                    Document.new_content_item_successful(uri=new_uri, pars=properties, mime_type=mime_type,
+                    Document.new_content_item_successful(entity_id=new_uri, pars=properties, mime_type=mime_type,
                                                          upload_folder=post_data.get("upload_folder"),
                                                          index_pdf=current_app.config['INDEX_PDF_FILES'])
                                                           # 'INDEX_PDF_FILES' setting is defined in main file
-                response = ""
 
             except Exception as ex:
-                err_status = "Unable to store the file in the database. " + exceptions.exception_helper(ex)
+                err_status = f"Unable to perform plugin-specific operations for {class_name} with entity ID {new_uri} " + exceptions.exception_helper(ex)
                 print("upload_media(): ", err_status)
                 response = make_response(err_status, 500)
 
