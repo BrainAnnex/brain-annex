@@ -23,10 +23,8 @@ Vue.component('vue-plugin-h',
                                     {"entity_id":-2, "insert_after_uri":"i-7", "insert_after_class":"Image",
                                      "schema_code":"h", "class_name":"Header"}
 
-            expose_controls:    A boolean indicating whether to show the standard editing controls
-                                TODO: possibly add a new parameter "create_mode" that won't show the usual
-                                      delete/tag/move controls
-
+            expose_controls:    A boolean indicating whether to show all the standard editing controls
+                                    (indicating whether the page containing this element is in editing mode)
             category_id:        The Entity ID of the Category page where this Header is displayed (used when creating new records)
 
             data_for_controls:  Object with all the data needed for the standard Controls;

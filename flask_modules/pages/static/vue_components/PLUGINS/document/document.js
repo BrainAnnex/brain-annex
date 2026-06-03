@@ -25,8 +25,8 @@ Vue.component('vue-plugin-d',
                                           internal_id": 123
                                         }
 
-            expose_controls:    A boolean indicating whether the page containing this element is in editing mode
-                                    (to pass to the controls)
+            expose_controls:    A boolean indicating whether to show all the standard editing controls
+                                    (indicating whether the page containing this element is in editing mode)
             category_id:        The Entity ID of the Category page where this document is displayed (used when creating new documents)
             data_for_controls:  Object with all the data needed for the standard Controls;
                                     this data is just passed thru by this components
@@ -42,7 +42,7 @@ Vue.component('vue-plugin-d',
 
 
                     <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
-                    <div v-show="!editing_mode"   @dblclick="edit_content_item()">
+                    <div v-show="!editing_mode"   @dblclick="edit_content_item(); limited_controls=true">
                         <span style='font-weight:bold; font-size:12px'>&ldquo;{{current_data.caption}}&rdquo;</span>
                         <br><br>
 
@@ -174,7 +174,9 @@ Vue.component('vue-plugin-d',
 
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                    <vue-controls v-bind:expose_controls="expose_controls"  v-bind:data_for_controls="data_for_controls"
+                    <vue-controls v-bind:expose_controls="expose_controls"
+                                  v-bind:limited_controls="limited_controls"
+                                  v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item"
                     >
@@ -194,6 +196,8 @@ Vue.component('vue-plugin-d',
         data: function() {
             return {
                 editing_mode: false,   // Editing mode for the fields of the record
+
+                limited_controls: false,
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -279,13 +283,16 @@ Vue.component('vue-plugin-d',
 
 
             /**
-             * Invoked by clicking on the "CANCEL" link (only visible in editing mode)
+             *  Invoked by clicking on the "CANCEL" link (only visible in editing mode),
+             *  or when the save operation fails.
+             *  Revert any changes, and exit the edit mode
              */
             cancel_edit()
-            /* Invoked when the user cancels the edit-in-progress, or when the save operation fails.
-               Revert any changes, and exit the edit mode
+            /*
              */
             {
+                this.limited_controls = false;
+
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
@@ -422,6 +429,7 @@ Vue.component('vue-plugin-d',
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;       // Make a note that the asynchronous operation has come to an end
                 this.editing_mode = false;  // Leave the editing mode
+                this.limited_controls = false;
             },
 
 
