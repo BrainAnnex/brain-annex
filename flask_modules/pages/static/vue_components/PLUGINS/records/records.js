@@ -10,7 +10,7 @@
 Vue.component('vue-plugin-r',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+                'expose_controls', 'category_id', 'schema_data', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Record item.
                                 EXAMPLE: {"German":"Tier", "English":"animal",}
 
@@ -26,12 +26,12 @@ Vue.component('vue-plugin-r',
                                         "internal_id": 123
                                         }
 
-            edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The entity ID of the Category page where this record is displayed (used when creating new records)
-            index:          The zero-based position of this Record on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
-            schema_data:    An array of field names, in Schema order.
-                                EXAMPLE: ["German", "English", "notes"]
+            expose_controls:    A boolean indicating whether to show the standard editing controls
+            category_id:        The entity ID of the Category page where this record is displayed (used when creating new records)
+            data_for_controls:  Object with all the data needed for the standard Controls;
+                                    this data is just passed thru by this components
+            schema_data:        An array of field names, in Schema order.
+                                    EXAMPLE: ["German", "English", "notes"]
          */
 
         template: `
@@ -152,7 +152,7 @@ Vue.component('vue-plugin-r',
                   Intercept the following signal from child component:
                         v-on:edit-content-item   (which is not listened to by the root component)
             -->
-            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+            <vue-controls v-bind:expose_controls="expose_controls"  v-bind:data_for_controls="data_for_controls"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item()">
             </vue-controls>

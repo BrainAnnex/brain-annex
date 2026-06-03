@@ -1,9 +1,9 @@
 /*  Standard controls for a Content Item to edit, move, delete, etc,
-    If the 'edit_mode' prop is true, this component generates
+    If the 'expose_controls' prop is true, this component generates
         a DIV element with a row of controls;
         the DIV is an inline-block, so that the parent component
         may easily add extra controls at the start and/or end of its standard row.
-    If the 'edit_mode' prop is false, nothing is generated
+    If the 'expose_controls' prop is false, nothing is generated
 
     TODO: maybe rename 'vue-standard-controls'
  */
@@ -11,9 +11,22 @@
 Vue.component('vue-controls',
     {
         props: {
-            edit_mode:  Boolean,        // Indicating whether in editing mode
-            index:      Number,         // The zero-based position of the Content Item on the page
-            item_count: Number,         // The total number of Content Items on the page
+            expose_controls:  Boolean,  // If True, expose all the controls - except any specified in `controls_to_hide`;
+                                        //      used to indicate that the entire page is in editing mode
+            limited_controls: {         // If True, expose only A FEW of the controls -
+                                        //      and also except any specified in `controls_to_hide`;
+                                        //      used to indicate that an individual Content Item is in editing mode.
+                                        //      If both `expose_controls` and `limited_controls` are set, the former prevails
+                type: Boolean,
+                default: false
+            },
+
+            data_for_controls:  Object,
+                // With 2 keys:
+                //      index:          The zero-based position of the Content Item on the page
+                //      item_count:     The total number of Content Items on the page
+                // TODO: maybe pass `expose_controls` into this object
+
             controls_to_hide: {         // [OPTIONAL] Array of names of standard controls to omit;
                 type: Array,            //            currently supported are 'edit' and 'tag'
                 default: () => []
@@ -23,28 +36,33 @@ Vue.component('vue-controls',
 
 
         template: `
-            <div v-if="edit_mode"
+            <div v-if="expose_controls || limited_controls"
                 style='display:inline-block; margin:0px'>	<!-- Outer container box, serving as Vue-required template root  -->
 
                 <img @click="delete_item" src="/BA/pages/static/graphics/delete_16.png"
                      class="control" title="DELETE" alt="DELETE">
 
-                <img @click="move_up" src="/BA/pages/static/graphics/up_arrow_16_1303891.png"
-                     class="control" title="Move UP" alt="Move UP">
+                <template v-if="index > 0">
+                    <img  v-if="expose_controls || (!limited_controls)"
+                         @click="move_up" src="/BA/pages/static/graphics/up_arrow_16_1303891.png"
+                         class="control" title="Move UP" alt="Move UP">
+                </template>
 
                 <!-- Pulldown menu to move the Item after a specified position on the page -->
-                <form style='display:inline-block; margin-left:0px'>
+                <form v-if="expose_controls || (!limited_controls)" style='display:inline-block; margin-left:0px'>
                     <span class="index">{{ index + 1 }}</span>
                     <select @change='move_item' v-model="move_after"
                             v-bind:title="'Move this item (currently in position ' + (index+1) + ' on the page) to just after a specified position'">
                         <option value='-1' selected>Re-position after:</option>
                         <option v-for="n in item_count+1" v-if="(n != index+1) && (n != index+2)" v-bind:value="n-1">{{n-1}}</option>
                     </select>
-                    <input type='hidden' name='elementToMove' value='contentID_TBA'>
                 </form>
 
-                <img @click="move_down" src="/BA/pages/static/graphics/down_arrow_16_1303877.png"
-                     class="control" title="Move DOWN" alt="Move DOWN">
+                <template v-if="index < (item_count-1)">
+                    <img  v-if="expose_controls || (!limited_controls)"
+                         @click="move_down" src="/BA/pages/static/graphics/down_arrow_16_1303877.png"
+                         class="control" title="Move DOWN" alt="Move DOWN">
+                </template>
 
                 <img v-show="!controls_to_hide.includes('tag')" @click="edit_tags" src="/BA/pages/static/graphics/tag_16.png"
                      class="control" title="Edit TAGS/Metadata" alt="Edit TAGS/Metadata">
@@ -52,7 +70,8 @@ Vue.component('vue-controls',
                 <img @click="add_content_below" src="/BA/pages/static/graphics/plusCircle3_16_183316.png"
                      class="control" title="Add new item below" alt="Add new item below">
 
-                <img v-show="!controls_to_hide.includes('edit')" @click="edit" src="/BA/pages/static/graphics/edit_16_pencil2.png"
+                <img v-show="(!controls_to_hide.includes('edit')) && (!limited_controls)"
+                     @click="edit" src="/BA/pages/static/graphics/edit_16_pencil2.png"
                      class="control" title="EDIT" alt="EDIT">
 
             </div>		<!-- End of outer container box -->
@@ -62,6 +81,8 @@ Vue.component('vue-controls',
         // --------------------  DATA  ---------------------
         data: function() {
             return {
+                index: this.data_for_controls.index,
+                item_count: this.data_for_controls.item_count,
                 move_after: -1      // Index of the chosen Content Item to move an Item after (in a move operation)
             }
         },

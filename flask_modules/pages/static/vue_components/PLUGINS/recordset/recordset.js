@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-rs',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+                'expose_controls', 'category_id', 'schema_data', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Recordset item.
                                 EXAMPLE: {
                                             caption: "Restaurants - Berkeley locations",
@@ -32,10 +32,10 @@ Vue.component('vue-plugin-rs',
                                             internal_id: 123
                                         }
 
-            edit_mode:      A boolean indicating whether in editing mode
+            expose_controls:      A boolean indicating whether to show the standard editing controls
             category_id:    The entity ID of the Category page where this recordset is displayed (used when creating new recordsets)
-            index:          The zero-based position of this Recordset on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
+            data_for_controls:  Object with all the data needed for the standard Controls;
+                                    this data is just passed thru by this components
             schema_data:    An array of field names (for the Recordset entity, not its records!), in Schema order.
                                 EXAMPLE: ["class", "order_by", "clause", "n_group", "caption"]
          */
@@ -316,7 +316,7 @@ Vue.component('vue-plugin-rs',
                 -->
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                    <vue-controls v-bind:expose_controls="expose_controls"  v-bind:data_for_controls="data_for_controls"
                                   v-bind:controls_to_hide="['edit']"
                                   v-on="$listeners"
                     >
@@ -370,8 +370,8 @@ Vue.component('vue-plugin-rs',
                 record_being_editing: null, // The "ID" of the record currently being edited, if any;
                                             // for now, only one record at a time may be edited
 
-                editing_mode: ((this.item_metadata.entity_id < 0) || this.edit_mode  ? true : false), // Flag indicating whether this record is being edited
-                                                                                            // Negative entity_id means "new Item"
+                editing_mode: ((this.item_metadata.entity_id < 0) || this.expose_controls  ? true : false), // Flag indicating whether this record is being edited
+                                                                                                            // Negative entity_id means "new Item"
 
                 recordset_editing: false,   // If true, the definition of the recordset goes into editing mode
 
