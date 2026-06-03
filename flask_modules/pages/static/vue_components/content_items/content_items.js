@@ -37,13 +37,14 @@ Vue.component('vue-content-items',
                                         "internal_id": 123
                                         }
 
-            expose_controls:    Flag indicating whether in edit mode
+            expose_controls:    Flag indicating whether the page is in editing mode
             category_uri:       A string indicating which Category-viewer page is using this component
-            index:              The zero-based position of this Content Items on the above Category-specific page
-            item_count:         The total number of Content Items (of all types) on the above Category-specific page
 
-            data_for_controls:  BEING PHASED IN.  Object with all the data needed for the Item Controls;
-                                this data is just passed thru by the child components, on its way to the grand-child 'vue-controls'
+            data_for_controls:  Object with all the data needed for the Item Controls;
+                                this data is just passed thru by the child components, on its way to the grand-child 'vue-controls'.
+                                It contains 2 parts:
+                                    index:       The zero-based position of this Content Items on the above Category-specific page
+                                    item_count:  The total number of Content Items (of all types) on the above Category-specific page
 
             registered_plugins: A list of codes of Content Items that have a dedicated Vue plugin
                                     EXAMPLE: ["n", "i", "h", "cd", "d", "sl", "rs", "timer", "f"]
@@ -80,7 +81,7 @@ Vue.component('vue-content-items',
                 v-bind:item_fields="item_fields"
                 v-bind:item_metadata="item_metadata"
 
-                v-bind:edit_mode="expose_controls"
+                v-bind:expose_controls="expose_controls"
                 v-bind:category_id="category_uri"
 
                 v-bind:data_for_controls="data_for_controls"

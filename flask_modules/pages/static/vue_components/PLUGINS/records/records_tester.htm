@@ -26,7 +26,7 @@
 
     <vue-plugin-r   v-bind:item_fields="item_fields"
                     v-bind:item_metadata="item_metadata"
-                    v-bind:edit_mode="edit_mode"
+                    v-bind:expose_controls="expose_controls"
                     v-bind:category_id="category_id"
                     v-bind:data_for_controls="{}"
                     v-bind:schema_data="schema_data"
@@ -67,7 +67,7 @@
             // "internal_id": 123,      // not present for new records
             // "entity_id":"52",        // not present for new records
 
-            edit_mode: true,
+            expose_controls: true,
 
             category_id: 1234,
             index: 0,

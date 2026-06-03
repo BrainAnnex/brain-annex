@@ -1,9 +1,9 @@
 /*  Standard controls for a Content Item to edit, move, delete, etc,
-    If the 'edit_mode' prop is true, this component generates
+    If the 'expose_controls' prop is true, this component generates
         a DIV element with a row of controls;
         the DIV is an inline-block, so that the parent component
         may easily add extra controls at the start and/or end of its standard row.
-    If the 'edit_mode' prop is false, nothing is generated
+    If the 'expose_controls' prop is false, nothing is generated
 
     TODO: maybe rename 'vue-standard-controls'
  */
@@ -11,13 +11,17 @@
 Vue.component('vue-controls',
     {
         props: {
-            edit_mode:  Boolean,        // Indicating whether in editing mode (and the standard controls should be exposed)
-            //index:      Number,         // The zero-based position of the Content Item on the page
-            data_for_controls:  {
-                index:      Number,
-                item_count: Number
+            expose_controls:  Boolean,      // Indicating whether in editing mode (and the standard controls should be exposed)
+            limited_controls: {
+                type: Boolean,
+                default: false
             },
-            //item_count: Number,         // The total number of Content Items on the page
+            //index:      Number,
+            data_for_controls:  {
+                index:      Number,         // The zero-based position of the Content Item on the page
+                item_count: Number          // The total number of Content Items on the page
+            },
+            //item_count: Number,
             controls_to_hide: {         // [OPTIONAL] Array of names of standard controls to omit;
                 type: Array,            //            currently supported are 'edit' and 'tag'
                 default: () => []
@@ -27,7 +31,7 @@ Vue.component('vue-controls',
 
 
         template: `
-            <div v-if="edit_mode"
+            <div v-if="expose_controls"
                 style='display:inline-block; margin:0px'>	<!-- Outer container box, serving as Vue-required template root  -->
 
                 <img @click="delete_item" src="/BA/pages/static/graphics/delete_16.png"

@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'data_for_controls'],
+                'expose_controls', 'category_id', 'data_for_controls'],
         /*   item_fields:    An object with the editable properties of this Note item.
                                 EXAMPLE: {  "basename":"notes-123",
                                             "suffix":"htm",
@@ -22,11 +22,11 @@ Vue.component('vue-plugin-n',
                                          "schema_code":"n"
                                         }
 
-            edit_mode:      A boolean indicating whether in editing mode
+            expose_controls:    A boolean indicating whether to show the standard editing controls
 
-            category_id:    The entity_id of the Category page where this Note is displayed (used when creating new Notes)
-            index:          The zero-based position of this Note on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
+            category_id:        The entity_id of the Category page where this Note is displayed (used when creating new Notes)
+            data_for_controls:  Object with all the data needed for the standard Controls;
+                                    this data is just passed thru by this components
          */
 
         template: `
@@ -64,10 +64,10 @@ Vue.component('vue-plugin-n',
 
                           v-on:edit-content-item
             -->
-                <img v-if="edit_mode" src="/BA/pages/static/graphics/copy_16_172587.png"
+                <img v-if="expose_controls" src="/BA/pages/static/graphics/copy_16_172587.png"
                      class="control" title="COPY TO CLIPBOARD (Not yet implemented)" alt="COPY TO CLIPBOARD (Not yet implemented)">
 
-                <vue-controls v-bind:edit_mode="edit_mode" v-bind:data_for_controls="data_for_controls"
+                <vue-controls v-bind:expose_controls="expose_controls" v-bind:data_for_controls="data_for_controls"
                               v-on="$listeners"
                               v-on:edit-content-item="edit_content_item()">
                 </vue-controls>

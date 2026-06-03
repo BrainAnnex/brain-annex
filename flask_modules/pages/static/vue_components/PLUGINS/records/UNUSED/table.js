@@ -23,8 +23,8 @@ Vue.component('vue-plugin-table',
 
             THE REMAINING PROPS are just passed along, for the controls [CURRENTLY NOT IN USE]
             category_id:    The ID of the Category page where this table is displayed (used when creating new records)
-            index:          The zero-based position on the page of the 1st Record on this table
-            item_count:     The total number of Content Items (of all types) on the page
+            data_for_controls:  Object with all the data needed for the standard Controls;
+                                    this data is just passed thru by this components
          */
 
         template: `

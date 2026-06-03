@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-d',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'data_for_controls'],
+                'expose_controls', 'category_id', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Document item.
                                 EXAMPLE: {basename: "test", suffix: "pdf",
                                           caption: "My first document", url: "https://arxiv.org/pdf/2402.09090",
@@ -25,11 +25,11 @@ Vue.component('vue-plugin-d',
                                           internal_id": 123
                                         }
 
-            edit_mode:      A boolean indicating whether the page containing this element is in editing mode
-                                (to pass to the controls)  TODO: rename to "page_edit_mode"
-            category_id:    The Entity ID of the Category page where this document is displayed (used when creating new documents)
-            index:          The zero-based position of this Document on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
+            expose_controls:    A boolean indicating whether the page containing this element is in editing mode
+                                    (to pass to the controls)
+            category_id:        The Entity ID of the Category page where this document is displayed (used when creating new documents)
+            data_for_controls:  Object with all the data needed for the standard Controls;
+                                    this data is just passed thru by this components
          */
 
         template: `
@@ -174,7 +174,7 @@ Vue.component('vue-plugin-d',
 
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
+                    <vue-controls v-bind:expose_controls="expose_controls"  v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item"
                     >

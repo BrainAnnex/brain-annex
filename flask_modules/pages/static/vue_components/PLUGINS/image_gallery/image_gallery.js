@@ -4,7 +4,7 @@
 Vue.component('vue-plugin-image-gallery',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'data_for_controls'],
+                'expose_controls', 'category_id', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Image Gallery item.
                                 EXAMPLE: {}
 

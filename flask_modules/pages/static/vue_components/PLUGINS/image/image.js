@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-i',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'data_for_controls'],
+                'expose_controls', 'category_id', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Image item.
                                 EXAMPLE: {"basename":"my pic", "suffix":"jpg", "caption":"my 1st pic"}
 
@@ -22,10 +22,8 @@ Vue.component('vue-plugin-i',
                                         "width":450, "height":760
                                         }
 
-            edit_mode:      A boolean indicating whether in editing mode
+            expose_controls:A boolean indicating whether to show the standard editing controls
             category_id:    The Entity ID of the Category page where this document is displayed (used when creating new documents)
-            index:          The zero-based position of this Image on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */
 
         template: `
@@ -86,7 +84,7 @@ Vue.component('vue-plugin-i',
                       or after (will appear to the right) of the standard controls
                 -->
 
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
+                    <vue-controls v-bind:expose_controls="expose_controls"  v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item()">
                     </vue-controls>

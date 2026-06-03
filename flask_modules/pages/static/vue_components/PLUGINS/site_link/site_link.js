@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-sl',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'schema_data', 'data_for_controls'],
+                'expose_controls', 'category_id', 'schema_data', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Site Link item.
                                 EXAMPLE: {url: "http://example.com",
                                           name:"test",
@@ -25,11 +25,9 @@ Vue.component('vue-plugin-sl',
                                          entity_id:"8809"
                                         }
 
-            edit_mode:      A boolean indicating whether the page containing this element is in editing mode
-                                (to pass to the controls)  TODO: rename to "page_edit_mode"
+            expose_controls:A boolean indicating whether the page containing this element is in editing mode
+                                (to pass to the controls)
             category_id:    The entity ID of the Category page where this record is displayed (used when creating new records)
-            index:          The zero-based position of this Site Link item on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names, in Schema order.
                                 EXAMPLE: ["url","name","date","comments","rating","read"]
          */
@@ -113,7 +111,7 @@ Vue.component('vue-plugin-sl',
                   Intercept the following signal from child component:
                         v-on:edit-content-item   (which is not listened to by the root component)
             -->
-            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
+            <vue-controls v-bind:expose_controls="expose_controls"  v-bind:data_for_controls="data_for_controls"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item">
             </vue-controls>

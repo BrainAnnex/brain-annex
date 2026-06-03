@@ -8,7 +8,7 @@
 Vue.component('vue-plugin-h',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'data_for_controls'],
+                'expose_controls', 'category_id', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Header item.
                                 EXAMPLE: {"text":"SOME SECTION"}
 
@@ -23,22 +23,20 @@ Vue.component('vue-plugin-h',
                                     {"entity_id":-2, "insert_after_uri":"i-7", "insert_after_class":"Image",
                                      "schema_code":"h", "class_name":"Header"}
 
-            edit_mode:      A boolean indicating whether in editing mode
-                            TODO: possibly add a new parameter "create_mode" that won't show the usual
-                                  delete/tag/move controls
+            expose_controls:    A boolean indicating whether to show the standard editing controls
+                                TODO: possibly add a new parameter "create_mode" that won't show the usual
+                                      delete/tag/move controls
 
-            category_id:    The Entity ID of the Category page where this Header is displayed (used when creating new records)
-            index:          The zero-based position of this Header item on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
+            category_id:        The Entity ID of the Category page where this Header is displayed (used when creating new records)
 
             data_for_controls:  Object with all the data needed for the standard Controls;
-                                this data is just passed thru by this components
+                                    this data is just passed thru by this components
          */
 
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <div class='h-text'  @dblclick="enter_editing_mode(); show_controls=true">
+                <div class='h-text'  @dblclick="enter_editing_mode(); limited_controls=true">
                     <span v-if="!editing_mode" class='h-text'>{{ current_data.text }}</span>
                     <span v-else><input type="text" size="40" v-model="current_data.text">
                         <button @click="save">SAVE</button>
@@ -63,8 +61,10 @@ Vue.component('vue-plugin-h',
                       Optional EXTRA controls may be placed before (will appear to the left)
                       or after (will appear to the right) of the standard controls
                 -->
-                    <vue-controls v-bind:edit_mode="show_controls" v-bind:data_for_controls="data_for_controls"
+                    <vue-controls v-bind:expose_controls="expose_controls" 
+                                  v-bind:limited_controls="limited_controls"
                                   v-bind:controls_to_hide="['tag']"
+                                  v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item">
                     </vue-controls>
@@ -80,7 +80,7 @@ Vue.component('vue-plugin-h',
             return {
                 editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_id means "new Item" (automatically placed in editing mode)
 
-                show_controls: this.edit_mode,
+                limited_controls: false,
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -222,8 +222,9 @@ Vue.component('vue-plugin-h',
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;           // Make a note that the asynchronous operation has come to an end
                 this.editing_mode = false;      // Exit the editing mode
-
+                this.limited_controls = false;
             }, // finish_save
+
 
 
             /**
@@ -231,6 +232,8 @@ Vue.component('vue-plugin-h',
              */
             cancel_edit()
             {
+                this.limited_controls = false;
+                
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
@@ -241,7 +244,6 @@ Vue.component('vue-plugin-h',
                 }
                 else
                     this.editing_mode = false;      // Exit the editing mode
-
             } // cancel_edit
 
         }  // METHODS
