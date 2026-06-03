@@ -11,9 +11,13 @@
 Vue.component('vue-controls',
     {
         props: {
-            edit_mode:  Boolean,        // Indicating whether in editing mode
-            index:      Number,         // The zero-based position of the Content Item on the page
-            item_count: Number,         // The total number of Content Items on the page
+            edit_mode:  Boolean,        // Indicating whether in editing mode (and the standard controls should be exposed)
+            //index:      Number,         // The zero-based position of the Content Item on the page
+            data_for_controls:  {
+                index:      Number,
+                item_count: Number
+            },
+            //item_count: Number,         // The total number of Content Items on the page
             controls_to_hide: {         // [OPTIONAL] Array of names of standard controls to omit;
                 type: Array,            //            currently supported are 'edit' and 'tag'
                 default: () => []
@@ -62,6 +66,8 @@ Vue.component('vue-controls',
         // --------------------  DATA  ---------------------
         data: function() {
             return {
+                index: this.data_for_controls.index,
+                item_count: this.data_for_controls.item_count,
                 move_after: -1      // Index of the chosen Content Item to move an Item after (in a move operation)
             }
         },

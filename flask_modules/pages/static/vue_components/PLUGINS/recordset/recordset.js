@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-rs',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+                'edit_mode', 'category_id', 'schema_data', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Recordset item.
                                 EXAMPLE: {
                                             caption: "Restaurants - Berkeley locations",
@@ -316,7 +316,7 @@ Vue.component('vue-plugin-rs',
                 -->
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
                                   v-bind:controls_to_hide="['edit']"
                                   v-on="$listeners"
                     >

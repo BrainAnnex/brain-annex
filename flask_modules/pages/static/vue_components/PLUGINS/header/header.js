@@ -8,7 +8,7 @@
 Vue.component('vue-plugin-h',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count'],
+                'edit_mode', 'category_id', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Header item.
                                 EXAMPLE: {"text":"SOME SECTION"}
 
@@ -30,6 +30,9 @@ Vue.component('vue-plugin-h',
             category_id:    The Entity ID of the Category page where this Header is displayed (used when creating new records)
             index:          The zero-based position of this Header item on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
+
+            data_for_controls:  Object with all the data needed for the standard Controls;
+                                this data is just passed thru by this components
          */
 
         template: `
@@ -60,7 +63,7 @@ Vue.component('vue-plugin-h',
                       Optional EXTRA controls may be placed before (will appear to the left)
                       or after (will appear to the right) of the standard controls
                 -->
-                    <vue-controls v-bind:edit_mode="show_controls" v-bind:index="index"  v-bind:item_count="item_count"
+                    <vue-controls v-bind:edit_mode="show_controls" v-bind:data_for_controls="data_for_controls"
                                   v-bind:controls_to_hide="['tag']"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item">

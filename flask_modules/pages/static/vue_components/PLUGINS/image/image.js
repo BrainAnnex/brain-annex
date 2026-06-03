@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-i',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count'],
+                'edit_mode', 'category_id', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Image item.
                                 EXAMPLE: {"basename":"my pic", "suffix":"jpg", "caption":"my 1st pic"}
 
@@ -86,7 +86,7 @@ Vue.component('vue-plugin-i',
                       or after (will appear to the right) of the standard controls
                 -->
 
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item()">
                     </vue-controls>

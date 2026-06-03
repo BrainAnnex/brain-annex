@@ -10,7 +10,7 @@
 Vue.component('vue-plugin-r',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+                'edit_mode', 'category_id', 'schema_data', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Record item.
                                 EXAMPLE: {"German":"Tier", "English":"animal",}
 
@@ -152,7 +152,7 @@ Vue.component('vue-plugin-r',
                   Intercept the following signal from child component:
                         v-on:edit-content-item   (which is not listened to by the root component)
             -->
-            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item()">
             </vue-controls>

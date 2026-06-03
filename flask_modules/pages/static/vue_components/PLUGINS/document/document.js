@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-d',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count'],
+                'edit_mode', 'category_id', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Document item.
                                 EXAMPLE: {basename: "test", suffix: "pdf",
                                           caption: "My first document", url: "https://arxiv.org/pdf/2402.09090",
@@ -174,7 +174,7 @@ Vue.component('vue-plugin-d',
 
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item"
                     >

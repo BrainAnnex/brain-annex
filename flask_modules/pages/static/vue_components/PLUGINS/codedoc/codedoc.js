@@ -4,7 +4,7 @@
 Vue.component('vue-plugin-cd',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count'],
+                'edit_mode', 'category_id', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Code Documentation item.
                                 EXAMPLE: {"ringtone":"dreamscape-alarm-clock-117680.mp3"}
 
@@ -75,7 +75,7 @@ Vue.component('vue-plugin-cd',
                   Intercept the following signal from child component:
                         v-on:edit-content-item
             -->
-            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item()">
             </vue-controls>

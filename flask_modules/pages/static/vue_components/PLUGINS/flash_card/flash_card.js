@@ -4,7 +4,7 @@
 Vue.component('vue-plugin-f',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+                'edit_mode', 'category_id', 'schema_data', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Flash-Card item.
                                 EXAMPLE: {source_label: "French Vocabulary",
                                           sideA_field: "French",
@@ -152,7 +152,7 @@ Vue.component('vue-plugin-f',
 
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+                    <vue-controls v-bind:edit_mode="edit_mode"  v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item">
                     >

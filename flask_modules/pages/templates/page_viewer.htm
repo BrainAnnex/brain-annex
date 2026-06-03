@@ -331,8 +331,9 @@
 
         v-bind:expose_controls="expose_controls"
         v-bind:category_uri="category_uri"
-        v-bind:index="index"
-        v-bind:item_count="item_array.length"
+
+        v-bind:data_for_controls="{'index': index,
+                                   'item_count': item_array.length}"
 
         v-bind:registered_plugins = "registered_plugins"
         v-bind:records_types="records_types"
@@ -381,8 +382,9 @@
 
             v-bind:expose_controls="false"
             v-bind:category_uri="category_uri"
-            v-bind:index="index"
-            v-bind:item_count="item_array.length"
+
+            v-bind:data_for_controls="{'index': index,
+                                       'item_count': item_array.length}"
 
             v-bind:registered_plugins = "registered_plugins"
             v-bind:records_types="records_types"
@@ -455,7 +457,9 @@
 
 <template v-if="!expose_controls"  v-for="(item, index) in item_array">
 
-    <!-- Show here the individual Content Item -->
+    <!-- Show here the individual Content Item.
+         For an explanation of the individual lines, see "Scenario 1", above.
+      -->
     <vue-content-items
             v-bind:key="index + '_' + item.metadata.entity_id"
 
@@ -465,8 +469,9 @@
 
             v-bind:expose_controls="expose_controls"
             v-bind:category_uri="category_uri"
-            v-bind:index="index"
-            v-bind:item_count="item_array.length"
+
+            v-bind:data_for_controls="{'index': index,
+                                       'item_count': item_array.length}"
 
             v-bind:registered_plugins = "registered_plugins"
             v-bind:records_types="records_types"
@@ -651,11 +656,6 @@
 <!-- PLUGIN-specific Vue components  (NOW ADDED DYNAMICALLY>
 <script src="/BA/pages/static/vue_components/PLUGINS/header/header.js"></script>
 <script src="/BA/pages/static/vue_components/PLUGINS/image/image.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/document/document.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/note/note.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/codedoc/codedoc.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/site_link/site_link.js"></script>
-<script src="/BA/pages/static/vue_components/PLUGINS/timer_widget/timer_widget.js"></script>
 -->
 
 

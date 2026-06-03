@@ -4,7 +4,7 @@
 Vue.component('vue-record-cluster',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+                'edit_mode', 'category_id', 'schema_data'],
         /*  item_fields:    An object with the editable properties of this Recordset item.
                                 EXAMPLE: {
                                             caption: "Restaurants - Berkeley locations",
@@ -32,8 +32,6 @@ Vue.component('vue-record-cluster',
 
             edit_mode:      A boolean indicating whether in editing mode
             category_id:    The entity ID of the Category page where this recordset is displayed (used when creating new recordsets)
-            index:          The zero-based position of this Recordset on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    An array of field names (for the Recordset entity, not its records!), in Schema order.
                                 EXAMPLE: ["class", "order_by", "clause", "n_group", "caption"]
          */

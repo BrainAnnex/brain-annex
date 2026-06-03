@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count'],
+                'edit_mode', 'category_id', 'data_for_controls'],
         /*   item_fields:    An object with the editable properties of this Note item.
                                 EXAMPLE: {  "basename":"notes-123",
                                             "suffix":"htm",
@@ -23,8 +23,9 @@ Vue.component('vue-plugin-n',
                                         }
 
             edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The entity_id of the Category page where this Note is displayed (used when creating new documents)
-            index:          The zero-based position of this Document on the page
+
+            category_id:    The entity_id of the Category page where this Note is displayed (used when creating new Notes)
+            index:          The zero-based position of this Note on the page
             item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
          */
 
@@ -66,7 +67,7 @@ Vue.component('vue-plugin-n',
                 <img v-if="edit_mode" src="/BA/pages/static/graphics/copy_16_172587.png"
                      class="control" title="COPY TO CLIPBOARD (Not yet implemented)" alt="COPY TO CLIPBOARD (Not yet implemented)">
 
-                <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                <vue-controls v-bind:edit_mode="edit_mode" v-bind:data_for_controls="data_for_controls"
                               v-on="$listeners"
                               v-on:edit-content-item="edit_content_item()">
                 </vue-controls>
