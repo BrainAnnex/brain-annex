@@ -35,7 +35,7 @@ Vue.component('vue-plugin-n',
             <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
             <div class="notes"
                 v-if="!editing_mode" v-html="body_of_note"
-                @dblclick="enter_editing_mode(); limited_controls=true"
+                @dblclick="enter_editing_mode()"
             >
                 <!-- Body of Note, and status of last edit  -->
                 <span v-bind:class="{'n-waiting': waiting}">{{status_message}}</span>
@@ -71,7 +71,7 @@ Vue.component('vue-plugin-n',
                      class="control" title="COPY TO CLIPBOARD (Not yet implemented)" alt="COPY TO CLIPBOARD (Not yet implemented)">
 
                 <vue-controls v-bind:expose_controls="expose_controls"
-                              v-bind:limited_controls="limited_controls"
+                              v-bind:limited_controls="editing_mode"
                               v-bind:data_for_controls="data_for_controls"
                               v-on="$listeners"
                               v-on:edit-content-item="edit_content_item()">
@@ -89,7 +89,7 @@ Vue.component('vue-plugin-n',
             return {
                 editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_id means "new Item" (automatically placed in editing mode)
 
-                limited_controls: false,
+                //limited_controls: false,
 
                 body_of_note: (this.item_metadata.entity_id < 0 ? "NEW NOTE" : "Retrieving note id " + this.item_metadata.entity_id + "..."),
 

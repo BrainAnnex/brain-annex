@@ -316,7 +316,9 @@ Vue.component('vue-plugin-rs',
                 -->
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
-                    <vue-controls v-bind:expose_controls="expose_controls"  v-bind:data_for_controls="data_for_controls"
+                    <vue-controls v-bind:expose_controls="expose_controls"
+                                  v-bind:limited_controls="editing_mode"
+                                  v-bind:data_for_controls="data_for_controls"
                                   v-bind:controls_to_hide="['edit']"
                                   v-on="$listeners"
                     >

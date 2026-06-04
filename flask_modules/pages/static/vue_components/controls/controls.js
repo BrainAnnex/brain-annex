@@ -43,13 +43,12 @@ Vue.component('vue-controls',
                      class="control" title="DELETE" alt="DELETE">
 
                 <template v-if="index > 0">
-                    <img  v-if="expose_controls || (!limited_controls)"
-                         @click="move_up" src="/BA/pages/static/graphics/up_arrow_16_1303891.png"
+                    <img @click="move_up" src="/BA/pages/static/graphics/up_arrow_16_1303891.png"
                          class="control" title="Move UP" alt="Move UP">
                 </template>
 
                 <!-- Pulldown menu to move the Item after a specified position on the page -->
-                <form v-if="expose_controls || (!limited_controls)" style='display:inline-block; margin-left:0px'>
+                <form v-if="expose_controls && (!limited_controls)" style='display:inline-block; margin-left:0px'>
                     <span class="index">{{ index + 1 }}</span>
                     <select @change='move_item' v-model="move_after"
                             v-bind:title="'Move this item (currently in position ' + (index+1) + ' on the page) to just after a specified position'">
@@ -59,8 +58,7 @@ Vue.component('vue-controls',
                 </form>
 
                 <template v-if="index < (item_count-1)">
-                    <img  v-if="expose_controls || (!limited_controls)"
-                         @click="move_down" src="/BA/pages/static/graphics/down_arrow_16_1303877.png"
+                    <img @click="move_down" src="/BA/pages/static/graphics/down_arrow_16_1303877.png"
                          class="control" title="Move DOWN" alt="Move DOWN">
                 </template>
 
