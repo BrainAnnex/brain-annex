@@ -34,7 +34,7 @@ Vue.component('vue-plugin-h',
         template: `
             <div>	<!-- Outer container box, serving as Vue-required template root  -->
 
-                <div class='h-text'  @dblclick="enter_editing_mode(); limited_controls=true">
+                <div class='h-text'  @dblclick="enter_editing_mode()">
                     <span v-if="!editing_mode" class='h-text'>{{ current_data.text }}</span>
                     <span v-else><input type="text" size="40" v-model="current_data.text">
                         <button @click="save">SAVE</button>
@@ -60,7 +60,7 @@ Vue.component('vue-plugin-h',
                       or after (will appear to the right) of the standard controls
                 -->
                     <vue-controls v-bind:expose_controls="expose_controls" 
-                                  v-bind:limited_controls="limited_controls"
+                                  v-bind:limited_controls="editing_mode"
                                   v-bind:controls_to_hide="['tag']"
                                   v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
@@ -78,7 +78,7 @@ Vue.component('vue-plugin-h',
             return {
                 editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_id means "new Item" (automatically placed in editing mode)
 
-                limited_controls: false,
+                //limited_controls: false,
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -220,7 +220,7 @@ Vue.component('vue-plugin-h',
                 // Final wrap-up, regardless of error or success
                 this.waiting = false;           // Make a note that the asynchronous operation has come to an end
                 this.editing_mode = false;      // Exit the editing mode
-                this.limited_controls = false;
+                //this.limited_controls = false;
             }, // finish_save
 
 
@@ -230,7 +230,7 @@ Vue.component('vue-plugin-h',
              */
             cancel_edit()
             {
-                this.limited_controls = false;
+                //this.limited_controls = false;
                 
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
