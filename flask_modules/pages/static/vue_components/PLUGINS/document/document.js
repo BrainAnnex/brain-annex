@@ -42,7 +42,7 @@ Vue.component('vue-plugin-d',
 
 
                     <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
-                    <div v-show="!editing_mode"   @dblclick="edit_content_item(); limited_controls=true">
+                    <div v-show="!editing_mode"   @dblclick="edit_content_item()">
                         <span style='font-weight:bold; font-size:12px'>&ldquo;{{current_data.caption}}&rdquo;</span>
                         <br><br>
 
@@ -175,7 +175,7 @@ Vue.component('vue-plugin-d',
                     <!-- OPTIONAL MORE CONTROLS to the LEFT of the standard ones would go here -->
 
                     <vue-controls v-bind:expose_controls="expose_controls"
-                                  v-bind:limited_controls="limited_controls"
+                                  v-bind:limited_controls="editing_mode"
                                   v-bind:data_for_controls="data_for_controls"
                                   v-on="$listeners"
                                   v-on:edit-content-item="edit_content_item"
@@ -197,7 +197,7 @@ Vue.component('vue-plugin-d',
             return {
                 editing_mode: false,   // Editing mode for the fields of the record
 
-                limited_controls: false,
+                //limited_controls: false,
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress

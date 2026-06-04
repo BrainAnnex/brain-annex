@@ -3,9 +3,7 @@ import os
 from brainannex import GraphAccess, GraphSchema
 from app_libraries.media_manager import MediaManager
 import app_libraries.PLUGINS.plugin_support as plugin_support
-from app_libraries.PLUGINS.document import Document
 from app_libraries.PLUGINS.image import Image
-from app_libraries.PLUGINS.note import Note
 
 
 
@@ -240,6 +238,56 @@ def test_move_file():
 
     with pytest.raises(Exception):
         MediaManager.move_file(src, dest)   # Bad destination name
+
+    dest = "test_files/subfolder/sample_file_2.txt"     # The directory path "test_files/subfolder/" isn't already present
+
+    with pytest.raises(Exception):
+        MediaManager.move_file(src, dest)
+
+
+
+def test_assert_valid_file_path():
+    #MediaManager.assert_valid_file_path("/my_file.img")
+
+    MediaManager.assert_valid_file_path("good name")
+    MediaManager.assert_valid_file_path("good name! (Indeed, just so 123).txt")
+
+    with pytest.raises(Exception):
+        MediaManager.assert_valid_file_path("bad:name")
+
+    with pytest.raises(Exception):
+        MediaManager.assert_valid_file_path("a/bad?name")
+
+    MediaManager.assert_valid_file_path("a//file")      # It's fine; the extra slash will be ignored by the OS
+
+    MediaManager.assert_valid_file_path(r"a\good name! (Indeed, just so 123).txt")
+    MediaManager.assert_valid_file_path("a/good name! (Indeed, just so 123).txt")
+
+    MediaManager.assert_valid_file_path(r"a\folder1\folder2\my_file.img")
+    MediaManager.assert_valid_file_path("a/folder1/folder2/my_file.img")
+
+    MediaManager.assert_valid_file_path("/my_file.img")
+    MediaManager.assert_valid_file_path("\my_file.img")
+    MediaManager.assert_valid_file_path("D:\my_file.img")
+
+    MediaManager.assert_valid_file_path("./my_file.img")
+    MediaManager.assert_valid_file_path(".\my_file.img")
+
+    MediaManager.assert_valid_file_path("../../my folder_x3/my_file.img")
+    MediaManager.assert_valid_file_path(r"..\..\my folder_x3\my_file.img")
+
+    if os.name == "nt":     # If on Windows7+ or Windows Server variants
+        with pytest.raises(Exception):
+            MediaManager.assert_valid_file_path("PRN")
+
+        with pytest.raises(Exception):
+            MediaManager.assert_valid_file_path("COM3")
+
+        with pytest.raises(Exception):
+            MediaManager.assert_valid_file_path("COM3.png")
+
+        with pytest.raises(Exception):
+            MediaManager.assert_valid_file_path("aUx.hide")
 
 
 

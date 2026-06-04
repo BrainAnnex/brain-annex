@@ -2911,7 +2911,7 @@ class ApiRouting:
             The 'insert_after_uri' attribute also can take the special values 'INSERT_AT_BOTTOM' or 'INSERT_AT_TOP'
         
             (Note: the "Dropzone" front-end module invokes this handler in a similar way,
-                   and in particular uses name="file")
+                   and in particular it uses name="file")
         
             If the upload is successful, a normal status (200) is returned (no response data);
                 in case of error, a server error status is return (500), with a text error message
@@ -2966,7 +2966,8 @@ class ApiRouting:
 
             #print(f"upload_media(): Attempting to move file `{src_fullname}` to `{dest_fullname}`")
             try:
-                shutil.move(src_fullname, dest_fullname)    # Note: this will fail if the path to the destination file isn't already present
+                #shutil.move(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present
+                MediaManager.move_file(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present
             except Exception:
                 # This failure might be due to the folder dest_folder not being present
                 print(f"upload_media(): Failed to move the uploaded file '{src_fullname}' to its intended destination '{dest_fullname}'.  "
@@ -2977,7 +2978,8 @@ class ApiRouting:
 
                 # Try again after creating the media folder (if that was indeed missing)
                 try:
-                    shutil.move(src_fullname, dest_fullname)
+                    MediaManager.move_file(src_fullname, dest_fullname)
+                    #shutil.move(src_fullname, dest_fullname)
                 except Exception as ex:
                     err_status = f"Error in moving the file to the intended final destination ({dest_folder}) after upload. {ex}"
                     return make_response(err_status, 500)
