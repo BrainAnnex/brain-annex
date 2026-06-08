@@ -370,10 +370,10 @@ class DataManager:
 
 
         # Locate the internal ID of the Class node
-        class_internal_id = GraphSchema.get_class_internal_id(class_name.strip())
-        number_prop_added = GraphSchema.add_properties_to_class(class_node= class_internal_id, properties= [prop_name])
+        #class_internal_id = GraphSchema.get_class_internal_id(class_name.strip())
+        number_prop_added = GraphSchema.add_properties_to_class(class_name= class_name, properties= [prop_name])
         if number_prop_added != 1:
-            raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}` (internal ID {class_internal_id})")
+            raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}`")
 
 
 

@@ -1,6 +1,7 @@
 <!-- This is a TESTER for the Vue component in the .js file by the same name
 
-     To invoke:  http://localhost:5000/BA/pages/static/vue_components/PLUGINS/recordset/recordset_tester.htm
+     To invoke, start Flask, and then to go:
+        http://localhost:5000/BA/pages/static/vue_components/PLUGINS/recordset/recordset_tester.htm
 -->
 
 <!DOCTYPE html>
@@ -63,7 +64,7 @@
 
             item_fields: {
                             caption: "Restaurants - Berkeley locations",
-                            fields: "name, address, city",  // fields to include in table; not to be confused with ALL available fields;
+                            fields: "name, notes, city",    // fields to include in table; not to be confused with ALL available fields;
                                                             //      this might be blank or missing
                                                             //      TODO: rename to something like `fields_to_show` (but avoid collision with local names)
                             filter_label: "Restaurants",

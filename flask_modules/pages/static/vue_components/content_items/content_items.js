@@ -45,6 +45,7 @@ Vue.component('vue-content-items',
                                 It contains 2 parts:
                                     index:       The zero-based position of this Content Items on the above Category-specific page
                                     item_count:  The total number of Content Items (of all types) on the above Category-specific page
+                                TODO: maybe lump `category_uri` with `data_for_controls` and call it `page_data`
 
             registered_plugins: A list of codes of Content Items that have a dedicated Vue plugin
                                     EXAMPLE: ["n", "i", "h", "cd", "d", "sl", "rs", "timer", "f"]

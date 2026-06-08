@@ -643,13 +643,13 @@ def test_get_class_properties(db):
     props = GraphSchema.get_class_properties("My BIG class")
     assert props == []
 
-    GraphSchema.add_properties_to_class(class_node=neo_uri, properties= ["X", "Y"])
+    GraphSchema.add_properties_to_class(class_name=neo_uri, properties= ["X", "Y"])
     props = GraphSchema.get_class_properties(neo_uri)
     assert props == ["X", "Y"]
-    props = GraphSchema.get_class_properties(class_node="My BIG class")
+    props = GraphSchema.get_class_properties(class_name="My BIG class")
     assert props == ["X", "Y"]
 
-    GraphSchema.add_properties_to_class(class_node=neo_uri, properties= ["Z"])
+    GraphSchema.add_properties_to_class(class_name=neo_uri, properties= ["Z"])
     props = GraphSchema.get_class_properties(neo_uri)
     assert props == ["X", "Y", "Z"]
 
@@ -1128,7 +1128,7 @@ def test_create_data_node_3(db):
 
 
     # Successfully adding a 3rd data point
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["color"]) # Expand the allow class properties
+    GraphSchema.add_properties_to_class(class_name=class_internal_id, properties=["color"]) # Expand the allow class properties
 
     new_datanode_uri = GraphSchema.create_data_node(class_name=class_internal_id,
                                                   properties={"color": "white"})
@@ -1147,7 +1147,7 @@ def test_create_data_node_3(db):
 
 
     # Again expand the allowed class properties
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["year"])
+    GraphSchema.add_properties_to_class(class_name=class_internal_id, properties=["year"])
 
     with pytest.raises(Exception):
         GraphSchema.create_data_node(class_name=class_internal_id,
@@ -1439,7 +1439,7 @@ def test_add_data_node_merge(db):
         # "color" is not a registered property of the Class "Car"
         GraphSchema.add_data_node_merge(class_name="Car", properties={"color": "white"})
 
-    GraphSchema.add_properties_to_class(class_node = class_internal_id, properties= ["color"])
+    GraphSchema.add_properties_to_class(class_name= class_internal_id, properties= ["color"])
 
 
     # Successfully adding the first data point
@@ -1498,7 +1498,7 @@ def test_add_data_node_merge(db):
 
 
     # Again expand the allowed class properties
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["year"])
+    GraphSchema.add_properties_to_class(class_name=class_internal_id, properties=["year"])
 
     with pytest.raises(Exception):
         GraphSchema.add_data_node_merge(class_name="Car",
@@ -1577,7 +1577,7 @@ def test_add_data_node_merge(db):
     assert GraphSchema.count_data_nodes_of_class("Car") == 5     # UNCHANGED
 
 
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["make"])
+    GraphSchema.add_properties_to_class(class_name=class_internal_id, properties=["make"])
     # ... but there's no car "red, 1999, Toyota"
     new_datanode_id, status = GraphSchema.add_data_node_merge(class_name="Car",
                                                             properties={"color": "red", "year": 1999, "make": "Toyota"})
