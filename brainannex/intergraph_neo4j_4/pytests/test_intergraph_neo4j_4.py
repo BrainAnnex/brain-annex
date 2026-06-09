@@ -461,7 +461,7 @@ def test_empty_dbase(db):
     # Doubly-verify that one of the saved nodes can be read in
     q = "MATCH (n :label_3) RETURN n"
     result = db.query(q)
-    print(result)
+    #print(result)
     record = result[0]["n"]
     assert record == {'client_id': 456, 'name': 'Julian'}
 

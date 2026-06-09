@@ -873,8 +873,11 @@ def test_get_or_estimate_class_properties(db):
     result = GraphSchema.get_or_estimate_class_properties(class_name="Person", sample_size=1)   # Only sampling 1 node
     assert result == [{'name': 'first_name'}] or result == [{'name': 'age'}]                    # Only 1 property was captured
 
-    assert GraphSchema.get_or_estimate_class_properties(class_name="Person", sample_size=0) == []   # Disabled fallback to sampling
-    assert GraphSchema.get_or_estimate_class_properties(class_name="Person", sample_size=None) == []   # Disabled fallback to sampling
+    with pytest.raises(Exception):
+        GraphSchema.get_or_estimate_class_properties(class_name="Person", sample_size=0)        # Missing Class, and disabled fallback to sampling
+
+    with pytest.raises(Exception):
+        GraphSchema.get_or_estimate_class_properties(class_name="Person", sample_size=None)     # Missing Class, and disabled fallback to sampling
 
     db.create_node(labels="Person", properties={"first_name": "Raul", "Chart #": "0425"})
     assert GraphSchema.get_or_estimate_class_properties(class_name="Person") == [{'name': 'age'}, {'name': 'Chart #'}, {'name': 'first_name'}]

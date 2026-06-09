@@ -54,7 +54,6 @@ Vue.component('vue-content-items',
             schema_data:        Only used for Content Items of type Record (schema_code "r"). A list of field names, in order.
                                     EXAMPLE: ["French", "English", "notes"]
             all_categories:     A list of dicts.  Note that the 'remarks' and 'pinned' keys may or may not be present.
-                                    NOTE: not always present.  Only used in editing and bulk-editing modes
                                     EXAMPLE:
                                       [{"entity_id": "1", "name": "HOME"},
                                        {"entity_id": "523", "name": "Work at Acme", "remarks": "at main branch", "pinned": True}]

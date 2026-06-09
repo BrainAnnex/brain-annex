@@ -247,5 +247,5 @@ class Document:
         :param parameters:  Data that was passed to the web API endpoint for this plugin
         :return:
         """
-        print("In Documents.api_endpoint().  parameters: ", parameters)
+        #print("In Documents.api_endpoint().  parameters: ", parameters)
         return "ok"
