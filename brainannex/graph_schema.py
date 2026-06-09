@@ -1216,12 +1216,12 @@ class GraphSchema:
 
 
         :param class_name:          The name of a Schema Class
-        :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
+        :param include_ancestors:   [OPTIONAL] If True, also include the Properties attached to Classes that are ancestral
                                     to the given one by means of a chain of outbound "INSTANCE_OF" relationships
                                     Note: the sorting by relationship index won't mean much if ancestral nodes are included,
                                           with their own indexing of relationships; if order matters in those cases, use the
                                           "sort_by_path_len" argument, below
-        :param sort_by_path_len:    Only applicable if include_ancestors is True.
+        :param sort_by_path_len:    [OPTIONAL] Only applicable if include_ancestors is True.
                                         If provided, it must be either "ASC" or "DESC", and it will sort the results by path length
                                         (either ascending or descending), before sorting by the schema-specified position for each Class.
                                         Note: with "ASC", the immediate Properties of the given Class will be listed first
@@ -1273,7 +1273,8 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_properties_full_data(cls, class_name: str) -> [dict]:
+    def get_class_properties_full_data(cls, class_name: str,
+                                       include_ancestors=False, exclude_system=False) -> [dict]:
         """
         Return the full data (not just the names) for all the Properties of the given Schema Class,
         as a list of dictionaries.
@@ -1285,25 +1286,55 @@ class GraphSchema:
               'dtype': 'string', 'description': 'the body of the quote', 'required': True, 'system': False, 'format': '6,50'}
             ]
 
-        :param class_name:  The name of a Schema Class
-        :return:            A (possibly-empty) list of Property data for the above class.
-                                The node labels are excluded from the returned data,
-                                but the internal database ID's are returned, using the key '_internal_id'
+        :param class_name:          The name of a Schema Class
+        :param include_ancestors:   [OPTIONAL] If True, also include the Properties attached to Classes that are ancestral
+                                        to the given one by means of a chain of outbound "INSTANCE_OF" relationships;
+                                        the immediate Properties of the given Class will be listed first.
+                                        Default is False
+        :param exclude_system:      [OPTIONAL] If True, Property nodes with the attribute "system" set to True will be excluded.
+                                        Default is False
+        :return:                    A (possibly-empty) list of Property data for the above class.
+                                        The node labels are excluded from the returned data,
+                                        but the internal database ID's are returned, using the key '_internal_id'
         """
         # TODO: if the Class isn't present, an Exception ought to get raised
-        q = f'''
-            MATCH (c :CLASS)-[r :HAS_PROPERTY]->(p :PROPERTY)
-                WHERE c.name=$class_name
-            RETURN p
-            ORDER BY r.index
-            '''
+
+        if type(class_name) == str:
+            clause = "c.name=$class_name"
+        else:
+            raise Exception(f"get_class_properties_full_data(): argument `class_name` must be a string;"
+                            f"the value passed was of type {type(class_name)}")
+
+        if exclude_system:
+            clause += " AND (p.system IS NULL  OR  p.system = false)"
+
+
+        if include_ancestors:
+            # Follow zero or more outbound "INSTANCE_OF" relationships from the given Class node;
+            #   "zero" relationships means the original node itself (handy in situations when there are no such relationships)
+            q = f'''
+                MATCH path=(c :CLASS)-[:INSTANCE_OF*0..]->(c_ancestor)
+                                                        -[r:HAS_PROPERTY]->(p :PROPERTY)
+                WHERE {clause}
+                RETURN p
+                ORDER BY length(path) ASC, r.index
+                '''
+        else:
+            q = f'''
+                MATCH (c :CLASS)-[r :HAS_PROPERTY]->(p :PROPERTY)
+                WHERE {clause}
+                RETURN p
+                ORDER BY r.index
+                '''
+
         data_binding = {"class_name": class_name}
         return cls.db.query_extended(q, data_binding=data_binding, flatten=True, fields_to_exclude="_node_labels")
 
 
 
     @classmethod
-    def get_or_estimate_class_properties(cls, class_name: str, sample_size=300) -> [dict]:
+    def get_or_estimate_class_properties(cls, class_name: str, include_ancestors=False, exclude_system=False,
+                                         sample_size=300) -> [dict]:
         """
         If the given Class is present in the Schema, return its Properties (with their available parameters);
         otherwise, estimate the property names of database nodes with that value as a label,
@@ -1311,15 +1342,24 @@ class GraphSchema:
 
         In other words, this function gracefully degrades as needed, from Schema-based to non-schema.
 
-        :param class_name:  The name of the Entity of interest.
-                                If present as a registered Class in the database Schema, it will be interpreted as such;
-                                otherwise, it will interpreted as a database node label
+        :param class_name:          The name of the Entity of interest.
+                                        If present as a registered Class in the database Schema, it will be interpreted as such;
+                                        otherwise, it will interpreted as a database node label
+
+        :param include_ancestors:   [OPTIONAL] If True, also include the Properties attached to Classes that are ancestral
+                                        to the given one by means of a chain of outbound "INSTANCE_OF" relationships;
+                                        the immediate Properties of the given Class will be listed first.
+                                        Default is False
+        :param exclude_system:      [OPTIONAL] If True, Property nodes with the attribute "system" set to True will be excluded.
+                                        Default is False
+
         :param sample_size: [OPTIONAL] Only applicable if the database lacks a Class with the above name.
                                 Number of database nodes, with a label matching the above name,
                                 to use as a representative sampler.
                                 Use 0 or None to indicate that no sampling is to be performed, i.e. to disable fallback;
                                 in that case an empty list will be returned if there's no Schema data.
                                 If `sample_size` is non-zero, and no nodes are found with that label, an Exception is raised
+
         :return:            A list of dicts: one for each Property - either registered with the Schema,
                                 or estimated from a sampling of the data.
                                 If using the Schema, the results are ordered by the Property `order` stored in the Schema;
@@ -1335,7 +1375,9 @@ class GraphSchema:
                                     ]
         """
         if cls.class_name_exists(class_name):
-            return cls.get_class_properties_full_data(class_name)   # An integer (possibly zero if the Class has no Properties)
+            return cls.get_class_properties_full_data(class_name=class_name,
+                                                      include_ancestors=include_ancestors, exclude_system=exclude_system)
+
 
         assert sample_size, \
             f"get_or_estimate_class_properties(): the requested Class, `{class_name}`, doesn't exist, " \
