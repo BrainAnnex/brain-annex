@@ -623,6 +623,8 @@ class ApiRouting:
             The JSON-encoded dict is expected to contain the following KEYS:
                 REQUIRED    "class_name"
                 OPTIONAL    "sample_size"
+                            "include_ancestors"
+                            "exclude_system"
 
             :return:
                 A response with Content-Type: application/json,
@@ -667,10 +669,15 @@ class ApiRouting:
 
 
             try:
+                # The values below will be None, if there weren't passed
                 class_name = request_parameters.get("class_name")
-                sample_size = request_parameters.get("sample_size")         # This will be None, if not passed
-                result = GraphSchema.get_or_estimate_class_properties(class_name=class_name, sample_size=sample_size)
-                                                                            # `result` is a list of dicts
+                include_ancestors = request_parameters.get("include_ancestors")
+                exclude_system = request_parameters.get("exclude_system")
+                sample_size = request_parameters.get("sample_size")
+                # `result` will be a list of dicts
+                result = GraphSchema.get_or_estimate_class_properties(class_name=class_name,
+                                                                     include_ancestors=include_ancestors, exclude_system=exclude_system,
+                                                                     sample_size=sample_size)
                 response_data = {"status": "ok", "payload": result}         # Successful termination
             except Exception as ex:
                 err_details = f"/class-properties-full-data : unable to retrieve the requested data.  " \

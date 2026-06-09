@@ -368,7 +368,6 @@ Vue.component('vue-plugin-rs',
             return {
                 headers: [],            // A complete list of ALL the names of the table columns
                                         // EXAMPLE:  ["quote", "attribution", "notes"]
-                                        // TODO: turn into fuller Schema data, if available (or use a separate variable for that)
 
                 schema_info: [],        /*  EXAMPLE (when Schema data is available):
                                             [   {'name': 'notes', 'entity_id': 'schema-2', '_internal_id': 123,
@@ -792,14 +791,16 @@ Vue.component('vue-plugin-rs',
 
 
             /*
-                ------------------   SERVER CALLS   ------------------
+                ------------------------   SERVER CALLS   ------------------------
              */
 
-            save_record_edit()
-            /*  Invoked when the user asks to save the edit-in-progress
-                of an EXISTING INDIVIDUAL record.
-                NOT used for new records, nor to change the definition of the recordset
+
+            /**
+             *  Invoked when the user asks to save the edit-in-progress
+             *  of an EXISTING INDIVIDUAL record.
+             *  NOT used for new records, nor for changing the definition of the recordset!
              */
+            save_record_edit()
             {
                 // Send the request to the server, using a POST
                 const url_server_api = "/BA/api/update_content_item_JSON";
@@ -1108,6 +1109,8 @@ Vue.component('vue-plugin-rs',
                                  };     // TODO: also consider passing `class_name`, if present
                  */
                 const data_obj = {class_name: this.current_data.filter_label,
+                                  include_ancestors: true,
+                                  exclude_system: true,
                                   sample_size: 200
                                  };
 

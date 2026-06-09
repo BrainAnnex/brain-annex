@@ -709,7 +709,7 @@ def test_get_class_properties(db):
     props = GraphSchema.get_class_properties("My first class")
     assert props == ["A", "B", "C"]
 
-    internal_id= GraphSchema.create_class("My BIG class")
+    GraphSchema.create_class("My BIG class")
     props = GraphSchema.get_class_properties("My BIG class")
     assert props == []
 
@@ -759,6 +759,9 @@ def test_get_class_properties(db):
                                              sort_by_path_len="DESC", exclude_system=True)
     assert props == ["X", "Z", "A", "B", "C"]
 
+    # TODO: test `exclude_system`
+
+
 
 def test_get_class_properties_full_data(db):
     db.empty_dbase()
@@ -798,8 +801,61 @@ def test_get_class_properties_full_data(db):
 
     assert GraphSchema.get_class_properties_full_data(class_name="I dont exist") == []
 
-    GraphSchema.create_class(name="Car")    # Class without Properties
+    GraphSchema.create_class(name="Car")    # Class without Properties           # This will have 'schema-5' as `entity_id`
     assert GraphSchema.get_class_properties_full_data(class_name="Car") == []
+
+    GraphSchema.add_properties_to_class(class_name="Car", properties= ["Anti-lock Brakes"])
+    GraphSchema.set_property_attribute(class_name="Car", prop_name="Anti-lock Brakes",
+                                       attribute_name="dtype", attribute_value="boolean")
+    brakes_internal_id = GraphSchema.get_property_internal_id(class_name="Car", property_name="Anti-lock Brakes")
+    result = GraphSchema.get_class_properties_full_data("Car")
+    assert result == [
+                        {'name': 'Anti-lock Brakes', 'entity_id': 'schema-6', '_internal_id': brakes_internal_id, 'dtype': 'boolean'}
+                     ]
+
+    GraphSchema.create_class_with_properties(name="Vehicle", properties=["color", "year"])  # `Vehicle` Class node will have 'schema-7'
+    GraphSchema.set_property_attribute(class_name="Vehicle", prop_name="year",
+                                       attribute_name="dtype", attribute_value="integer")
+    color_internal_id = GraphSchema.get_property_internal_id(class_name="Vehicle", property_name="color")
+    year_internal_id = GraphSchema.get_property_internal_id(class_name="Vehicle", property_name="year")
+
+    # Make "Car" Class an instance of "Vehicle"
+    GraphSchema.create_class_relationship(from_class="Car", to_class="Vehicle", rel_name="INSTANCE_OF")
+
+    result = GraphSchema.get_class_properties_full_data("Car", include_ancestors=False)
+    # Nothing has changed
+    assert result == [
+                        {'name': 'Anti-lock Brakes', 'entity_id': 'schema-6', '_internal_id': brakes_internal_id, 'dtype': 'boolean'}
+                     ]
+
+    result = GraphSchema.get_class_properties_full_data("Car", include_ancestors=True)
+    assert result == [
+                        {'name': 'Anti-lock Brakes', 'entity_id': 'schema-6', '_internal_id': brakes_internal_id, 'dtype': 'boolean'},
+                        {'name': 'color',            'entity_id': 'schema-8', '_internal_id': color_internal_id},
+                        {'name': 'year',             'entity_id': 'schema-9', '_internal_id': year_internal_id, 'dtype': 'integer'}
+                     ]
+
+
+    GraphSchema.set_property_attribute(class_name="Vehicle", prop_name="color",
+                                       attribute_name="system", attribute_value=True)
+
+    result = GraphSchema.get_class_properties_full_data("Car", include_ancestors=True, exclude_system=True)
+    assert result == [
+                        {'name': 'Anti-lock Brakes', 'entity_id': 'schema-6', '_internal_id': brakes_internal_id, 'dtype': 'boolean'},
+                        {'name': 'year',             'entity_id': 'schema-9', '_internal_id': year_internal_id, 'dtype': 'integer'}
+                     ]
+
+    GraphSchema.set_property_attribute(class_name="Car", prop_name="Anti-lock Brakes",
+                                       attribute_name="system", attribute_value=True)
+
+    result = GraphSchema.get_class_properties_full_data("Car", include_ancestors=True, exclude_system=True)
+    assert result == [
+                        {'name': 'year', 'entity_id': 'schema-9', '_internal_id': year_internal_id, 'dtype': 'integer'}
+                     ]
+
+
+    result = GraphSchema.get_class_properties_full_data("Car", include_ancestors=False, exclude_system=True)
+    assert result == []
 
 
 
