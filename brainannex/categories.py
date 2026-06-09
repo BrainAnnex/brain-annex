@@ -1272,7 +1272,7 @@ class Categories:
         # Now extract all the Property fields, in the schema-stored order, of the above Classes
         records_schema_data = {}
         for class_name in class_list:
-            prop_list = GraphSchema.get_class_properties(class_node=class_name,
+            prop_list = GraphSchema.get_class_properties(class_name=class_name,
                                                          include_ancestors=True, sort_by_path_len="ASC",
                                                          exclude_system=exclude_system)
             records_schema_data[class_name] = prop_list

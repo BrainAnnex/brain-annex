@@ -376,12 +376,12 @@ class GraphSchema:
 
 
     @classmethod
-    def class_name_exists(cls, class_name: str) -> bool:
+    def class_name_exists(cls, class_name :str) -> bool:
         """
-        Return True if a Class by the given name already exists, or False otherwise
+        Return True if a Class by the given name exists, or False otherwise
 
-        :param class_name:  The name of the class of interest
-        :return:            True if the Class already exists, or False otherwise
+        :param class_name:  The name of Che class of interest
+        :return:            True if the Class  exists, or False otherwise
         """
         cls.assert_valid_class_name(class_name)
 
@@ -392,7 +392,7 @@ class GraphSchema:
     @classmethod
     def get_class_name_by_schema_entity_id(cls, entity_id :str) -> str:
         """
-        Returns the name of the class with the given Schema URI;
+        Returns the name of the class with the given Schema Entity ID;
         raise an Exception if not found
 
         :param entity_id:   A string uniquely identifying the desired Class
@@ -400,14 +400,14 @@ class GraphSchema:
         """
         # TODO: maybe phase out?
         assert cls.is_valid_schema_entity_id(entity_id), \
-            "get_class_name_by_schema_uri(): The schema uri MUST be a string " \
+            "get_class_name_by_schema_entity_id(): The `entity_id` argument MUST be a string " \
             "of the form 'schema-n' for some integer n"
 
         match = cls.db.match(labels="CLASS", key_name="entity_id", key_value=entity_id)
         result = cls.db.get_nodes(match, single_cell="name")
 
         if not result :
-            raise Exception(f"No Schema Class with uri '{entity_id}' found")
+            raise Exception(f"No Schema Class with entity_id '{entity_id}' found")
 
         return result
 
@@ -428,7 +428,7 @@ class GraphSchema:
         result = cls.db.get_nodes(internal_id, single_cell="name")
 
         if not result :
-            raise Exception(f"GraphSchema.get_class_name_by_neo_id(): no Class with a Neo4j ID of {internal_id} found")
+            raise Exception(f"GraphSchema.get_class_name(): no Class with an internal database ID of {internal_id} found")
 
         return result
 
@@ -1193,7 +1193,7 @@ class GraphSchema:
     #####################################################################################################
 
     @classmethod
-    def get_class_properties(cls, class_node: int|str,
+    def get_class_properties(cls, class_name: str,
                              include_ancestors=False, sort_by_path_len="ASC", exclude_system=False) -> [str]:
         """
         Return the list of all the names of the Properties associated with the given Class
@@ -1215,8 +1215,7 @@ class GraphSchema:
                     => ['quote', 'attribution', 'notes']
 
 
-        :param class_node:          Either an integer with the internal database ID of an existing Class node,
-                                        or a string with its name
+        :param class_name:          The name of a Schema Class
         :param include_ancestors:   If True, also include the Properties attached to Classes that are ancestral
                                     to the given one by means of a chain of outbound "INSTANCE_OF" relationships
                                     Note: the sorting by relationship index won't mean much if ancestral nodes are included,
@@ -1239,13 +1238,11 @@ class GraphSchema:
             if include_ancestors:
                 raise Exception("get_class_properties(): If `include_ancestors` is True, then the argument `sort_by_path_len` must be provided")
 
-        if type(class_node) == str:
+        if type(class_name) == str:
             clause = "c.name = $class_node"
-        elif type(class_node) == int:
-            clause = "id(c) = $class_node"
         else:
-            raise Exception(f"get_class_properties(): argument `class_node` must be either a string or an integer ;"
-                            f"the value passed was of type {type(class_node)}")
+            raise Exception(f"get_class_properties(): argument `class_name` must be a string;"
+                            f"the value passed was of type {type(class_name)}")
 
         if exclude_system:
             clause += " AND (p.system IS NULL  OR  p.system = false)"
@@ -1269,7 +1266,7 @@ class GraphSchema:
                 ORDER BY r.index
                 '''
 
-        name_list = cls.db.query(q, {"class_node": class_node}, single_column="prop_name")
+        name_list = cls.db.query(q, {"class_node": class_name}, single_column="prop_name")
 
         return name_list
 
@@ -1284,7 +1281,7 @@ class GraphSchema:
         If only the names are needed, consider using get_class_properties()
 
         EXAMPLE:
-            [{'name': 'text', 'entity_id': 'schema-2', '_internal_id': 123,
+            [{'name': 'body', 'entity_id': 'schema-2', '_internal_id': 123,
               'dtype': 'string', 'description': 'the body of the quote', 'required': True, 'system': False, 'format': '6,50'}
             ]
 
@@ -1293,6 +1290,7 @@ class GraphSchema:
                                 The node labels are excluded from the returned data,
                                 but the internal database ID's are returned, using the key '_internal_id'
         """
+        # TODO: if the Class isn't present, an Exception ought to get raised
         q = f'''
             MATCH (c :CLASS)-[r :HAS_PROPERTY]->(p :PROPERTY)
                 WHERE c.name=$class_name
@@ -1301,6 +1299,60 @@ class GraphSchema:
             '''
         data_binding = {"class_name": class_name}
         return cls.db.query_extended(q, data_binding=data_binding, flatten=True, fields_to_exclude="_node_labels")
+
+
+
+    @classmethod
+    def get_or_estimate_class_properties(cls, class_name: str, sample_size=300) -> [dict]:
+        """
+        If the given Class is present in the Schema, return its Properties (with their available parameters);
+        otherwise, estimate the property names of database nodes with that value as a label,
+        using a sampling of database nodes.
+
+        In other words, this function gracefully degrades as needed, from Schema-based to non-schema.
+
+        :param class_name:  The name of the Entity of interest.
+                                If present as a registered Class in the database Schema, it will be interpreted as such;
+                                otherwise, it will interpreted as a database node label
+        :param sample_size: [OPTIONAL] Only applicable if the database lacks a Class with the above name.
+                                Number of database nodes, with a label matching the above name,
+                                to use as a representative sampler.
+                                Use 0 or None to indicate that no sampling is to be performed, i.e. to disable fallback;
+                                in that case an empty list will be returned if there's no Schema data.
+                                If `sample_size` is non-zero, and no nodes are found with that label, an Exception is raised
+        :return:            A list of dicts: one for each Property - either registered with the Schema,
+                                or estimated from a sampling of the data.
+                                If using the Schema, the results are ordered by the Property `order` stored in the Schema;
+                                otherwise, they are sorted by `name`.
+
+                                EXAMPLE (using Schema data, based on a Class named "Quote"):
+                                    [ {'name': 'body',  'dtype': 'string',    'entity_id': 'schema-2', '_internal_id': 15, 'description': 'the body of the quote', 'required': True},
+                                      {'name': 'verified', 'dtype': 'boolean', 'entity_id': 'schema-8', '_internal_id': 42, 'description': 'has this quote been source-checked?'}
+                                    ]
+                                EXAMPLE (without Schema, using estimation from sampled data, from node having the "Quote" label):
+                                    [ {'name': 'body'},
+                                      {'name': 'verified'}
+                                    ]
+        """
+        if cls.class_name_exists(class_name):
+            return cls.get_class_properties_full_data(class_name)   # An integer (possibly zero if the Class has no Properties)
+
+        assert sample_size, \
+            f"get_or_estimate_class_properties(): the requested Class, `{class_name}`, doesn't exist, " \
+            f"and no data sampling permitted by the parameter `sample_size={sample_size}`"
+
+        #if not sample_size:
+        #    return []
+
+        # Lookup by a sample of nodes with the given label
+        field_list = GraphSchema.db.sample_properties(label=class_name, sample_size=sample_size)    # Estimate the list of properties, by label
+
+        prop_list = [{'name': field} for field in field_list
+                                     if field != "_CLASS" and field != "entity_id" ]
+                                     # Neither "_CLASS" nor "entity_id" should be present... and, if they are, they belong to the data nodes,
+                                     # not to the Property entity.  TODO: replace with strip_schema_data() function
+
+        return prop_list
 
 
 
@@ -1330,7 +1382,7 @@ class GraphSchema:
 
 
     @classmethod
-    def add_properties_to_class(cls, class_node :int|str, properties = None) -> int:
+    def add_properties_to_class(cls, class_name :str, properties=None) -> int:
         """
         Add a list of Properties to the specified (ALREADY-existing) Class.
         The properties are given an inherent order (an attribute named "index", starting at 1),
@@ -1340,28 +1392,24 @@ class GraphSchema:
         NOTE: if the Class doesn't already exist, use create_class_with_properties() instead;
               attempting to add properties to an non-existing Class will result in an Exception
 
-        :param class_node:  An integer with the internal database ID of an existing Class node,
-                                or a string with its name
-        :param properties:  A list of strings with the names of the properties, in the desired order.
+        :param class_name:  The name of an existing Schema Class
+        :param properties:  A string, or list of strings, with the name(s) of the properties, in the desired order.
                                 Whitespace in any of the names gets stripped out.
                                 If any name is a blank string, an Exception is raised
                                 If the list is empty, an Exception is raised
         :return:            The number of Properties added
         """
-        #TODO: allow a single string for "properties"
         #TODO: Offer a way to change the order of the Properties,
         #      maybe by first deleting all Properties and then re-adding them
 
-        assert class_node is not None, \
-            "add_properties_to_class(): class_node cannot be None"
+        cls.assert_valid_class_name(class_name)
 
-        if type(class_node) == int:
-            class_entity_id = cls.get_class_entity_id(internal_id=class_node)
+        if type(properties) == str:
+            properties = [properties]
         else:
-            class_entity_id = cls.get_class_entity_id(class_node)       # class_node is taken to be the Class name
-
-        assert type(properties) == list, \
-            "add_properties_to_class(): Argument `property_list` in add_properties_to_class() must be a list"
+            assert type(properties) == list, \
+                f"add_properties_to_class(): Argument `property_list` in add_properties_to_class() " \
+                f"must be a string or a list of strings.  The passed value was of type {type(properties)}"
 
 
         clean_property_list = [prop.strip() for prop in properties]
@@ -1373,10 +1421,10 @@ class GraphSchema:
 
         # Locate the largest index of the Properties currently present (stored on the "HAS_PROPERTY" links)
         q = '''
-            MATCH (:CLASS {entity_id: $class_entity_id})-[r:HAS_PROPERTY]-(:PROPERTY)
+            MATCH (:CLASS {name: $class_name})-[r:HAS_PROPERTY]-(:PROPERTY)
             RETURN MAX(r.index) AS MAX_INDEX
             '''
-        max_index = cls.db.query(q, {"class_entity_id": class_entity_id}, single_cell="MAX_INDEX")
+        max_index = cls.db.query(q, {"class_name": class_name}, single_cell="MAX_INDEX")
 
         # Determine the index value to use for the next Property
         if max_index is None:
@@ -1386,16 +1434,17 @@ class GraphSchema:
 
         number_properties_nodes_created = 0
 
+        # TODO: add all of them at once
         for property_name in clean_property_list:
             new_schema_entity_id = cls._next_available_schema_entity_id()
             q = f'''
-                MATCH (c: `CLASS` {{ entity_id: '{class_entity_id}' }})
+                MATCH (c: `CLASS` {{ name: '{class_name}' }})
                 MERGE (c)-[:HAS_PROPERTY {{ index: {new_index} }}]
                          ->(p :PROPERTY:SCHEMA {{ entity_id: '{new_schema_entity_id}', name: $property_name }})
                 '''
             # EXAMPLE:
             '''
-            MATCH (c:`CLASS` {entity_id: 'schema-3'})
+            MATCH (c:`CLASS` {name: 'Person'})
             MERGE (c)-[:HAS_PROPERTY {index: 1}]->(p :PROPERTY:SCHEMA {entity_id: 'schema-8', name: $property_name})
             '''
             #print(q)
@@ -1472,7 +1521,7 @@ class GraphSchema:
         new_class_db_id = cls.create_class(name, code=code, handler=handler, strict=strict)
         cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Internal database ID: {new_class_db_id})")
 
-        number_properties_added = cls.add_properties_to_class(class_node=new_class_db_id, properties= properties)
+        number_properties_added = cls.add_properties_to_class(class_name=name, properties= properties)
         if number_properties_added != len(properties):
             raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {properties}")
 
@@ -1577,7 +1626,7 @@ class GraphSchema:
 
         # Validate the results of the query
         if result.get("nodes_deleted") != 1:    # Failed operation; investigate possible causes
-            all_properties = cls.get_class_properties(class_node=class_name)
+            all_properties = cls.get_class_properties(class_name=class_name)
             # Maybe the Class doesn't exist...
             assert cls.class_name_exists(class_name), \
                 f'remove_property_from_class(): the Schema has no Class named "{class_name}"'
@@ -1722,7 +1771,7 @@ class GraphSchema:
 
 
     @classmethod
-    def allowable_props(cls, class_internal_id: int, requested_props: dict, silently_drop: bool) -> dict:
+    def allowable_props(cls, class_internal_id :int|str, requested_props :dict, silently_drop :bool) -> dict:
         """
         If any of the properties in the requested list of properties is not a declared (and thus allowed) Schema property,
         then:
@@ -1748,9 +1797,11 @@ class GraphSchema:
             return requested_props      # Any properties are allowed if the Class isn't strict
 
 
+        class_name = cls.get_class_name(class_internal_id)
+
         allowed_props = {}
         # Determine the list of Properties registered with the Class, or with any ancestral Class thru INSTANCE_OF relationships
-        class_properties = cls.get_class_properties(class_node=class_internal_id, include_ancestors=True)
+        class_properties = cls.get_class_properties(class_name=class_name, include_ancestors=True)
 
         for requested_prop in requested_props.keys():
             # Check each of the requested properties
@@ -2408,7 +2459,7 @@ class GraphSchema:
             if order_by is not None:
                 if "," not in order_by:    # "ORDER BY" is present and doesn't contain multiple parts
                                            # (i.e. we're sorting by just one field)
-                    assert order_by in GraphSchema.get_class_properties(class_node=class_name, include_ancestors=True), \
+                    assert order_by in GraphSchema.get_class_properties(class_name=class_name, include_ancestors=True), \
                         f"cannot sort recordset (`{class_name}`) by the unknown property `{order_by}`"
 
             data_binding["class_name"] = class_name
@@ -4141,7 +4192,7 @@ class GraphSchema:
         # Verify whether all properties are allowed
         # TODO: consider using allowable_props()
         cols = list(df.columns)     # List of column names in the Pandas Data Frame
-        class_properties = cls.get_class_properties(class_node=class_name, include_ancestors=True)
+        class_properties = cls.get_class_properties(class_name=class_name, include_ancestors=True)
 
         # TODO: this assertion should only happen if the Class is strict
         assert set(cols) <= set(class_properties), \
@@ -4351,7 +4402,7 @@ class GraphSchema:
         # Verify whether all properties are allowed
         # TODO: consider using allowable_props()
         cols = list(df.columns)     # List of column names in the Pandas Data Frame
-        class_properties = cls.get_class_properties(class_node=class_name, include_ancestors=True)
+        class_properties = cls.get_class_properties(class_name=class_name, include_ancestors=True)
 
         # TODO: this assertion should only happen if the Class is strict
         assert set(cols) <= set(class_properties), \
@@ -5653,10 +5704,11 @@ class GraphSchema:
     def is_valid_entity_id(cls, entity_id :str) -> bool:
         """
         Check the validity of the passed entity_id.
-        If the entity_id belongs to a Schema node, a tighter check can be performed with is_valid_schema_entity_id()
+        If the entity_id belongs to a Schema node,
+        a tighter check may be performed by using is_valid_schema_entity_id()
 
-        :param entity_id: A string with a value that is expected to be a entity_id of a node
-        :return:    True if the passed entity_id has a valid value, or False otherwise
+        :param entity_id:   A string with a value that is expected to be a entity_id of a node
+        :return:            True if the passed entity_id has a valid value, or False otherwise
         """
         # TODO: also verify that the string isn't just a group of blanks
         if type(entity_id) == str and entity_id != "":
@@ -5673,8 +5725,8 @@ class GraphSchema:
         To check the validity of the entity_id of a Data node rather than a Schema node,
         use is_valid_entity_id() instead
 
-        :param schema_entity_id:  A string with a value that is expected to be a entity_id of a Schema node
-        :return:            True if the passed entity_id has a valid value, or False otherwise
+        :param schema_entity_id:    A string with a value that is expected to be a entity_id of a Schema node
+        :return:                    True if the passed entity_id has a valid value, or False otherwise
         """
         if type(schema_entity_id) != str:
             return False
@@ -5696,8 +5748,8 @@ class GraphSchema:
     @classmethod
     def assign_entity_id(cls, internal_id : int|str, namespace="data_node") -> str:
         """
-        Given an existing Data Node that lacks a URI value, assign one to it (and save it in the database.)
-        If a URI value already exists on the node, an Exception is raised
+        Given an existing Data Node that lacks an Entity ID value, assign one to it, and save it in the database.
+        If a Entity ID value already exists on the node, an Exception is raised.
 
         :param internal_id: Internal database ID to identify a Data Node that currently lack a URI value
         :param namespace:   A string used to maintain completely separate groups of auto-increment values;
@@ -5706,7 +5758,7 @@ class GraphSchema:
         """
         #TODO: pytest
 
-        assert cls.data_node_exists_EXPERIMENTAL(internal_id), \
+        assert cls.data_node_exists_by_id(internal_id), \
             f"assign_entity_id(): no Data Node with an internal ID of {internal_id} was found"
 
         new_uri = cls.reserve_next_entity_id(namespace=namespace)
@@ -5732,7 +5784,7 @@ class GraphSchema:
     @classmethod
     def create_namespace(cls, name :str, prefix="", suffix="") -> int|str:
         """
-        Set up a new namespace for URI's.
+        Set up a new namespace for Entity ID's.
         If a namespace by this name already exists, an Exception is raised.
 
         :param name:    A string used to maintain completely separate groups of auto-increment values;
@@ -5783,10 +5835,10 @@ class GraphSchema:
     @classmethod
     def reserve_next_entity_id(cls, namespace="data_node", prefix="", suffix="") -> str:
         """
-        Generate and reserve a URI (or fragment thereof, aka "token"),
+        Generate and reserve a Entity ID,
         using the given namespace and, optionally the given prefix and/or suffix.
 
-        The middle part of the generated URI is a unique auto-increment value
+        The middle part of the generated Entity ID is a unique auto-increment value
         (separately maintained for various groups, or "namespaces").
 
         If the requested namespace is not the default one, make sure to first create it
@@ -5795,7 +5847,7 @@ class GraphSchema:
         If no prefix or suffix is specified, use the values provided when the namespace
         was first created.
 
-        EXAMPLES:   reserve_next_entity_id("Document", "doc.", ".new") might produce "doc.3.new"
+        EXAMPLES:   reserve_next_entity_id("Document", prefix="doc.", suffix=".new") might produce "doc.3.new"
                     reserve_next_entity_id("Image", prefix="i-") might produce "i-123"
 
         IMPORTANT: Prefixes and suffixes only need to be passed when first creating a new namespace;
@@ -5843,7 +5895,7 @@ class GraphSchema:
 
         # Assemble the URI
         entity_id = f"{prefix}{autoincrement_to_use}{suffix}"
-        #print(f"***++ GENERATING NEW URI: `{entity_id}`")
+        #print(f"***++ GENERATING NEW Entity ID: `{entity_id}`")
 
         return entity_id
 
@@ -6205,7 +6257,7 @@ class SchemaCache:
 
 
 
-    def get_cached_class_data(self, class_id: int, request: str) -> Union[dict, List[str]]:
+    def get_cached_class_data(self, class_id :int|str, request: str) -> dict|List[str]:
         """
         Return the requested data for the specified Class.
 
@@ -6227,11 +6279,13 @@ class SchemaCache:
             and the values are the names of the Classes on the other side of those relationships
             EXAMPLE:  {'IS_ATTENDED_BY': 'doctor', 'HAS_RESULT': 'result'}
 
-        :param class_id:    An integer with the internal database ID of the desired Class node
+        :param class_id:    The internal database ID of the desired Class node
         :param request:     A way to specify what to look up.
                                 Permissible values: "class_attributes", "class_properties", "out_neighbors"
         :return:
         """
+        # TODO: also pass the Class name as argument
+
         assert request in ["class_attributes", "class_properties", "out_neighbors"], \
                 "get_cached_class_data(): bad value for `request` argument.  Allowed values: " \
                 "'class_attributes', 'class_properties', 'out_neighbors'"
@@ -6250,7 +6304,8 @@ class SchemaCache:
         if request == "class_properties":
             if "class_properties" not in cached_data:
                 # The Class properties hadn't been cached; so, retrieve them
-                class_properties = GraphSchema.get_class_properties(class_node=class_id, include_ancestors=False)
+                class_name = GraphSchema.get_class_name(class_id)
+                class_properties = GraphSchema.get_class_properties(class_name=class_name, include_ancestors=False)
                 cached_data["class_properties"] = class_properties
 
             return cached_data["class_properties"]

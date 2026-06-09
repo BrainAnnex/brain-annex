@@ -92,17 +92,16 @@ def test_get_class_properties_api(client):
 
 
 
-def test_class_properties_full_data_api(client):
+def test_class_properties_full_data_GET(client):
     endpoint = "class-properties-full-data"
 
     json = '{"class_name": "Quote"}'
 
-    request = f"/BA/api/{endpoint}?json={json}"
+    request = f"/BA/api/{endpoint}?json={json}"     # The database is empty
     response = client.get(request)
     # The response is an object of type 'werkzeug.test.WrapperTestResponse'
-    assert response.status_code == 200
-    assert response.json["status"] == "ok"
-    assert response.json["payload"] == []   # The database is empty
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
 
 
     # Populate the database
@@ -139,15 +138,24 @@ def test_class_properties_full_data_api(client):
                                              'format': '6,50', 'description': 'the body of the quote', 'required': True},
                                             {'name': 'attribution', 'entity_id': 'schema-3', '_internal_id': prop_ids[1]},
                                             {'name': 'verified',    'entity_id': 'schema-4', '_internal_id': prop_ids[2],  'dtype': 'boolean', 'required': False}
-                                         ]
+                                         ]  # Sorted by Schema Property order
 
 
     json = '{"class_name": "I dont exist"}'      # Missing Class
     request = f"/BA/api/{endpoint}?json={json}"
     response = client.get(request)
-    assert response.status_code == 200
-    assert response.json["status"] == "ok"
-    assert response.json["payload"] == [ ]
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    #print(response.json["error_message"])
+    #the requested Class, `I dont exist`, doesn't exist, and no data sampling permitted by the parameter `sample_size=None`
+
+    json = '{"class_name": "I dont exist", "sample_size": 100}'      # Missing Class and no data; sampling won't help!
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    #print(response.json["error_message"])
+    #no nodes with the label `I dont exist` were found
 
 
     GraphSchema.create_class(name="Car")    # Class without Properties
@@ -157,7 +165,7 @@ def test_class_properties_full_data_api(client):
     response = client.get(request)
     assert response.status_code == 200
     assert response.json["status"] == "ok"
-    assert response.json["payload"] == [ ]
+    assert response.json["payload"] == [ ]  # Class was found, but has zero Properties
 
 
     json = '{"class_name": "Car"}'
@@ -166,12 +174,72 @@ def test_class_properties_full_data_api(client):
     assert response.status_code == 400
     assert response.json["status"] == "error"
 
+    json = '{"some_other_key": "Car"}'             # Missing required key
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    #print(response.json["error_message"])
+
     json = '{"class_name"::: "Car"}'                # Malformed JSON-encoded string
     request = f"/BA/api/{endpoint}?json={json}"
     response = client.get(request)
     assert response.status_code == 400
     assert response.json["status"] == "error"
-    print(response.json["error_message"])
+    #print(response.json["error_message"])
+
+
+    json = '{"class_name": "Person", "sample_size": 2}'               # No such Class, nor data with such label
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    #  print(response.json["error_message"])
+
+
+    GraphSchema.db.create_node(labels="Person", properties={"first_name": "Julian"})
+
+    json = '{"class_name": "Person", "sample_size": 2}'
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == [{'name': 'first_name'}]
+
+    GraphSchema.db.create_node(labels="Person", properties={"first_name": "Val", "age": 22})
+
+    json = '{"class_name": "Person", "sample_size": 2}'
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == [{'name': 'age'}, {'name': 'first_name'}]   # Sorted by the 'name' key
+
+    json = '{"class_name": "Person", "sample_size": 1}'         # Only sampling 1 node
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    payload = response.json["payload"]
+    assert payload == [{'name': 'age'}]  or  payload == [{'name': 'first_name'}]   # Only 1 property was captured
+
+    GraphSchema.db.create_node(labels="Person", properties={"first_name": "Raul", "Chart #": "0425"})
+    json = '{"class_name": "Person", "sample_size": 100}'
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["payload"] == [{'name': 'age'}, {'name': 'Chart #'}, {'name': 'first_name'}]
+                                       # Sorted by the 'name' key, disregarding capitalization
+
+    GraphSchema.db.create_node(labels="Person", properties={"first_name": "Raul", "Chart #": "0425"})
+    json = '{"class_name": "Person"}'       # No sample size specified; i.e. only rely on Schema (which isn't present)
+    request = f"/BA/api/{endpoint}?json={json}"
+    response = client.get(request)
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    #print(response.json["error_message"])
+    #the requested Class, `Person`, doesn't exist, and no data sampling permitted by the parameter `sample_size=None`
 
 
 
@@ -225,7 +293,7 @@ def test_create_schema_from_data_POST(client):
     # Verify we now have a `Car` Class, with no Properties
     assert GraphSchema.class_name_exists("Car")
     assert GraphSchema.get_class_internal_id("Car") == result
-    assert GraphSchema.get_class_properties(class_node="Car") == []
+    assert GraphSchema.get_class_properties(class_name="Car") == []
     assert not GraphSchema.is_strict_class("Car")
 
 
@@ -242,7 +310,7 @@ def test_create_schema_from_data_POST(client):
     # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
     assert GraphSchema.class_name_exists("Person")
     assert GraphSchema.get_class_internal_id("Person") == result
-    assert GraphSchema.get_class_properties(class_node="Person") == ["age", "Medical #", "name"]    # in alphabetic order
+    assert GraphSchema.get_class_properties(class_name="Person") == ["age", "Medical #", "name"]    # in alphabetic order
     assert not GraphSchema.is_strict_class("Person")
 
 

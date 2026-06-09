@@ -514,11 +514,14 @@ class GraphAccess(InterGraph):
 
         :param label:       Name of the database label of interest
         :param sample_size: Number of database nodes, with the above label,
-                                to use as a representative sampler
+                                to use as a representative sampler; integer >= 1
         :return:            A sorted list of property (aka field) names; case-insensitive.
                                 EXAMPLE:    ["age", "Medical #", "name"]
         """
         # TODO: look into also sampling the existing database data types
+        assert type(sample_size) == int and sample_size > 0, \
+            "sample_properties(): the argument `sample_size` must be a non-zero positive integer"
+
         m = self.match(labels=label)
 
         result = self.get_nodes(match=m, limit=sample_size)     # A list of dicts

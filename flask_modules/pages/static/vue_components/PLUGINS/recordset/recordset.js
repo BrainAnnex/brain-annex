@@ -36,7 +36,7 @@ Vue.component('vue-plugin-rs',
             category_id:    The entity ID of the Category page where this recordset is displayed (used when creating new recordsets)
             data_for_controls:  Object with all the data needed for the standard Controls;
                                     this data is just passed thru by this components
-            schema_data:    An array of field names (for the Recordset entity, not its records!), in Schema order.
+            schema_data:    An array of field names (for the Recordset entity, not for its records!), in Schema order.
                                 EXAMPLE: ["class", "order_by", "clause", "n_group", "caption"]
          */
 
@@ -106,14 +106,19 @@ Vue.component('vue-plugin-rs',
 
                                 <!-- vs. EDIT mode (some field names to show in larger boxes are for now hardwired) -->
                                 <template v-else>
-                                    <textarea v-if="field_name=='Comments' || field_name=='name' || field_name=='notes'"
-                                        rows="5" cols="40"
+
+                                    <textarea v-if="is_lengthy_field(field_name)"
+                                        rows="5" cols="50"
                                         v-model="record_latest[field_name]"
                                     >
                                     </textarea>
-                                    <input v-else type="text" size="25"
-                                             v-model="record_latest[field_name]"
+
+                                    <textarea v-else
+                                        rows="2" cols="20"
+                                        v-model="record_latest[field_name]"
                                     >
+                                    </textarea>
+
                                 </template>
                             </td>
 
@@ -131,7 +136,7 @@ Vue.component('vue-plugin-rs',
                             </td>
                         </tr>
 
-                        <!-- Header row, repeated at bottom of table  -->
+                        <!-- Header row, repeated at bottom of table (with different styling) -->
                         <tr>
                             <th v-for="field_name in headers_to_include" class="repeated">
                                 {{insert_blanks(field_name)}}
@@ -142,10 +147,25 @@ Vue.component('vue-plugin-rs',
                         </tr>
 
 
+
                         <!-- ROW FOR ENTRY OF A NEW DATA RECORD, if in editing mode  -->
                         <tr v-if="editing_mode">
                             <td v-for="field_name in headers_to_include">
-                                <input v-model="new_record[field_name]">
+
+                                <!-- A simple heuristic for now: it ANY schema formatting data is present,
+                                     show a larger form input area -->
+                                <textarea v-if="has_schema_format(field_name)"
+                                        rows="3" cols="80"
+                                        v-model="new_record[field_name]"
+                                >
+                                </textarea>
+
+                                <textarea v-else
+                                        rows="1" cols="15"
+                                        v-model="new_record[field_name]"
+                                >
+                                </textarea>
+
                             </td>
                             <td v-show="editing_mode">
                                 <!-- Button will be disabled until something is typed in any of the field,
@@ -348,6 +368,22 @@ Vue.component('vue-plugin-rs',
             return {
                 headers: [],            // A complete list of ALL the names of the table columns
                                         // EXAMPLE:  ["quote", "attribution", "notes"]
+                                        // TODO: turn into fuller Schema data, if available (or use a separate variable for that)
+
+                schema_info: [],        /*  EXAMPLE (when Schema data is available):
+                                            [   {'name': 'notes', 'entity_id': 'schema-2', '_internal_id': 123,
+                                                 'dtype': 'string', 'format': '6,50', 'required': true}
+                                            ]
+                                         */
+
+                schema_lookup: {},      /*  Object to permit lookup of the Properties' Schema data by the Property name.
+                                            EXAMPLE:
+                                            [   {'notes':
+                                                    {'name': 'notes', 'entity_id': 'schema-2', '_internal_id': 123,
+                                                     'dtype': 'string', 'format': '6,50', 'required': true}
+                                                }
+                                            ]
+                                         */
 
                 recordset: [],          // Array of records to show together (in the context of previous/next navigation)
                                         // This will get set by querying the server when the page loads
@@ -361,7 +397,8 @@ Vue.component('vue-plugin-rs',
 
                 total_count: null,      // Size of our filtered recordset in the absence of the "limit" option
 
-                size_choices: [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,75,100,125,150,200,250,300,400,500], // Options for pull-down menu
+                size_choices: [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,75,100,125,150,200,250,300,400,500],
+                                        // Options for pull-down menu (of number of records to show per page)
 
                 fields_to_show: [],             // Array of chosen field names.
                                                 // Note: kept separate from the field in the object "this.current_data",
@@ -425,22 +462,15 @@ Vue.component('vue-plugin-rs',
                  TODO: investigate if earlier would be better
          */
         {
-            console.log(`The Recordsets component has been mounted`);
+            //console.log(`The Recordsets component has been mounted`);
 
-            if (this.item_metadata.entity_id < 0)  {  // A negative entity_id is a convention to indicate a just-created Recordset
-                this.edit_recordset();
-                return;
-            }
 
-            this.get_fields();      // Fetch from the server the field names for this Recordset
-
-            this.get_recordset(1);  // Fetch contents of the 1st block of the Recordset from the server
         },
 
 
         beforeMount()
         {
-            //console.log("~~~~~~~~~ In beforeMount()");
+            console.log("~~~~~~~~~ In beforeMount()");
 
             let fields_array;
 
@@ -455,6 +485,17 @@ Vue.component('vue-plugin-rs',
 
             this.current_data.fields_array =  Object.values(fields_array);       // TODO: phase out?
             this.original_data.fields_array = Object.values(fields_array);       // TODO: phase out?
+
+
+
+            if (this.item_metadata.entity_id < 0)  {  // A negative entity_id is a convention to indicate a just-created Recordset
+                this.edit_recordset();
+                return;
+            }
+
+            this.get_fields();      // Fetch from the server the field names for this Recordset
+
+            this.get_recordset(1);  // Fetch contents of the 1st block of the Recordset from the server
         },
 
 
@@ -484,6 +525,9 @@ Vue.component('vue-plugin-rs',
 
 
 
+            /**
+             * Return an array with either ALL the headers (if unspecified) or just those of interest
+             */
             headers_to_include()
             {
                 if (this.fields_to_show.length > 0)     // If any headers were specified
@@ -499,6 +543,36 @@ Vue.component('vue-plugin-rs',
 
         // ------------------------------   METHODS   ------------------------------
         methods: {
+
+            /**
+             *  Return true if this.schema_lookup[field_name] is defined, and contains the key 'format'.
+             *  For now, we're acting upon the mere presence of a 'format' key on a Property, rather than reading its value
+             */
+            has_schema_format(field_name)
+            {
+                // Note: the variable this.schema_lookup is set (as a lookup object) by the result of
+                //       a server call; so, it might not be immediately available.  Hence, the fallback
+                //       on {} , which will result in an overall false for the 'in' operator.
+                return 'format' in (this.schema_lookup[field_name] || {});
+            },
+
+
+            /**
+             *  Return true if this.record_latest[field_name] is defined, and has a lenght beyond a given threshold
+             */
+            is_lengthy_field(field_name)
+            {
+                /* Examples:
+                    String(undefined ?? "")  // ""
+                    String(null ?? "")       // ""
+                    String(123)              // "123"
+                    String(true)             // "true"
+                    String("my string")      // "my string"
+                */
+                //return (this.record_latest[field_name] || "").length > 40;
+                return String(this.record_latest[field_name] ?? "").length > 40;
+            },
+
 
             /**
              *  Return true if the Add button for a new record ought to be hidden
@@ -941,8 +1015,8 @@ Vue.component('vue-plugin-rs',
                     this.$emit('updated-item', signal_data);
 
                     // Synchronize the baseline data to the current one
-                    this.original_data = Object.assign({}, this.current_data);              // Clone
-                    this.fields_to_show_pre_edit = Array.from(this.fields_to_show);  // Clone
+                    this.original_data = Object.assign({}, this.current_data);          // Clone
+                    this.fields_to_show_pre_edit = Array.from(this.fields_to_show);     // Clone
 
                     this.get_fields();          // Fetch from the server the field names for this Recordset
                     this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
@@ -1007,25 +1081,35 @@ Vue.component('vue-plugin-rs',
 
 
             /**
-             * Make a server call to obtain all the field names associated to a sample of nodes with the given label.
-                TODO: also attempt to extract the Schema fields of the Class that this recordset is based on
-                E.g.
-                    GraphSchema.get_class_properties(class_node="Quote", include_ancestors=True, exclude_system=True)
-                to fetch:
-                    ['quote', 'attribution', 'notes']
+             *  Make a server call to obtain all the field names associated to a sample of nodes with the given label,
+                and - if available - also get all the Schema info the Class by that name.
 
-                If successful, it will update the value for this.headers
+                EXAMPLE (when Schema data is not available):
+                    [{'name': 'quote'}]
+
+                EXAMPLE (when Schema data is available):
+                    [{'name': 'quote', 'entity_id': 'schema-2', '_internal_id': 123,
+                      'dtype': 'string', 'description': 'the body of the quote', 'required': True, 'system': False, 'format': '6,50'}
+                    ]
+
+                If successful, it will update the value for this.headers and this.schema_info
              */
             get_fields()
             {
-                console.log(`In get_fields(): attempting to retrieve field names of recordset with entity_id '${this.current_metadata.entity_id}'`);
+                console.log(`In get_fields(): attempting to retrieve field names and schema attributes of the recordset based on Class/Label '${this.current_data.filter_label}'`);
 
-                const url_server_api = "/BA/api/get_class_properties";
+                //const url_server_api = "/BA/api/get_class_properties";
+                const url_server_api = "/BA/api/class-properties-full-data";
 
+                /*
                 const data_obj = {label: this.current_data.filter_label,
                                   include_ancestors: true,
                                   exclude_system: true
                                  };     // TODO: also consider passing `class_name`, if present
+                 */
+                const data_obj = {class_name: this.current_data.filter_label,
+                                  sample_size: 200
+                                 };
 
                 console.log(`About to contact the server at ${url_server_api} .  GET object:`);
                 console.log(data_obj);
@@ -1049,7 +1133,29 @@ Vue.component('vue-plugin-rs',
                 if (success)  {     // Server reported SUCCESS
                     //console.log("    server call was successful; it returned: ", server_payload);
                     this.status_message = `Operation completed`;
-                    this.headers = server_payload;
+                    this.schema_info = server_payload;
+                    /* EXAMPLE:
+                        [   {'name': 'notes', 'entity_id': 'schema-2', '_internal_id': 123,
+                             'dtype': 'string',  'format': '6,50', 'required': true
+                            }
+                        ]
+                     */
+
+                    // Extract all the Property names, as a separate array
+                    this.headers = server_payload.map(obj => obj.name);
+
+                    // Create, and store, an object to permit lookup of the Properties' Schema data by the Property name
+                    this.schema_lookup = Object.fromEntries(
+                                                                server_payload.map(obj => [obj.name, obj])
+                                                           );
+                    /* EXAMPLE:
+                        [   {'notes':
+                                {'name': 'notes', 'entity_id': 'schema-2', '_internal_id': 123,
+                                 'dtype': 'string',  'format': '6,50', 'required': true
+                                }
+                            }
+                        ]
+                     */
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;

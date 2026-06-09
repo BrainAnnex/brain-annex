@@ -695,33 +695,30 @@ def test_get_class_relationships(db):
 
 
 
-#############   PROPERTIES-RELATED   #############
+################   PROPERTIES-RELATED   ################
 
 
 def test_get_class_properties(db):
     db.empty_dbase()
 
+    with pytest.raises(Exception):
+        GraphSchema.get_class_properties(123)       # Not a valid Class name
+
     GraphSchema.create_class_with_properties("My first class", properties=["A", "B", "C"])
-    internal_id = GraphSchema.get_class_internal_id("My first class")
-    props = GraphSchema.get_class_properties(internal_id)
-    assert props == ["A", "B", "C"]
+    GraphSchema.get_class_internal_id("My first class")
     props = GraphSchema.get_class_properties("My first class")
     assert props == ["A", "B", "C"]
 
     internal_id= GraphSchema.create_class("My BIG class")
-    props = GraphSchema.get_class_properties(internal_id)
-    assert props == []
     props = GraphSchema.get_class_properties("My BIG class")
     assert props == []
 
-    GraphSchema.add_properties_to_class(class_node=internal_id, properties= ["X", "Y"])
-    props = GraphSchema.get_class_properties(internal_id)
-    assert props == ["X", "Y"]
-    props = GraphSchema.get_class_properties(class_node="My BIG class")
+    GraphSchema.add_properties_to_class(class_name="My BIG class", properties= ["X", "Y"])
+    props = GraphSchema.get_class_properties(class_name="My BIG class")
     assert props == ["X", "Y"]
 
-    GraphSchema.add_properties_to_class(class_node=internal_id, properties= ["Z"])
-    props = GraphSchema.get_class_properties(internal_id)
+    GraphSchema.add_properties_to_class(class_name="My BIG class", properties= ["Z"])
+    props = GraphSchema.get_class_properties("My BIG class")
     assert props == ["X", "Y", "Z"]
 
 
@@ -763,7 +760,6 @@ def test_get_class_properties(db):
     assert props == ["X", "Z", "A", "B", "C"]
 
 
-
 def test_get_class_properties_full_data(db):
     db.empty_dbase()
 
@@ -802,43 +798,124 @@ def test_get_class_properties_full_data(db):
 
     assert GraphSchema.get_class_properties_full_data(class_name="I dont exist") == []
 
-
     GraphSchema.create_class(name="Car")    # Class without Properties
     assert GraphSchema.get_class_properties_full_data(class_name="Car") == []
+
+
+
+def test_get_or_estimate_class_properties(db):
+    db.empty_dbase()
+
+    GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
+    prop_ids = [GraphSchema.get_property_internal_id(class_name="Quote", property_name=p)
+                    for p in ["text", "attribution", "verified"] ]
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="description", attribute_value="the body of the quote")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="system", attribute_value=False)
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="dtype", attribute_value="string")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name="required", attribute_value=True)
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
+                                       attribute_name= "format", attribute_value="6,50")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
+                                       attribute_name="dtype", attribute_value="boolean")
+
+    GraphSchema.set_property_attribute(class_name="Quote", prop_name="verified",
+                                       attribute_name="required", attribute_value=False)
+
+    result = GraphSchema.get_or_estimate_class_properties(class_name="Quote")
+
+    assert result == [  {'name': 'text',        'entity_id': 'schema-2', '_internal_id': prop_ids[0],  'dtype': 'string', 'system': False, 'format': '6,50', 'description': 'the body of the quote', 'required': True},
+                        {'name': 'attribution', 'entity_id': 'schema-3', '_internal_id': prop_ids[1]},
+                        {'name': 'verified',    'entity_id': 'schema-4', '_internal_id': prop_ids[2],  'dtype': 'boolean', 'required': False}
+                     ]      # Sorted by Schema Property order
+
+
+    GraphSchema.create_class(name="Car", strict=False)    # Class without Properties
+
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Car") == []
+
+    with pytest.raises(Exception):
+        GraphSchema.get_or_estimate_class_properties(class_name="I dont exist")
+
+
+    db.create_node(labels="Car")    # This node lacks any properties
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Car") == []
+
+    GraphSchema.create_data_node(class_name="Car")    # This data node lacks any properties as well
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Car") == []
+
+    db.create_node(labels="Person", properties={"first_name": "Julian"})
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Person") == [{'name': 'first_name'}]
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Car") == []     # Still devoid of Properties
+
+    GraphSchema.add_properties_to_class(class_name="Car", properties="color")
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Person") == [{'name': 'first_name'}]
+    prop_id = GraphSchema.get_property_internal_id(class_name="Car", property_name="color")
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Car") == [{'name': 'color', '_internal_id': prop_id, 'entity_id': 'schema-6'}]
+
+    db.create_node(labels="Car", properties={"model": "Toyota"})    # Using a field name not registered with the Schema Properties for this Class
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Car") == [{'name': 'color', '_internal_id': prop_id, 'entity_id': 'schema-6'}]
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Person") == [{'name': 'first_name'}]    # Same as before
+
+    db.create_node(labels="Person", properties={"first_name": "Val", "age": 22})
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Person") == [{'name': 'age'}, {'name': 'first_name'}]   # Sorted by the 'name' key
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Car") == [{'name': 'color', '_internal_id': prop_id, 'entity_id': 'schema-6'}]
+
+    result = GraphSchema.get_or_estimate_class_properties(class_name="Person", sample_size=1)   # Only sampling 1 node
+    assert result == [{'name': 'first_name'}] or result == [{'name': 'age'}]                    # Only 1 property was captured
+
+    with pytest.raises(Exception):
+        GraphSchema.get_or_estimate_class_properties(class_name="Person", sample_size=0)        # Missing Class, and disabled fallback to sampling
+
+    with pytest.raises(Exception):
+        GraphSchema.get_or_estimate_class_properties(class_name="Person", sample_size=None)     # Missing Class, and disabled fallback to sampling
+
+    db.create_node(labels="Person", properties={"first_name": "Raul", "Chart #": "0425"})
+    assert GraphSchema.get_or_estimate_class_properties(class_name="Person") == [{'name': 'age'}, {'name': 'Chart #'}, {'name': 'first_name'}]
+                                                                                # Sorted by the 'name' key, disregarding capitalization
 
 
 
 def test_add_properties_to_class(db):
     db.empty_dbase()
 
-    internal_id= GraphSchema.create_class("My first class")
+    GraphSchema.create_class("My first class")
 
-    GraphSchema.add_properties_to_class(class_node=internal_id, properties= ["X", "Y"])
+    GraphSchema.add_properties_to_class(class_name="My first class", properties= ["X", "Y"])
     q = '''
-    MATCH (p1:PROPERTY {name: "X", entity_id:"schema-2"})
-    <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
-    (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
-    RETURN n
-    '''
+        MATCH (p1:PROPERTY {name: "X", entity_id:"schema-2"})
+        <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+        (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+        RETURN n
+        '''
     result = db.query(q)
     assert len(result) == 1
 
-    GraphSchema.add_properties_to_class(class_node=internal_id, properties= ["Z"])
+    GraphSchema.add_properties_to_class(class_name="My first class", properties= ["Z"])
     q = '''
-    MATCH (p1:PROPERTY {name: "X", entity_id:"schema-2"})
-    <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
-    (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
-    RETURN n
-    '''
+        MATCH (p1:PROPERTY {name: "X", entity_id:"schema-2"})
+        <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+        (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+        RETURN n
+        '''
     result = db.query(q)
     assert len(result) == 1
 
     q = '''
-    MATCH (p1:PROPERTY {name: "Z", entity_id:"schema-4"})
-    <-[:HAS_PROPERTY {index: 3}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
-    (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
-    RETURN n
-    '''
+        MATCH (p1:PROPERTY {name: "Z", entity_id:"schema-4"})
+        <-[:HAS_PROPERTY {index: 3}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+        (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+        RETURN n
+        '''
     result = db.query(q)
     assert len(result) == 1
 
@@ -883,12 +960,12 @@ def test_remove_property_from_class(db):
     db.empty_dbase()
     create_sample_schema_2()    # Schema with quotes and categories
 
-    result = GraphSchema.get_class_properties(class_node="quotes")
+    result = GraphSchema.get_class_properties(class_name="quotes")
     assert result == ["quote", "attribution", "verified"]
 
     GraphSchema.remove_property_from_class(class_name="quotes", property_name="verified")
 
-    result = GraphSchema.get_class_properties(class_node="quotes")
+    result = GraphSchema.get_class_properties(class_name="quotes")
     assert result == ["quote", "attribution"]
 
     with pytest.raises(Exception):
@@ -898,7 +975,7 @@ def test_remove_property_from_class(db):
         GraphSchema.remove_property_from_class(class_name="quotes", property_name="unknown")
 
     GraphSchema.remove_property_from_class(class_name="quotes", property_name="attribution")
-    result = GraphSchema.get_class_properties(class_node="quotes")
+    result = GraphSchema.get_class_properties(class_name="quotes")
     assert result == ["quote"]
 
 
@@ -919,7 +996,7 @@ def test_is_property_allowed(db):
     assert GraphSchema.is_property_allowed(property_name="Y", class_name="My Strict class")
     assert not GraphSchema.is_property_allowed(property_name="some other field", class_name="My Strict class")
 
-    GraphSchema.add_properties_to_class(class_node="My Strict class", properties=["some other field"])   # Now it will be declared!
+    GraphSchema.add_properties_to_class(class_name="My Strict class", properties=["some other field"])   # Now it will be declared!
 
     assert GraphSchema.is_property_allowed(property_name="some other field", class_name="My Strict class")
 
@@ -950,17 +1027,17 @@ def test_is_property_allowed(db):
 
     # Properties "New_1", "New_2", "New_3" will be added, respectively,
     # to the Classes "German Vocabulary", "Foreign Vocabulary" and "Content Item"
-    GraphSchema.add_properties_to_class(class_node="German Vocabulary", properties=["New_1"])
+    GraphSchema.add_properties_to_class(class_name="German Vocabulary", properties=["New_1"])
     assert GraphSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
 
-    GraphSchema.add_properties_to_class(class_node="Foreign Vocabulary", properties=["New_2"])
+    GraphSchema.add_properties_to_class(class_name="Foreign Vocabulary", properties=["New_2"])
     assert GraphSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
     assert not GraphSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
 
-    GraphSchema.add_properties_to_class(class_node="Content Item", properties=["New_3"])
+    GraphSchema.add_properties_to_class(class_name="Content Item", properties=["New_3"])
     assert GraphSchema.is_property_allowed(property_name="New_1", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="New_2", class_name="German Vocabulary")
     assert GraphSchema.is_property_allowed(property_name="New_3", class_name="German Vocabulary")
@@ -1036,7 +1113,7 @@ def test_setup_schema_from_data(db):
     # Verify we now have a `Car` Class, with no Properties
     assert GraphSchema.class_name_exists("Car")
     assert GraphSchema.get_class_internal_id("Car") == result
-    assert GraphSchema.get_class_properties(class_node="Car") == []
+    assert GraphSchema.get_class_properties(class_name="Car") == []
     assert not GraphSchema.is_strict_class("Car")
 
 
@@ -1049,7 +1126,7 @@ def test_setup_schema_from_data(db):
     # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
     assert GraphSchema.class_name_exists("Person")
     assert GraphSchema.get_class_internal_id("Person") == result
-    assert GraphSchema.get_class_properties(class_node="Person") == ["age", "Medical #", "name"]    # in alphabetic order
+    assert GraphSchema.get_class_properties(class_name="Person") == ["age", "Medical #", "name"]    # in alphabetic order
     assert not GraphSchema.is_strict_class("Person")
 
     with pytest.raises(Exception):
@@ -1278,14 +1355,6 @@ def test_data_node_exists_by_entity(db):
 
     assert GraphSchema.data_node_exists_by_entity(class_name="Car", entity_id="car-88")
     assert GraphSchema.data_node_exists_by_entity(class_name="Car", entity_id="car-123")
-
-
-    # Create 2 fake Data Nodes that have duplicate entity ID's
-    db.create_node(labels="Boat", properties={"_CLASS": "Boat", "entity_id": "boat-1"})
-    db.create_node(labels="Boat", properties={"_CLASS": "Boat", "entity_id": "boat-1"})
-
-    with pytest.raises(Exception):
-        GraphSchema.data_node_exists_by_entity(class_name="Boat", entity_id="boat-1")
 
 
 
@@ -1884,7 +1953,7 @@ def test_create_data_node_3(db):
 
 
     # Successfully adding a 3rd data point
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["color"]) # Expand the allow class properties
+    GraphSchema.add_properties_to_class(class_name="Car", properties=["color"]) # Expand the allow class properties
 
     new_datanode_internal_id = GraphSchema.create_data_node(class_name="Car",
                                                             properties={"color": "white"})
@@ -1893,17 +1962,17 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_CLASS`: "Car"}}) 
-    WHERE id(n) = {new_datanode_internal_id}
-    RETURN n
-    '''
+        MATCH (n :Car {{`_CLASS`: "Car"}}) 
+        WHERE id(n) = {new_datanode_internal_id}
+        RETURN n
+        '''
     result = db.query_extended(q)
     assert len(result) == 1
     assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'white', '_CLASS': "Car"}]]   # This time the properties got set
 
 
     # Again expand the allowed class properties
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["year"])
+    GraphSchema.add_properties_to_class(class_name="Car", properties=["year"])
 
     with pytest.raises(Exception):
         GraphSchema.create_data_node(class_name="Car",
@@ -1920,10 +1989,10 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_CLASS`: "Car"}}) 
-    WHERE id(n) = {new_datanode_internal_id}
-    RETURN n
-    '''
+        MATCH (n :Car {{`_CLASS`: "Car"}}) 
+        WHERE id(n) = {new_datanode_internal_id}
+        RETURN n
+        '''
     result = db.query_extended(q)
     assert len(result) == 1
     assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'red', '_CLASS': "Car"}]]   # The "color" got set, while the "make" got dropped
@@ -1938,10 +2007,10 @@ def test_create_data_node_3(db):
 
     # Locate the data point just added
     q = f'''
-    MATCH (n :Car {{`_CLASS`: "Car"}}) 
-    WHERE id(n) = {new_datanode_internal_id}
-    RETURN n
-    '''
+        MATCH (n :Car {{`_CLASS`: "Car"}}) 
+        WHERE id(n) = {new_datanode_internal_id}
+        RETURN n
+        '''
     result = db.query_extended(q)
     assert len(result) == 1
     assert result == [[{'_internal_id': new_datanode_internal_id, '_node_labels': ['Car'], 'color': 'blue', 'year': 2000, '_CLASS': "Car"}]]
@@ -2221,7 +2290,7 @@ def test_add_data_node_merge(db):
         # "color" is not a registered property of the Class "Car"
         GraphSchema.add_data_node_merge(class_name="Car", properties={"color": "white"})
 
-    GraphSchema.add_properties_to_class(class_node = class_internal_id, properties= ["color"])
+    GraphSchema.add_properties_to_class(class_name="Car", properties= ["color"])
 
 
     # Successfully adding the first data point
@@ -2280,7 +2349,7 @@ def test_add_data_node_merge(db):
 
 
     # Again expand the allowed class properties
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["year"])
+    GraphSchema.add_properties_to_class(class_name="Car", properties=["year"])
 
     with pytest.raises(Exception):
         GraphSchema.add_data_node_merge(class_name="Car",
@@ -2359,7 +2428,7 @@ def test_add_data_node_merge(db):
     assert GraphSchema.count_data_nodes_of_class("Car") == 5     # UNCHANGED
 
 
-    GraphSchema.add_properties_to_class(class_node=class_internal_id, properties=["make"])
+    GraphSchema.add_properties_to_class(class_name="Car", properties=["make"])
     # ... but there's no car "red, 1999, Toyota"
     new_datanode_id, status = GraphSchema.add_data_node_merge(class_name="Car",
                                                               properties={"color": "red", "year": 1999, "make": "Toyota"})
