@@ -106,14 +106,19 @@ Vue.component('vue-plugin-rs',
 
                                 <!-- vs. EDIT mode (some field names to show in larger boxes are for now hardwired) -->
                                 <template v-else>
-                                    <textarea v-if="field_name=='Comments' || field_name=='name' || field_name=='notes'"
-                                        rows="5" cols="40"
+
+                                    <textarea v-if="is_lengthy_field(field_name)"
+                                        rows="5" cols="50"
                                         v-model="record_latest[field_name]"
                                     >
                                     </textarea>
-                                    <input v-else type="text" size="25"
-                                             v-model="record_latest[field_name]"
+
+                                    <textarea v-else
+                                        rows="2" cols="20"
+                                        v-model="record_latest[field_name]"
                                     >
+                                    </textarea>
+
                                 </template>
                             </td>
 
@@ -147,14 +152,19 @@ Vue.component('vue-plugin-rs',
                         <tr v-if="editing_mode">
                             <td v-for="field_name in headers_to_include">
 
-                                <textarea v-if="(field_name in schema_lookup) && ('format' in schema_lookup[field_name])"
-                                        rows="2" cols="50"
+                                <!-- A simple heuristic for now: it ANY schema formatting data is present,
+                                     show a larger form input area -->
+                                <textarea v-if="has_schema_format(field_name)"
+                                        rows="3" cols="80"
                                         v-model="new_record[field_name]"
                                 >
                                 </textarea>
 
-                                <input v-else  v-model="new_record[field_name]">
-
+                                <textarea v-else
+                                        rows="1" cols="15"
+                                        v-model="new_record[field_name]"
+                                >
+                                </textarea>
 
                             </td>
                             <td v-show="editing_mode">
@@ -534,11 +544,35 @@ Vue.component('vue-plugin-rs',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
-            hasFormat(field_name) {
+            /**
+             *  Return true if this.schema_lookup[field_name] is defined, and contains the key 'format'.
+             *  For now, we're acting upon the mere presence of a 'format' key on a Property, rather than reading its value
+             */
+            has_schema_format(field_name)
+            {
+                // Note: the variable this.schema_lookup is set (as a lookup object) by the result of
+                //       a server call; so, it might not be immediately available.  Hence, the fallback
+                //       on {} , which will result in an overall false for the 'in' operator.
                 return 'format' in (this.schema_lookup[field_name] || {});
             },
 
-            
+
+            /**
+             *  Return true if this.record_latest[field_name] is defined, and has a lenght beyond a given threshold
+             */
+            is_lengthy_field(field_name)
+            {
+                /* Examples:
+                    String(undefined ?? "")  // ""
+                    String(null ?? "")       // ""
+                    String(123)              // "123"
+                    String(true)             // "true"
+                    String("my string")      // "my string"
+                */
+                //return (this.record_latest[field_name] || "").length > 40;
+                return String(this.record_latest[field_name] ?? "").length > 40;
+            },
+
 
             /**
              *  Return true if the Add button for a new record ought to be hidden
