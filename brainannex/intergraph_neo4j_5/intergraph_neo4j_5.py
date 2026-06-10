@@ -83,6 +83,7 @@ class InterGraph:
         self.driver = None          # Object to connect to Neo4j's Bolt driver for Python
                                     # https://neo4j.com/docs/api/python-driver/5.28/api.html#driver
 
+        self._supports_notifications_filtering = True
 
         assert host, "Cannot instantiate the GraphAccess object with an undefined argument`host`; " \
                      "unable to obtain a default value from getenv('NEO4J_HOST') . You need to pass a value, " \
@@ -163,17 +164,56 @@ class InterGraph:
         :return:    None
         """
         q = "MATCH (n) RETURN n LIMIT 1"
-        self.query(q)
+        #self.query(q)
+        try:
+            # First, try with notifications filtering in place
+            with self.get_session(self.driver) as new_session:
+                new_session.run(q)
+        except:
+            # Try again after abandoning notifications filtering
+            self._supports_notifications_filtering = False
+            print("* INFO: Automatically disabled 'notifications filtering' because not supported")
+            with self.get_session(self.driver) as new_session:
+                new_session.run(q)
+
 
 
 
     def version(self) -> str:
         """
+        DEPRECATED.  Use driver_version() instead
         Return the version of the Neo4j driver being used.  EXAMPLE: "5.28.1"
 
-        :return:    A string with the version number
+        :return:    A string with the Neo4j driver version number
+        """
+        print("*** WARNING: version() is deprecated; use driver_version() instead")
+        return self.driver_version()
+
+
+    def driver_version(self) -> str:
+        """
+        Return the version of the Neo4j driver being used.  EXAMPLE: "5.28.1"
+
+        :return:    A string with the Neo4j driver version number
         """
         return neo4j_driver_version
+
+
+    def server_version(self) -> str:
+        """
+        Return the version of the Neo4j server that we're connected to.  EXAMPLE: "5.26.9"
+
+        :return:    A string with the Neo4j server version number
+        """
+        with self.get_session(self.driver) as new_session:
+            q = """
+            CALL dbms.components()
+            YIELD name, versions
+            RETURN versions[0] AS VERSION
+            """
+            rec = new_session.run(q).single()
+
+            return rec["VERSION"]
 
 
 
@@ -240,6 +280,22 @@ class InterGraph:
                             f"Automatically re-connected.  Please RE-RUN your last command")
 
         return result
+
+
+
+    def get_session(self, driver):
+        """
+        Generate a new database Session object.
+        If possible, suppress the annoying "DEPRECATION" warnings;
+        but if the server doesn't support that (for example Neo4j server 5.6.0 doesn't) then let it slide
+
+        :param driver:  Object of type neo4j._sync.driver.BoltDriver
+        :return:        Object of type neo4j._sync.work.session.Session
+        """
+        if self._supports_notifications_filtering:
+            return driver.session(notifications_disabled_categories=["DEPRECATION"])
+        else:
+            return driver.session()
 
 
 
@@ -312,9 +368,11 @@ class InterGraph:
             if self.block_query_execution:
                 return
 
-        # Start a new session, use it, and then immediately close it.  Suppress some annoying warning messages
-        with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
+        # Start a new session, use it, and then immediately close it
+        with self.get_session(self.driver) as new_session:
+        #with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
+
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 
 
@@ -377,8 +435,9 @@ class InterGraph:
                                  '_start': INTERNAL_ID_OF_START_NODE, '_end': INTERNAL_ID_OF_END_NODE
                                  }
         """
-        # Start a new session, use it, and then immediately close it.  Suppress some annoying warning messages
-        with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
+        # Start a new session, use it, and then immediately close it
+        with self.get_session(self.driver) as new_session:
+        #with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             all_paths = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
             #print(type(result))        # <class 'neo4j.work.result.Result'>
             # https://neo4j.com/docs/api/python-driver/4.4/api.html#neo4j.Result
@@ -557,8 +616,9 @@ class InterGraph:
         if (type(fields_to_exclude) == str) and (fields_to_exclude != ""):
             fields_to_exclude = [fields_to_exclude]
 
-        # Start a new session, use it, and then immediately close it.  Suppress some annoying warning messages
-        with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
+        # Start a new session, use it, and then immediately close it
+        with self.get_session(self.driver) as new_session:
+        #with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 
@@ -670,8 +730,9 @@ class InterGraph:
             if self.block_query_execution:
                  return {}
 
-        # Start a new session, use it, and then immediately close it.  Suppress some annoying warning messages
-        with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
+        # Start a new session, use it, and then immediately close it
+        with self.get_session(self.driver) as new_session:
+        #with self.driver.session(notifications_disabled_categories=["DEPRECATION"]) as new_session:
             #result = new_session.run(q, data_binding)
             result = self.run_cypher_query(q=q, data_binding=data_binding, session=new_session)
 
