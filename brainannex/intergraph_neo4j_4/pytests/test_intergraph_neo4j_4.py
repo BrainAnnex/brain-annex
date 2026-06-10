@@ -82,9 +82,18 @@ def test_connect(db):
 
 
 
-def test_version(db):
-    assert type (db.version()) == str
-    assert db.version() != ""
+def test_driver_version(db):
+    version = db.driver_version()
+    assert type(version) == str
+    assert version != ""
+    #print(version)
+
+
+def test_server_version(db):
+    version = db.server_version()
+    assert type(version) == str
+    assert version != ""
+    #print(version)
 
 
 
