@@ -137,7 +137,7 @@
             v-bind:item_fields
             v-bind:item_metadata
 
-            v-bind:edit_mode
+            v-bind:expose_controls
             v-bind:category_id
      -->
 <component v-for="item in content_array"
@@ -148,7 +148,7 @@
             v-bind:item_fields="item.fields"
             v-bind:item_metadata="item.metadata"
 
-            v-bind:edit_mode="expose_controls"
+            v-bind:expose_controls="expose_controls"
             v-bind:category_id="category_id"
 >
 </component>

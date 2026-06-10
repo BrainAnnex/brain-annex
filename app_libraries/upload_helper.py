@@ -15,18 +15,15 @@ class UploadHelper:
         """
         Meant for SINGLE-file uploads.
 
-        It accepts a flask.request object, and it creates a file from the upload,
-        which it stores into the folder specified by `upload_dir`
+        It accepts an ImmutableMultiDict object (originating from a flask.request object),
+        and it creates a file from the upload,
+        which it stores into the folder specified by `upload_dir` (typically, a temporary directory.)
 
         It decides, from the name of the file being uploaded, a meaningful (and safe) name
         for the temporary file to create as part of the upload.
 
         It returns both the basename and the full filename of the temporary file thus created,
-        as well as the original name of the file.
-
-        In case of error, an Exception is raised
-
-        TODO: maybe allow to optionally provide the final location/name for the uploaded file
+        as well as the original name of the file and its MIME type.
 
         :param files:       An ImmutableMultiDict object.
                                 EXAMPLE: ImmutableMultiDict([('imported_datafile', <FileStorage: 'my_data.json' ('application/json')>)])
@@ -53,6 +50,8 @@ class UploadHelper:
                                           "my_file_being_uploaded.txt", "text/plain")
 
         """
+        # TODO: maybe allow to optionally provide the final location/name for the uploaded file
+        # TODO: maybe return a dict rather than a 4-tuple
         # Locate the data about the desired file upload
         if len(files) == 0:
             raise Exception(f"No files found in upload!  (The ImmutableMultiDict object in request.files is empty)")
@@ -101,10 +100,10 @@ class UploadHelper:
     @classmethod
     def secure_filename_BA(cls, filename: str) -> str:
         """
-        Return a secure version of a filename.
-        This filename can then safely be stored on a regular file system and passed
-        to os.path.join.  The filename returned is an ASCII only string
-        for maximum portability.
+        Return a secure version of the given filename.
+        The derived secure version of filename can then safely used for data storage on a regular file system,
+        and passed to os.path.join.
+        The filename returned is an ASCII only string for maximum portability.
 
         ADAPTED FOR BRAIN ANNEX FROM werkzeug.utils.secure_filename(), version 0.5;
         blank spaces, commas, ampersand, and round parentheses are now treated as valid.
@@ -124,7 +123,8 @@ class UploadHelper:
         to ensure that the filename is unique and that you abort or
         generate a random filename if the function returned an empty one.
 
-        :param filename:    A string with the "cleaned-up" filename to use
+        :param filename: A string with a file name that may or may not be valid
+        :return:         A string with the "cleaned-up" filename to use
         """
         #TODO: pytest, and possibly move to MediaManager
         _filename_ascii_strip_re = re.compile(r"[^A-Za-z0-9_., &()-]") # List of allowed characters in the name;

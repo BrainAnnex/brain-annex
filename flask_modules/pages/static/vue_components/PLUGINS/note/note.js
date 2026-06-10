@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-n',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count'],
+                'expose_controls', 'category_id', 'data_for_controls'],
         /*   item_fields:    An object with the editable properties of this Note item.
                                 EXAMPLE: {  "basename":"notes-123",
                                             "suffix":"htm",
@@ -22,17 +22,21 @@ Vue.component('vue-plugin-n',
                                          "schema_code":"n"
                                         }
 
-            edit_mode:      A boolean indicating whether in editing mode
-            category_id:    The entity_id of the Category page where this Note is displayed (used when creating new documents)
-            index:          The zero-based position of this Document on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
+            expose_controls:    A boolean indicating whether to show all the standard editing controls
+                                    (indicating whether the page containing this element is in editing mode)
+            category_id:        The entity_id of the Category page where this Note is displayed (used when creating new Notes)
+            data_for_controls:  Object with all the data needed for the standard Controls;
+                                    this data is just passed thru by this components
          */
 
         template: `
             <div>	<!-- Outer container, serving as Vue-required template root  -->
 
             <!----------  VIEW-ONLY version (show when NOT in editing mode)  ---------->
-            <div class="notes" v-if="!editing_mode" v-html="body_of_note"   @dblclick="enter_editing_mode">
+            <div class="notes"
+                v-if="!editing_mode" v-html="body_of_note"
+                @dblclick="enter_editing_mode()"
+            >
                 <!-- Body of Note, and status of last edit  -->
                 <span v-bind:class="{'n-waiting': waiting}">{{status_message}}</span>
             </div>
@@ -63,10 +67,12 @@ Vue.component('vue-plugin-n',
 
                           v-on:edit-content-item
             -->
-                <img v-if="edit_mode" src="/BA/pages/static/graphics/copy_16_172587.png"
+                <img v-if="expose_controls" src="/BA/pages/static/graphics/copy_16_172587.png"
                      class="control" title="COPY TO CLIPBOARD (Not yet implemented)" alt="COPY TO CLIPBOARD (Not yet implemented)">
 
-                <vue-controls v-bind:edit_mode="edit_mode" v-bind:index="index"  v-bind:item_count="item_count"
+                <vue-controls v-bind:expose_controls="expose_controls"
+                              v-bind:limited_controls="editing_mode"
+                              v-bind:data_for_controls="data_for_controls"
                               v-on="$listeners"
                               v-on:edit-content-item="edit_content_item()">
                 </vue-controls>
@@ -81,7 +87,9 @@ Vue.component('vue-plugin-n',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_ID means "new Item"
+                editing_mode: (this.item_metadata.entity_id < 0 ? true : false),    // Negative entity_id means "new Item" (automatically placed in editing mode)
+
+                //limited_controls: false,
 
                 body_of_note: (this.item_metadata.entity_id < 0 ? "NEW NOTE" : "Retrieving note id " + this.item_metadata.entity_id + "..."),
 
@@ -487,7 +495,7 @@ Vue.component('vue-plugin-n',
                 }
 
                 this.save_waiting = false;
-
+                this.limited_controls = false;
                 //console.log("attempting to reload mathjax just before exiting finish_save()");
                 //this.reload_mathjax();    // NOT WORKING! [Presumably b/c Vue then refreshes the page from the change in this.editing_mode]
 
@@ -499,6 +507,8 @@ Vue.component('vue-plugin-n',
              */
             cancel_edit()
             {
+                this.limited_controls = false;
+
                 const noteID = this.current_metadata.entity_id;    // A negative value indicates a new Note
 
                 console.log("Inside cancel_edit().  noteID = " + noteID);

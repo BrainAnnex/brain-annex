@@ -1,6 +1,7 @@
 <!-- This is a TESTER for the Vue component in the .js file by the same name
 
-     To invoke:  http://localhost:5000/BA/pages/static/vue_components/PLUGINS/recordset/recordset_tester.htm
+     To invoke, start Flask, and then to go:
+        http://localhost:5000/BA/pages/static/vue_components/PLUGINS/recordset/recordset_tester.htm
 -->
 
 <!DOCTYPE html>
@@ -29,10 +30,9 @@
 
     <vue-plugin-rs  v-bind:item_fields="item_fields"
                     v-bind:item_metadata="item_metadata"
-                    v-bind:edit_mode="edit_mode"
+                    v-bind:expose_controls="expose_controls"
                     v-bind:category_id="category_id"
-                    v-bind:index="index"
-                    v-bind:item_count="item_count"
+                    v-bind:data_for_controls="{}"
                     v-bind:schema_data="schema_data"
     >
     </vue-plugin-rs>
@@ -64,7 +64,7 @@
 
             item_fields: {
                             caption: "Restaurants - Berkeley locations",
-                            fields: "name, address, city",  // fields to include in table; not to be confused with ALL available fields;
+                            fields: "name, notes, city",    // fields to include in table; not to be confused with ALL available fields;
                                                             //      this might be blank or missing
                                                             //      TODO: rename to something like `fields_to_show` (but avoid collision with local names)
                             filter_label: "Restaurants",
@@ -82,7 +82,7 @@
                              internal_id: 402529
                          },
 
-            edit_mode: true,
+            expose_controls: true,
 
             category_id: 12345,
             index: 0,

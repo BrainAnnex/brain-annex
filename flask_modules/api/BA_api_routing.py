@@ -482,6 +482,7 @@ class ApiRouting:
             """
             Get all Properties of the given Class node (as specified by its name),
             OR all field names found in a sample of nodes with the given label.
+            TODO: maybe split into 2 separate scenarios
 
             Optionally including indirect ones that arise thru chains of outbound "INSTANCE_OF" relationships.
             Return a JSON object with a list of the Property names of that Class;
@@ -498,7 +499,7 @@ class ApiRouting:
                         Either `class_name` or `label` must be present;
                         otherwise an error (but still a response code of 200) will be returned.
                         If `class_name` is missing, and `label` is used instead,
-                        the Property list is *estimated* by the label instead (and all other parameters are disregarded)
+                        then the Property list is *estimated* by the label instead (and all other parameters are disregarded)
 
             EXAMPLE invocations:
                 http://localhost:5000/BA/api/get_class_properties?json=%7B%22class_name%22%3A%20%22Quote%22%7D
@@ -580,7 +581,7 @@ class ApiRouting:
             try:
                 # Fetch all the Properties
                 if class_name:      # Lookup by Schema
-                    prop_list = GraphSchema.get_class_properties(**json_data, class_node=class_name)
+                    prop_list = GraphSchema.get_class_properties(**json_data, class_name=class_name)
                     #print("SCHEMA PATH.  prop_list: ", prop_list)
                 else:               # Lookup by a sample of nodes with the given label
                     prop_list = GraphSchema.db.sample_properties(label=label, sample_size=300)    # Estimate the list of properties, by label
@@ -608,7 +609,7 @@ class ApiRouting:
 
         @bp.route('/class-properties-full-data')
         @login_required
-        def class_properties_full_data_api():
+        def class_properties_full_data_GET():
             """
             Retrieve the full data (not just the names) for all the Properties of the given Schema Class,
             as a list of dictionaries.
@@ -617,10 +618,13 @@ class ApiRouting:
 
             ~~~ EXAMPLE ~~~
                 A GET request with the following URL:
-                http://localhost:5000/BA/api/class-properties-full-data?json={"class_name": "Quote"}
+                http://localhost:5000/BA/api/class-properties-full-data?json={"class_name": "Quote", "sample_size": 0}
 
             The JSON-encoded dict is expected to contain the following KEYS:
                 REQUIRED    "class_name"
+                OPTIONAL    "sample_size"
+                            "include_ancestors"
+                            "exclude_system"
 
             :return:
                 A response with Content-Type: application/json,
@@ -644,7 +648,7 @@ class ApiRouting:
                 response_data = {"status": "error", "error_message": err_details}
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
-            #print("In class_properties_full_data_api() -  request_parameters: ", request_parameters)
+            #print("In class_properties_full_data_GET() -  request_parameters: ", request_parameters)
 
 
             # Validate the OVERALL data type of the passed JSON data
@@ -656,17 +660,31 @@ class ApiRouting:
 
 
             try:
-                # Validate the presence of the required parameters (TODO: split into separate try/except)
-                assert "class_name" in request_parameters, \
-                    "A key named `class_name` must be present in the dictionary in the body of the request"
+                # Validate the presence of the required parameters
+                assert "class_name" in request_parameters
+            except Exception as ex:
+                err_details = "/class-properties-full-data : missing `class_name` required key in JSON data"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
-                result = GraphSchema.get_class_properties_full_data(class_name = request_parameters.get("class_name")) # A list
-                response_data = {"status": "ok", "payload": result}                 # Successful termination
+
+            try:
+                # The values below will be None, if there weren't passed
+                class_name = request_parameters.get("class_name")
+                include_ancestors = request_parameters.get("include_ancestors")
+                exclude_system = request_parameters.get("exclude_system")
+                sample_size = request_parameters.get("sample_size")
+                # `result` will be a list of dicts
+                result = GraphSchema.get_or_estimate_class_properties(class_name=class_name,
+                                                                     include_ancestors=include_ancestors, exclude_system=exclude_system,
+                                                                     sample_size=sample_size)
+                response_data = {"status": "ok", "payload": result}         # Successful termination
             except Exception as ex:
                 err_details = f"/class-properties-full-data : unable to retrieve the requested data.  " \
                               f"{exceptions.exception_helper(ex)}"
                 response_data = {"status": "error", "error_message": err_details}   # Error termination
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
 
             #print(f"/class-properties-full-data  is returning: `{response_data}`")
 
@@ -2911,7 +2929,7 @@ class ApiRouting:
             The 'insert_after_uri' attribute also can take the special values 'INSERT_AT_BOTTOM' or 'INSERT_AT_TOP'
         
             (Note: the "Dropzone" front-end module invokes this handler in a similar way,
-                   and in particular uses name="file")
+                   and in particular it uses name="file")
         
             If the upload is successful, a normal status (200) is returned (no response data);
                 in case of error, a server error status is return (500), with a text error message
@@ -2966,7 +2984,8 @@ class ApiRouting:
 
             #print(f"upload_media(): Attempting to move file `{src_fullname}` to `{dest_fullname}`")
             try:
-                shutil.move(src_fullname, dest_fullname)    # Note: this will fail if the path to the destination file isn't already present
+                #shutil.move(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present
+                MediaManager.move_file(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present
             except Exception:
                 # This failure might be due to the folder dest_folder not being present
                 print(f"upload_media(): Failed to move the uploaded file '{src_fullname}' to its intended destination '{dest_fullname}'.  "
@@ -2977,7 +2996,8 @@ class ApiRouting:
 
                 # Try again after creating the media folder (if that was indeed missing)
                 try:
-                    shutil.move(src_fullname, dest_fullname)
+                    MediaManager.move_file(src_fullname, dest_fullname)
+                    #shutil.move(src_fullname, dest_fullname)
                 except Exception as ex:
                     err_status = f"Error in moving the file to the intended final destination ({dest_folder}) after upload. {ex}"
                     return make_response(err_status, 500)

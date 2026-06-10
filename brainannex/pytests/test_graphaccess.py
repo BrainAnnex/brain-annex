@@ -386,7 +386,7 @@ def test_sample_properties(db):
     db.create_node(labels="Car")    # This node lacks any properties
     assert db.sample_properties(label="Car") == []
 
-    db.create_node(labels="Car")    # This node lacks any properties
+    db.create_node(labels="Car")    # This additional `Car` node also lacks any properties
     assert db.sample_properties(label="Car") == []
 
     db.create_node(labels="Person", properties={"name": "Julian"})
@@ -407,6 +407,12 @@ def test_sample_properties(db):
 
     result = db.sample_properties(label="Person", sample_size=1)    # Only sampling 1 node
     assert result == ["name"] or result == ["age"]                  # Only 1 property will be captured
+
+    with pytest.raises(Exception):
+        db.sample_properties(label="Person", sample_size=0)        # Bad value
+
+    with pytest.raises(Exception):
+        db.sample_properties(label="Person", sample_size="123")    # Bad value
 
     db.create_node(labels="Person", properties={"name": "Raul", "Medical #": "0425"})
     assert db.sample_properties(label="Person") == ["age", "Medical #", "name"]  # Sorted, disregarding capitalization

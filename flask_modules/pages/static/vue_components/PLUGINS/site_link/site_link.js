@@ -5,7 +5,7 @@
 Vue.component('vue-plugin-sl',
     {
         props: ['item_fields', 'item_metadata',
-                'edit_mode', 'category_id', 'index', 'item_count', 'schema_data'],
+                'expose_controls', 'category_id', 'schema_data', 'data_for_controls'],
         /*  item_fields:    An object with the editable properties of this Site Link item.
                                 EXAMPLE: {url: "http://example.com",
                                           name:"test",
@@ -25,11 +25,9 @@ Vue.component('vue-plugin-sl',
                                          entity_id:"8809"
                                         }
 
-            edit_mode:      A boolean indicating whether the page containing this element is in editing mode
-                                (to pass to the controls)  TODO: rename to "page_edit_mode"
+            expose_controls:    A boolean indicating whether to show all the standard editing controls
+                                    (indicating whether the page containing this element is in editing mode)
             category_id:    The entity ID of the Category page where this record is displayed (used when creating new records)
-            index:          The zero-based position of this Site Link item on the page
-            item_count:     The total number of Content Items (of all types) on the page [passed thru to the controls]
             schema_data:    A list of field names, in Schema order.
                                 EXAMPLE: ["url","name","date","comments","rating","read"]
          */
@@ -39,7 +37,7 @@ Vue.component('vue-plugin-sl',
 
             <table class='sl-main'>
 
-                <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
+                <tr v-if = "!editing_mode" @dblclick="enter_editing_mode()">
                     <td rowspan=2 class="no-borders" style="width: 5%">
                         <img src="/BA/pages/static/graphics/bookmark_32_60162.png">
                     </td>
@@ -48,7 +46,7 @@ Vue.component('vue-plugin-sl',
                     <td class="name">{{current_data.name}}</td>
                     <td class="small">{{current_data.read}}</td>
                 </tr>
-                <tr v-else @dblclick="enter_editing_mode">
+                <tr v-else @dblclick="enter_editing_mode()">
                     <td>
                         <span class="hint">url</span><br>
                         <textarea rows="4" cols="20"  v-model="current_data.url"  @change="set_name">
@@ -65,13 +63,13 @@ Vue.component('vue-plugin-sl',
                 </tr>
 
 
-                <tr v-if = "!editing_mode" @dblclick="enter_editing_mode">
+                <tr v-if = "!editing_mode" @dblclick="enter_editing_mode()">
                     <td class="small">{{current_data.date}}</td>
                     <td class="comments">{{current_data.comments}}</td>
                     <td><span v-show="current_data.rating">{{current_data.rating}}</span><span v-show="current_data.rating" class="star-yellow">&#9733;</span>
                     </td>
                 </tr>
-                <tr v-else @dblclick="enter_editing_mode">
+                <tr v-else @dblclick="enter_editing_mode()">
                     <td><span class="hint">date</span><br><input type="text" size="6" v-model="current_data.date"></td>
                     <td>
                         <span class="hint">comments</span><br>
@@ -113,7 +111,9 @@ Vue.component('vue-plugin-sl',
                   Intercept the following signal from child component:
                         v-on:edit-content-item   (which is not listened to by the root component)
             -->
-            <vue-controls v-bind:edit_mode="edit_mode"  v-bind:index="index"  v-bind:item_count="item_count"
+            <vue-controls v-bind:expose_controls="expose_controls"
+                          v-bind:limited_controls="editing_mode"
+                          v-bind:data_for_controls="data_for_controls"
                           v-on="$listeners"
                           v-on:edit-content-item="edit_content_item">
             </vue-controls>
@@ -126,7 +126,9 @@ Vue.component('vue-plugin-sl',
         // ------------------------------------   DATA   ------------------------------------
         data: function() {
             return {
-                editing_mode: (this.item_metadata.entity_id < 0  ? true : false), // Negative entity_id means "new Item"
+                editing_mode: (this.item_metadata.entity_id < 0  ? true : false), // Negative entity_id means "new Item" (automatically placed in editing mode)
+
+                //limited_controls: false,
 
                 // This object contains the values bound to the editing fields, initially cloned from the prop data;
                 //      it'll change in the course of the edit-in-progress
@@ -246,6 +248,8 @@ Vue.component('vue-plugin-sl',
              */
             cancel_edit()
             {
+                this.limited_controls = false;
+
                 // Restore the data to how it was prior to the aborted changes
                 this.current_data = Object.assign({}, this.original_data);  // Clone from original_data
 
@@ -407,9 +411,9 @@ Vue.component('vue-plugin-sl',
                 }
 
                 // Final wrap-up, regardless of error or success
-                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                this.waiting = false;           // Make a note that the asynchronous operation has come to an end
                 this.editing_mode = false;      // Exit the editing mode
-
+                this.limited_controls = false;
             } // finish_save
 
         }  // METHODS

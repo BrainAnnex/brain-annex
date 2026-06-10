@@ -7,6 +7,8 @@ import os
 import brainannex.exceptions as exceptions
 from brainannex import GraphSchema
 from PIL import Image
+import shutil
+from pathlib import Path
 
 
 
@@ -16,7 +18,19 @@ class MediaManager:
 
     Static class that does NOT get instantiated;
     however, it must be initialized with calls to set_media_folder() and set_default_folders()
-    """
+
+    Gradually, this library will conform to the following nomenclature;
+    given, for example, a file "C:\folder_1\folder_2\my_file.txt" :
+
+    | String                             | Term               |
+    | ---------------------------------- | ------------------ |
+    | `txt`                              | extension          |
+    | `my_file`                          | stem               |
+    | `my_file.txt`                      | filename           |
+    | `\folder_1\folder_2\`              | directory path     |
+    | `\folder_1\folder_2\my_file.txt`   | file path          |
+    | `C:\folder_1\folder_2\my_file.txt` | absolute file path |
+     """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
                         # EXAMPLE on Windows: "D:/media/"
@@ -414,12 +428,16 @@ class MediaManager:
     @classmethod
     def move_file(cls, src :str, dest :str) -> None:
         """
-        Rename (move) the specified file.
-        An Exception is raised if the file was not found,
-        or if another file with new name already exists
+        Rename (move) the specified file, possibly across disks.
+        An Exception is raised if:
+            * the file was not found
+            * if source and destination are the same
+            * another file with destination file path already exists
+            * bad file path for the destination (e.g. forbidden characters)
+            * if the directory path to the destination isn't already present
 
-        :param src:    Old full name (incl. path) of the file to rename
-        :param dest:   New full name (incl. path) of the file to rename
+        :param src:    Old file path of the file to rename
+        :param dest:   Desired new file path
         :return:       None
         """
         #print(f"move_file(): src='{src}' | dest: '{dest}'")
@@ -433,8 +451,50 @@ class MediaManager:
         assert not os.path.exists(dest), \
             f"move_file(): A file with the requested destination name (`{dest}`) already exists"
 
-        # Rename (move)
-        os.rename(src, dest)
+        cls.assert_valid_file_path(dest)
+
+        # Move (if on the same disk, it does a rename; if across disks, it copies first, and then deletes the original)
+        #os.rename(src, dest)    # TODO: doesn't work if the source and destination are on different disks!
+        shutil.move(src, dest)
+
+
+
+    @classmethod
+    def assert_valid_file_path(cls, file_path :str) -> None:
+        """
+        Raise an Exception if the given file path isn't valid.
+
+        EXAMPLES:   "a/bad?name" , or "COM" if on Windows, will raise Exceptions
+                    "a/good name! (Indeed, just so 123).txt"  will be fine
+
+        :param file_path:   A file part (or absolute file path), such as
+                                "folder_1/my_file"  or  "C:\folder_1\my_file.txt"
+        :return:            None
+        """
+        INVALID_CHARS = r'<>:"/\\|?*'
+
+        RESERVED_NAMES = {  # Forbidden on Windows7+ on as any path component
+            "CON", "PRN", "AUX", "NUL",
+            *(f"COM{i}" for i in range(1, 10)),
+            *(f"LPT{i}" for i in range(1, 10)),
+        }
+
+        p = Path(file_path)
+
+        for part in p.parts:
+            if part in (".", ".."):
+                continue
+
+            if part == p.anchor:
+                continue            # To accept the the filesystem root, such as "/", "\" or "D:\"
+
+            if any(ch in part for ch in INVALID_CHARS):
+                raise ValueError(f"Invalid name of filepath component: {part}")
+
+            if os.name == "nt":     # If on Windows7+ or Windows Server variants
+                stem = Path(part).stem.upper()
+                if stem in RESERVED_NAMES:
+                    raise ValueError(f"Reserved Windows name of filepath component: `{part}`")
 
 
 
@@ -449,6 +509,7 @@ class MediaManager:
         :return:    The first non-allowed character, if applicable;
                         if all characters are good, return ""
         """
+        #TODO: if on Window, also reject reserved names; see secure_filename_BA()
         ALLOWED_CHARS = " .,-_()&@0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
         for character in filename:

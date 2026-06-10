@@ -61,10 +61,9 @@ Vue.component('vue-database-overview',
                         <vue-record-cluster
                             v-bind:item_fields="{filter_label: label, n_group: 3}"
                             v-bind:item_metadata="item_metadata"
-                            v-bind:edit_mode="false"
+                            v-bind:expose_controls="false"
                             v-bind:category_id="0"
-                            v-bind:index="0"
-                            v-bind:item_count="0"
+                            v-bind:data_for_controls="{}"
                             v-bind:schema_data="['class', 'order_by', 'clause', 'n_group', 'caption']"
                         >
                         </vue-record-cluster>
