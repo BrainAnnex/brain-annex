@@ -515,7 +515,7 @@ Vue.component('vue-record-cluster',
                 if the URL is very long, show it in abbreviated form in the hyperlink text.
                 In all other cases, just return the argument.
 
-                Note: this function is also found in records.js and single_records.js
+                Note: this function is also found in records.js and single_record.js
              */
             {
                 const max_url_len = 35;     // For text to show, NOT counting the protocol part (such as "https://")

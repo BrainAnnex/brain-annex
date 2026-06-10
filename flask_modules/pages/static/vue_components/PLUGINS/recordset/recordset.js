@@ -140,6 +140,11 @@ Vue.component('vue-plugin-rs',
                         <tr>
                             <th v-for="field_name in headers_to_include" class="repeated">
                                 {{insert_blanks(field_name)}}
+                                <img @click="remove_from_filter(field_name)" class="clickable-icon"
+                                 src='/BA/pages/static/graphics/block_24_10233565.png'
+                                 title="Remove from filter. The data won't be affected"
+                                 alt="Remove from filter. The data won't be affected"
+                                 style="margin-left:10px">
                             </th>
                             <th v-show="editing_mode">
                                 NEW RECORD
