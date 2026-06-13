@@ -57,7 +57,16 @@ Vue.component('vue-plugin-f',
                         {{cards[deck_position][current_data.sideA_field]}}
                     </p>
                     <br><br><br><br><br><br><br>
-                    <span class="instructions">{{deck_position+1}} out of {{number_cards}}.  Click anywhere to FLIP the card</span>
+
+                    <input v-if="deck_position > 0" @click.stop="go_back"
+                           type="image" src="/BA/pages/static/graphics/left_arrow_blue_circle_24.png"
+                           alt="go BACK to previous card (see it again)" title="go BACK to previous card (see it again)"
+                    >
+                    <span v-else>&nbsp;</span>
+
+                    <span class="instructions" style="float: right; margin-right: 5px">
+                        {{deck_position+1}} out of {{number_cards}}.  Click anywhere to FLIP the card...
+                    </span>
                 </div>
 
 
@@ -102,7 +111,9 @@ Vue.component('vue-plugin-f',
                     </p>
 
                     <br>
-                    <span class="instructions">Click anywhere to ADVANCE to the next card</span>
+                    <span class="instructions">
+                        Click anywhere to ADVANCE to the next card...
+                    </span>
                 </div>
 
 
@@ -335,6 +346,21 @@ Vue.component('vue-plugin-f',
                 }
 
                 return arr;
+            },
+
+
+
+            /**
+             * Return to the previous deck card
+             */
+            go_back()
+            {
+                if (this.deck_position == 0)  {
+                    alert("We are at the beginning of the deck");
+                    return;
+                }
+
+                this.deck_position -= 1;
             },
 
 

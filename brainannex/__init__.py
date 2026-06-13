@@ -1,12 +1,12 @@
-__version__ = "5.0.0rc9_INTERIM_17"     # IN-PROGRESS
+__version__ = "5.0.0rc9_INTERIM_17"
 # TODO: consider using names such as 5.0.0-rc.8.6 , to conform to https://semver.org/
 
 # IMPORTANT: ONLY 1 of the following small group of InterGraph imports
 #            should be uncommented,
 #            depending on the graph database being used
 
-#from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph      # (Un)comment AS NEEDED!
-from brainannex.intergraph_neo4j_5.intergraph_neo4j_5 import InterGraph     # (Un)comment AS NEEDED!
+from brainannex.intergraph_neo4j_4.intergraph_neo4j_4 import InterGraph      # (Un)comment AS NEEDED!
+#from brainannex.intergraph_neo4j_5.intergraph_neo4j_5 import InterGraph     # (Un)comment AS NEEDED!
 
 from brainannex.graph_access import GraphAccess
 from brainannex.cypher_utils import (CypherBuilder, CypherUtils)

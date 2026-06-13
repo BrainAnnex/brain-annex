@@ -164,7 +164,8 @@ class InterGraph:
         :return:    None
         """
         q = "MATCH (n) RETURN n LIMIT 1"
-        self.query(q)
+        with self.driver.session() as new_session:
+            new_session.run(q)
 
 
 
@@ -174,7 +175,34 @@ class InterGraph:
 
         :return:    A string with the version number
         """
+        print("*** WARNING: version() is deprecated; use driver_version() instead")
+        return self.driver_version()
+
+
+    def driver_version(self) -> str:
+        """
+        Return the version of the Neo4j driver being used.  EXAMPLE: "4.4.13"
+
+        :return:    A string with the version number
+        """
         return neo4j_driver_version
+
+
+    def server_version(self) -> str:
+        """
+        Return the version of the Neo4j server that we're connected to.  EXAMPLE: "4.4.38"
+
+        :return:    A string with the Neo4j server version number
+        """
+        with self.driver.session() as new_session:
+            q = """
+            CALL dbms.components()
+            YIELD name, versions
+            RETURN versions[0] AS VERSION
+            """
+            rec = new_session.run(q).single()
+
+            return rec["VERSION"]
 
 
 
