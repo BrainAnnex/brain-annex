@@ -234,7 +234,7 @@ Vue.component('vue-plugin-rs',
                     <p style="margin-left: 10px">
                         Filter label: "{{current_data.filter_label}}"<br>
                         Order by: "{{current_data.order_by}}"<br>
-                        Fields to include (blank = ALL): "{{current_data.fields}}"<br>
+                        Fields to include (blank = ALL): "{{fields_to_show}}"<br>
                         Filter: \`{{current_data.clause_key}}\` = <span style="background-color: #cdf6fd">{{current_data.clause_value}}</span>
                            (If value is string, then case-sensitive CONTAINS)<br>
                         Number records shown per page: {{current_data.n_group}}<br>
@@ -274,15 +274,6 @@ Vue.component('vue-plugin-rs',
                                 <span style="color:gray">(Comma-separated field names, optionally followed by DESC)</span>
                             </td>
                         </tr>
-
-                        <!--
-                        <tr>
-                            <td style="text-align: right">Fields to include (blank = ALL)</td>
-                            <td>
-                                <input v-model="current_data.fields" size="70">
-                            </td>
-                        </tr>
-                        -->
 
                         <tr>
                             <td style="text-align: right">Filter</td>
@@ -328,9 +319,9 @@ Vue.component('vue-plugin-rs',
                             </td>
                         </tr>
 
-
                     </table>
                 </div>
+
 
 
                 <!--  STANDARD CONTROLS (a <SPAN> element that can be extended with extra controls),
@@ -374,7 +365,7 @@ Vue.component('vue-plugin-rs',
                 headers: [],            // A complete list of ALL the names of the table columns
                                         // EXAMPLE:  ["quote", "attribution", "notes"]
 
-                schema_info: [],        /*  EXAMPLE (when Schema data is available):
+                schema_info: [],        /*  Schema data about each Property, is available.  EXAMPLE:
                                             [   {'name': 'notes', 'entity_id': 'schema-2', '_internal_id': 123,
                                                  'dtype': 'string', 'format': '6,50', 'required': true}
                                             ]
@@ -404,12 +395,6 @@ Vue.component('vue-plugin-rs',
                 size_choices: [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,75,100,125,150,200,250,300,400,500],
                                         // Options for pull-down menu (of number of records to show per page)
 
-                fields_to_show: [],             // Array of chosen field names.
-                                                // Note: kept separate from the field in the object "this.current_data",
-                                                //       in order to be reactive
-                                                //       when changed by the multiselect menu
-                fields_to_show_pre_edit: [],    // Array of chosen field names; a backup copy, in case edit is cancelled
-
                 record_being_editing: null, // The "ID" of the record currently being edited, if any;
                                             // for now, only one record at a time may be edited
 
@@ -431,6 +416,15 @@ Vue.component('vue-plugin-rs',
 
                 // Clone of the above object, used to restore the original data in case of a Cancel or failed save
                 original_data: Object.assign({}, this.item_fields),   // Initially clone from the original data passed to this component
+
+                fields_to_show: [],             // Array of chosen field names.
+                                                // Note: kept separate from "this.current_data.fields",
+                                                //       in the form of an array rather than a string,
+                                                //       in order to be reactive
+                                                //       when changed by the multiselect menu
+
+                fields_to_show_pre_edit: [],    // Array of chosen field names; a backup copy, in case edit is cancelled
+
 
                 // Private copy of the metadata
                 // EXAMPLE: {class_name: "Recordset", class_handler: "recordsets", pos: 12, entity_id: "rs-4",
@@ -478,7 +472,7 @@ Vue.component('vue-plugin-rs',
 
             let fields_array;
 
-            // Note that current_data.fields may be missing
+            // Note that current_data.fields (passed by the server when creating this component) may be missing
             if (this.current_data.fields === null || this.current_data.fields === undefined)
                 fields_array = [];
             else
@@ -487,8 +481,8 @@ Vue.component('vue-plugin-rs',
             this.fields_to_show = fields_array;
             this.fields_to_show_pre_edit = Array.from(fields_array);     // Clone of array, to store a backup copy, in case edit is cancelled
 
-            this.current_data.fields_array =  Object.values(fields_array);       // TODO: phase out?
-            this.original_data.fields_array = Object.values(fields_array);       // TODO: phase out?
+            //this.current_data.fields_array =  Object.values(fields_array);       // TODO: phase out?
+            //this.original_data.fields_array = Object.values(fields_array);       // TODO: phase out?
 
 
 
@@ -497,7 +491,8 @@ Vue.component('vue-plugin-rs',
                 return;
             }
 
-            this.get_fields();      // Fetch from the server the field names for this Recordset
+            this.get_fields();      // Fetch from the server all the field names
+                                    // (and Schema data, if available, for this Recordset
 
             this.get_recordset(1);  // Fetch contents of the 1st block of the Recordset from the server
         },
@@ -602,18 +597,23 @@ Vue.component('vue-plugin-rs',
 
             /**
              *  Generate an array of headers to use for the tabular listings,
-             *  from a string of comma-separated field names
+             *  from a string of comma-separated field names.
+             *  Argument fields is a string of comma-separated field names.  EXAMPLE: "French, English, notes"
              */
-            string_to_array(s)
+            string_to_array(fields)
             {
-                //console.log(`string_to_array() called on argument: ${s}`);
+                //console.log(`string_to_array() called on argument: ${fields}`);
 
-                const fields = s;    // String of comma-separated field names.  EXAMPLE: "French, English, notes"
+                if (typeof fields != "string")  {
+                    alert("Internal error: reload the page.  The function string_to_array() was called with a non-string argument");
+                    return;
+                }
 
                 if (fields.trim() == "")
-                    return this.headers;    // Use all the headers
+                    return this.headers;    // Use ALL the headers
 
-                const arr = fields.split(",").map(x => x.trim());    // Turn into array, and zap leading/trailing blanks from each entry
+                // Turn into array, and zap leading/trailing blanks from each entry
+                const arr = fields.split(",").map(x => x.trim());
 
                 return arr;
             },
@@ -931,7 +931,7 @@ Vue.component('vue-plugin-rs',
 
             /**
              * Send a request to the server, to update or create this RECORDSET's definition
-             * (note: NOT to be confused with editing of individual records)
+             * (note: NOT to be confused with the editing of individual records)
              */
             save_recordset_edit()
             {
@@ -953,9 +953,9 @@ Vue.component('vue-plugin-rs',
 
                                     // Node properties (in particular,
                                     //     note that "class" and "label" are properties, not Schema data)
-                                    filter_label: this.current_data.filter_label,     // Used to identify nodes considered part of  this Recordset
+                                    filter_label: this.current_data.filter_label,   // Used to identify nodes considered part of  this Recordset
                                     //fields: this.current_data.fields,
-                                    fields: this.fields_to_show.join(", "),             // EXAMPLE: "name, city, rating"
+                                    fields: this.fields_to_show.join(", "),         // EXAMPLE: "name, city, rating"
                                     n_group: n_group,
                                     order_by: this.current_data.order_by,
                                     clause_key: this.current_data.clause_key,
@@ -1011,21 +1011,27 @@ Vue.component('vue-plugin-rs',
                     else
                         this.status_message = `Recordset update completed`;
 
+                    // Synchronize the main `current_data` object with the part stored separately
+                    this.current_data.fields = this.fields_to_show.join(',');   // Turn into a comma-separated string
+
                     // Inform the parent component of the new state of the data; pass clones of the relevant objects
                     const signal_data = {
                         item_fields:   Object.assign({}, this.current_data),
                         item_metadata: Object.assign({}, this.current_metadata)
                     };
                     console.log("'Recordsets' component sending `updated-item` SIGNAL to its parent, with the following data:");
-                    console.log(structuredClone(signal_data));     // Log a frozen deep snapshot of the object
-                    this.$emit('updated-item', signal_data);
+                    console.log(structuredClone(signal_data));      // Log a frozen deep snapshot of the object
+                    this.$emit('updated-item', signal_data);        // Send to the parent component
 
                     // Synchronize the baseline data to the current one
                     this.original_data = Object.assign({}, this.current_data);          // Clone
                     this.fields_to_show_pre_edit = Array.from(this.fields_to_show);     // Clone
 
-                    this.get_fields();          // Fetch from the server the field names for this Recordset
-                    this.get_recordset(1);      // Fetch contents of the 1st block of the Recordset from the server
+                    this.get_fields();          // Fetch from the server all the field names for this Recordset,
+                                                //      as well as their Schema data, if available.
+                                                //      This is done here, because the edit
+                                                //      might have changed the recordset's label to filter by
+                    this.get_recordset(1);      // Fetch contents of the 1st block of Recordset records from the server
                 }
                 else  {             // Server reported FAILURE
                     this.error = true;
@@ -1152,7 +1158,8 @@ Vue.component('vue-plugin-rs',
                     // Extract all the Property names, as a separate array
                     this.headers = server_payload.map(obj => obj.name);
 
-                    // Create, and store, an object to permit lookup of the Properties' Schema data by the Property name
+                    // Create, and store, an object to permit lookup
+                    //      of the Properties' Schema data by the Property name
                     this.schema_lookup = Object.fromEntries(
                                                                 server_payload.map(obj => [obj.name, obj])
                                                            );
