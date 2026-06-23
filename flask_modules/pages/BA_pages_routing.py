@@ -269,15 +269,15 @@ class PagesRouting:
             #print(f"User is logged in as: `{current_user.username}`")
             template = "admin.htm"
 
-            current_db_index = cls.config_pars["DB_DEFAULT"]
+            current_db_index = cls.config_pars["DB_DEFAULT"]        # 1-based indexing
 
             available_dbases = [cls.config_pars[f"DB_NICKNAME_{i}"]
-                                     for i in range(1, cls.config_pars["DB_COUNT"]+1 )]
+                                     for i in range(1, cls.config_pars["DB_COUNT"]+1 )]     # 1-based indexing
 
             return render_template(template,
                                    site_data = cls.site_data,
                                    current_page=request.path, username=current_user.username,
-                                   current_db_nickname=available_dbases[current_db_index],
+                                   current_db_nickname=available_dbases[current_db_index-1],
                                    all_db_nicknames=available_dbases
                                    )
 
