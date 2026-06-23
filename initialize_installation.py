@@ -16,6 +16,7 @@
 
 import os
 import getpass
+#import app_build
 from configparser import ConfigParser
 from brainannex import GraphAccess, GraphSchema, UserManager
 
@@ -27,7 +28,7 @@ print("Reading the credentials STORED in the configuration file(s):\n")
 
 ###  IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS  ###
 
-def extract_par(name, d, display=True) -> str:
+def _extract_par(name, d, display=True) -> str:
     if name not in d:
         raise Exception(f"The configuration file needs a line with a value for {name}")
     value = d[name]
@@ -38,6 +39,7 @@ def extract_par(name, d, display=True) -> str:
 
     return value
 ##############################################
+
 
 
 config = ConfigParser()
@@ -75,12 +77,32 @@ if "SETTINGS" not in config:
 
 SETTINGS = config['SETTINGS']
 
-NEO4J_HOST = extract_par("NEO4J_HOST", SETTINGS)
-NEO4J_USER = extract_par("NEO4J_USER", SETTINGS)
-NEO4J_PASSWORD = extract_par("NEO4J_PASSWORD", SETTINGS, display=False)
-MEDIA_FOLDER = extract_par("MEDIA_FOLDER", SETTINGS)
-UPLOAD_FOLDER = extract_par("UPLOAD_FOLDER", SETTINGS)
-PORT_NUMBER = extract_par("PORT_NUMBER", SETTINGS)       # The Flask default is 5000
+
+DB_COUNT = _extract_par("DB_COUNT", SETTINGS)
+try:
+    DB_COUNT = int(DB_COUNT)
+except Exception:
+    raise Exception(f"The passed configuration value for DB_COUNT ({DB_COUNT}) is not an integer as expected; "
+                    f"this value is meant to be the number of databases whose credentials are provided in the config.ini file")
+
+DB_DEFAULT = _extract_par("DB_DEFAULT", SETTINGS)
+try:
+    DB_DEFAULT = int(DB_DEFAULT)
+except Exception:
+    raise Exception(f"The passed configuration value for DB_DEFAULT ({DB_DEFAULT}) is not an integer as expected; "
+                    f"this value is meant to be the index of the database that is used at start time")
+
+
+i = DB_DEFAULT
+
+NEO4J_HOST = _extract_par(f"DB_HOST_{i}", SETTINGS)
+NEO4J_USER = _extract_par(f"DB_USERNAME_{i}", SETTINGS)
+NEO4J_PASSWORD = _extract_par(f"DB_PASSWORD_{i}", SETTINGS, display=False)
+
+
+MEDIA_FOLDER = _extract_par("MEDIA_FOLDER", SETTINGS)
+UPLOAD_FOLDER = _extract_par("UPLOAD_FOLDER", SETTINGS)
+PORT_NUMBER = _extract_par("PORT_NUMBER", SETTINGS)       # The Flask default is 5000
 
 try:
     PORT_NUMBER = int(PORT_NUMBER)
@@ -94,7 +116,8 @@ except Exception:
 if not NEO4J_HOST \
     or not NEO4J_USER \
        or not NEO4J_PASSWORD:
-    raise Exception("To run this script, ALL of the following variables must be set in the config file(s): NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD")
+    raise Exception(f"To run this script, ALL of the following variables must be set in the config file(s): "
+                    f"DB_HOST_{i}, DB_USERNAME_{i}, DB_PASSWORD_{i}")
 
 
 # Attempt to connect to the Neo4j database from credentials in the config file(s)
@@ -110,31 +133,6 @@ print("\nThe stored credentials were successfully validated; now checking if dat
 GraphSchema.set_database(db)
 UserManager.set_database(db)
 
-'''
-number_nodes = db.count_nodes()
-
-if number_nodes > 0:
-    print(f"\nData already present in the database ({number_nodes} nodes found); "
-          f"the Schema is assumed to be present, and will NOT be imported\n")
-else:
-    print("\nThe database is empty; now importing/creating the Schema...")
-
-    schema_datafile = "init/MINIMAL_SCHEMA_TO_IMPORT.json"
-    try:
-        with open(schema_datafile, 'r') as fh:
-            file_contents = fh.read()
-            #print(f"Contents of schema file to import:\n{file_contents}")
-    except Exception:
-        raise Exception(f"File I/O failure to read schema datafile `{schema_datafile}`.  Make sure the file is present.")
-
-    print(f"The schema datafile `{schema_datafile}` was found and successfully read")
-    try:
-        details = db.import_json_dump(file_contents)    # THE ACTUAL IMPORT TAKES PLACE HERE
-    except Exception as ex:
-       raise Exception("Import of JSON schema data file `{schema_datafile}` failed: {ex}")
-
-    print(f"The schema data was successfully imported into the database")
-'''
 
 
 # Attempt to create the Schema for the `User` class.  If it already exists, no action will be taken

@@ -129,6 +129,8 @@ def load_config(app :Flask) -> None:
     :param app: An object of type "Flask"
     :return:    None
     """
+    #TODO: write a sub-routine that doesn't require the Flask app,
+    #      and stores all the results in a dict  (for the benefit of initialize_installation.py, etc)
     config = ConfigParser()
 
     # Check whether the default and the custom config files are present
