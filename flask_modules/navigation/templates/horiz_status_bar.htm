@@ -31,7 +31,9 @@
 
 
 <div class='horiz-status-bar  dark-background'>
-    <span class='site-name'>{{site_data.branding if (site_data is defined and site_data.branding is defined) else "Brain Annex"}}</span>
+    <span class='site-name'>
+        <a href="/BA/pages/viewer">{{site_data.branding if (site_data is defined and site_data.branding is defined) else "Brain Annex"}}</a>
+    </span>
     <span class='header-title'>{{header_title if header_title is defined else (username if site_data is defined)}}</span>
     <a href='#' style='margin-left:130px'>^TOP</a>
 </div>

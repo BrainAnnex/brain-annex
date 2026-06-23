@@ -2,6 +2,8 @@
 {#  Flask-passed parameters:
         site_data
         current_page, username
+        current_db_nickname         EXAMPLE: "remote (master)"
+        all_db_nicknames            EXAMPLE: ["remote (master)", "local (slave)"]
  #}
 
 <html lang="en">
@@ -38,6 +40,8 @@
     <div class="content-block-title">Database Overview</div>
 
     <p style="padding:25px">
+        Current database: "{{current_db_nickname}}"<br><br>
+        Available databases: {{all_db_nicknames}}<br><br><br>
         <a href="/BA/pages/database-overview">Database in Tabular form, and Schema Documentation</a>
     </p>
 </div>

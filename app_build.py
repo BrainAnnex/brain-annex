@@ -26,12 +26,13 @@ from app_libraries.initialize import InitializeBrainAnnex
 
 
 
-def create_app(db=None, test=False, config_override=None):
+def create_app(db=None, test=False, config_override=None) -> Flask:
     """
     Create and return the Flask object,
     upon reading in the config files
 
-    :param db:
+    :param db:              Database object (currently only used for pytests)
+    :param test:
     :param config_override: NOT CURRENTLY USED
     :return:                The instantiated Flask object
     """
@@ -79,47 +80,30 @@ def create_app(db=None, test=False, config_override=None):
 
     ### INITIALIZATION of various static classes that need the database object
     #   (to avoid multiple dbase connections)
-    if db is None:
-        APP_NEO4J_DBASE = GraphAccess(host=app.config['NEO4J_HOST'],
-                                      credentials=(app.config['NEO4J_USER'], app.config['NEO4J_PASSWORD']))
+    if db is not None:
+        APP_GRAPH_DBASE = db
     else:
-        APP_NEO4J_DBASE = db
+        '''
+        APP_GRAPH_DBASE = GraphAccess(host=app.config['NEO4J_HOST'],
+                                      credentials=(app.config['NEO4J_USER'], app.config['NEO4J_PASSWORD']))
+        '''
 
-    app.config['DATABASE'] = APP_NEO4J_DBASE
+        db_index = app.config['DB_DEFAULT']
+        print("Attempting to connect to database ", app.config[f"DB_HOST_{db_index}"])
+
+        APP_GRAPH_DBASE = GraphAccess(host=app.config[f"DB_HOST_{db_index}"],
+                                      credentials=(app.config[f"DB_USERNAME_{db_index}"], app.config[f"DB_PASSWORD_{db_index}"]))
+
+    app.config['DATABASE'] = APP_GRAPH_DBASE
 
 
-    #initialize_services(app)
-    InitializeBrainAnnex.set_dbase(APP_NEO4J_DBASE)
+    InitializeBrainAnnex.set_dbase(APP_GRAPH_DBASE)
     InitializeBrainAnnex.set_folders(app.config['MEDIA_FOLDER'], app.config['LOG_FOLDER'])
 
     #site_pages = get_site_pages()     # Data for the site navigation
 
 
-
-    ### DEFINE THE HIGH-LEVEL ROUTING
-    #   Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
-    #   and specify the URL prefixes to use for the various modules
-    #   Note that all the classes used here are STATIC classes, that don't get initialized.
-    #   ==> TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
-
-    #register_routes(app)
-
-    # The site's home (i.e. top-level) pages, incl. login
-    HomeRouting.setup(app)
-
-    # The navbar
-    Navigation.setup(app)
-
-    # The web app (UI for admin and Multimedia Content Management)
-    PagesRouting.setup(app)
-
-    # The web API endpoints
-    ApiRouting.setup(app)
-
-    # Examples of generic pages and web API
-    SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
-    SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
-
+    initialize_services(app)
 
 
     # Configure the Jinja template engine embedded in Flask
@@ -134,20 +118,20 @@ def create_app(db=None, test=False, config_override=None):
 
 
 
-def load_config(app) -> None:
+def load_config(app :Flask) -> None:
     """
-    Attempt to import parameters from the default config file first ('config.defaults.ini'),
-    then from the user-customized file 'config.ini',
-    possibly overwriting some or all values from the default config file
-    with those from 'config.ini', which takes priority.
+    Attempt to import all the expected  parameters from the default config file first ('config.defaults.ini'),
+    then from the user-customized file 'config.ini';
+    in case of value conflict, 'config.ini', which takes priority.
 
     The loaded values are stored in the passed `app` object
 
+    :param app: An object of type "Flask"
     :return:    None
     """
     config = ConfigParser()
 
-    # Check whether the default and and custom config files are present
+    # Check whether the default and the custom config files are present
     found_files = config.read(['config.defaults.ini', 'config.ini'])
     #print("found_files: ", found_files)    # This will be a list of the names of the config files that were found
 
@@ -161,7 +145,7 @@ def load_config(app) -> None:
     if found_files == ['config.ini']:
         print("A local, customized, version of the config file found ('config.ini'); all configuration will be based on this file")
     else:
-        print("Two config files found: settings in 'config.ini' will take priority, and over-ride any counterpart in 'config.defaults.ini'")
+        print("Two config files found: settings in 'config.ini' (your customized file) will take priority, and over-ride any counterpart in 'config.defaults.ini'")
 
 
     #print("Sections found in config file(s): ", config.sections())    # EXAMPLE: ['SETTINGS']
@@ -177,12 +161,36 @@ def load_config(app) -> None:
     SETTINGS = config['SETTINGS']
     #print(SETTINGS)                 # EXAMPLE:  <Section: SETTINGS>
 
-    app.config['NEO4J_HOST'] = _extract_par("NEO4J_HOST", SETTINGS)
-    app.config['NEO4J_USER'] = _extract_par("NEO4J_USER", SETTINGS)
-    app.config['NEO4J_PASSWORD'] = _extract_par("NEO4J_PASSWORD", SETTINGS, display=False)
+
+    ###  PART 1 : the database credentials  ###
+
+    DB_COUNT = _extract_par("DB_COUNT", SETTINGS)
+    try:
+        app.config['DB_COUNT'] = int(DB_COUNT)
+    except Exception:
+        raise Exception(f"The passed configuration value for DB_COUNT ({DB_COUNT}) is not an integer as expected; "
+                        f"this value is meant to be the number of databases whose credentials are provided in the config.ini file")
+
+    DB_DEFAULT = _extract_par("DB_DEFAULT", SETTINGS)
+    try:
+        app.config['DB_DEFAULT'] = int(DB_DEFAULT)
+    except Exception:
+        raise Exception(f"The passed configuration value for DB_DEFAULT ({DB_DEFAULT}) is not an integer as expected; "
+                        f"this value is meant to be the index of the database that is used at start time")
 
 
-    DEPLOYMENT = _extract_par("DEPLOYMENT", SETTINGS)        # Should be either "FLASK" or "EXTERNAL"
+    for i in range(1, app.config["DB_COUNT"]+1):
+        app.config[f"DB_HOST_{i}"] = _extract_par(f"DB_HOST_{i}", SETTINGS)
+        app.config[f"DB_USERNAME_{i}"] = _extract_par(f"DB_USERNAME_{i}", SETTINGS)
+        app.config[f"DB_PASSWORD_{i}"] = _extract_par(f"DB_PASSWORD_{i}", SETTINGS, display=False)
+        app.config[f"DB_NICKNAME_{i}"] = _extract_par(f"DB_NICKNAME_{i}", SETTINGS)
+
+
+
+
+    ###  PART 2 : deployment parameters  ###
+
+    DEPLOYMENT = _extract_par("DEPLOYMENT", SETTINGS)       # Should be either "FLASK" or "EXTERNAL"
                                                             #     use FLASK if starting the app with Flask
                                                             #     use EXTERNAL if starting the app with gunicorn (or other WSGI HTTP Server)
 
@@ -201,6 +209,8 @@ def load_config(app) -> None:
 
 
 
+    ###  PART 3 : folder locations  ###
+
     # TODO: add the final slash to all folders, if not already present
     app.config['MEDIA_FOLDER'] = _extract_par("MEDIA_FOLDER", SETTINGS)
     app.config['UPLOAD_FOLDER'] = _extract_par("UPLOAD_FOLDER", SETTINGS)    # A temporary folder for file uploads.  EXAMPLE: "/tmp/"
@@ -210,6 +220,9 @@ def load_config(app) -> None:
     app.config['INTAKE_FOLDER'] = _extract_par("INTAKE_FOLDER", SETTINGS)
     app.config['OUTTAKE_FOLDER'] = _extract_par("OUTTAKE_FOLDER", SETTINGS)
 
+
+
+    ###  PART 4 : other parameters  ###
 
     # List of plugins to be used by the web app
     PLUGINS = _extract_par("PLUGINS", SETTINGS)
@@ -245,12 +258,13 @@ def _extract_par(name :str, d, display=True) -> str:
     :param d:       Object of type "configparser.SectionProxy" ;
                         can be treated as a python dict
     :param display: Flag indicating whether to show the value of the parameter
-                        in the printout
+                        in the printout; if False, "*********" will be shown instead of the value
     :return:        A string with the value of the requested parameter
                         (note: this will always be a string, even for parameter values such as 80 or True)
     """
     if name not in d:
-        raise Exception(f"The configuration file needs a line with a value for {name}")
+        raise Exception(f"The `config.ini` configuration file needs a line providing a value for {name}. "
+                        f"Example of configuration file: https://github.com/BrainAnnex/brain-annex/blob/main/config.defaults.ini")
 
     value = d[name]
     if display:
@@ -259,3 +273,36 @@ def _extract_par(name :str, d, display=True) -> str:
         print(f"{name}: *********")
 
     return value
+
+
+
+def initialize_services(app :Flask) -> None:
+    """
+    Define the high-level routing.
+    Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
+    and specify the URL prefixes to use for the various modules
+
+    :param app: An object of type "Flask"
+    :return:    None
+    """
+    ###
+    #   Note that all the classes used here are STATIC classes, that don't get initialized.
+    #   ==> TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
+
+    #register_routes(app)
+
+    # The site's home (i.e. top-level) pages, incl. login
+    HomeRouting.setup(app)
+
+    # The navbar
+    Navigation.setup(app)
+
+    # The web app (UI for admin and Multimedia Content Management)
+    PagesRouting.setup(app)
+
+    # The web API endpoints
+    ApiRouting.setup(app)
+
+    # Examples of generic pages and web API
+    SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
+    SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
