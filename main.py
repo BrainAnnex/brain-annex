@@ -12,11 +12,11 @@ from app_build import create_app
 
 
 
-# Instantiate the object for the Flask app
-#       (exposed, at the top level of this module,
+# Read in all the configuration variables, and instantiate the object for the Flask app
+#       (exposed at the top level of this module,
 #        so that this main program may also be started from the CLI
 #        with the "flask run" command)
-app = create_app()  # Object of type "'flask.app.Flask'"
+app = create_app()  # Object of type "flask.app.Flask"
 
 
 ###  Fire up the web app
