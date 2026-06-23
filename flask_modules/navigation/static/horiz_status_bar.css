@@ -1,5 +1,5 @@
 /*
-    Horizontal status bar
+    Horizontal status bar (a thin fixed element at the top of the page)
  */
 
 
@@ -39,4 +39,8 @@ div.horiz-status-bar  span.header-title  {
     font-weight:bold;
     color:#65DC65;
     margin-left:150px;
+}
+
+div.horiz-status-bar  a:hover  {
+    text-decoration: none !important;
 }

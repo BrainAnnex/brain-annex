@@ -34,13 +34,13 @@ class PagesRouting:
     template_folder = "templates"       # Location of HTML templates (Relative to this module's location)
     static_folder = "static"            # Location of website's static content (Relative to this module's location)
     #static_url_path = "/assets"        # Not used by this module
-    config_pars = {}                    # Dict with all the app configuration parameters
+    config_pars = {}                    # Dict with ALL of the app configuration parameters
 
     site_data = {}                      # Dict of general site data to pass to most or all of the Flask templates;
                                         # it contains the keys:
                                         #   "site_pages"
                                         #   "branding"
-                                        #   "version"
+                                        #   "version"   EXAMPLE: "5.0.0rc9"
 
 
 
@@ -262,17 +262,24 @@ class PagesRouting:
         @login_required
         def admin() -> str:
             """
-            Generate a general administrative page
-            (currently for import/exports, and a link to the Schema-Editor page)
+            Generate a general administrative page (overview, import/export, schema administration, etc)
 
             EXAMPLE invocation: http://localhost:5000/BA/pages/admin
             """
             #print(f"User is logged in as: `{current_user.username}`")
             template = "admin.htm"
 
+            current_db_index = cls.config_pars["DB_DEFAULT"]
+
+            available_dbases = [cls.config_pars[f"DB_NICKNAME_{i}"]
+                                     for i in range(1, cls.config_pars["DB_COUNT"]+1 )]
+
             return render_template(template,
                                    site_data = cls.site_data,
-                                   current_page=request.path, username=current_user.username)
+                                   current_page=request.path, username=current_user.username,
+                                   current_db_nickname=available_dbases[current_db_index],
+                                   all_db_nicknames=available_dbases
+                                   )
 
 
 
