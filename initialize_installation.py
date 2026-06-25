@@ -16,36 +16,15 @@
 
 import os
 import getpass
-#import app_build
+import read_config
 from configparser import ConfigParser
 from brainannex import GraphAccess, GraphSchema, UserManager
 
 
-print("\n--- Adding `User` Schema nodes (if needed) to the database, "
+
+print("\n--- INITIALIZATION of USER: adding `User` Schema nodes (if needed) to the database, "
       "and creating a new admin user to log into the BrainAnnex web app...\n")
-print("Reading the credentials STORED in the configuration file(s):\n")
 
-
-###  IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS  ###
-
-def _extract_par(name, d, display=True) -> str:
-    if name not in d:
-        raise Exception(f"The configuration file needs a line with a value for {name}")
-    value = d[name]
-    if display:
-        print(f"{name}: {value}")
-    else:
-        print(f"{name}: *********")
-
-    return value
-##############################################
-
-
-
-config = ConfigParser()
-
-# Attempt to import parameters from the default config file first, then from 'config.ini'
-# (possibly overwriting some or all values from the default config file)
 
 if os.environ.get("FLASK_APP"):     # Remote deployment
     print("This is a REMOTE deployment")
@@ -53,99 +32,55 @@ else:                               # Local deployment
     print("This is a LOCAL deployment")
 
 
-found_files = config.read(['config.defaults.ini', 'config.ini'])
-print(f"The following configuration files were found: {found_files}\n")    # This will be a list of the names of the files that were found
+print("\nReading the credentials STORED in the configuration file(s)\n")
 
-if found_files == []:
-    raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
+config = ConfigParser()
 
-if found_files == ['config.defaults.ini']:
-    raise Exception("Only found a DEFAULT version of the config file ('config.defaults.ini'); make sure to duplicate it, name it 'config.ini' and personalize it")
+d = read_config.load_config_data(config)    # A dictionary of config parameter names and value
 
-if found_files == ['config.ini']:
-    print("A local, personalized, version of the config file found ('config.ini'); all configuration will be based on this file")
-else:
-    print("Two config files found: anything in 'config.ini' will take priority, and over-ride any counterpart in 'config.defaults.ini'")
+i = d.get("DB_DEFAULT_INDEX")   # The presence of this value gets enforced during the read of the config data
 
 
-#print ("Sections found in config file(s): ", config.sections())
-
-# Extract the various configurable settings from the config files
-
-if "SETTINGS" not in config:
-    raise Exception("Incorrectly set up configuration file - the following line should be present at the top: [SETTINGS]")
-
-SETTINGS = config['SETTINGS']
-
-
-DB_COUNT = _extract_par("DB_COUNT", SETTINGS)
-try:
-    DB_COUNT = int(DB_COUNT)
-except Exception:
-    raise Exception(f"The passed configuration value for DB_COUNT ({DB_COUNT}) is not an integer as expected; "
-                    f"this value is meant to be the number of databases whose credentials are provided in the config.ini file")
-
-DB_DEFAULT = _extract_par("DB_DEFAULT", SETTINGS)
-try:
-    DB_DEFAULT = int(DB_DEFAULT)
-except Exception:
-    raise Exception(f"The passed configuration value for DB_DEFAULT ({DB_DEFAULT}) is not an integer as expected; "
-                    f"this value is meant to be the index of the database that is used at start time")
-
-
-i = DB_DEFAULT
-
-NEO4J_HOST = _extract_par(f"DB_HOST_{i}", SETTINGS)
-NEO4J_USER = _extract_par(f"DB_USERNAME_{i}", SETTINGS)
-NEO4J_PASSWORD = _extract_par(f"DB_PASSWORD_{i}", SETTINGS, display=False)
-
-
-MEDIA_FOLDER = _extract_par("MEDIA_FOLDER", SETTINGS)
-UPLOAD_FOLDER = _extract_par("UPLOAD_FOLDER", SETTINGS)
-PORT_NUMBER = _extract_par("PORT_NUMBER", SETTINGS)       # The Flask default is 5000
-
-try:
-    PORT_NUMBER = int(PORT_NUMBER)
-except Exception:
-    raise Exception(f"The passed value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
-
-
-# END OF CONFIGURATION IMPORT
+NEO4J_HOST = d.get(f"DB_HOST_{i}")
+NEO4J_USER = d.get(f"DB_USERNAME_{i}")
+NEO4J_PASSWORD = d.get(f"DB_PASSWORD_{i}")
 
 
 if not NEO4J_HOST \
     or not NEO4J_USER \
        or not NEO4J_PASSWORD:
     raise Exception(f"To run this script, ALL of the following variables must be set in the config file(s): "
-                    f"DB_HOST_{i}, DB_USERNAME_{i}, DB_PASSWORD_{i}")
+                    f"DB_HOST_{i}, DB_USERNAME_{i}, DB_PASSWORD_{i} \n" 
+                    f"No action taken")
 
 
-# Attempt to connect to the Neo4j database from credentials in the config file(s)
-print()
+# Attempt to connect to the the database from credentials in the config file(s)
+print(f'\nAttempting to connect to HOST "{NEO4J_HOST}", USER "{NEO4J_USER}"...')
 db = GraphAccess(host=NEO4J_HOST,
                  credentials=(NEO4J_USER, NEO4J_PASSWORD),
                  debug=False, autoconnect=True)
 
-print("Version of the Neo4j driver: ", db.version())
+print("\nVersion of the Neo4j driver: ", db.driver_version())
+print("Version of the Neo4j server: ", db.server_version())
+
+db.test_dbase_connection()
 
 print("\nThe stored credentials were successfully validated; now checking if data is already present in the database")
+
 
 GraphSchema.set_database(db)
 UserManager.set_database(db)
 
-
-
 # Attempt to create the Schema for the `User` class.  If it already exists, no action will be taken
 try:
-    print("Attempt to create the Schema for the `User` class (if needed).......")
+    print("Attempting to create the Schema for the `User` class (if needed).......")
     UserManager.add_to_schema()
 except Exception as ex:
     print(f"WARNING: `User` Schema missing, and it failed to get created. ", ex)
 
 
 
-print("\nTime to create a new admin user...\n")
-
+print("\nTime to create a new admin user.")
 print("Enter the desired username: ")
 username = input()
 
