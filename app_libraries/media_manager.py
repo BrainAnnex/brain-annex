@@ -57,6 +57,8 @@ class MediaManager:
         if not GraphSchema.class_name_exists("Media"):
             GraphSchema.create_class_with_properties(name="Media", strict=False,
                                                      properties=["basename", "suffix"])
+            if GraphSchema.class_name_exists("Content Item"):   # TODO: maybe "Content Item" should be created here, if needed. Currently done by Categories
+                GraphSchema.create_class_relationship(from_class="Media", to_class="Content Item", rel_name="INSTANCE OF")
 
         if not GraphSchema.class_name_exists("Directory"):
             GraphSchema.create_class_with_properties(name="Directory", strict=False,

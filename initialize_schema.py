@@ -3,6 +3,7 @@
 import os
 from configparser import ConfigParser
 from brainannex import GraphAccess, GraphSchema, Categories, UserManager, FullTextIndexing
+import read_config
 
 # TODO: automate the following imports based on the PLUGINS config setting
 from app_libraries.PLUGINS.timer_widget import TimerWidget
@@ -15,36 +16,10 @@ from app_libraries.PLUGINS.recordset import Recordset
 from app_libraries.PLUGINS.flash_card import FlashCard
 
 
-print("\n--- INITIALIZING (as needed) the Schema for the BrainAnnex web app - both for core modules "
+print("\n--- INITIALIZING (as needed) the SCHEMA for the BrainAnnex web app - both for core modules "
       "and for plugins.  \n    A few nodes, as needed, will be added to the database, "
       "all with a `SCHEMA` or `Schema Autoincrement` label (except for the root `Category` node)...\n")
 
-print("Reading the credentials STORED in the configuration file(s):\n")
-
-
-
-###  IMPORT AND VALIDATE THE CONFIGURABLE PARAMETERS  ###
-
-# TODO: re-use functions from app_build.py
-
-
-def extract_par(name, d, display=True) -> str:
-    if name not in d:
-        raise Exception(f"The configuration file needs a line with a value for {name}")
-    value = d[name]
-    if display:
-        print(f"{name}: {value}")
-    else:
-        print(f"{name}: *********")
-
-    return value
-##############################################
-
-
-config = ConfigParser()
-
-# Attempt to import parameters from the default config file first, then from 'config.ini'
-# (possibly overwriting some or all values from the default config file)
 
 if os.environ.get("FLASK_APP"):     # Remote deployment
     print("This is a REMOTE deployment")
@@ -52,61 +27,41 @@ else:                               # Local deployment
     print("This is a LOCAL deployment")
 
 
-found_files = config.read(['config.defaults.ini', 'config.ini'])
-print(f"The following configuration files were found: {found_files}\n")    # This will be a list of the names of the files that were found
+print("\nReading the credentials STORED in the configuration file(s):\n")
 
-if found_files == []:
-    raise Exception("No configurations files found!  Make sure to have a 'config.ini' file in the same folder as main.py")
+config = ConfigParser()
 
-if found_files == ['config.defaults.ini']:
-    raise Exception("Only found a DEFAULT version of the config file ('config.defaults.ini'); make sure to duplicate it, name it 'config.ini' and personalize it")
+d = read_config.load_config_data(config)    # A dictionary of config parameter names and value
 
-if found_files == ['config.ini']:
-    print("A local, personalized, version of the config file found ('config.ini'); all configuration will be based on this file")
-else:
-    print("Two config files found: anything in 'config.ini' will take priority, and over-ride any counterpart in 'config.defaults.ini'")
+i = d.get("DB_DEFAULT_INDEX")   # The presence of this value gets enforced during the read of the config data
 
 
-#print ("Sections found in config file(s): ", config.sections())
-
-# Extract the various configurable settings from the config files
-
-if "SETTINGS" not in config:
-    raise Exception("Incorrectly set up configuration file - the following line should be present at the top: [SETTINGS]")
-
-SETTINGS = config['SETTINGS']
-
-NEO4J_HOST = extract_par("NEO4J_HOST", SETTINGS)
-NEO4J_USER = extract_par("NEO4J_USER", SETTINGS)
-NEO4J_PASSWORD = extract_par("NEO4J_PASSWORD", SETTINGS, display=False)
-MEDIA_FOLDER = extract_par("MEDIA_FOLDER", SETTINGS)
-UPLOAD_FOLDER = extract_par("UPLOAD_FOLDER", SETTINGS)
-PORT_NUMBER = extract_par("PORT_NUMBER", SETTINGS)       # The Flask default is 5000
-
-try:
-    PORT_NUMBER = int(PORT_NUMBER)
-except Exception:
-    raise Exception(f"The passed value for PORT_NUMBER ({PORT_NUMBER}) is not an integer as expected")
-
-
-# END OF CONFIGURATION IMPORT
+NEO4J_HOST = d.get(f"DB_HOST_{i}")
+NEO4J_USER = d.get(f"DB_USERNAME_{i}")
+NEO4J_PASSWORD = d.get(f"DB_PASSWORD_{i}")
 
 
 if not NEO4J_HOST \
     or not NEO4J_USER \
        or not NEO4J_PASSWORD:
-    raise Exception("To run this script, ALL of the following variables must be set in the config file(s): NEO4J_HOST, NEO4J_USER, NEO4J_PASSWORD")
+    raise Exception(f"To run this script, ALL of the following variables must be set in the config file(s): "
+                    f"DB_HOST_{i}, DB_USERNAME_{i}, DB_PASSWORD_{i} \n" 
+                    f"No action taken")
 
 
 # Attempt to connect to the Neo4j database from credentials in the config file(s)
-print()
+print(f'\nAttempting to connect to HOST "{NEO4J_HOST}", USER "{NEO4J_USER}"...')
 db = GraphAccess(host=NEO4J_HOST,
                  credentials=(NEO4J_USER, NEO4J_PASSWORD),
                  debug=False, autoconnect=True)
 
-print("Version of the Neo4j driver: ", db.version())
+print("\nVersion of the Neo4j driver: ", db.driver_version())
+print("Version of the Neo4j server: ", db.server_version())
 
-print("\nThe stored credentials were successfully validated; now checking if data is already present in the database")
+db.test_dbase_connection()
+
+print("\nThe stored credentials were successfully validated; now checking if SCHEMA data is already present in the database.")
+
 
 GraphSchema.set_database(db)
 UserManager.set_database(db)
@@ -115,9 +70,9 @@ number_nodes = db.count_nodes()
 
 if number_nodes > 0:
     print(f"\nData already present in the database ({number_nodes} nodes found); "
-          f"Schema will be added only as needed...\n")
+          f"Schema will be added only as needed...")
 else:
-    print("\nThe database is empty; now importing/creating the Schema...")
+    print("\nThe database is empty; now creating the Schema...")
 
 
 
@@ -159,46 +114,46 @@ def initialize_schema(db):
 
     # Initialize plugins (TODO: automate, based on the PLUGINS config setting)
     try:
-        Timer.add_to_schema()
+        TimerWidget.add_to_schema()
         print("    Added (as needed) Schema for `TimerWidget` plugin")
     except Exception as ex:
         print(f"WARNING: `TimerWidget` Schema could NOT be created. ", ex)
 
     try:
-        Headers.add_to_schema()
+        Header.add_to_schema()
         print("    Added (as needed) Schema for `Header` plugin")
     except Exception as ex:
         print(f"WARNING: `Header` Schema could NOT be created. ", ex)
 
     try:
         SiteLink.add_to_schema()
-        print("    Added (as needed) Schema for `SiteLinks` plugin")
+        print("    Added (as needed) Schema for `SiteLink` plugin")
     except Exception as ex:
-        print(f"WARNING: `SiteLinks` Schema could NOT be created. ", ex)
+        print(f"WARNING: `SiteLink` Schema could NOT be created. ", ex)
 
     try:
-        Images.add_to_schema()
-        print("    Added (as needed) Schema for `Images` plugin")
+        Image.add_to_schema()
+        print("    Added (as needed) Schema for `Image` plugin")
     except Exception as ex:
-        print(f"WARNING: `Images` Schema could NOT be created. ", ex)
+        print(f"WARNING: `Image` Schema could NOT be created. ", ex)
 
     try:
-        Documents.add_to_schema()
-        print("    Added (as needed) Schema for `Documents` plugin")
+        Document.add_to_schema()
+        print("    Added (as needed) Schema for `Document` plugin")
     except Exception as ex:
-        print(f"WARNING: `Documents` Schema could NOT be created. ", ex)
+        print(f"WARNING: `Document` Schema could NOT be created. ", ex)
 
     try:
-        Notes.add_to_schema()
-        print("    Added (as needed) Schema for `Notes` plugin")
+        Note.add_to_schema()
+        print("    Added (as needed) Schema for `Note` plugin")
     except Exception as ex:
-        print(f"WARNING: `Notes` Schema could NOT be created. ", ex)
+        print(f"WARNING: `Note` Schema could NOT be created. ", ex)
 
     try:
-        Recordsets.add_to_schema()
-        print("    Added (as needed) Schema for `Recordsets` plugin")
+        Recordset.add_to_schema()
+        print("    Added (as needed) Schema for `Recordset` plugin")
     except Exception as ex:
-        print(f"WARNING: `Recordsets` Schema could NOT be created. ", ex)
+        print(f"WARNING: `Recordset` Schema could NOT be created. ", ex)
 
     try:
         FlashCard.add_to_schema()

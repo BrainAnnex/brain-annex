@@ -1,5 +1,5 @@
 import pytest
-from neoaccess import GraphAccess
+from brainannex import GraphAccess
 
 
 # Provide a database connection that can be used by the various tests that need it
