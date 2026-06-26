@@ -41,6 +41,7 @@ def load_config_data(config) -> dict:
     SETTINGS = config['SETTINGS']
     #print(SETTINGS)                 # EXAMPLE:  <Section: SETTINGS>
 
+    print("~~~~~~~~~~~  Start of config data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     ###  PART 1 : the database credentials  ###
 
@@ -125,6 +126,7 @@ def load_config_data(config) -> dict:
 
     config_data['BRANDING'] = _extract_par("BRANDING", SETTINGS)
 
+    print("~~~~~~~~~~~  End of config data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     return config_data
 
