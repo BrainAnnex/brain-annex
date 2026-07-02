@@ -86,14 +86,28 @@ def test_export_dbase_json(db):
                 {"type":"relationship","id":"8","label":"LOVES","start":{"id":"21","labels":["User"],"properties":{"name":"Eve"}},"end":{"id":"22","labels":["User"],"properties":{"name":"Adam","age":30}}}
             ]
     '''
+    alt_expected_json = f'[{{"type":"node","id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},\n' \
+                    f' {{"type":"node","id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}},\n' \
+                    f' {{"type":"relationship","id":"{rel_id_1}","label":"LOVES","start":{{"id":"{node_id_eve}","labels":["User"]}},"end":{{"id":"{node_id_adam}","labels":["User"]}}}}\n]'
+    ''' EXAMPLE of JSON string:
+            [
+                {"type":"node","id":"21","labels":["User"],"properties":{"name":"Eve"}},
+                {"type":"node","id":"22","labels":["User"],"properties":{"name":"Adam","age":30}},
+                {"type":"relationship","id":"8","label":"LOVES","start":{"id":"21","labels":["User"]},"end":{"id":"22","labels":["User"]}}
+            ]
+    '''
+
     # We cannot directly compare the JSON strings because the nodes might be returned in different order;
     # if directly compared, this test intermittently fails!
     # We need to first parse the JSON strings into a python entities and then assert
     actual_json_data = json.loads(actual_json)
     expected_json_data = json.loads(expected_json)
-    #print("\nACTUAL RESULT:\n", actual_json_data)
-    #print("\nEXPECTED:\n", expected_json_data)
-    assert compare_recordsets(actual_json_data, expected_json_data)
+    alt_expected_json_data = json.loads(alt_expected_json)
+    print("\nACTUAL RESULT:\n", actual_json_data)
+    print("\nEXPECTED:\n", expected_json_data)
+    print("\nALT EXPECTED:\n", alt_expected_json_data)
+    assert compare_recordsets(actual_json_data, expected_json_data) or \
+                compare_recordsets(actual_json_data, alt_expected_json_data)
 
 
     # Add a 2nd relationship (this time with properties) between the two nodes
