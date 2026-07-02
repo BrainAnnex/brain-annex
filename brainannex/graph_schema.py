@@ -245,7 +245,8 @@ class GraphSchema:
                                 to have a "SCHEMA" relationship to it;
                                 typically used by Classes having an intermediate role in the context of other Classes.
                                 By default, False
-        :param create_index:[OPTIONAL] 
+        :param create_index:[OPTIONAL] If True, a database index is created
+                                for the attribute "entity_id" and the label equal to the requested Class name
 
         :return:            The internal database ID of the node just created, if it was created;
                                 an Exception is raised if a Class by that name already exists
