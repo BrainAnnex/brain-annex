@@ -944,32 +944,46 @@ def test_get_or_estimate_class_properties(db):
 def test_add_properties_to_class(db):
     db.empty_dbase()
 
+    with pytest.raises(Exception):
+        GraphSchema.add_properties_to_class(class_name="I_dont_exist", properties= ["X", "Y"])
+
+
     GraphSchema.create_class("My first class")
 
-    GraphSchema.add_properties_to_class(class_name="My first class", properties= ["X", "Y"])
+    with pytest.raises(Exception):
+        GraphSchema.add_properties_to_class(class_name="My first class", properties= [])
+
+    with pytest.raises(Exception):
+        GraphSchema.add_properties_to_class(class_name="My first class", properties="   ")  # Blank name
+
+
+    GraphSchema.add_properties_to_class(class_name="My first class", properties=["X", "Y"])
     q = '''
-        MATCH (p1:PROPERTY {name: "X", entity_id:"schema-2"})
-        <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
-        (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+        MATCH 
+            (p1:PROPERTY {name: "X"})
+            <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+            (p2:PROPERTY {name: "Y"})
         RETURN n
         '''
     result = db.query(q)
     assert len(result) == 1
 
-    GraphSchema.add_properties_to_class(class_name="My first class", properties= ["Z"])
+    GraphSchema.add_properties_to_class(class_name="My first class", properties="Z")
     q = '''
-        MATCH (p1:PROPERTY {name: "X", entity_id:"schema-2"})
-        <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
-        (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+        MATCH 
+            (p1:PROPERTY {name: "X"})
+            <-[:HAS_PROPERTY {index: 1}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+            (p2:PROPERTY {name: "Y"})
         RETURN n
         '''
     result = db.query(q)
     assert len(result) == 1
 
     q = '''
-        MATCH (p1:PROPERTY {name: "Z", entity_id:"schema-4"})
-        <-[:HAS_PROPERTY {index: 3}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
-        (p2:PROPERTY {name: "Y", entity_id:"schema-3"})
+        MATCH 
+            (p1:PROPERTY {name: "Z"})
+            <-[:HAS_PROPERTY {index: 3}]-(n:CLASS)-[:HAS_PROPERTY {index: 2}]->
+            (p2:PROPERTY {name: "Y"})
         RETURN n
         '''
     result = db.query(q)

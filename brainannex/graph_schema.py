@@ -371,6 +371,7 @@ class GraphSchema:
         :param internal_id:  Integer with internal database ID
         :return:        A boolean indicating whether the specified Class exists
         """
+        #TODO: maybe rename to class_exists_by_id()
         cls.db.assert_valid_internal_id(internal_id)
 
         return cls.db.exists_by_internal_id(internal_id)
@@ -384,6 +385,7 @@ class GraphSchema:
         :param class_name:  The name of Che class of interest
         :return:            True if the Class  exists, or False otherwise
         """
+        #TODO: maybe rename to class_exists_by_name()
         cls.assert_valid_class_name(class_name)
 
         return cls.db.exists_by_key(labels="CLASS", key_name="name", key_value=class_name)
@@ -1458,9 +1460,13 @@ class GraphSchema:
         clean_property_list = [prop.strip() for prop in properties]
         for prop_name in clean_property_list:
             assert prop_name != "", \
-                "add_properties_to_class(): Unacceptable Property name, either empty or blank"
+                "add_properties_to_class(): Unacceptable property name, either empty or blank"
             assert type(prop_name) == str, \
                 "add_properties_to_class(): Unacceptable non-string Property name"
+
+        assert len(clean_property_list) > 0, \
+            "add_properties_to_class(): The list of properties to add, cannot be empty"
+
 
         # Locate the largest index of the Properties currently present (stored on the "HAS_PROPERTY" links)
         q = '''
@@ -1492,8 +1498,16 @@ class GraphSchema:
             '''
             #print(q)
             #print(property_name)
-            result = cls.db.update_query(q, {"property_name": property_name})
-            number_properties_nodes_created += result.get("nodes_created")
+            result = cls.db.update_query(q, {"property_name": property_name})   # A dictionary of statistics about the operation results
+            number_new_nodes = result.get("nodes_created")
+            if number_new_nodes is None:
+                # Investigate, for better error messages, a likely cause of no new nodes created
+                assert cls.class_name_exists(class_name), \
+                    f"add_properties_to_class(): No Class named `{class_name}` exists"
+
+                raise Exception(f"add_properties_to_class(): Failed to add the requested Properties")
+
+            number_properties_nodes_created += number_new_nodes
             new_index += 1
 
         return number_properties_nodes_created
@@ -1523,7 +1537,8 @@ class GraphSchema:
         NOTE: if the Class already exists, use add_properties_to_class() instead
 
         :param name:            The name to assign to the new class
-        :param properties:      List of strings with the names of the Properties, in their default order (if that matters)
+        :param properties:      List of strings with the names of the Properties, in their default order (if that matters);
+                                    an empty list is acceptable
         :param code:            DEPRECATED!  [OPTIONAL] String indicative of the software handler for this Class and its subclasses.
         :param handler:         [OPTIONAL] Name of a software module that services this Class
         :param strict:          [OPTIONAL] If True, the Class will be of the "Strict" type;
@@ -1564,11 +1579,12 @@ class GraphSchema:
         new_class_db_id = cls.create_class(name, code=code, handler=handler, strict=strict)
         cls.debug_print(f"Created new schema CLASS node (name: `{name}`, Internal database ID: {new_class_db_id})")
 
-        number_properties_added = cls.add_properties_to_class(class_name=name, properties= properties)
-        if number_properties_added != len(properties):
-            raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {properties}")
+        if len(properties) > 0:
+            number_properties_added = cls.add_properties_to_class(class_name=name, properties= properties)
+            if number_properties_added != len(properties):
+                raise Exception(f"The number of Properties added ({number_properties_added}) does not match the size of the requested list: {properties}")
 
-        cls.debug_print(f"{number_properties_added} Properties added to the new Class: {properties}")
+            cls.debug_print(f"{number_properties_added} Properties added to the new Class: {properties}")
 
 
         if class_to_link_to and link_name:
@@ -1895,6 +1911,7 @@ class GraphSchema:
         """
         # TODO: look into also sampling the existing database data types
         # TODO: offer option to link all the Data Nodes with that label to the new Class (with the "_CLASS" property)
+        # TODO: maybe create an index as well
         derived_properties = cls.db.sample_properties(label=label, sample_size=sample_size)
 
         return cls.create_class_with_properties(name=label, properties=derived_properties, strict=strict)

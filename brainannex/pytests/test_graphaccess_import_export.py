@@ -86,6 +86,7 @@ def test_export_dbase_json(db):
                 {"type":"relationship","id":"8","label":"LOVES","start":{"id":"21","labels":["User"],"properties":{"name":"Eve"}},"end":{"id":"22","labels":["User"],"properties":{"name":"Adam","age":30}}}
             ]
     '''
+    # This alternate version is needed by some versions of the 4.4 database!!!
     alt_expected_json = f'[{{"type":"node","id":"{node_id_eve}","labels":["User"],"properties":{{"name":"Eve"}}}},\n' \
                     f' {{"type":"node","id":"{node_id_adam}","labels":["User"],"properties":{{"name":"Adam","age":30}}}},\n' \
                     f' {{"type":"relationship","id":"{rel_id_1}","label":"LOVES","start":{{"id":"{node_id_eve}","labels":["User"]}},"end":{{"id":"{node_id_adam}","labels":["User"]}}}}\n]'
@@ -103,9 +104,9 @@ def test_export_dbase_json(db):
     actual_json_data = json.loads(actual_json)
     expected_json_data = json.loads(expected_json)
     alt_expected_json_data = json.loads(alt_expected_json)
-    print("\nACTUAL RESULT:\n", actual_json_data)
-    print("\nEXPECTED:\n", expected_json_data)
-    print("\nALT EXPECTED:\n", alt_expected_json_data)
+    #print("\nACTUAL RESULT:\n", actual_json_data)
+    #print("\nEXPECTED:\n", expected_json_data)
+    #print("\nALT EXPECTED:\n", alt_expected_json_data)
     assert compare_recordsets(actual_json_data, expected_json_data) or \
                 compare_recordsets(actual_json_data, alt_expected_json_data)
 

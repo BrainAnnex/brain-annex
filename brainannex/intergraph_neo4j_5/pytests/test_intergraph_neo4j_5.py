@@ -57,7 +57,7 @@ def test_constructor():
 
     assert obj1.debug is False
     # Test the version of the Neo4j driver (this ought to match the value in requirements.txt)
-    assert obj1.version().startswith("5.28")    # This will match any minor version, such as "5.28.1"
+    assert obj1.driver_version().startswith("5.28")    # This will match any minor version, such as "5.28.1"
 
 
 
