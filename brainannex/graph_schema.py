@@ -2358,7 +2358,7 @@ class GraphSchema:
 
         NOTE: No database operation is actually performed.
 
-        :param node_id: This is understood be the Neo4j ID, unless an id_type is specified
+        :param node_id: This is understood be the internal database ID, unless an id_type is specified
         :param id_type: For example, "entity_id";
                             if not specified, the node ID is assumed to be the internal database ID's
         :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
@@ -5387,14 +5387,14 @@ class GraphSchema:
             # Create a single tree
             cls.debug_print("Top-level structure of the data to import is a Python dictionary")
             # Perform the import
-            root_neo_id = cls.create_tree_from_dict(data, class_name, cache=cache) # This returns a Neo4j ID, or None
+            root_neo_id = cls.create_tree_from_dict(data, class_name, cache=cache) # This returns an internal database ID, or None
 
             if root_neo_id is None:
                 cls.debug_print("None returned by create_tree_from_dict()")
                 return []               # Zero new nodes were imported
             else:
-                cls.debug_print(f"***Linking import node (Neo4j ID={metadata_neo_id}) with "
-                                f"data root node (Neo4j ID={root_neo_id}), thru relationship `imported_data`")
+                cls.debug_print(f"***Linking import node (Internal database ID={metadata_neo_id}) with "
+                                f"data root node (Internal database ID={root_neo_id}), thru relationship `imported_data`")
                 # Connect the root of the import to the metadata node
                 cls.add_data_relationship(from_id=metadata_neo_id, to_id=root_neo_id, rel_name="imported_data")
                 return [root_neo_id]
@@ -5402,7 +5402,7 @@ class GraphSchema:
         elif type(data) == list:         # If the top-level Python data structure is a list
             # Create multiple unconnected trees
             cls.debug_print("Top-level structure of the data to import is a list")
-            node_id_list = cls.create_trees_from_list(data, class_name, cache=cache)  # This returns a list of Neo4j ID's
+            node_id_list = cls.create_trees_from_list(data, class_name, cache=cache)  # This returns a list of Internal database ID's
 
             for root_uri in node_id_list:
                 cls.debug_print(f"***Linking import node (entity_id={metadata_neo_id}) with "
@@ -5426,7 +5426,7 @@ class GraphSchema:
             2) other values (such as dictionaries or lists) are recursively turned into subtrees,
                linked from the new data node through outbound relationships using the dictionary keys as names
 
-        Return the Neo4j ID of the newly created root node,
+        Return the Internal database ID of the newly created root node,
         or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
 
         IMPORTANT:  any part of the data that doesn't match the Schema,
@@ -5451,7 +5451,7 @@ class GraphSchema:
         :param class_name:  The name of the Schema Class for the root node(s) of the imported data
         :param level:       The level of the recursive call (used for debug printing)
         :param cache:       Object of type SchemaCache
-        :return:            The Neo4j ID of the newly created node,
+        :return:            The Internal database ID of the newly created node,
                                 or None is nothing is created (this typically arises in recursive calls that "skip subtrees")
         """
         # TODO: issue some report about anything that gets dropped
@@ -5480,7 +5480,7 @@ class GraphSchema:
 
         cls.debug_print(f"{indent_str}Input is a dict with {len(d)} keys: {list(d.keys())}")
         node_properties = {}
-        children_info = []          # A list of pairs (Neo4j ID value, relationship name)
+        children_info = []          # A list of pairs (Internal database ID value, relationship name)
 
         skipped_properties = []
         skipped_relationships = []
@@ -5623,7 +5623,7 @@ class GraphSchema:
         :param level:       The level of the recursive call (used for debug printing)
         :param cache:       Object of type SchemaCache
 
-        :return:            A list of the Neo4j values of the newly created nodes (each of which
+        :return:            A list of the Internal database values of the newly created nodes (each of which
                                 might be a root of a tree)
         """
         assert type(l) == list, f"GraphSchema.create_trees_from_list(): the argument `l` must be a list (instead, it's {type(l)})"
