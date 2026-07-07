@@ -36,10 +36,6 @@ class InterGraph:
     and helps manage the complex data structures that they return.
     It may be used independently,
     or as the foundation of the higher-level child class, "GraphAccess"
-
-    SECTIONS IN THIS CLASS:
-        * INIT (constructor) and DATABASE CONNECTION
-        * RUNNING GENERIC CYPHER QUERIES
     """
 
     def __init__(self,
