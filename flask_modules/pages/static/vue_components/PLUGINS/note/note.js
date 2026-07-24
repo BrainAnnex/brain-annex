@@ -1,5 +1,5 @@
 /*  Vue component to display and edit Content Items of type "n" (a single "note", i.e. HTML-formatted text)
-    TODO: rename 'vue-plugin-notes'
+    TODO: rename 'vue-plugin-note'
  */
 
 Vue.component('vue-plugin-n',
@@ -172,47 +172,11 @@ Vue.component('vue-plugin-n',
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
-            get_note()
-            {
-                //console.log("In get_note. Item to look up has entity_id: `" + this.current_metadata.entity_id + "`");
 
-                this.waiting = true;
-
-                // Send the request to the server, using a GET
-                const url_server_api = "/BA/api/get_text_media/" + this.current_metadata.entity_id;
-
-                console.log(`In get_note(): about to contact the server at "${url_server_api}"`);
-
-                // Initiate asynchronous contact with the server
-                ServerCommunication.contact_server(url_server_api,
-                            {method: "GET",
-                             callback_fn: this.finish_get_note
-                            });
-            }, // get_note
-
-
-            finish_get_note(success, server_payload, error_message, index)
-            // Callback function to wrap up the action of get_note() upon getting a response from the server
-            {
-                console.log("Finalizing the get_note operation...");
-                if (success)  {     // Server reported SUCCESS
-                    this.body_of_note = server_payload;
-                    // (Re)load MathJax, if the note contains MathJax code;
-                    // only a weak check is performed for the presence of the substring "\("
-                    //if (this.body_of_note.includes("\\("))
-                        //this.reload_mathjax();
-                }
-                else  {             // Server reported FAILURE
-                    this.body_of_note = "Unable to retrieve note contents. " + error_message;
-                }
-                this.waiting = false;
-
-            }, // finish_get_note
-
-
-
+            /**
+             * Switch to the editing mode of this Vue component
+             */
             enter_editing_mode()
-            // Switch to the editing mode of this Vue component
             {
                 this.old_note_value = this.body_of_note;    // Save the current Note contents, in case of aborted or failed edit
                 this.editing_mode = true;
@@ -302,7 +266,6 @@ Vue.component('vue-plugin-n',
 
                     //var element_to_scroll_to = document.getElementsByName(anchorName)[0];
                     //element_to_scroll_to.scrollIntoView();
-
                     //alert("Finished scrolling");
                 });
 
@@ -324,12 +287,13 @@ Vue.component('vue-plugin-n',
              * Invoked by clicking on either of the "SAVE" buttons (only visible in editing mode)
 
              * @param {bool} exit   - To indentify whether the user wishes to exit the editing mode upon saving the note
+             *                          (as opposed to "saving and continuing to edit")
              */
             save_edit(exit)
             {
                 const noteID = this.current_metadata.entity_id;    // Negative values indicates a new Note
 
-                console.log(`Inside save_edit():  Entity ID = ${noteID} , exit = ${exit}`);
+                //console.log(`Inside save_edit():  Entity ID = ${noteID} , exit = ${exit}`);
 
                 if (!this.note_editor)  {
                     alert("ERROR: unable to locate the CKeditor object.  Save the contents of the Note in a separate document, then refresh page and re-edit");
@@ -341,16 +305,6 @@ Vue.component('vue-plugin-n',
 
                 //console.log("Edited value is (attempting to save) is: " + html);
 
-                if (exit)  {
-                    // Bring all controls back to non-edit mode:
-                    // show the note, and update the visibility of the various controls
-                    // TODO: wait to do this until the server communicates success of the editing operation
-                    this.editing_mode = false;
-
-                    // Destroy the editor
-                    // self.destroy_editor();
-                }
-
                 this.do_box_save(noteID, html, exit);
 
             },  // save_edit
@@ -358,9 +312,85 @@ Vue.component('vue-plugin-n',
 
 
             /**
-             *  Invoked when the "SAVE" button is pressed on the specified note.
+             *  Look for an optional <h2> element as the very first tag of the given html text,
+             *  and return its contents if found; or "" if not found.
+             *  Notes:  Also works if the <h2> has attributes.
+             *          Automatically strips any nested formatting within the <h2> element.
+             *          Ignores whitespace and blank lines before the first tag.
+             *
+             *  @param {} html    - Body of an html text note
+             */
+            extract_default_title(html)
+            {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+
+                // Find the first *element* in the body
+                const first = doc.body.firstElementChild;
+
+                if (first && first.tagName.toUpperCase() === "H3") {
+                    return first.textContent.trim();
+                }
+
+                return "";        // No leading <h2> found
+            },
+
+
+
+
+            /*
+                ---------------------   SERVER CALLS   ---------------------
+             */
+
+
+            /**
+             * Initiate request to server, to obtain the body (HTML text) of a given note
+             */
+            get_note()
+            {
+                //console.log("In get_note. Item to look up has entity_id: `" + this.current_metadata.entity_id + "`");
+
+                this.waiting = true;
+
+                // Send the request to the server, using a GET
+                const url_server_api = "/BA/api/get_text_media/" + this.current_metadata.entity_id;
+
+                console.log(`In get_note(): about to contact the server at "${url_server_api}"`);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {method: "GET",
+                             callback_fn: this.finish_get_note
+                            });
+            }, // get_note
+
+
+            finish_get_note(success, server_payload, error_message, index)
+            // Callback function to wrap up the action of get_note() upon getting a response from the server
+            {
+                console.log("Finalizing the get_note operation...");
+                if (success)  {     // Server reported SUCCESS
+                    this.body_of_note = server_payload;
+                    // (Re)load MathJax, if the note contains MathJax code;
+                    // only a weak check is performed for the presence of the substring "\("
+                    //if (this.body_of_note.includes("\\("))
+                        //this.reload_mathjax();
+                }
+                else  {             // Server reported FAILURE
+                    this.body_of_note = "Unable to retrieve note contents. " + error_message;
+                }
+                this.waiting = false;
+
+            }, // finish_get_note
+
+
+
+            /**
              *  Carry out, asynchronously, the record update operation.
-             *  If noteID < 0 then we're adding a new note; otherwise, we're editing the existing note with the specified ID
+             *  @param {} noteID     - If noteID < 0 then we're adding a new note; otherwise, we're editing the existing note with the specified entity ID
+             *  @param {} newBody    - New value for the body of the note to save
+             *  @param {bool} exit   - To indentify whether the user wishes to exit the editing mode upon saving the note
+             *                          (as opposed to "saving and continuing to edit")
              */
             do_box_save(noteID, newBody, exit)
             {
@@ -368,7 +398,7 @@ Vue.component('vue-plugin-n',
                 var keyID;
 
                 console.log(`Inside do_box_save() : Entity ID = ${noteID} , exit = ${exit}`);
-                console.log("newBody :" + newBody);
+                //console.log("newBody :" + newBody);
 
                 this.new_note_value = newBody;					// Save the value of the tentative edit (subject to successful server update)
 
@@ -377,7 +407,7 @@ Vue.component('vue-plugin-n',
                 // Start the body of the POST to send to the server
                 var post_obj = {schema_code: this.current_metadata.schema_code};
 
-                if (noteID < 0)  {	    // Add NEW note
+                if (noteID < 0)  {	    // Add a NEW note
                     const insert_after_uri = this.current_metadata.insert_after_uri;       // ID of Content Item to insert after, or keyword "TOP" or "BOTTOM"
                     const insert_after_class = this.current_metadata.insert_after_class;   // Class of Content Item to insert after
 
@@ -386,12 +416,25 @@ Vue.component('vue-plugin-n',
                     post_obj.insert_after_uri = insert_after_uri;
                     post_obj.insert_after_class = insert_after_class;
                     post_obj.class_name = this.current_metadata.class_name;
-                    if (this.current_data['title'] != "")
-                        post_obj.title = this.current_data['title'];        // TODO: implement a title creator, if not supplied by user
+
+                    const user_given_title = this.current_data['title'];
+                    if (user_given_title?.trim())           // ?. (optional chaining) prevents an error if null or undefined
+                        post_obj.title = user_given_title;      // The user provided a good, non-empty title
+                    else  {
+                        // Attempt to extract a meaningful title from the body of the note
+                        // TODO: maybe do this when editing existing notes as well
+                        const derived_title = this.extract_default_title(newBody);
+                        //console.log(`derived_title: ${derived_title}`);
+                        if (derived_title != "")  {
+                            // We were able to create a meaningful title
+                            post_obj.title = derived_title;
+                            this.current_data['title'] = derived_title;
+                        }
+                    }
 
                     var url_server_api = "/BA/api/add_item_to_category";    // TODO: probably phase out in favor of '/update_content_item_JSON'
                 }
-                else  {				    // Edit EXISTING note
+                else  {				    // Edit an EXISTING note
                     post_obj.entity_id = noteID;
                     post_obj.body = newBody;
                     post_obj.title = this.current_data['title'];
@@ -479,20 +522,34 @@ Vue.component('vue-plugin-n',
                 else  {		            // Server reported FAILURE
                     this.status_message = "FAILED SAVE. " + error_message;
                     this.error = true;
-                    boxValue = this.old_note_value;         // Restore the old value
-                    this.inform_component_root_of_cancel();
-                    //alert(oldValue);
+                    alert("ERROR: unable to save the edit.  Try again later (maybe network problems?), or save the contents of the Note in a separate document, then refresh page and re-edit");
+                    this.save_waiting = false;
+                    this.limited_controls = false;
+                    return;
+                    //boxValue = this.old_note_value;         // Restore the old value
+                    //this.inform_component_root_of_cancel();
                 }
-                console.log("boxValue = " + boxValue);
 
 
-                // Final wrap-up, regardless of error or success
+                // Final wrap-up if successful
 
-                this.body_of_note = boxValue;   // Set the Note content (to either the new value or the restored old value)
+                console.log("SUCCESSFUL update.  boxValue = " + boxValue);
 
-                if (exit) {
-                    this.editing_mode = false;      // Exit the editing mode
+                this.body_of_note = boxValue;   // Set the Note content (to the new value)
+
+                if (exit)  {
+                    // Bring all controls back to non-edit mode:
+                    // show the note, and update the visibility of the various controls
+                    // TODO: wait to do this until the server communicates success of the editing operation
+                    this.editing_mode = false;  // Exit the editing mode
+
+                    // Destroy the editor
+                    // self.destroy_editor();
                 }
+
+                //if (exit) {
+                    //this.editing_mode = false;      // Exit the editing mode
+                //}
 
                 this.save_waiting = false;
                 this.limited_controls = false;
