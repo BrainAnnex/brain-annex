@@ -97,7 +97,7 @@ class Document:
         new_suffix =   item_data.get("suffix")
 
         folder, old_basename, old_suffix = \
-                MediaManager.get_media_item_file(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
+                MediaManager.get_media_item_file_by_entity(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
 
         print(f"folder: {folder}, old_basename: {old_basename}, old_suffix: {old_suffix}")
 
@@ -175,6 +175,7 @@ class Document:
         else:
             # Link the new document to its specific directory node
             # TODO: also introduce clause  _CLASS = cls.SCHEMA_CLASS_NAME or better yet let the Schema layer handle it
+            # TODO: `BA_stored_in` relationships aren't limited to Documents; they will also apply to Images, etc
             q = '''
                 MATCH (doc :Document {entity_id: $entity_id}),
                       (dir :Directory {name: $upload_folder}) 

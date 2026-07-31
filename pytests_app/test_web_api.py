@@ -2,6 +2,9 @@ import pytest
 from brainannex import GraphAccess, GraphSchema
 from utilities.comparisons import compare_recordsets
 from app_libraries.data_manager import DataManager
+from app_libraries.media_manager import MediaManager
+from app_libraries.PLUGINS.document import Document
+
 
 from app_build import create_app    # In top-level file app_build.py
 
@@ -285,7 +288,6 @@ def test_create_schema_from_data_POST(client):
 
     response = client.post(url, json={"label": "Car"})
     # The response is an object of type 'werkzeug.test.WrapperTestResponse'
-
     assert response.status_code == 200
     assert response.json["status"] == "ok"
     result = response.json["payload"]   # The internal database ID of the newly-created Class node
@@ -313,6 +315,7 @@ def test_create_schema_from_data_POST(client):
     assert GraphSchema.get_class_properties(class_name="Person") == ["age", "Medical #", "name"]    # in alphabetic order
     assert not GraphSchema.is_strict_class("Person")
 
+    # Test error conditions
 
     response = client.post(url, json={"xyz": "Person"})   # Missing key 'label'
     assert response.status_code == 400
@@ -331,4 +334,85 @@ def test_create_schema_from_data_POST(client):
     assert response.status_code == 422
     assert response.json["status"] == "error"
     assert type(response.json["error_message"]) == str
+    #print(response.json["error_message"])
+
+
+
+def test_relocate_media_POST(client):
+    endpoint = "relocate-media"
+    url = f"/BA/api/{endpoint}"
+
+    #db = GraphSchema.db
+
+    MediaManager.add_to_schema()
+    Document.add_to_schema()
+
+    MediaManager.set_media_folder("test_files/")
+    MediaManager.set_default_folders({})
+
+
+    # Create a Document node, initially with no linked directories (i.e. stored in standard locations)
+    # The actual file already exists in the "test_files/" folder
+    doc_1_id = GraphSchema.create_data_node(class_name="Document",
+                                            properties={"basename": "sample_file_1", "suffix": "txt"})
+
+    assert MediaManager.get_media_item_file(internal_id=doc_1_id) \
+            == ("test_files/", "sample_file_1", "txt")
+
+    assert MediaManager.file_exists("test_files/sample_file_1.txt")
+
+    # Create a new media directory
+    MediaManager.create_media_directory("my documents/chapter 1")
+
+    response = client.post(url,
+                          json={"internal_id": doc_1_id, "to_media_directory": "my documents/chapter 1"})
+    # The response is an object of type 'werkzeug.test.WrapperTestResponse'
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+
+    # Verify the new location of the media file, both in the file system and on the database
+    assert MediaManager.file_exists("test_files/my documents/chapter 1/sample_file_1.txt")
+    assert MediaManager.get_media_item_file(internal_id=doc_1_id) \
+                == ("test_files/my documents/chapter 1/", "sample_file_1", "txt")
+    assert MediaManager.media_directory_stored_in(doc_1_id) == "my documents/chapter 1"
+
+
+    # Create a new media directory
+    MediaManager.create_media_directory("ebooks")
+
+    response = client.post(url,
+                          json={"internal_id": doc_1_id, "to_media_directory": "ebooks"})
+    # The response is an object of type 'werkzeug.test.WrapperTestResponse'
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+
+    # Verify the new location of the media file, both in the file system and on the database
+    assert MediaManager.file_exists("test_files/ebooks/sample_file_1.txt")
+    assert MediaManager.get_media_item_file(internal_id=doc_1_id) \
+                == ("test_files/ebooks/", "sample_file_1", "txt")
+    assert MediaManager.media_directory_stored_in(doc_1_id) == "ebooks"
+
+    # Clean up
+    MediaManager.move_file(src="test_files/ebooks/sample_file_1.txt", dest="test_files/sample_file_1.txt")
+    MediaManager.delete_folder("test_files/my documents/chapter 1")
+    MediaManager.delete_folder("test_files/my documents")
+    MediaManager.delete_folder("test_files/ebooks")
+
+
+    # Test error conditions
+
+    response = client.post(url, json={"internal_id": "8888"})   # Missing key 'to_media_directory'
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    assert response.json["error_message"] == "/relocate-media : A key named `to_media_directory` must be present in the dictionary in the body of the POST request"
+
+    response = client.post(url, json=[1, 2, 3])   # Incorrect JSON data type
+    assert response.status_code == 400
+    assert response.json["status"] == "error"
+    assert response.json["error_message"] == "/relocate-media : the passed JSON value should be a dictionary; instead, it's of type <class 'list'>"
+
+    response = client.post(url,
+                          json={"internal_id": 123, "to_media_directory": "I don't exist"})     # Bad request
+    assert response.status_code == 500
+    assert response.json["status"] == "error"
     #print(response.json["error_message"])

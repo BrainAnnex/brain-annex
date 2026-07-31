@@ -69,7 +69,17 @@ class ApiRouting:
     # TODO: provide support for API_KEY (or API_TOKEN) authentication
 
 
-    # --- Define schema (SDL) ---   TODO: test of GraphQL
+
+
+    #####################################################################################################
+
+    '''                                      ~   GraphQL   ~                                         '''
+
+    def ________GraphQL________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    # --- Define schema (SDL) ---   TODO: test of GraphQL.  NOTE: these are EARLY tests of GraphQL
     type_defs = """
         type Person {
             name: String!
@@ -109,13 +119,20 @@ class ApiRouting:
 
 
 
-    #############################################################
-    #         REGISTRATION OF THIS MODULE WITH FLASK            #
-    #############################################################
+
+    #####################################################################################################
+
+    '''                             ~   FLASK REGISTRATION   ~                                        '''
+
+    def ________FLASK_REGISTRATION________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
 
     @classmethod
     def setup(cls, flask_app_obj) -> None:
         """
+        REGISTRATION OF THIS MODULE WITH FLASK.
         Based on the module-specific class variables, and given a Flask app object,
         instantiate a "Blueprint" object,
         and register:
@@ -142,9 +159,13 @@ class ApiRouting:
 
 
 
-    #######################################################
-    #                   UTILITY methods                   #
-    #######################################################
+    #####################################################################################################
+
+    '''                                      ~   UTILITIES   ~                                        '''
+
+    def ________UTILITIES________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
 
 
     @classmethod
@@ -382,6 +403,21 @@ class ApiRouting:
 
 
 
+    @classmethod
+    def validate_required_parameter(cls, available :[str], required :[str]) -> None:
+        """
+        Validate the presence of the required parameters (in the context of a POST);
+        if any is missing, an Exception is raised
+
+        :param available:   List of names of the available parameters
+        :param required:    List of names of the required parameters
+        :return:
+        """
+        for key in required:
+            assert key in available, \
+                f"A key named `{key}` must be present in the dictionary in the body of the POST request"
+
+
 
 
     ###############################################
@@ -420,10 +456,14 @@ class ApiRouting:
 
 
 
+    #####################################################################################################
 
-    #############################################################
-    #                           ROUTING                         #
-    #############################################################
+    '''                                      ~   ROUTING   ~                                          '''
+
+    def ________ROUTING________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
 
     @classmethod
     def set_routing(cls, bp) -> None:
@@ -637,7 +677,7 @@ class ApiRouting:
 
                 Note the '_internal_id' key that gets added to the Property nodes' fields
             """
-            # TODO: use this as a ***MODEL*** of future JSON web api calls with GET
+            # TODO: use this as a ***MODEL*** of future JSON web api calls with *GET*
 
             # Extract and parse the JSON-encoded GET parameters
             try:
@@ -1374,7 +1414,6 @@ class ApiRouting:
                           }
             """
             # TODO: change this endpoint to using a GET
-            # TODO: use this as a ***MODEL*** of future JSON web api calls with POST
 
             # Extract and parse the JSON-encoded POST body
             try:
@@ -1397,12 +1436,23 @@ class ApiRouting:
                 return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
 
+            # Validate the presence of the required parameters
             try:
-                # Validate the presence of the required parameters
-                assert "node_internal_id" in request_parameters, \
-                    "A key named `node_internal_id` must be present in the dictionary in the body of the request"
+                cls.validate_required_parameter(available=request_parameters,
+                                                required=["node_internal_id"])
+            except Exception as ex:
+                err_details = f"/directories-stored-in : {ex}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
 
-                result = DataManager.directories_stored_in(internal_id = request_parameters.get("node_internal_id")) # A dict
+
+            # Perform the requested operation
+            try:
+                node_internal_id = request_parameters.get("node_internal_id")
+                result = {
+                            "location": MediaManager.media_directory_stored_in(node_internal_id),
+                            "all_directories": MediaManager.get_media_directories(limit=100)
+                         }
                 response_data = {"status": "ok", "payload": result}                 # Successful termination
             except Exception as ex:
                 err_details = f"/directories-stored-in : unable to retrieve the requested data.  " \
@@ -1749,6 +1799,78 @@ class ApiRouting:
             #print(f"remove_relationship() is returning: `{response_data}`")
 
             return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
+
+        @bp.route('/relocate-media', methods=['POST'])
+        @login_required
+        def relocate_media_api():
+            """
+            Move the specified media item to the given media directory.
+            This operation will affect both the file system and the database
+
+            ~~~ EXAMPLE ~~~
+                http://localhost:5000/BA/api/relocate-media
+                using a POST with Content-Type: application/json
+                and body:  {"internal_id" :         1234,
+                            "to_media_directory":   "documents/Ebooks & Articles/SYSTEMS BIO"}
+
+            The body must contain a JSON-encoded dict with the following KEYS:
+                REQUIRED    "internal_id"
+                            "to_media_directory"
+
+            :return:
+                A response with Content-Type: application/json,
+                containing a dict with "status" (no "payload")
+            """
+            # TODO: use this as a ***MODEL*** of future JSON web api calls with *POST*
+
+            # Extract and parse the JSON-encoded POST body
+            try:
+                request_parameters = cls.parse_json_from_request_body()
+            except Exception as ex:
+                err_details = f"/relocate-media : unable to parse JSON request.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+            #print("In relocate_media_api() -  request_parameters: ", request_parameters)
+
+
+            # Validate the OVERALL data type of the passed JSON data
+            if type(request_parameters) != dict:
+                err_details = f"/relocate-media : the passed JSON value should be a dictionary; " \
+                              f"instead, it's of type {type(request_parameters)}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            # Validate the presence of the required parameters
+            try:
+                cls.validate_required_parameter(available=request_parameters,
+                                                required=["internal_id", "to_media_directory"])
+            except Exception as ex:
+                err_details = f"/relocate-media : {ex}"
+                response_data = {"status": "error", "error_message": err_details}
+                return jsonify(response_data), 400      # 400 is "Bad Request client error"
+
+
+            # Perform the requested operation
+            try:
+                MediaManager.move_media_item(internal_id=request_parameters.get("internal_id"),
+                                            media_directory=request_parameters.get("to_media_directory"))
+                response_data = {"status": "ok"}                 # Successful termination (no payload)
+            except Exception as ex:
+                err_details = f"/relocate-media : unable to perform the requested folder relocation of the Media Item.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                response_data = {"status": "error", "error_message": err_details}   # Error termination
+                return jsonify(response_data), 500      # 500 is "Internal Server Error"
+
+            #print(f"/relocate-media  is returning: `{response_data}`")
+
+            return jsonify(response_data)   # This function also takes care of the Content-Type header
+
+
 
 
 
@@ -2984,7 +3106,6 @@ class ApiRouting:
 
             #print(f"upload_media(): Attempting to move file `{src_fullname}` to `{dest_fullname}`")
             try:
-                #shutil.move(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present
                 MediaManager.move_file(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present
             except Exception:
                 # This failure might be due to the folder dest_folder not being present
@@ -2992,12 +3113,11 @@ class ApiRouting:
                       f"Attempting to automatically correct, if that was due to a missing destination folder")
 
                 # Attempt to remedy the problem by creating the appropriate media folder - in case it was missing
-                MediaManager.create_folder(name=dest_folder)
+                MediaManager.create_folder(directory_path=dest_folder)
 
                 # Try again after creating the media folder (if that was indeed missing)
                 try:
                     MediaManager.move_file(src_fullname, dest_fullname)
-                    #shutil.move(src_fullname, dest_fullname)
                 except Exception as ex:
                     err_status = f"Error in moving the file to the intended final destination ({dest_folder}) after upload. {ex}"
                     return make_response(err_status, 500)

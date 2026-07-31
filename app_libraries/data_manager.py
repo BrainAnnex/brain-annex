@@ -81,6 +81,7 @@ class DataManager:
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
 
+
     @classmethod
     def to_int_if_possible(cls, s: str):
         """
@@ -1020,58 +1021,6 @@ class DataManager:
         elif class_name == "Document":
             Document.new_content_item_successful(new_uri, original_post_data, mime_type='text/plain')  #TODO: check the MIME type
                                                                                                         #TODO: add arg `upload_folder`
-
-
-
-    @classmethod
-    def directories_stored_in(cls, internal_id=None, limit=100) -> dict:
-        """
-        Extract the directory location of the given Content Item, if specified,
-        as well as the list of all registered directories
-
-        See also get_records_by_class()
-
-        :param internal_id: [OPTIONAL] To identify the Content Item of interest
-        :param limit:       [OPTIONAL] Max number of folder names to return
-
-        :return:            The dictionary containing:
-                                1. "location":  the name of the directory of the specified Content Item,
-                                                if applicable (or None if not specified)
-                                2. "all_directories": the sorted list of all directory names
-
-                                EXAMPLE:
-                                 {"location": "documents/Ebooks & Articles/SYSTEMS BIO",
-                                  "all_directories":
-                                        [
-                                            "documents/Ebooks & Articles/SYSTEMS BIO",
-                                            "documents/Ebooks & Articles/math"
-                                        ]
-                                  }
-        """
-        result, _ = GraphSchema.get_nodes_by_filter(class_name="Directory",
-                                                    order_by="name", sort_ignore_case=["name"],
-                                                    limit=limit)
-        #print(result)
-        #TODO: let get_nodes_by_filter() extract the desired single field
-        directory_list = [d.get("name") for d in result]
-        #print(directory_list)
-
-        if internal_id is None:
-            location = None
-        else:
-            result = cls.db.follow_links(match=internal_id,
-                                         rel_name="BA_stored_in", rel_dir="OUT",
-                                         neighbor_labels="Directory")
-            assert len(result) <= 1, \
-                f"directories_stored_in(): found MULTIPLE locations ({len(result)})   " \
-                f"for the Content Item with internal_id {internal_id}"
-
-            if len(result) == 1:
-                location = result[0].get("name")
-            else:
-                location = None
-
-        return {"location": location, "all_directories": directory_list}
 
 
 

@@ -2002,6 +2002,7 @@ class GraphSchema:
         :param internal_id: Internal database ID to identify a Data Node
         :return:            True if the specified Data Node exists, or False otherwise
         """
+        #TODO: rename to data_node_exists()
         assert CypherUtils.valid_internal_id(internal_id), \
                 f"data_node_exists_by_id(): the argument `internal_id` ({internal_id}) " \
                 f"is not a valid internal database ID value"
@@ -2349,6 +2350,40 @@ class GraphSchema:
 
 
     @classmethod
+    def locate_single_data_node(cls, class_name :str, key_name :str, key_value) -> int|str:
+        """
+        Return the internal database ID of the specified data node.
+        If no match, or more than 1, comes up, an Exception is raised
+
+        :param class_name:
+        :param key_name:
+        :param key_value:
+        :return:
+        """
+        q = f'''
+            MATCH (dn :`{class_name}`) 
+            WHERE dn.{key_name} = $key_value
+                AND dn.`_CLASS` = $class_name
+            RETURN id(dn) as INTERNAL_ID
+            LIMIT 2
+            '''         # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
+
+        data_binding = {"key_value": key_value, "class_name": class_name}
+
+        #cls.db.debug_query_print(q, data_binding, "get_data_node")
+        result = cls.db.query(q, data_binding=data_binding, single_column="INTERNAL_ID")
+
+        assert result != [], \
+            "locate_single_node(): failed to locate requested data node"
+
+        assert len(result) < 2,\
+            "locate_single_node(): non-unique specifications (more than 1 data node matches)"
+
+        return result[0]
+
+
+
+    @classmethod
     def locate_node(cls, node_id :int|str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
         """
         EXPERIMENTAL - a generalization of get_single_data_node()
@@ -2520,7 +2555,7 @@ class GraphSchema:
                 if "," not in order_by:    # "ORDER BY" is present and doesn't contain multiple parts
                                            # (i.e. we're sorting by just one field)
                     assert order_by in GraphSchema.get_class_properties(class_name=class_name, include_ancestors=True), \
-                        f"cannot sort recordset (`{class_name}`) by the unknown property `{order_by}`"
+                        f"cannot sort recordset (of Class `{class_name}`) by the unknown Class Property `{order_by}`"
 
             data_binding["class_name"] = class_name
             clause_list.append("(n.`_CLASS` = $class_name)")
@@ -3374,8 +3409,7 @@ class GraphSchema:
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
 
-        :return:            The internal database ID of the new data node just created;
-                                if unable to create it, an Exception is raised
+        :return:            The internal database ID of the new data node just created
         """
         # TODO: verify that all the requested links conform to the Schema
         # TODO: consider allowing creation of multiple nodes from one call

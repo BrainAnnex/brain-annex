@@ -57,7 +57,7 @@ class Image:
         new_suffix =   item_data.get("suffix")
 
         folder, old_basename, old_suffix = \
-                MediaManager.get_media_item_file(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
+                MediaManager.get_media_item_file_by_entity(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
 
         print(f"folder: {folder}, old_basename: {old_basename}, old_suffix: {old_suffix}")
 
