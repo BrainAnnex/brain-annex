@@ -186,25 +186,28 @@ class MediaManager:
 
 
     @classmethod
-    def get_media_item_file_by_entity(cls, class_name :str, entity_id :str) -> (str, str, str):
+    def get_media_item_file_by_entity(cls, entity_id :str, class_name :str) -> (str, str, str):
         """
         Retrieve the full file path, basename and suffix of the a media item identified by its Class and Entity ID.
 
-        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
-        :param entity_id:   Unique identifier string (within the given Class) for the Media Item of Interest
+        :param entity_id:   Unique identifier string (within the given Class)
+                                for the Media Item of Interest
+        :param class_name:  Name of the Schema Class for the desired media Item.
+                                EXAMPLE: "Image", "Note", "Document"
 
         :return:            The triplet (directory path, stem, extension)
                                 Notes:  - the directory path ends with a "/" (even on Windows)
                                         - stem is the file basename exclusive of path and of suffix
                                         - extension (the suffix) does NOT include the dot
-                                EXAMPLE:
+                                EXAMPLES:
                                     ("D:/media/my_media_folder/images/", "my_pict", "jpg")
+                                    ("D:/media/my_media_folder/my_custom_directory/vacation/", "my_pict", "jpg")
         """
-        # TODO: rename to get_media_item_file_by_entity()
         content_node = GraphSchema.get_single_data_node(node_id=entity_id, id_key="entity_id", class_name=class_name)
         #print("content_node:", content_node)
         if content_node is None:
-            raise Exception(f'get_media_item_file(): Metadata not found for the Media file of Class `{class_name}` and Entity ID "{entity_id}"')
+            raise Exception(f'get_media_item_file_by_entity(): '
+                            f'Metadata not found for the Media file of Class `{class_name}` and Entity ID "{entity_id}"')
 
         basename = content_node['basename']
         suffix = content_node['suffix']
@@ -272,10 +275,10 @@ class MediaManager:
 
 
     @classmethod
-    def lookup_media_file(cls, uri :str, class_name :str, thumb=False) -> (str, str, str):
+    def lookup_media_file(cls, entity_id :str, class_name :str, thumb=False) -> (str, str, str):
         """
 
-        :param uri:         Together with the Class name, this string provides
+        :param entity_id:   Together with the Class name, this string provides
                                 a unique identifier for the Media Item of interest
         :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param thumb:       If True, return the folder for the thumbnail image instead;
@@ -288,12 +291,12 @@ class MediaManager:
                                 EXAMPLE:
                                     ("D:/media/my_media_folder/images/", "snap1", "jpg")
         """
-        #TODO: phase out in favor of get_media_item_file()
+        #TODO: phase out in favor of get_media_item_file_by_entity()
 
-        content_node = GraphSchema.get_single_data_node(node_id=uri, id_key="entity_id", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node(node_id=entity_id, id_key="entity_id", class_name=class_name)
         #print("content_node:", content_node)
         if content_node is None:
-            raise Exception(f'lookup_media_file(): Metadata not found for the Media file of Class `{class_name}` and uri="{uri}"')
+            raise Exception(f'lookup_media_file(): Metadata not found for the Media file of Class `{class_name}` and uri="{entity_id}"')
 
         basename = content_node['basename']
         suffix = content_node['suffix']
@@ -304,17 +307,18 @@ class MediaManager:
 
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder = cls.retrieve_full_path(uri=uri, thumb=thumb)
+        folder = cls.retrieve_full_path(uri=entity_id, thumb=thumb)
 
         return (folder, basename, suffix)
 
 
 
     @classmethod
-    def get_full_filename(cls, uri : str, class_name, thumb=False) -> str:
+    def get_full_filename_thumb(cls, entity_id :str, class_name :str) -> str:
         """
+        Get the full filename for the THUMBNAIL-image version
 
-        :param uri:         Together with the Class name, this string provides
+        :param entity_id:   Together with the Class name, this string provides
                                 a unique identifier for the Media Item of interest
         :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param thumb:       If True, return the folder for the thumbnail image instead;
@@ -322,13 +326,54 @@ class MediaManager:
                                 because SVG files cannot be resized
         :return:            EXAMPLE: "D:/media/my_media_folder/images/Tahiti vacation/"
         """
-        (filepath, basename, suffix) = cls.lookup_media_file(uri=uri, class_name=class_name, thumb=thumb)
+        # TODO: dispatch to appropriate plugin
+        (filepath, basename, suffix) = cls.lookup_media_file(entity_id=entity_id, class_name=class_name, thumb=True)
         filename = basename + "." + suffix
 
-        full_path = cls.retrieve_full_path(uri=uri, thumb=thumb)
+        full_path = cls.retrieve_full_path(uri=entity_id, thumb=True)
         full_file_name = full_path + filename
 
         return full_file_name
+
+
+    @classmethod
+    def get_absolute_file_path(cls, entity_id :str, class_name :str) -> str:
+        """
+        Get the absolute file path of the media file linked to the given Media Content Item
+
+        :param entity_id:   Unique identifier string (within the given Class)
+                                for the Media Item of Interest
+        :param class_name:  Name of the Schema Class for the desired media Item.
+                                EXAMPLE: "Image", "Note", "Document"
+
+        :return:            EXAMPLE: "D:/media/my_media_folder/images/snap1.jpg"
+        """
+        (filepath, basename, suffix) = cls.get_media_item_file_by_entity(class_name=class_name, entity_id=entity_id)
+        filename = basename + "." + suffix
+
+        full_path = cls.retrieve_full_path(uri=entity_id)
+        full_file_name = full_path + filename
+
+        return full_file_name
+
+
+    @classmethod
+    def get_full_filename(cls, entity_id :str, class_name :str, thumb=False) -> str:
+        """
+
+        :param entity_id:   Together with the Class name, this string provides
+                                a unique identifier for the Media Item of interest
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param thumb:       If True, return the folder for the thumbnail image instead;
+                                ignored if the file suffix is "svg" (regardless of case),
+                                because SVG files cannot be resized
+        :return:            EXAMPLE: "D:/media/my_media_folder/images/snap1.jpg"
+        """
+        # Dispatch based on the `thumb` argument
+        if thumb:
+            return cls.get_full_filename_thumb(entity_id=entity_id, class_name=class_name)
+        else:
+            return cls.get_absolute_file_path(entity_id=entity_id, class_name=class_name)
 
 
 
