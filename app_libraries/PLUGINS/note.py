@@ -9,15 +9,16 @@ class Note:
     """
     
     SCHEMA_CLASS_NAME = "Note"
+    DEFAULT_FOLDER_NAME = "notes"   # The desired name for the default folder to contain media files for this plugin
 
 
 
     @classmethod
     def default_folder(cls):
         """
-        Specify the desired name for the default folder to contain "notes" media
+        Specify
         """
-        return "notes"
+        return cls.DEFAULT_FOLDER_NAME
 
 
 

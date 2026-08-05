@@ -154,18 +154,18 @@ def test_get_class_name_by_schema_uri(db):
     db.empty_dbase()
     GraphSchema.create_class("A")
     class_A_uri = GraphSchema.get_class_entity_id(class_name="A")
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity(class_A_uri) == "A"
 
     GraphSchema.create_class("B")
     class_B_uri = GraphSchema.get_class_entity_id(class_name="B")
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_B_uri) == "B"
+    assert GraphSchema.get_class_name_by_schema_entity(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity(class_B_uri) == "B"
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_entity_id("schema-XYZ")
+        assert GraphSchema.get_class_name_by_schema_entity("schema-XYZ")
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_entity_id(123)
+        assert GraphSchema.get_class_name_by_schema_entity(123)
 
 
 
@@ -1398,12 +1398,12 @@ def test_get_data_node_id(db):
 def test_data_node_exists_by_id(db):
     db.empty_dbase()
 
-    assert not GraphSchema.data_node_exists_by_id(internal_id=123)
+    assert not GraphSchema.data_node_exists(internal_id=123)
 
     GraphSchema.create_class(name="Car", strict = True)
     internal_id = GraphSchema.create_data_node(class_name="Car", new_entity_id="car-88")    # Non-existent
 
-    assert GraphSchema.data_node_exists_by_id(internal_id=internal_id)
+    assert GraphSchema.data_node_exists(internal_id=internal_id)
 
 
 def test_data_node_exists_by_entity(db):
@@ -2795,16 +2795,16 @@ def test_class_and_entity_id(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        GraphSchema.class_and_entity_id(123)        # Non-existing node
+        GraphSchema.get_class_and_entity_id(123)        # Non-existing node
 
     with pytest.raises(Exception):
-        GraphSchema.class_and_entity_id([1, 2])     # Bad data type
+        GraphSchema.get_class_and_entity_id([1, 2])     # Bad data type
 
     GraphSchema.create_class("Person")
     p = GraphSchema.create_data_node(class_name="Person", properties={"name": "Julian"},
                                      new_entity_id="person-1")
 
-    result = GraphSchema.class_and_entity_id(p)
+    result = GraphSchema.get_class_and_entity_id(p)
     assert result == ('Person', 'person-1')
 
 

@@ -6,4 +6,6 @@ class ImageGallery:
     """
     Plugin-provided custom interface for image galleries
     """
+    SCHEMA_CLASS_NAME = "ImageGallery"
+
     pass

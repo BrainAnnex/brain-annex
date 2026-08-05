@@ -1,7 +1,7 @@
 from brainannex import GraphAccess, GraphSchema, \
                        Categories, FullTextIndexing, PyGraphVisual
 
-import app_libraries.PLUGINS.plugin_support as plugin_support
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 from app_libraries.PLUGINS.note import Note
 from app_libraries.PLUGINS.document import Document
 from app_libraries.PLUGINS.image import Image
@@ -677,7 +677,7 @@ class DataManager:
             update_data = Document.before_update_content(entity_id=entity_id, item_data=update_data)
         elif class_name == "Image":
             update_data = Image.before_update_content(entity_id=entity_id, item_data=update_data)
-        #elif plugin_support.is_media_class(class_name):
+        #elif PluginManager.is_media_class(class_name):
             # If the Content Item is a Media Item (other than Document)
             #MediaManager.before_update_content(entity_id=entity_id, set_dict=update_data, class_name=class_name)
 
@@ -726,7 +726,7 @@ class DataManager:
 
 
         # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
-        if plugin_support.is_media_class(class_name):
+        if PluginManager.is_media_class(class_name):
             # If there's media involved, delete the media, too
             MediaManager.delete_media_file(uri=uri, class_name=class_name)
 

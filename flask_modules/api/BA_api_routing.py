@@ -9,7 +9,7 @@ from app_libraries.data_manager import DataManager
 from app_libraries.documentation_generator import DocumentationGenerator
 from app_libraries.media_manager import MediaManager, ImageProcessing
 from app_libraries.PLUGINS.document import Document
-from app_libraries.PLUGINS import plugin_support
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories, PyGraphVisual
 from ariadne import QueryType, make_executable_schema, graphql_sync
@@ -1220,7 +1220,8 @@ class ApiRouting:
                             In case the media isn't found, a 404 response status is sent,
                             together with an error message
             """
-            #TODO: let the Documents plugin handle this
+            #TODO: let the Documents plugin handle this,
+            #       or maybe turn into a more general endpoint such as "serve-plugin-extra-media"
 
             COVERS_FOLDER = "_covers/"  # TODO: for now, this must be matched to documents.py
             try:
@@ -2136,7 +2137,7 @@ class ApiRouting:
             print("    parameters passed to the plugin: ", parameters)              # EXAMPLE:  [1, 2, 3]
 
             try:
-                result = plugin_support.api_handler(handler, parameters)
+                result = PluginManager.api_handler(handler, parameters)
                 response_data = {"status": "ok", "payload": result}                  # Successful termination
 
             except Exception as ex:
@@ -2273,7 +2274,7 @@ class ApiRouting:
                 item_internal_id = request_parameters.get("item_internal_id")
                 category_uri = request_parameters.get("category_uri")
 
-                item_class_name, item_entity_id = GraphSchema.class_and_entity_id(item_internal_id)
+                item_class_name, item_entity_id = GraphSchema.get_class_and_entity_id(item_internal_id)
 
                 Categories.link_content_at_end(category_entity_id=category_uri,
                                                item_class_name=item_class_name, item_entity_id=item_entity_id)
@@ -3184,7 +3185,7 @@ class ApiRouting:
 
             try:
                 # Let the appropriate plugin handle anything they need to wrap up the operation
-                if class_name == "Document":    # TODO: move to plugin_support.py
+                if class_name == "Document":    # TODO: move to PluginManager
                     Document.new_content_item_successful(entity_id=new_uri, pars=properties, mime_type=mime_type,
                                                          upload_folder=post_data.get("upload_folder"),
                                                          index_pdf=current_app.config['INDEX_PDF_FILES'])

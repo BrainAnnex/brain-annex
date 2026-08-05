@@ -4,10 +4,11 @@
 
 
 import os
+import shutil
 import brainannex.exceptions as exceptions
 from brainannex import GraphSchema
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 from PIL import Image
-import shutil
 from pathlib import Path
 
 
@@ -19,17 +20,22 @@ class MediaManager:
     Static class that does NOT get instantiated;
     however, it must be initialized with calls to set_media_folder() and set_default_folders()
 
+    Two broad categories of operations:
+        1) database operations
+        2) file-system operations
+
     Gradually, this library will conform to the following nomenclature;
     given, for example, a file "C:\folder_1\folder_2\my_file.txt" :
 
-    | String                             | Term               |
-    | ---------------------------------- | ------------------ |
-    | `txt`                              | extension          |
-    | `my_file`                          | stem               |
-    | `my_file.txt`                      | filename           |
-    | `/folder_1/folder_2/`              | directory path     |
-    | `/folder_1/folder_2/my_file.txt`   | file path          |
-    | `C:\folder_1\folder_2\my_file.txt` | absolute file path |
+    | String                                          | Term               |
+    | ----------------------------------------------- | ------------------ |
+    | `txt`                                           | extension          |
+    | `my_file`                                       | stem               |
+    | `my_file.txt`                                   | filename           |
+    | `folder_2`                                      | directory name     |
+    | `/folder_1/folder_2` or `C:\folder_1\folder_2`  | directory path     |
+    | `/folder_1/folder_2/my_file.txt`                | file path          |
+    | `C:\folder_1\folder_2\my_file.txt`              | absolute file path |
      """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
@@ -223,7 +229,7 @@ class MediaManager:
 
 
     @classmethod
-    def get_media_item_file(cls, internal_id : int | str) -> (str, str, str):
+    def get_media_item_file(cls, internal_id : int|str) -> (str, str, str):
         """
         Retrieve the directory path, stem and suffix of the a media item identified by its internal database ID
 
@@ -569,6 +575,30 @@ class MediaManager:
 
 
     @classmethod
+    def split_absolute_file_path(cls, absolute_file_path :str) -> (str, str, str):
+        """
+        Break up an absolute file path into the triplet (directory, stem, extension)
+
+        :param absolute_file_path:  EXAMPLE: r"C:\folder_1\folder_2\my_file.txt"
+        :return:                    The triplet (directory, stem, extension)
+                                        EXAMPLE: (r"C:\folder_1\folder_2", "my_file", "txt")
+        """
+        p = Path(absolute_file_path)
+
+        directory = str(p.parent)           # EXAMPLE: r"C:\folder_1\folder_2"
+        stem = p.stem                       # EXAMPLE: "my_file"
+        extension = p.suffix.lstrip(".")    # EXAMPLE: "txt"
+
+        '''
+        print(directory)
+        print(stem)
+        print(extension)
+        '''
+        return (directory, stem, extension)
+
+
+
+    @classmethod
     def get_mime_type(cls, suffix :str) -> str:
         """
         Return the appropriate MIME type for file content type assumed from the
@@ -745,12 +775,12 @@ class MediaManager:
 
 
 
-
     @classmethod
     def move_media_item(cls, internal_id :int|str, media_directory :str) -> None:
         """
         Move the specified media item to the given media directory.
-        This operation will affect both the file system and the database
+        This operation will affect both the file system and the database.
+        TODO: also need to move "covers" or "thumbnails"
 
         :param internal_id:     To identify the Media Item of interest
         :param media_directory: The desired media directory (which must already exist)
@@ -784,6 +814,8 @@ class MediaManager:
 
         # Move the media file
         MediaManager.move_file(src=src_file_path, dest=dest_file_path)
+        PluginManager.move_media_item_successful(internal_id=internal_id,
+                                                 src=src_file_path, dest=dest_file_path)   # Needed to move "covers" or "thumbnails"
 
         # Update the databases
         # Locate the node for the new "Directory"

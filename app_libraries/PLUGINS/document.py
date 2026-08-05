@@ -11,7 +11,9 @@ class Document:
     """
 
     SCHEMA_CLASS_NAME = "Document"
+    DEFAULT_FOLDER_NAME = "documents"   # The desired name for the default folder to contain media files for this plugin
     COVERS_FOLDER = "_covers/"      # TODO: for now, this must be matched to BA_api_routing.py
+
 
 
     @classmethod
@@ -19,7 +21,7 @@ class Document:
         """
         Specify the desired name for the default subfolder (of the media folder) to contain document media
         """
-        return "documents"
+        return cls.DEFAULT_FOLDER_NAME
 
 
 
@@ -174,6 +176,7 @@ class Document:
             path = MediaManager.retrieve_full_path(uri=entity_id)         # Incl. the final "/"
         else:
             # Link the new document to its specific directory node
+            # TODO: perhaps should be done by the MediaManager
             # TODO: also introduce clause  _CLASS = cls.SCHEMA_CLASS_NAME or better yet let the Schema layer handle it
             # TODO: `BA_stored_in` relationships aren't limited to Documents; they will also apply to Images, etc
             q = '''
@@ -228,7 +231,7 @@ class Document:
     @classmethod
     def update_content_item_successful(cls, entity_id :str, pars: dict) -> None:
         """
-        Invoked after a Content Item of this type gets successfully updated
+        Invoked after a Document gets successfully updated
 
         :param entity_id:   A string to identify this Document
         :param pars:        Dict with the various properties of this Content Item
@@ -239,7 +242,16 @@ class Document:
 
 
     @classmethod
-    def api_endpoint(cls, parameters):
+    def move_media_item_successful(cls, internal_id :int|str, src :str, dest :str) -> None:
+        """
+        Invoked after a Document file gets moved to another location
+        """
+        print(f"In Document.move_media_item_successful() -  internal_id: {internal_id}  |  src: `{src}` | dest: `{dest}`")
+
+
+
+    @classmethod
+    def api_endpoint(cls, parameters) -> bool:
         """
         EXPERIMENTAL : not in current use.
 
@@ -248,5 +260,5 @@ class Document:
         :param parameters:  Data that was passed to the web API endpoint for this plugin
         :return:
         """
-        #print("In Documents.api_endpoint().  parameters: ", parameters)
-        return "ok"
+        print("In Documents.api_endpoint().  parameters: ", parameters)
+        return True

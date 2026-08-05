@@ -2,7 +2,7 @@ import pytest
 import os
 from brainannex import GraphAccess, GraphSchema
 from app_libraries.media_manager import MediaManager
-import app_libraries.PLUGINS.plugin_support as plugin_support
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 from app_libraries.PLUGINS.image import Image
 from app_libraries.PLUGINS.document import Document
 
@@ -16,7 +16,7 @@ def db():
     GraphSchema.set_database(neo_obj)
 
     MediaManager.set_media_folder("D:/media/my_media_folder/")
-    MediaManager.set_default_folders(plugin_support.all_default_folders())
+    MediaManager.set_default_folders(PluginManager.all_default_folders())
 
     yield neo_obj
 
@@ -36,7 +36,7 @@ def test_set_media_folder():
 
 def test_default_file_path():
     MediaManager.set_media_folder("D:/media/my_media_folder/")
-    MediaManager.set_default_folders(plugin_support.all_default_folders())
+    MediaManager.set_default_folders(PluginManager.all_default_folders())
 
     assert MediaManager.default_file_path(class_name="Document") == "D:/media/my_media_folder/documents/"
 
@@ -416,6 +416,7 @@ def test_create_media_directory(db):
 def test_move_media_item(db):
     db.empty_dbase()
 
+    # Set up
     MediaManager.add_to_schema()
     Document.add_to_schema()
 
@@ -453,7 +454,10 @@ def test_move_media_item(db):
     # Create a new media directory
     MediaManager.create_media_directory("ebooks")
 
+
+    # MOVE THE MEDIA ITEMS
     MediaManager.move_media_item(internal_id=doc_1_id, media_directory="ebooks")
+
 
     # Verify the new location of the media file, both in the file system and on the database
     assert MediaManager.file_exists("test_files/ebooks/sample_file_1.txt")
@@ -466,9 +470,15 @@ def test_move_media_item(db):
         # Attempting to repeat the last move
         MediaManager.move_media_item(internal_id=doc_1_id, media_directory="ebooks")
 
-
+    return
     # Clean up
     MediaManager.move_file(src="test_files/ebooks/sample_file_1.txt", dest="test_files/sample_file_1.txt")
     MediaManager.delete_folder("test_files/my documents/chapter 1")
     MediaManager.delete_folder("test_files/my documents")
     MediaManager.delete_folder("test_files/ebooks")
+
+
+
+def test_split_absolute_file_path():
+    assert MediaManager.split_absolute_file_path(r"C:\folder_1\folder_2\my_file.txt") == \
+        (r"C:\folder_1\folder_2", "my_file", "txt")

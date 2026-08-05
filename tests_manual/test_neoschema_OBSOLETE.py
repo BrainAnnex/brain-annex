@@ -146,17 +146,17 @@ def test_class_name_exists(db):
 def test_get_class_name_by_schema_uri(db):
     db.empty_dbase()
     _ , class_A_uri = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity(class_A_uri) == "A"
 
     _ , class_B_uri = GraphSchema.create_class("B")
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_B_uri) == "B"
+    assert GraphSchema.get_class_name_by_schema_entity(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity(class_B_uri) == "B"
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_entity_id("schema-XYZ")
+        assert GraphSchema.get_class_name_by_schema_entity("schema-XYZ")
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_entity_id(123)
+        assert GraphSchema.get_class_name_by_schema_entity(123)
 
 
 def test_get_class_name(db):
