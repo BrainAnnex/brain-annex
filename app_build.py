@@ -25,12 +25,16 @@ from flask_modules.sample_embedded_site.sample_api.sample_api_routing import Sam
 from brainannex import GraphAccess
 from app_libraries.initialize import InitializeBrainAnnex
 
+# Plugin-related
+from app_libraries.PLUGINS.plugin_manager import PluginManager
+import importlib
+
 
 
 def create_app(db=None, test=False, config_override=None) -> Flask:
     """
-    Create and return the Flask object,
-    upon reading in the config files (unless over-ridden)
+    Create and return a Flask object,
+    upon reading in the config files (unless over-ridden by the arguments)
 
     :param db:              [OPTIONAL] A "GraphAccess" database object (currently only used for pytests)
     :param test:            [OPTIONAL] If True, instead of reading the config files, use the values hardwired in this function
@@ -148,3 +152,33 @@ def initialize_services(app :Flask) -> None:
     # Examples of generic pages and web API
     SamplePagesRouting.setup(app)           # Example of UI for an embedded independent site
     SampleApiRouting.setup(app)             # Example of endpoints for an embedded independent site
+
+
+    # Register all the active plugins with PluginManager
+    for plugin_id in app.config["PLUGINS"]:                 # EXAMPLE of plugin_id: "timer_widget"
+        assert PluginManager.is_valid_plugin_id(plugin_id), \
+            f"STARTUP ERROR during parsing of the configuration files: the plugin name `{plugin_id}` " \
+            f"is not a valid canonical name for a Brain Annex plugin.  " \
+            f"\nCheck the names listed under PLUGINS in both your configuration files."
+
+        # TODO: also verify that the requested plugin is actually installed!
+
+        # Derive the canonical name of the python singleton class associated to the plugin under consideration
+        class_name = PluginManager.plugin_id_to_class_name(plugin_id)     # EXAMPLE: "TimerWidget"
+
+        module_name = f"app_libraries.PLUGINS.{plugin_id}"  # EXAMPLE: "app_libraries.PLUGINS.timer_widget"
+        module = importlib.import_module(module_name)       # A python module, dynamically loaded
+
+        plugin_class = getattr(module, class_name)          # A python class.  EXAMPLE:
+                                                            #   <class 'app_libraries.PLUGINS.timer_widget.TimerWidget'>
+
+        # Inform the PluginManager about this handler class for the plugin under consideration
+        PluginManager.register(
+            plugin_id=plugin_id,
+            plugin_class=plugin_class
+        )
+
+    #print(PluginManager.REGISTERED_PLUGINS)
+    # It shows:  {'document': <class 'app_libraries.PLUGINS.document.Document'>, 'flash_card': <class 'app_libraries.PLUGINS.flash_card.FlashCard'>, etc}
+    #print("PLUGIN TEST: ", PluginManager.REGISTERED_PLUGINS["document"].default_folder())   # Invoke a method of one of the plugin classes
+                                                                                             # It shows: "documents"

@@ -23,7 +23,7 @@
     SOFTWARE.
 	----------------------------------------------------------------------------------
 
-    TODO: maybe relocate under flask_modules/pages/static
+    TODO: relocate to  flask_modules/pages/static
 
  */
 
@@ -248,7 +248,8 @@ class ServerCommunication
                 success_flag = true;
             }
         })
-        .catch(err => {  // All errors eventually go thru here
+        .catch(err => { // All errors eventually go thru here
+                        // `err` is an object with 2 properties: `name` and `message`
             console.log(`send_data_to_server(): Final processing of error message from server`);
             error_message = ServerCommunication.report_fetch_errors(err);
             success_flag = false;
@@ -622,8 +623,8 @@ class ServerCommunication
         // If the above "ok" attribute is false,
         // then there was an HTTP error status - for example a 404 (page not found)
 
-        const error_info = "HTTP error status received from the server. Error status: " + resp_obj.status
-                                + ". Error details: " + resp_obj.statusText + ". \nURL: " + resp_obj.url;
+        let error_info = "HTTP error status received from the server. Error status: " + resp_obj.status
+                                + ". Error type: " + resp_obj.statusText + ". \nURL: " + resp_obj.url + " (see console log for details)";
         console.error(error_info);
 
         console.error('In handle_fetch_errors(). Full response object:', resp_obj);
@@ -634,17 +635,21 @@ class ServerCommunication
             with something like .json() or .text()
             We'll try .json() first, and in case of parsing failure, fall back to text.
             Since reading the body is asynchronous, we need to return a Promise from either of those function.
+
+            TODO: maybe we should do this step only if bodyUsed = false
          */
         resp_obj.json()
         .then(errData => {
             // Attempt JSON parsing first
             console.error("The server error response included the following JSON message:", errData);
+            error_info += "\nError details: " + errData;        // TODO: this does nothing, because it happens asynchronously
         })
         .catch(parseErr => {
             // If JSON parsing failed, fall back to text
             resp_obj.text()
             .then(text => {
                 console.error("The server error response included the following TEXT message:", text);
+                error_info += "\nError details: " + text;       // TODO: this does nothing, because it happens asynchronously
             })
         })
 
@@ -681,7 +686,7 @@ class ServerCommunication
         alert(fetch_failure_message);
 
         /* TODO: there might be a timing (or caching??) bug in Firefox.  I sporadically get an error with name "TypeError"
-           and message: "NetworkError when attempting to fetch resource"
+                 and message: "NetworkError when attempting to fetch resource"
            MAYBE ATTEMPT A 2nd fetch automatically???
            See also: https://stackoverflow.com/questions/67451129/express-and-fetch-typeerror-networkerror-when-attempting-to-fetch-resource
            https://stackoverflow.com/questions/66287934/networkerror-when-attempting-to-fetch-resource-in-firefox-84-85

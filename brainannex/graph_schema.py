@@ -393,32 +393,9 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_name_by_schema_entity_id(cls, entity_id :str) -> str:
-        """
-        Returns the name of the class with the given Schema Entity ID;
-        raise an Exception if not found
-
-        :param entity_id:   A string uniquely identifying the desired Class
-        :return:            The name of the Class with the given Schema uri
-        """
-        # TODO: maybe phase out?
-        assert cls.is_valid_schema_entity_id(entity_id), \
-            "get_class_name_by_schema_entity_id(): The `entity_id` argument MUST be a string " \
-            "of the form 'schema-n' for some integer n"
-
-        match = cls.db.match(labels="CLASS", key_name="entity_id", key_value=entity_id)
-        result = cls.db.get_nodes(match, single_cell="name")
-
-        if not result :
-            raise Exception(f"No Schema Class with entity_id '{entity_id}' found")
-
-        return result
-
-
-    @classmethod
     def get_class_name(cls, internal_id :int|str) -> str:
         """
-        Returns the name of the class with the given internal database ID,
+        Returns the name of the Class with the given internal database ID,
         or raise an Exception if not found
 
         :param internal_id: An integer or string with the internal database ID
@@ -432,6 +409,29 @@ class GraphSchema:
 
         if not result :
             raise Exception(f"GraphSchema.get_class_name(): no Class with an internal database ID of {internal_id} found")
+
+        return result
+
+
+    @classmethod
+    def get_class_name_by_schema_entity(cls, entity_id :str) -> str:
+        """
+        Returns the name of the class with the given Schema Entity ID;
+        raise an Exception if not found
+
+        :param entity_id:   A string uniquely identifying the desired Class
+        :return:            The name of the Class with the given Schema uri
+        """
+        # TODO: maybe phase out?
+        assert cls.is_valid_schema_entity_id(entity_id), \
+            "get_class_name_by_schema_entity(): The `entity_id` argument MUST be a string " \
+            "of the form 'schema-n' for some integer n"
+
+        match = cls.db.match(labels="CLASS", key_name="entity_id", key_value=entity_id)
+        result = cls.db.get_nodes(match, single_cell="name")
+
+        if not result :
+            raise Exception(f"No Schema Class with entity_id '{entity_id}' found")
 
         return result
 
@@ -1995,7 +1995,7 @@ class GraphSchema:
 
 
     @classmethod
-    def data_node_exists_by_id(cls, internal_id :int|str) -> bool:
+    def data_node_exists(cls, internal_id : int | str) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
 
@@ -2003,7 +2003,7 @@ class GraphSchema:
         :return:            True if the specified Data Node exists, or False otherwise
         """
         assert CypherUtils.valid_internal_id(internal_id), \
-                f"data_node_exists_by_id(): the argument `internal_id` ({internal_id}) " \
+                f"data_node_exists(): the argument `internal_id` ({internal_id}) " \
                 f"is not a valid internal database ID value"
 
         where_clause = f"WHERE id(dn) = $internal_id"
@@ -2024,6 +2024,7 @@ class GraphSchema:
         :param entity_id:   The entity id of the Data Node (in the context of its Class)
         :return:            True if the specified Data Node exists, or False otherwise
         """
+        # TODO: use data_node_exists() / data_node_exists_by_entity() as a MODEL for alternate args
         assert cls.is_valid_class_name(class_name), \
                 f"data_node_exists_by_entity(): the value passed " \
                 f"to the argument `class_name` ({class_name}) is not a valid Schema Class name"
@@ -2349,6 +2350,40 @@ class GraphSchema:
 
 
     @classmethod
+    def locate_single_data_node(cls, class_name :str, key_name :str, key_value) -> int|str:
+        """
+        Return the internal database ID of the specified data node.
+        If no match, or more than 1, comes up, an Exception is raised
+
+        :param class_name:
+        :param key_name:
+        :param key_value:
+        :return:
+        """
+        q = f'''
+            MATCH (dn :`{class_name}`) 
+            WHERE dn.{key_name} = $key_value
+                AND dn.`_CLASS` = $class_name
+            RETURN id(dn) as INTERNAL_ID
+            LIMIT 2
+            '''         # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
+
+        data_binding = {"key_value": key_value, "class_name": class_name}
+
+        #cls.db.debug_query_print(q, data_binding, "get_data_node")
+        result = cls.db.query(q, data_binding=data_binding, single_column="INTERNAL_ID")
+
+        assert result != [], \
+            "locate_single_node(): failed to locate requested data node"
+
+        assert len(result) < 2,\
+            "locate_single_node(): non-unique specifications (more than 1 data node matches)"
+
+        return result[0]
+
+
+
+    @classmethod
     def locate_node(cls, node_id :int|str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
         """
         EXPERIMENTAL - a generalization of get_single_data_node()
@@ -2520,7 +2555,7 @@ class GraphSchema:
                 if "," not in order_by:    # "ORDER BY" is present and doesn't contain multiple parts
                                            # (i.e. we're sorting by just one field)
                     assert order_by in GraphSchema.get_class_properties(class_name=class_name, include_ancestors=True), \
-                        f"cannot sort recordset (`{class_name}`) by the unknown property `{order_by}`"
+                        f"cannot sort recordset (of Class `{class_name}`) by the unknown Class Property `{order_by}`"
 
             data_binding["class_name"] = class_name
             clause_list.append("(n.`_CLASS` = $class_name)")
@@ -3007,7 +3042,7 @@ class GraphSchema:
 
 
     @classmethod
-    def class_and_entity_id(cls, internal_id :int|str):
+    def get_class_and_entity_id(cls, internal_id :int|str):
         """
         Look up the Class name and Entity ID of the given node.
         If no such node exists, an Exception is raised
@@ -3018,14 +3053,14 @@ class GraphSchema:
         #print(type(internal_id))
         arg_type = type(internal_id)
         assert arg_type == int or arg_type == str, \
-            f"class_and_entity_id(): the argument `internal_id` must be either a string or an int ;  " \
+            f"get_class_and_entity_id(): the argument `internal_id` must be either a string or an int ;  " \
             f"instead, it was {arg_type}"
 
         q = f'''
-        MATCH (n)
-        WHERE id(n) = $internal_id
-        RETURN n.`_CLASS` AS class_name, n.`entity_id` AS entity_id
-        '''
+            MATCH (n)
+            WHERE id(n) = $internal_id
+            RETURN n.`_CLASS` AS class_name, n.`entity_id` AS entity_id
+            '''
 
         data_binding = {"internal_id": internal_id}
         #cls.db.debug_query_print(q, data_binding, "class_of_data_node")
@@ -3033,7 +3068,7 @@ class GraphSchema:
         #print(result)
 
         assert result is not None, \
-            f"class_and_entity_id(): unable to locate any database node with internal ID {internal_id}"
+            f"get_class_and_entity_id(): unable to locate any database node with internal ID {internal_id}"
 
         return ( result.get("class_name"), result.get("entity_id") )
 
@@ -3374,8 +3409,7 @@ class GraphSchema:
                                     "rel_dir"       OPTIONAL (default "OUT") - either "IN" or "OUT" from the new node
                                     "rel_attrs"     OPTIONAL - A dictionary of relationship attributes
 
-        :return:            The internal database ID of the new data node just created;
-                                if unable to create it, an Exception is raised
+        :return:            The internal database ID of the new data node just created
         """
         # TODO: verify that all the requested links conform to the Schema
         # TODO: consider allowing creation of multiple nodes from one call
@@ -3822,7 +3856,7 @@ class GraphSchema:
             raise Exception("Must specify at least either the 'class_name' or the 'schema_entity_id'")
 
         if not class_name:
-            class_name = cls.get_class_name_by_schema_entity_id(schema_entity_id)      # Derive the Class name from its ID
+            class_name = cls.get_class_name_by_schema_entity(schema_entity_id)      # Derive the Class name from its ID
             if not class_name:
                 raise Exception(f"Unable to locate a Class with schema ID {schema_entity_id}")
 
@@ -5818,7 +5852,7 @@ class GraphSchema:
         """
         #TODO: pytest
 
-        assert cls.data_node_exists_by_id(internal_id), \
+        assert cls.data_node_exists(internal_id), \
             f"assign_entity_id(): no Data Node with an internal ID of {internal_id} was found"
 
         new_uri = cls.reserve_next_entity_id(namespace=namespace)

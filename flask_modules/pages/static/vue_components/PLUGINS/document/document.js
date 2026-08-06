@@ -135,7 +135,7 @@ Vue.component('vue-plugin-d',
                         <br>
 
                         <p style="position: relative; z-index: 100;">
-                            <span class="label">Storage (not yet editable):</span><br>
+                            <span class="label">Storage location:</span><br>
 
                             <select @change='change_storage_dir' v-model="location" style="font-size: 10px">
                                 <option v-for="dir in all_directories"
@@ -341,10 +341,6 @@ Vue.component('vue-plugin-d',
             },
 
 
-            change_storage_dir()
-            {
-                alert("Change of storage location not yet implemented");
-            },
 
 
 
@@ -352,6 +348,72 @@ Vue.component('vue-plugin-d',
             /*
                 ---------------------   SERVER CALLS   ---------------------
              */
+
+
+            /**
+             * Initiate request to server, using a POST.
+             * Invoked when the user select an entry from the "Storage location" menu.
+             */
+            change_storage_dir()
+            {
+                // TODO: maybe invoke only at the time the SAVE button is clicked
+
+                // Send the request to the server, using a POST
+                const url_server_api = "/BA/api/relocate-media";
+
+                // Prepare the object data to send to the server
+                const post_data = {internal_id: this.item_metadata.internal_id,
+                                   to_media_directory: this.location};
+
+                //const pass_thru_data = "some value";            // Optional parameter to pass thru, if needed
+
+                console.log(`In change_storage_dir(): about to contact the server at "${url_server_api}" .  POST data:`);
+                console.log(post_data);
+
+                // Initiate asynchronous contact with the server
+                ServerCommunication.contact_server(url_server_api,
+                            {   method: "POST",
+                                data_obj: post_data,
+                                json_encode_send: true,  /* OR false, as desired */
+                                callback_fn: this.finish_change_storage_dir,
+                                //custom_data: pass_thru_data
+                            });
+
+                this.waiting = true;        // Entering a waiting-for-server mode
+                this.error = false;         // Clear any error from the previous operation
+                this.status_message = "";   // Clear any message from the previous operation
+            },
+
+
+            /** Callback function to wrap up the action of get_data_from_server() upon getting a response from the server.
+             *
+             * @param {bool} success - Boolean indicating whether the server call succeeded
+             * @param server_payload - Whatever the server returned (stripped of information about the success of the operation)
+             * @param {string} error_message - Only applicable in case of failure
+             * @param custom_data            - Whatever JavaScript pass-thru value, if any, was passed by the contact_server() call
+             */
+            finish_change_storage_dir(success, server_payload, error_message)
+            {
+                console.log("Finalizing the change_storage_dir() operation...");
+                //console.log(`Custom pass-thru data:`);
+                //console.log(custom_data);
+
+                if (success)  {     // Server reported SUCCESS
+                    console.log("    server call was successful; it returned: ", server_payload);
+                    this.status_message = `Operation completed`;
+                    //...
+                }
+                else  {             // Server reported FAILURE
+                    this.error = true;
+                    this.status_message = `FAILED operation: ${error_message}`;
+                    //...
+                }
+
+                // Final wrap-up, regardless of error or success
+                this.waiting = false;      // Make a note that the asynchronous operation has come to an end
+                //...
+            },
+
 
 
             /**

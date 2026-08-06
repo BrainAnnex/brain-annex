@@ -11,7 +11,9 @@ class Document:
     """
 
     SCHEMA_CLASS_NAME = "Document"
-    COVERS_FOLDER = "_covers/"      # TODO: for now, this must be matched to BA_api_routing.py
+    DEFAULT_FOLDER_NAME = "documents"   # The desired name for the default folder to contain media files for this plugin
+    COVERS_FOLDER = "_covers"           # A directory name
+
 
 
     @classmethod
@@ -19,7 +21,7 @@ class Document:
         """
         Specify the desired name for the default subfolder (of the media folder) to contain document media
         """
-        return "documents"
+        return cls.DEFAULT_FOLDER_NAME
 
 
 
@@ -97,7 +99,7 @@ class Document:
         new_suffix =   item_data.get("suffix")
 
         folder, old_basename, old_suffix = \
-                MediaManager.get_media_item_file(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
+                MediaManager.get_media_item_file_by_entity(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
 
         print(f"folder: {folder}, old_basename: {old_basename}, old_suffix: {old_suffix}")
 
@@ -108,7 +110,7 @@ class Document:
         # Also rename the cover image (always a jpg file), if present
         # TODO: in case of failure, catch error and restore old name of main file,
         #       prior to throwing an Exception
-        MediaManager.rename_media_file(folder=folder+cls.COVERS_FOLDER,
+        MediaManager.rename_media_file(folder=folder+cls.COVERS_FOLDER+"/",
                                        old_basename=old_basename, old_suffix="jpg",
                                        new_basename=new_basename,
                                        ignore_missing=True)
@@ -174,7 +176,9 @@ class Document:
             path = MediaManager.retrieve_full_path(uri=entity_id)         # Incl. the final "/"
         else:
             # Link the new document to its specific directory node
+            # TODO: perhaps should be done by the MediaManager
             # TODO: also introduce clause  _CLASS = cls.SCHEMA_CLASS_NAME or better yet let the Schema layer handle it
+            # TODO: `BA_stored_in` relationships aren't limited to Documents; they will also apply to Images, etc
             q = '''
                 MATCH (doc :Document {entity_id: $entity_id}),
                       (dir :Directory {name: $upload_folder}) 
@@ -227,7 +231,7 @@ class Document:
     @classmethod
     def update_content_item_successful(cls, entity_id :str, pars: dict) -> None:
         """
-        Invoked after a Content Item of this type gets successfully updated
+        Invoked after a Document gets successfully updated
 
         :param entity_id:   A string to identify this Document
         :param pars:        Dict with the various properties of this Content Item
@@ -238,7 +242,39 @@ class Document:
 
 
     @classmethod
-    def api_endpoint(cls, parameters):
+    def move_media_item_successful(cls, internal_id :int|str, src :str, dest :str) -> None:
+        """
+        Invoked after a Document file gets moved to another location.
+        Also move the cover image, if applicable
+        """
+        print(f"In Document.move_media_item_successful() -  internal_id: {internal_id}  |  src: `{src}` | dest: `{dest}`")
+
+        directory, stem, extension = MediaManager.split_absolute_file_path(src)
+        src_cover = f"{directory}/{cls.COVERS_FOLDER}/{stem}.jpg"    # EXAMPLE: "test_files/_covers/sample_file_1.jpg"
+
+        directory, stem, _ = MediaManager.split_absolute_file_path(dest)
+        dest_folder= f"{directory}/{cls.COVERS_FOLDER}"             # EXAMPLE: "test_files/my documents/chapter 1/_covers"
+        dest_cover = f"{directory}/{cls.COVERS_FOLDER}/{stem}.jpg"   # EXAMPLE: "test_files/my documents/chapter 1/_covers/sample_file_1.jpg"
+
+
+        if not MediaManager.file_exists(src_cover):
+            print(f"In Document.move_media_item_successful(): no cover image present at location `{src_cover}`.  No action taken")
+            return
+
+        print(f"In Document.move_media_item_successful() -  Attempting to move document cover  |  src: `{src_cover}` | dest: `{dest_cover}`")
+
+        # First, create a folder for the covers at the destination location, if needed
+        if not MediaManager.folder_exists(dest_folder):
+            print(f"In Document.move_media_item_successful() -  First, creating a folder `{dest_folder}` onto which to move the cover image")
+            MediaManager.create_folder(dest_folder)
+
+
+        MediaManager.move_file(src=src_cover, dest=dest_cover)
+
+
+
+    @classmethod
+    def api_endpoint(cls, parameters) -> bool:
         """
         EXPERIMENTAL : not in current use.
 
@@ -247,5 +283,5 @@ class Document:
         :param parameters:  Data that was passed to the web API endpoint for this plugin
         :return:
         """
-        #print("In Documents.api_endpoint().  parameters: ", parameters)
-        return "ok"
+        print("In Documents.api_endpoint().  parameters: ", parameters)
+        return True

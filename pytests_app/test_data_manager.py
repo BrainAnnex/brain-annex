@@ -2,6 +2,9 @@ import pytest
 from brainannex import GraphAccess, GraphSchema, Collections, Categories
 from utilities.comparisons import compare_recordsets
 from app_libraries.data_manager import DataManager
+from app_libraries.media_manager import MediaManager
+from app_libraries.PLUGINS.image import Image
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 
 
 

@@ -90,7 +90,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
             /**
-             * Initiate request to server
+             * Initiate request to server, using a POST
              */
             server_communication_POST()          /* *** "POST" ***  version */
             {
@@ -98,7 +98,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
                 const url_server_api = "/BA/api/MY_WEB_API_ENDPOINT";
 
                 const post_data = {some_key: "some value"};     // Example of object data to send to the server
-                const post_data = ["value 1", "value 2"]        // Alternate example of array data to send to the server
+                const post_data = ["value 1", "value 2"]        // ALTERNATE example of array data to send to the server
 
                 const pass_thru_data = "some value";        // Optional parameter to pass thru, if needed
 
@@ -121,7 +121,7 @@ Vue.component('vue-some-name',  <!-- NOTE:  Only lower cases in component names!
 
 
             /**
-             * Initiate request to server
+             * Initiate request to server, using a GET
              */
             server_communication_GET()          /*  *** "GET" ***  version */
             {

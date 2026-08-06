@@ -1536,20 +1536,21 @@ class GraphAccess(InterGraph):
 
 
 
-    def reattach_node(self, node, old_attachment, new_attachment, rel_name:str, rel_name_new=None) -> None:
+    def reattach_node(self, node :int|str, old_attachment :int|str, new_attachment :int|str,
+                      rel_name:str, rel_name_new=None) -> None:
         """
         Sever the relationship with the given name from the given node to the node old_attachment,
         and re-create it to the node new_attachment (optionally under a different relationship name).
 
         Note: relationship properties, if present, will NOT be transferred
 
-        :param node:            An integer with the internal database ID of the node to detach and reattach
-        :param old_attachment:  An integer with the internal database ID of the other node currently connected to
-        :param new_attachment:  An integer with the internal database ID of the new node to connect to
+        :param node:            The internal database ID of the node to detach and reattach
+        :param old_attachment:  The internal database ID of the other node currently connected to
+        :param new_attachment:  The internal database ID of the new node to connect to
         :param rel_name:        Name of the old relationship name
-        :param rel_name_new:    (OPTIONAL) Name of the new relationship name (by default the same as the old one)
+        :param rel_name_new:    [OPTIONAL] Name of the new relationship name (by default the same as the old one)
 
-        :return:                None.  If unsuccessful, an Exception is raised
+        :return:                None
         """
         assert CypherUtils.valid_internal_id(node), \
             f"reattach_node(): not a valid internal database ID ({node})"
@@ -1563,12 +1564,13 @@ class GraphAccess(InterGraph):
 
         q = f'''
             MATCH (node_start) -[rel :{rel_name}]-> (node_old), (node_new)
-            WHERE id(node_start) = {node} and id(node_old) = {old_attachment} and id(node_new) = {new_attachment}
+            WHERE id(node_start) = $node and id(node_old) = $old_attachment and id(node_new) = $new_attachment
             MERGE (node_start) -[:{rel_name_new}]-> (node_new)
             DELETE rel         
             '''
 
-        result = self.update_query(q)
+        data_binding = {"node": node, "old_attachment": old_attachment, "new_attachment": new_attachment}
+        result = self.update_query(q, data_binding=data_binding)
         #print("result of update_query in reattach_node(): ", result)
 
         assert (result.get("relationships_deleted") == 1), \

@@ -2,22 +2,31 @@ import pytest
 import os
 from brainannex import GraphAccess, GraphSchema
 from app_libraries.media_manager import MediaManager
-import app_libraries.PLUGINS.plugin_support as plugin_support
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 from app_libraries.PLUGINS.image import Image
+from app_libraries.PLUGINS.document import Document
+from app_libraries.PLUGINS.note import Note
 
 
+
+# Provide a module initialization automatically run before each test
+@pytest.fixture(scope="function", autouse=True) # autouse=True makes it unnecessary to pass initialize as argument to all tests
+def initialize():
+    PluginManager.REGISTERED_PLUGINS = {}       # Clear any registration from previous tests
+    PluginManager.register(plugin_id="document", plugin_class=Document)
+    PluginManager.register(plugin_id="image",    plugin_class=Image)
+    PluginManager.register(plugin_id="note",     plugin_class=Note)
+
+    MediaManager.set_media_folder("D:/media/my_media_folder/")
+    MediaManager.set_default_folders(PluginManager.all_default_folders())
 
 
 # Provide a database connection that can be used by the various tests that need it
 @pytest.fixture(scope="module")
 def db():
-    neo_obj = GraphAccess(debug=False)
-    GraphSchema.set_database(neo_obj)
-
-    MediaManager.set_media_folder("D:/media/my_media_folder/")
-    MediaManager.set_default_folders(plugin_support.all_default_folders())
-
-    yield neo_obj
+    graph_db_handle = GraphAccess(debug=False)
+    GraphSchema.set_database(graph_db_handle)
+    yield graph_db_handle
 
 
 
@@ -35,39 +44,16 @@ def test_set_media_folder():
 
 def test_default_file_path():
     MediaManager.set_media_folder("D:/media/my_media_folder/")
-    MediaManager.set_default_folders(plugin_support.all_default_folders())
+    assert MediaManager.MEDIA_FOLDER == "D:/media/my_media_folder/"
 
+    MediaManager.set_default_folders(PluginManager.all_default_folders())
 
     assert MediaManager.default_file_path(class_name="Document") == "D:/media/my_media_folder/documents/"
 
     assert MediaManager.default_file_path(class_name="Image", thumb=False) == "D:/media/my_media_folder/images/"
     assert MediaManager.default_file_path(class_name="Image", thumb=True) == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}"
 
-
-
-def test_retrieve_full_path(db):
-    db.empty_dbase()
-    Image.add_to_schema()
-
-    # Create an Image node, with the default folder for its type    TODO: turn all the various sample setup into a utility function
-    GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
-                                 new_entity_id="image-1")
-
-    assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/"
-    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}"
-
-    with pytest.raises(Exception):
-        assert MediaManager.retrieve_full_path("unknown_uri")
-
-    # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
-    GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
-                                 new_entity_id="dir-1")
-
-
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
-
-    assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/Tahiti vacation/"
-    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}"
+    assert MediaManager.default_file_path(class_name="Unknown") == "D:/media/my_media_folder/"
 
 
 
@@ -79,8 +65,8 @@ def test_lookup_media_file(db):
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
                                  new_entity_id="image-1")
 
-    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image") == ("D:/media/my_media_folder/images/", "snap1", "jpg")
-    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) \
+    assert MediaManager.lookup_media_file(entity_id="image-1", class_name="Image") == ("D:/media/my_media_folder/images/", "snap1", "jpg")
+    assert MediaManager.lookup_media_file(entity_id="image-1", class_name="Image", thumb=True) \
             == (f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}", "snap1", "jpg")
 
     with pytest.raises(Exception):
@@ -93,9 +79,36 @@ def test_lookup_media_file(db):
 
     GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
 
-    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image") == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
-    assert MediaManager.lookup_media_file(uri="image-1", class_name="Image", thumb=True) \
+    assert MediaManager.lookup_media_file(entity_id="image-1", class_name="Image") == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
+    assert MediaManager.lookup_media_file(entity_id="image-1", class_name="Image", thumb=True) \
             == (f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}", "snap1", "jpg")
+
+
+
+def test_get_media_item_file_by_entity(db):
+    db.empty_dbase()
+    Image.add_to_schema()
+
+    # Create an Image node, with the default folder for its type
+    GraphSchema.create_data_node(class_name="Image",
+                                 properties={"basename": "snap1", "suffix": "jpg"},
+                                 new_entity_id="image-1")
+
+    assert MediaManager.get_media_item_file_by_entity(entity_id="image-1", class_name="Image") \
+            == ("D:/media/my_media_folder/images/", "snap1", "jpg")
+    # Note: "D:/media/my_media_folder/" was set by the pytest initialize fixture
+
+    with pytest.raises(Exception):
+        assert MediaManager.get_media_item_file_by_entity(class_name="Image", entity_id="unknown_entity_id")
+
+    # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
+    GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
+                                 new_entity_id="dir-1")
+
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+
+    assert MediaManager.get_media_item_file_by_entity(class_name="Image", entity_id="image-1") \
+            == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
 
 
 
@@ -104,15 +117,13 @@ def test_get_media_item_file(db):
     Image.add_to_schema()
 
     # Create an Image node, with the default folder for its type
-    GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
-                                 new_entity_id="image-1")
+    image_internal_id = GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
+                                                     new_entity_id="image-1")
 
-    assert MediaManager.get_media_item_file(class_name="Image", entity_id="image-1") \
+    assert MediaManager.get_media_item_file(internal_id=image_internal_id) \
             == ("D:/media/my_media_folder/images/", "snap1", "jpg")
     # Note: "D:/media/my_media_folder/" was set by this pytest module
 
-    with pytest.raises(Exception):
-        assert MediaManager.get_media_item_file( class_name="Image", entity_id="unknown_entity_id")
 
     # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
     GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
@@ -120,20 +131,52 @@ def test_get_media_item_file(db):
 
     GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
 
-    assert MediaManager.get_media_item_file(entity_id="image-1", class_name="Image") \
+    assert MediaManager.get_media_item_file(internal_id=image_internal_id) \
             == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
+
+
+
+def test_get_absolute_file_path(db):
+    db.empty_dbase()
+
+    Image.add_to_schema()
+    print(PluginManager.all_default_folders())
+
+    # Create an Image node, with the default folder for its type
+    GraphSchema.create_data_node(class_name="Image",
+                                 properties={"basename": "snap1", "suffix": "jpg"},
+                                 new_entity_id="image-1")
+
+    assert MediaManager.get_absolute_file_path(entity_id="image-1", class_name="Image") \
+                == "D:/media/my_media_folder/images/snap1.jpg"
+
+
+    with pytest.raises(Exception):
+        assert MediaManager.get_absolute_file_path(entity_id="unknown_uri", class_name="Image")
+
+    # Create a new directory (just its metadata), and relocate our earlier image to be linked to it
+    GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
+                                 new_entity_id="dir-1")
+
+
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+
+    assert MediaManager.get_absolute_file_path(entity_id="image-1", class_name="Image") == "D:/media/my_media_folder/images/Tahiti vacation/snap1.jpg"
 
 
 
 def test_get_full_filename(db):
     db.empty_dbase()
+
     Image.add_to_schema()
+    print(PluginManager.all_default_folders())
 
     # Create an Image node, with the default folder for its type
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
                                  new_entity_id="image-1")
 
     assert MediaManager.get_full_filename("image-1", class_name="Image") == "D:/media/my_media_folder/images/snap1.jpg"
+
     assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) \
                 == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}snap1.jpg"
 
@@ -306,3 +349,203 @@ def test_get_mime_type():
     assert MediaManager.get_mime_type("jpg") == "image/jpeg"
     assert MediaManager.get_mime_type("PDF") == "application/pdf"
     assert MediaManager.get_mime_type("some_nonsense") == "application/save"    # default format for unknown file extensions
+
+
+
+def test_retrieve_full_path(db):
+    db.empty_dbase()
+
+    MediaManager.add_to_schema()
+    Image.add_to_schema()
+
+    # Create an Image node, with the default folder for its type    TODO: maybe turn all the various sample setup into a utility function
+    GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
+                                 new_entity_id="image-1")
+
+    assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/"
+    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}"
+
+    with pytest.raises(Exception):
+        assert MediaManager.retrieve_full_path("unknown_uri")
+
+    # Create a new directory (just its metadata), and link our earlier image to it
+    MediaManager.create_media_directory(name="images/Tahiti vacation", entity_id="dir-1")
+
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+
+    assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/Tahiti vacation/"
+    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}"
+
+
+
+def test_get_directories(db):
+    db.empty_dbase()
+
+    MediaManager.add_to_schema()
+
+    assert MediaManager.get_media_directories() == []
+
+    MediaManager.create_media_directory("images/Tahiti vacation")
+    assert MediaManager.get_media_directories() == ["images/Tahiti vacation"]
+
+    MediaManager.create_media_directory("images/South Pole expedition")
+    assert MediaManager.get_media_directories() == ["images/South Pole expedition", "images/Tahiti vacation"]
+
+
+
+def test_media_directory_stored_in(db):
+    db.empty_dbase()
+
+    MediaManager.add_to_schema()
+    Image.add_to_schema()
+
+    dir_1 = MediaManager.create_media_directory("images/Tahiti vacation")
+
+    # Create an Image, and link it to the "Tahiti" directory
+    image_1_id = GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"})
+
+    GraphSchema.add_data_relationship(from_id=image_1_id, to_id=dir_1, rel_name="BA_stored_in")
+
+    assert MediaManager.media_directory_stored_in(image_1_id) == "images/Tahiti vacation"
+
+
+    dir_2 = MediaManager.create_media_directory("images/South Pole expedition")
+
+    # Create an Image, and link it to the "South Pole" directory
+    image_2_id = GraphSchema.create_data_node(class_name="Image", properties={"basename": "penguin", "suffix": "png"})
+
+    GraphSchema.add_data_relationship(from_id=image_2_id, to_id=dir_2, rel_name="BA_stored_in")
+
+    assert MediaManager.media_directory_stored_in(image_1_id) == "images/Tahiti vacation"
+    assert MediaManager.media_directory_stored_in(image_2_id) == "images/South Pole expedition"
+
+
+
+def test_create_media_directory(db):
+    db.empty_dbase()
+
+    MediaManager.add_to_schema()
+    MediaManager.set_media_folder("test_files/")
+
+
+    MediaManager.create_media_directory(name="my documents/chapter 1")
+
+    assert MediaManager.get_media_directories() == ["my documents/chapter 1"]
+
+    assert MediaManager.folder_exists("test_files/my documents")
+    assert MediaManager.folder_exists("test_files/my documents/chapter 1")
+    assert not MediaManager.folder_exists("test_files/my documents/chapter 2")
+
+    with pytest.raises(Exception):
+        MediaManager.create_media_directory(name="my documents/chapter 1")  # Already exists
+
+
+    MediaManager.create_media_directory(name="my screenshots")
+
+    assert MediaManager.get_media_directories() == ["my documents/chapter 1", "my screenshots"]
+
+    assert MediaManager.folder_exists("test_files/my documents")
+    assert MediaManager.folder_exists("test_files/my documents/chapter 1")
+    assert MediaManager.folder_exists("test_files/my screenshots")
+
+
+    # Clean up the temp folders
+    MediaManager.delete_folder("test_files/my documents/chapter 1")
+    MediaManager.delete_folder("test_files/my documents")
+    MediaManager.delete_folder("test_files/my screenshots")
+
+
+
+def test_move_media_item(db):
+    db.empty_dbase()
+
+    # Set up
+    MediaManager.add_to_schema()
+    Document.add_to_schema()
+
+    MediaManager.set_media_folder("test_files/")
+    MediaManager.set_default_folders({})
+
+
+    # Create a Document node, initially with no linked directories (i.e. stored in standard locations)
+    # The actual file already exists in the "test_files/" folder
+    doc_1_id = GraphSchema.create_data_node(class_name="Document",
+                                            properties={"basename": "sample_file_1", "suffix": "txt"})
+
+    assert MediaManager.get_media_item_file(internal_id=doc_1_id) \
+            == ("test_files/", "sample_file_1", "txt")
+
+    assert MediaManager.file_exists("test_files/sample_file_1.txt")
+
+
+    with pytest.raises(Exception):
+        # Directory doesn't exist yet
+        MediaManager.move_media_item(internal_id=doc_1_id, media_directory="my documents/chapter 1")
+
+    # Create a new media directory
+    MediaManager.create_media_directory("my documents/chapter 1")
+
+
+    # MOVE THE MEDIA ITEM
+    MediaManager.move_media_item(internal_id=doc_1_id, media_directory="my documents/chapter 1")
+
+
+    # Verify the new location of the media file, both in the file system and on the database
+    assert MediaManager.file_exists("test_files/my documents/chapter 1/sample_file_1.txt")
+    assert MediaManager.get_media_item_file(internal_id=doc_1_id) \
+                == ("test_files/my documents/chapter 1/", "sample_file_1", "txt")
+    assert MediaManager.media_directory_stored_in(doc_1_id) == "my documents/chapter 1"
+
+    # Add a cover image
+    MediaManager.create_folder(directory_path="test_files/my documents/chapter 1/_covers")
+    MediaManager.move_file(src="test_files/sample_file_1.jpg",
+                           dest="test_files/my documents/chapter 1/_covers/sample_file_1.jpg")
+    assert MediaManager.file_exists("test_files/my documents/chapter 1/_covers/sample_file_1.jpg")
+
+    # Create a new media directory
+    MediaManager.create_media_directory("ebooks")
+
+
+    # MOVE THE MEDIA ITEM (it will also move the cover image)
+    MediaManager.move_media_item(internal_id=doc_1_id, media_directory="ebooks")
+
+
+    # Verify the new location of the media file, both in the file system (incl. the associated cover image)
+    # and in the database
+    assert MediaManager.file_exists("test_files/ebooks/sample_file_1.txt")
+    assert not MediaManager.file_exists("test_files/my documents/chapter 1/sample_file_1.txt")  # Old location
+
+    assert MediaManager.file_exists("test_files/ebooks/_covers/sample_file_1.jpg")
+    assert not MediaManager.file_exists("test_files/my documents/chapter 1/_covers/sample_file_1.jpg")  # Old location
+
+    assert MediaManager.get_media_item_file(internal_id=doc_1_id) \
+                == ("test_files/ebooks/", "sample_file_1", "txt")
+    assert MediaManager.media_directory_stored_in(doc_1_id) == "ebooks"
+
+
+    with pytest.raises(Exception):
+        # Attempting to repeat the last move
+        MediaManager.move_media_item(internal_id=doc_1_id, media_directory="ebooks")
+
+
+    # Clean up
+    MediaManager.move_file(src="test_files/ebooks/sample_file_1.txt", dest="test_files/sample_file_1.txt")
+    MediaManager.move_file(src="test_files/ebooks/_covers/sample_file_1.jpg", dest="test_files/sample_file_1.jpg")
+    MediaManager.delete_folder("test_files/my documents/chapter 1/_covers")
+    MediaManager.delete_folder("test_files/my documents/chapter 1")
+    MediaManager.delete_folder("test_files/my documents")
+    MediaManager.delete_folder("test_files/ebooks/_covers")
+    MediaManager.delete_folder("test_files/ebooks")
+
+
+
+def test_split_absolute_file_path():
+    assert MediaManager.split_absolute_file_path(r"C:\folder_1\folder_2\my_file.txt") == \
+        ("C:/folder_1/folder_2", "my_file", "txt")
+
+    assert MediaManager.split_absolute_file_path("C:/folder_1/folder_2/my_file.txt") == \
+        ("C:/folder_1/folder_2", "my_file", "txt")
+
+
+def test_file_exists():
+    pass     #TODO
