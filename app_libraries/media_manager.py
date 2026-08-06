@@ -413,7 +413,7 @@ class MediaManager:
         filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "my_pic.jpg"
 
         try:
-            file_contents = cls.get_from_binary_file(path=folder, filename=filename)
+            file_contents = cls.get_from_binary_file(directory_path=folder, filename=filename)
             return (suffix, file_contents)
 
         except Exception as ex:
@@ -444,7 +444,7 @@ class MediaManager:
                     ImageProcessing.save_thumbnail(src_folder=images_folder, filename=filename, save_to_folder=thumb_folder,
                                                    src_width=width, src_height=height)
                     # Get the contents of the newly-created thumbnail file
-                    file_contents = cls.get_from_binary_file(path=folder, filename=filename)
+                    file_contents = cls.get_from_binary_file(directory_path=folder, filename=filename)
                     return (suffix, file_contents)
 
                 except Exception as ex:
@@ -455,7 +455,7 @@ class MediaManager:
 
                     # One last attempt: try to read in and return the full-sized version
                     try:
-                        file_contents = cls.get_from_binary_file(path=images_folder, filename=filename)
+                        file_contents = cls.get_from_binary_file(directory_path=images_folder, filename=filename)
                         return (suffix, file_contents)
                     except Exception as ex:
                         # File I/O failed
@@ -622,17 +622,21 @@ class MediaManager:
     @classmethod
     def split_absolute_file_path(cls, absolute_file_path :str) -> (str, str, str):
         """
-        Break up an absolute file path into the triplet (directory, stem, extension)
+        Break up an absolute file path into the triplet (directory, stem, extension).
+        It returns forward slashes, even on Windows
 
-        :param absolute_file_path:  EXAMPLE: r"C:\folder_1\folder_2\my_file.txt"
+        :param absolute_file_path:  With either forward or back slashes.
+                                    EXAMPLES:    "C:/folder_1/folder_2/my_file.txt"
+                                                r"C:\folder_1\folder_2\my_file.txt"
         :return:                    The triplet (directory, stem, extension)
-                                        EXAMPLE: (r"C:\folder_1\folder_2", "my_file", "txt")
+                                        EXAMPLE: ("C:/folder_1/folder_2", "my_file", "txt")
         """
         p = Path(absolute_file_path)
 
-        directory = str(p.parent)           # EXAMPLE: r"C:\folder_1\folder_2"
-        stem = p.stem                       # EXAMPLE: "my_file"
-        extension = p.suffix.lstrip(".")    # EXAMPLE: "txt"
+        directory = p.parent.as_posix()         # Always forward slashes, even on Windows
+                                                # EXAMPLE: "C:/folder_1/folder_2"
+        stem = p.stem                           # EXAMPLE: "my_file"
+        extension = p.suffix.lstrip(".")        # EXAMPLE: "txt"
 
         '''
         print(directory)
@@ -895,7 +899,7 @@ class MediaManager:
         """
         If the folder already exists, no action is taken
 
-        :param directory_path:  EXAMPLE, on Windows: "D:/media/documents"
+        :param directory_path:  EXAMPLE (forward slashes even on Windows): "D:/media/documents"
                                 EXAMPLE of local path:  "test_files/my documents/chapter 1"
         :return:                None
         """
@@ -914,6 +918,7 @@ class MediaManager:
         :return:                None
         """
         #TODO: pytest
+        #TODO: offer an option to delete folder and all its contents
         #print(f"delete_folder(): attempting to delete a folder named '{directory_path}'")
         os.rmdir(directory_path)    # An Exception will be raised if folder isn't empty
 
@@ -946,7 +951,7 @@ class MediaManager:
             * bad file path for the destination (e.g. forbidden characters)
             * if the directory path to the destination isn't already present
 
-        EXAMPLE:
+        EXAMPLE (with local paths):
             move_file(src = "test_files/I_dont_exist.txt",
                       dest = "test_files/sample_file_2.txt")
 
@@ -984,11 +989,11 @@ class MediaManager:
     #####################################################################################################
 
     @classmethod
-    def file_exists(cls, name) -> bool:
+    def file_exists(cls, name :str) -> bool:
         """
 
-        :param name:    Use forward slashes
-        :return:
+        :param name:    Use forward slashes.  EXAMPLE of relative paths "test_files/sample_file_1.txt"
+        :return:        True if file exists, or False otherwise
         """
         # Use forward slashes; pathlib automatically converts them for Windows
         file_path = Path(name)
@@ -1021,16 +1026,16 @@ class MediaManager:
 
 
     @classmethod
-    def get_from_binary_file(cls, path :str, filename :str) -> bytes:
+    def get_from_binary_file(cls, directory_path :str, filename :str) -> bytes:
         """
         Read in and return the contents of the specified BINARY file
 
-        :param path:        String that must include a final "/", containing the full path of the file
-                                EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
+        :param directory_path:  String that may or may not include a final "/", containing the full path of the file
+                                EXAMPLE on Windows: "D:/media" or "D:/media/" (notice the forward slashes, even on Windows)
         :param filename:    EXCLUSIVE of path.  EXAMPLE: "my pic.jpg"
         :return:            The contents of the binary file
         """
-        full_file_name = path + filename
+        full_file_name = Path(directory_path) / filename
         with open(full_file_name, 'rb') as fh:
             file_contents = fh.read()
             return file_contents

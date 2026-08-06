@@ -176,7 +176,7 @@ def test_get_full_filename(db):
                                  new_entity_id="image-1")
 
     assert MediaManager.get_full_filename("image-1", class_name="Image") == "D:/media/my_media_folder/images/snap1.jpg"
-    return
+
     assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) \
                 == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}snap1.jpg"
 
@@ -485,7 +485,10 @@ def test_move_media_item(db):
     # Create a new media directory
     MediaManager.create_media_directory("my documents/chapter 1")
 
+
+    # MOVE THE MEDIA ITEM
     MediaManager.move_media_item(internal_id=doc_1_id, media_directory="my documents/chapter 1")
+
 
     # Verify the new location of the media file, both in the file system and on the database
     assert MediaManager.file_exists("test_files/my documents/chapter 1/sample_file_1.txt")
@@ -493,17 +496,28 @@ def test_move_media_item(db):
                 == ("test_files/my documents/chapter 1/", "sample_file_1", "txt")
     assert MediaManager.media_directory_stored_in(doc_1_id) == "my documents/chapter 1"
 
+    # Add a cover image
+    MediaManager.create_folder(directory_path="test_files/my documents/chapter 1/_covers")
+    MediaManager.move_file(src="test_files/sample_file_1.jpg",
+                           dest="test_files/my documents/chapter 1/_covers/sample_file_1.jpg")
+    assert MediaManager.file_exists("test_files/my documents/chapter 1/_covers/sample_file_1.jpg")
 
     # Create a new media directory
     MediaManager.create_media_directory("ebooks")
 
 
-    # MOVE THE MEDIA ITEMS
+    # MOVE THE MEDIA ITEM (it will also move the cover image)
     MediaManager.move_media_item(internal_id=doc_1_id, media_directory="ebooks")
 
 
-    # Verify the new location of the media file, both in the file system and on the database
+    # Verify the new location of the media file, both in the file system (incl. the associated cover image)
+    # and in the database
     assert MediaManager.file_exists("test_files/ebooks/sample_file_1.txt")
+    assert not MediaManager.file_exists("test_files/my documents/chapter 1/sample_file_1.txt")  # Old location
+
+    assert MediaManager.file_exists("test_files/ebooks/_covers/sample_file_1.jpg")
+    assert not MediaManager.file_exists("test_files/my documents/chapter 1/_covers/sample_file_1.jpg")  # Old location
+
     assert MediaManager.get_media_item_file(internal_id=doc_1_id) \
                 == ("test_files/ebooks/", "sample_file_1", "txt")
     assert MediaManager.media_directory_stored_in(doc_1_id) == "ebooks"
@@ -516,12 +530,22 @@ def test_move_media_item(db):
 
     # Clean up
     MediaManager.move_file(src="test_files/ebooks/sample_file_1.txt", dest="test_files/sample_file_1.txt")
+    MediaManager.move_file(src="test_files/ebooks/_covers/sample_file_1.jpg", dest="test_files/sample_file_1.jpg")
+    MediaManager.delete_folder("test_files/my documents/chapter 1/_covers")
     MediaManager.delete_folder("test_files/my documents/chapter 1")
     MediaManager.delete_folder("test_files/my documents")
+    MediaManager.delete_folder("test_files/ebooks/_covers")
     MediaManager.delete_folder("test_files/ebooks")
 
 
 
 def test_split_absolute_file_path():
     assert MediaManager.split_absolute_file_path(r"C:\folder_1\folder_2\my_file.txt") == \
-        (r"C:\folder_1\folder_2", "my_file", "txt")
+        ("C:/folder_1/folder_2", "my_file", "txt")
+
+    assert MediaManager.split_absolute_file_path("C:/folder_1/folder_2/my_file.txt") == \
+        ("C:/folder_1/folder_2", "my_file", "txt")
+
+
+def test_file_exists():
+    pass     #TODO

@@ -12,7 +12,7 @@ class Document:
 
     SCHEMA_CLASS_NAME = "Document"
     DEFAULT_FOLDER_NAME = "documents"   # The desired name for the default folder to contain media files for this plugin
-    COVERS_FOLDER = "_covers/"      # TODO: for now, this must be matched to BA_api_routing.py
+    COVERS_FOLDER = "_covers"           # A directory name
 
 
 
@@ -110,7 +110,7 @@ class Document:
         # Also rename the cover image (always a jpg file), if present
         # TODO: in case of failure, catch error and restore old name of main file,
         #       prior to throwing an Exception
-        MediaManager.rename_media_file(folder=folder+cls.COVERS_FOLDER,
+        MediaManager.rename_media_file(folder=folder+cls.COVERS_FOLDER+"/",
                                        old_basename=old_basename, old_suffix="jpg",
                                        new_basename=new_basename,
                                        ignore_missing=True)
@@ -244,9 +244,32 @@ class Document:
     @classmethod
     def move_media_item_successful(cls, internal_id :int|str, src :str, dest :str) -> None:
         """
-        Invoked after a Document file gets moved to another location
+        Invoked after a Document file gets moved to another location.
+        Also move the cover image, if applicable
         """
         print(f"In Document.move_media_item_successful() -  internal_id: {internal_id}  |  src: `{src}` | dest: `{dest}`")
+
+        directory, stem, extension = MediaManager.split_absolute_file_path(src)
+        src_cover = f"{directory}/{cls.COVERS_FOLDER}/{stem}.jpg"    # EXAMPLE: "test_files/_covers/sample_file_1.jpg"
+
+        directory, stem, _ = MediaManager.split_absolute_file_path(dest)
+        dest_folder= f"{directory}/{cls.COVERS_FOLDER}"             # EXAMPLE: "test_files/my documents/chapter 1/_covers"
+        dest_cover = f"{directory}/{cls.COVERS_FOLDER}/{stem}.jpg"   # EXAMPLE: "test_files/my documents/chapter 1/_covers/sample_file_1.jpg"
+
+
+        if not MediaManager.file_exists(src_cover):
+            print(f"In Document.move_media_item_successful(): no cover image present at location `{src_cover}`.  No action taken")
+            return
+
+        print(f"In Document.move_media_item_successful() -  Attempting to move document cover  |  src: `{src_cover}` | dest: `{dest_cover}`")
+
+        # First, create a folder for the covers at the destination location, if needed
+        if not MediaManager.folder_exists(dest_folder):
+            print(f"In Document.move_media_item_successful() -  First, creating a folder `{dest_folder}` onto which to move the cover image")
+            MediaManager.create_folder(dest_folder)
+
+
+        MediaManager.move_file(src=src_cover, dest=dest_cover)
 
 
 
