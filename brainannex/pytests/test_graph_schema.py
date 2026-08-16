@@ -1391,6 +1391,73 @@ def test_get_single_data_node(db):
 
 
 
+def test_get_single_data_node_by_entity(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node_by_entity(class_name=123, entity_id="some-value")
+
+    assert GraphSchema.get_single_data_node_by_entity(class_name="I_dont_exist", entity_id="some-value") is None      # Database is empty
+
+
+    # Create a 1st Car node
+    GraphSchema.create_class(name="Car", strict=False)
+
+    db_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"},
+                                         new_entity_id="white-toyota-1")
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Car", entity_id="white-toyota-1")
+    assert result == {'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Planet", entity_id="white-toyota-1")  # Will fail on class_name
+    assert result is None
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Car", entity_id="white-toyota-666")  # Will fail on entity_id
+    assert result is None
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Car", entity_id="white-toyota-1", hide_schema=False)
+    assert result == {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}
+
+
+    # Create a 2nd Car node: another Toyota, but this time red
+    db_id_2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "red"},
+                                           new_entity_id="red-toyota-1")
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Car", entity_id="red-toyota-1")
+    assert result == {'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1'}
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Car", entity_id="white-toyota-1")
+    assert result == {'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Planet", entity_id="red-toyota-1")  # Will fail matching class_name
+    assert result is None
+
+
+    # Create a 3rd Car node
+    db_id_3 = GraphSchema.create_data_node(class_name="Car",
+                                           properties={"make": "Honda", "color": "blue"},
+                                           new_entity_id="blue-honda-1")
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Car", entity_id="blue-honda-1")
+    assert result == {'color': 'blue', 'make': 'Honda', 'entity_id': 'blue-honda-1'}
+
+
+    # Now try it on a generic database node that is NOT a Data Node
+    db_id_truck = db.create_node(labels="Truck", properties={"make": "BMW", "color": "black", "entity_id": "NOT a data node"})
+
+    result = GraphSchema.get_single_data_node_by_entity(class_name="Truck", entity_id="NOT a data node")
+    assert result is None
+
+
+    # Now fake 2 data nodes with a forced a non-unique entity ID (with low-level node creation)
+    db.empty_dbase(drop_indexes=True, drop_constraints=True)
+    db.create_node(labels="Boat", properties={"make": "Beneteau", "length": 36, "_CLASS": "Boat", "entity_id": "my-boat"})
+    db.create_node(labels="Boat", properties={"make": "Catalina", "length": 44, "_CLASS": "Boat", "entity_id": "my-boat"})
+    with pytest.raises(Exception):
+        GraphSchema.get_single_data_node_by_entity(class_name="Boat", entity_id="my-boat")      # Non-unique
+
+
+
 def test_get_single_data_node_OLD(db):
     db.empty_dbase()
 
@@ -1446,11 +1513,41 @@ def test_get_single_data_node_OLD(db):
 def test_all_properties(db):
     pass    # TODO
 
-def test_get_data_node_internal_id(db):
-    pass    # TODO
 
-def test_get_data_node_id(db):
-    pass    # TODO
+
+def test_get_data_node_internal_id(db):
+    db.empty_dbase()
+
+    with pytest.raises(Exception):
+        GraphSchema.get_data_node_internal_id(class_name=123, entity_id="some-value")
+
+    with pytest.raises(Exception):
+        GraphSchema.get_data_node_internal_id(class_name="I_dont_exist", entity_id="some-value")     # Not found
+
+
+    # Create a 1st Car node
+    GraphSchema.create_class(name="Car", strict=False)
+
+    db_id_1 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"},
+                                         new_entity_id="white-toyota-1")
+
+    assert GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="white-toyota-1") == db_id_1
+
+    with pytest.raises(Exception):
+        GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="unknown-car")    # Not found
+
+    # Create a 2nd Car node: another Toyota, but this time red
+    db_id_2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "red"},
+                                           new_entity_id="red-toyota-1")
+
+    assert GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="white-toyota-1") == db_id_1
+    assert GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="red-toyota-1") == db_id_2
+
+    with pytest.raises(Exception):
+        GraphSchema.get_data_node_internal_id(class_name="Planet", entity_id="red-toyota-1")
+
+    with pytest.raises(Exception):
+        GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="unknown-car")    # Not found
 
 
 

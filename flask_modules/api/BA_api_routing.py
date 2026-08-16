@@ -3042,7 +3042,7 @@ class ApiRouting:
                 <form enctype="multipart/form-data" method="POST" action="/BA/api/upload-document-cover">
                     <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
                     <input type="submit" value="Upload your file">
-                    <input type='hidden' name='internal_id' value=123>
+                    <input type='hidden' name='entity_id' value='doc-123'>
                 </form>
 
             (Note: the "Dropzone" front-end module invokes this handler in a similar way,
@@ -3053,16 +3053,16 @@ class ApiRouting:
             """
             print("Uploading image thru upload_document_cover_api()")
             # Extract the POST values
-            post_data = request.form    # Example: ImmutableMultiDict([('internal_id', 3677)])
+            post_data = request.form    # Example: ImmutableMultiDict([('entity_id', 'doc-123')])
 
             #print("    Raw POST data: ", post_data)
-            print("    POST variables: ", dict(post_data))  # EXAMPLE: {'internal_id': 3677}
+            print("    POST variables: ", dict(post_data))  # EXAMPLE: {'entity_id': 'doc-123'}
 
 
-            internal_id = post_data.get('internal_id')
-            if internal_id is None:
+            entity_id = post_data.get('entity_id')
+            if entity_id is None:
                 err_details = "/upload-document-cover : unable to set the cover image for the document.  " \
-                              "Missing parameter `internal_id` in the client call"
+                              "Missing parameter `entity_id` in the client call"
                 return make_response(err_details, 400)    # 400 is "Bad Request client error"
 
 
@@ -3077,7 +3077,7 @@ class ApiRouting:
 
             try:
                 MediaManager.tba(upload_filename, absolute_file_path, mime_type=mime_type,
-                                 internal_id=internal_id, upload_dir=current_app.config['UPLOAD_FOLDER'])
+                                 entity_id=entity_id, upload_dir=current_app.config['UPLOAD_FOLDER'])
             except Exception as ex:
                 err_details = f"/upload-document-cover : unable to set the cover image for the document.  " \
                               f"{exceptions.exception_helper(ex)}"

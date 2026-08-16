@@ -732,13 +732,13 @@ class MediaManager:
 
 
     @classmethod
-    def tba(cls, upload_filename, absolute_file_path, mime_type :str, internal_id :int|str, upload_dir : str):
+    def tba(cls, upload_filename, absolute_file_path, mime_type :str, entity_id : int | str, upload_dir : str):
         """
 
         :param upload_filename:
         :param absolute_file_path:
         :param mime_type:
-        :param internal_id:
+        :param entity_id:
         :param upload_dir:          EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
         :return:                    None
         """
@@ -747,30 +747,44 @@ class MediaManager:
 
 
         (width, height) = ImageProcessing.get_image_size(absolute_file_path)    # Extract the dimensions of the uploaded image
-        print(f"    the uploaded document cover is a JPG file of dimensions {width} x {height}, "
-              f"for Document with entity ID {internal_id} (value of type {type(internal_id)})")
+        internal_id = GraphSchema.get_data_node_internal_id(class_name="Document", entity_id=entity_id)
 
-        directory = cls.media_directory_stored_in(internal_id) + "/"
+        print(f"    the uploaded document cover is a JPG file of dimensions {width} x {height}, "
+              f"for Document with entity ID {entity_id}, and internal database ID {internal_id}")
+
+        stored_in = cls.media_directory_stored_in(internal_id)
+        assert stored_in, \
+            f"tba(): no information available about a media directory for Document with internal database ID {entity_id}"
+            # TODO: fall back to default media folder
+        directory = stored_in + "/"
 
         data_dict = GraphSchema.get_single_data_node(internal_id=internal_id, class_name="Document")
         assert data_dict is not None, \
-            f"tba(): unable to locate the document (internal database ID {internal_id}) to which the cover image should belong"
+            f"tba(): unable to locate the document (entity ID '{entity_id}', internal database ID {internal_id}) to which the cover image should belong"
 
         document_basename = data_dict.get("basename")
 
         src_folder = upload_dir
-        save_to_folder = f"{cls.MEDIA_FOLDER}{directory}{cls.COVERS_FOLDER}/"
+        save_to_folder = f"{cls.MEDIA_FOLDER}{directory}{cls.COVERS_FOLDER}/"   # EXAMPLE: D:/BA_LOCAL_media/documents/Boating/_covers/
+        dest_filename = document_basename + ".jpg"
+
         print(f"    about to save thumbnail.  src_folder: `{src_folder}`  "
-              f"| src filename: `{upload_filename}`  | dest filename: `{document_basename}` | save_to_folder: `{save_to_folder}` ")
+              f"| src filename: `{upload_filename}`  | dest filename: `{dest_filename}` | save_to_folder: `{save_to_folder}` ")
 
         # Create and save a thumbnail version in the special folder for covers
-        '''
         ImageProcessing.save_thumbnail(src_folder = src_folder,
                                        filename = upload_filename,
-                                       save_to_folder = save_to_folder,
+                                       save_to_folder = src_folder,
                                        src_width=width, src_height=height)
-        '''
-        print(f"Still to do: delete the uploaded file `{src_folder}{upload_filename}`")
+
+        dest_file_path = save_to_folder + dest_filename     # EXAMPLE: "D:/BA_LOCAL_media/documents/Boating/_covers/yachts.jpg"
+        print(f"Moving the resized uploaded file `{src_folder}{upload_filename}` to `{dest_file_path}`")
+        if not cls.folder_exists(save_to_folder):
+            print(f"    folder '{save_to_folder}' doesn't exist; creating it first...")
+            cls.create_folder(save_to_folder)
+
+        cls.move_file(src=f"{src_folder}{upload_filename}", dest=dest_file_path)
+
 
 
 
@@ -945,7 +959,8 @@ class MediaManager:
         """
         If the folder already exists, no action is taken
 
-        :param directory_path:  EXAMPLE (forward slashes even on Windows): "D:/media/documents"
+        :param directory_path:  May or may not end in a slash character.
+                                EXAMPLE (forward slashes even on Windows): "D:/media/documents"
                                 EXAMPLE of local path:  "test_files/my documents/chapter 1"
         :return:                None
         """
@@ -1002,6 +1017,7 @@ class MediaManager:
                       dest = "test_files/sample_file_2.txt")
 
         :param src:    Current file path of the file to rename
+                            EXAMPLE: "D:/test_files/I_dont_exist.txt"
         :param dest:   Desired new file path
         :return:       None
         """
@@ -1184,6 +1200,7 @@ class ImageProcessing:
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
         :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
         :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
+                                    It's allowable to be the same as `src_folder` (in which case the original file gets over-written).
                                     If it doesn't exist, it gets created.
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/_resized/"
         :param src_width:       Pixel width of the original image

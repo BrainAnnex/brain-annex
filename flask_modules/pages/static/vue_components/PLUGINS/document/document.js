@@ -151,7 +151,7 @@ Vue.component('vue-plugin-d',
                                action='/BA/api/upload-document-cover'
                                style='padding-top:5px; margin-bottom:8px'
                         >
-                            <input v-bind:value="item_metadata.internal_id" type='hidden' name='internal_id'>
+                            <input v-bind:value="item_metadata.entity_id" type='hidden' name='entity_id'>
                         </form>
 
 

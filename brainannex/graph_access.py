@@ -77,7 +77,8 @@ class GraphAccess(InterGraph):
 
 
     def match(self, labels=None, internal_id=None,
-              key_name=None, key_value=None, properties=None,
+              key_name=None, key_value=None,
+              properties=None,
               clause=None, clause_binding=None,
               dummy_node_name="n") -> CypherBuilder:
         """

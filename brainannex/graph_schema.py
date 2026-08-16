@@ -2021,7 +2021,7 @@ class GraphSchema:
         If more than 1 node comes up, an Exception is raised.
 
         :param class_name:  The name of the schema Class that the Data Node is associated to
-        :param entity_id:   The entity id of the Data Node (in the context of its Class)
+        :param entity_id:   A unique string value to identify the Data Node (in the context of its Class)
         :return:            True if the specified Data Node exists, or False otherwise
         """
         # TODO: use data_node_exists() / data_node_exists_by_entity() as a MODEL for alternate args
@@ -2076,8 +2076,9 @@ class GraphSchema:
     @classmethod
     def get_single_data_node(cls, internal_id :int|str, class_name=None, hide_schema=True) -> dict | None:
         """
-        Return a dictionary with all the key/value pairs of the attributes of a single Data Node,
-        specified by its internal database ID, and optionally also matching the specified Class name.
+        Locate a single Data Node, specified by its internal database ID,
+        and optionally also matching the specified Class name.
+        If found, return a dictionary with all the key/value pairs of its attributes.
 
         :param internal_id: Internal database ID to identify a Data Node
         :param class_name:  [OPTIONAL] Use as a safety check to verify that the node belongs to this Class
@@ -2085,7 +2086,6 @@ class GraphSchema:
 
         :return:            If not found, return None; otherwise, return a dict with the name/values of the node's properties
         """
-        # TODO: also implement get_single_data_node_by_entity()
         # TODO: possibly add an argument that only returns a specified single Property, or specified list of Properties
         # TODO: optionally also return node label(s)
 
@@ -2100,15 +2100,13 @@ class GraphSchema:
             WHERE id(dn) = $internal_id
             {extra_clause}
             RETURN dn
-            LIMIT 1
             '''
 
         cls.db.debug_query_print(q, data_binding, "get_single_data_node")
         result = cls.db.query(q, data_binding=data_binding, single_row=True)
 
         if result is None:
-            return None
-
+            return None     # Not found
 
         d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
 
@@ -2118,6 +2116,49 @@ class GraphSchema:
         return d
 
 
+    @classmethod
+    def get_single_data_node_by_entity(cls, class_name :str, entity_id :str, hide_schema=True) -> dict | None:
+        """
+        If more than 1 node comes up, an Exception is raised.
+
+        :param class_name:  The name of the schema Class that the Data Node is associated to
+        :param entity_id:   A unique string value to identify the Data Node (in the context of its Class)
+        :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS` is omitted
+        :return:            If not found, return None; otherwise, return a dict with the name/values of the node's properties
+        """
+        assert cls.is_valid_class_name(class_name), \
+            f"get_single_data_node_by_entity(): the value `{class_name}` passed " \
+            f"to the `class_name` argument is not a valid Schema Class name"
+
+        # Prepare a Cypher query to locate the number of the data nodes
+        where_clause = f"WHERE (dn.`_CLASS` = $class_name) AND (dn.`entity_id` = $entity_id)"
+        data_binding = {"class_name": class_name, "entity_id" : entity_id}
+        label_str = f":`{class_name}`"
+
+        q = f'''
+            MATCH (dn {label_str}) 
+            {where_clause}
+            RETURN dn
+            LIMIT 2
+            '''
+
+        cls.db.debug_query_print(q, data_binding)
+        result = cls.db.query(q, data_binding=data_binding)
+
+        if len(result) == 0:
+            return None     # Not found
+
+        assert len(result) == 1, \
+            f'get_single_data_node_by_entity(): the pair (class_name="{class_name}", entity_id="{entity_id}") ' \
+            f'does not uniquely identify a data node; at least 2 matches were located'
+
+
+        d = result[0]["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+        if hide_schema and ("_CLASS" in d):
+            del d["_CLASS"]         # TODO: turn into a function
+
+        return d
 
 
 
@@ -3063,7 +3104,7 @@ class GraphSchema:
     def get_data_node_internal_id(cls, class_name :str, entity_id :str) -> int:
         """
         Returns the internal database ID of the given Data Node,
-        specified by its Class and Entity ID
+        specified by its Class name and Entity ID
 
         :param class_name:  Name of the Data Node's Class
         :param entity_id:   A string to uniquely identify a Data Node of the above Class
@@ -3071,18 +3112,21 @@ class GraphSchema:
         :return:            The internal database ID of the requested Data Node;
                                 if none (or more than one) found, an Exception is raised
         """
-        #TODO: merge with get_data_node_id()
+        assert cls.is_valid_class_name(class_name), \
+            f"get_data_node_internal_id(): the value `{class_name}` passed " \
+            f"to the `class_name` argument is not a valid Schema Class name"
 
-        #TODO: Should search for _CLASS, rather than by label
-        match = cls.db.match(key_name="entity_id", key_value=entity_id, labels=class_name)
+        # Match by class/entity_id, as well as by label
+        match = cls.db.match(labels=class_name,
+                             properties={"_CLASS": class_name, "entity_id": entity_id})
+        #match = cls.db.match(key_name="entity_id", key_value=entity_id, labels=class_name)
         result = cls.db.get_nodes(match, return_internal_id=True)
 
-        if class_name:
-            assert result, f"GraphSchema.get_data_node_internal_id(): " \
-                           f"no Data Node with the given entity_id ('{entity_id}') and class_name ('{class_name}') was found"
-        else:
-            assert result, f"GraphSchema.get_data_node_internal_id(): " \
-                           f"no Data Node with the given entity_id ('{entity_id}') was found"
+
+        assert result, \
+            f"GraphSchema.get_data_node_internal_id(): " \
+            f"no Data Node with the given class_name ('{class_name}') and entity_id ('{entity_id}') was found"
+
 
         if len(result) > 1:
             raise Exception(f"GraphSchema.get_data_node_internal_id(): more than 1 Data Node "
