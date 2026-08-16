@@ -1272,8 +1272,8 @@ class GraphAccess(InterGraph):
                   rel_name :str) -> int:
         """
         Add one or more links (aka graph edges/relationships), with the specified rel_name,
-        originating in each of the nodes specified by the match_from specifications,
-        and terminating in each of the nodes specified by the match_to specifications
+        originating in each of the nodes specified by the `match_from` specifications,
+        and terminating in each of the nodes specified by the `match_to` specifications
 
         Return the number of links added; if none were added, or in case of error, raise an Exception.
 
@@ -1315,6 +1315,7 @@ class GraphAccess(InterGraph):
         # Merge the data-binding dict's
         combined_data_binding = CypherUtils.prepare_data_binding(data_binding_from, data_binding_to)
 
+        #self.debug_query_print(q, combined_data_binding, "add_links")
         result = self.update_query(q, combined_data_binding)
 
         number_relationships_added = result.get("relationships_created", 0)   # If field isn't present, return a 0
@@ -1704,6 +1705,10 @@ class GraphAccess(InterGraph):
         # Unpack needed values from the match dictionary
         (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="follow_links")
 
+        print(f"*********** match = {match} , of type {type(match)}")   # match = 426746 , of type <class 'str'>
+        print(f"*********** where : `{where}`")                         # where : `id(n) = 426746`
+        print(f"*********** data_binding : `{data_binding}`")           # data_binding : `{}`
+
         neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
 
         if rel_dir == "OUT":    # Follow outbound links
@@ -1725,6 +1730,7 @@ class GraphAccess(InterGraph):
         if limit is not None:
             q += f" LIMIT {limit}"
 
+        self.debug_query_print(q, data_binding, "follow_links")
         result = self.query(q, data_binding)        # , single_column='neighbor'
 
         return self.standardize_recordset(recordset=result)

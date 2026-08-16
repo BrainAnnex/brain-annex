@@ -3030,7 +3030,65 @@ class ApiRouting:
                                                     return_url=return_url, verbose=False)
             return status
         
-        
+
+
+
+        @bp.route('/upload-document-cover', methods=['POST'])
+        #@login_required
+        def upload_document_cover_api():
+            """
+
+            USAGE EXAMPLE:
+                <form enctype="multipart/form-data" method="POST" action="/BA/api/upload-document-cover">
+                    <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
+                    <input type="submit" value="Upload your file">
+                    <input type='hidden' name='internal_id' value=123>
+                </form>
+
+            (Note: the "Dropzone" front-end module invokes this handler in a similar way,
+                   and in particular it uses name="file" for type="file")
+
+            If the upload is successful, a normal status (200) is returned (no response data);
+                in case of error, a server error status is returned (status 400 or 500), with a text error message
+            """
+            print("Uploading image thru upload_document_cover_api()")
+            # Extract the POST values
+            post_data = request.form    # Example: ImmutableMultiDict([('internal_id', 3677)])
+
+            #print("    Raw POST data: ", post_data)
+            print("    POST variables: ", dict(post_data))  # EXAMPLE: {'internal_id': 3677}
+
+
+            internal_id = post_data.get('internal_id')
+            if internal_id is None:
+                err_details = "/upload-document-cover : unable to set the cover image for the document.  " \
+                              "Missing parameter `internal_id` in the client call"
+                return make_response(err_details, 400)    # 400 is "Bad Request client error"
+
+
+            try:
+                (upload_filename, absolute_file_path, original_name, mime_type) = UploadHelper.foo(request)
+            except Exception as ex:
+                err_details = f"/upload-document-cover : upload failure.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                print("Exception during file upload : ", err_details)
+                return make_response(err_details, 500)      # 500 is "Internal Server Error"
+
+
+            try:
+                MediaManager.tba(upload_filename, absolute_file_path, mime_type=mime_type,
+                                 internal_id=internal_id, upload_dir=current_app.config['UPLOAD_FOLDER'])
+            except Exception as ex:
+                err_details = f"/upload-document-cover : unable to set the cover image for the document.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                print("Exception during call to MediaManager.tba() : ", err_details)
+                return make_response(err_details, 400)    # 400 is "Bad Request client error"
+
+
+            response_data = ""
+            return response_data
+
+
         
         @bp.route('/upload_media', methods=['POST'])
         @login_required
@@ -3052,7 +3110,7 @@ class ApiRouting:
             The 'insert_after_uri' attribute also can take the special values 'INSERT_AT_BOTTOM' or 'INSERT_AT_TOP'
         
             (Note: the "Dropzone" front-end module invokes this handler in a similar way,
-                   and in particular it uses name="file")
+                   and in particular it uses name="file" for type="file")
         
             If the upload is successful, a normal status (200) is returned (no response data);
                 in case of error, a server error status is return (500), with a text error message
@@ -3070,7 +3128,7 @@ class ApiRouting:
             print("POST variables: ", dict(post_data))  # EXAMPLE: {'category_id': '3677', 'insert_after_uri': 'rs-2',
                                                         #           'upload_folder': 'documents/Ebooks & Articles'}
                                                         # Note that 'upload_folder' is optional
-        
+
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the *temporary* directory used for the uploads.
                                                                     #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
@@ -3107,7 +3165,7 @@ class ApiRouting:
 
             #print(f"upload_media(): Attempting to move file `{src_fullname}` to `{dest_fullname}`")
             try:
-                MediaManager.move_file(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present
+                MediaManager.move_file(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present.  TODO: remedy
             except Exception:
                 # This failure might be due to the folder dest_folder not being present
                 print(f"upload_media(): Failed to move the uploaded file '{src_fullname}' to its intended destination '{dest_fullname}'.  "

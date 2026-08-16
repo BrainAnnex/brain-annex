@@ -1995,7 +1995,7 @@ class GraphSchema:
 
 
     @classmethod
-    def data_node_exists(cls, internal_id : int | str) -> bool:
+    def data_node_exists(cls, internal_id :int|str) -> bool:
         """
         Return True if the specified Data Node exists, or False otherwise.
 
@@ -2074,6 +2074,54 @@ class GraphSchema:
 
 
     @classmethod
+    def get_single_data_node(cls, internal_id :int|str, class_name=None, hide_schema=True) -> dict | None:
+        """
+        Return a dictionary with all the key/value pairs of the attributes of a single Data Node,
+        specified by its internal database ID, and optionally also matching the specified Class name.
+
+        :param internal_id: Internal database ID to identify a Data Node
+        :param class_name:  [OPTIONAL] Use as a safety check to verify that the node belongs to this Class
+        :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS` is omitted
+
+        :return:            If not found, return None; otherwise, return a dict with the name/values of the node's properties
+        """
+        # TODO: also implement get_single_data_node_by_entity()
+        # TODO: possibly add an argument that only returns a specified single Property, or specified list of Properties
+        # TODO: optionally also return node label(s)
+
+        data_binding = {"internal_id": internal_id}
+        extra_clause = ""
+        if class_name:
+            extra_clause = "AND dn._CLASS = $class_name"
+            data_binding["class_name"] = class_name
+
+        q = f'''
+            MATCH (dn)
+            WHERE id(dn) = $internal_id
+            {extra_clause}
+            RETURN dn
+            LIMIT 1
+            '''
+
+        cls.db.debug_query_print(q, data_binding, "get_single_data_node")
+        result = cls.db.query(q, data_binding=data_binding, single_row=True)
+
+        if result is None:
+            return None
+
+
+        d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+
+        if hide_schema and ("_CLASS" in d):
+            del d["_CLASS"]         # TODO: turn into a function
+
+        return d
+
+
+
+
+
+    @classmethod
     def data_node_search_EXPERIMENTAL(cls, search :int|str|tuple, class_name :str, require_unique=True) -> list:
         """
         TODO: turn into a data_note_search() function that returns a list of results;
@@ -2146,7 +2194,7 @@ class GraphSchema:
     @classmethod
     def get_single_data_node_EXPERIMENTAL_2(cls, search :int|str|tuple, class_name :str, hide_schema=True) -> dict | None:
         """
-        TODO: phase out in favor of search_data_nodes()
+        TODO: phase out in favor of get_single_data_node()
         :param search:      Either an internal database ID (int or str),
                             OR a pair consisting of a key_name string and a key_value
 
@@ -2181,7 +2229,7 @@ class GraphSchema:
             return None
 
         assert len(result) == 1, \
-            f"get_single_data_node(): the specified search term ({search}) does not uniquely identify a record - multiple ones were located"
+            f"get_single_data_node_OLD(): the specified search term ({search}) does not uniquely identify a record - multiple ones were located"
 
 
         result = result[0]  # Extract the single element from the list
@@ -2198,7 +2246,7 @@ class GraphSchema:
     @classmethod
     def get_single_data_node_EXPERIMENTAL(cls, search :int|str|dict, hide_schema=True) -> dict | None:
         """
-        TODO: phase out in favor of search_data_nodes()
+        TODO: phase out in favor of get_single_data_node()
 
         Return a dictionary with all the key/value pairs of the attributes of a single Data Node,
         specified either by its internal database ID, or by its Class name and primary key.
@@ -2242,7 +2290,7 @@ class GraphSchema:
             return None
 
         assert len(result) == 1, \
-            f"get_single_data_node(): the specified search term ({search}) does not uniquely identify a record - multiple ones were located"
+            f"get_single_data_node_OLD(): the specified search term ({search}) does not uniquely identify a record - multiple ones were located"
 
 
         result = result[0]  # Extract the single element from the list
@@ -2258,24 +2306,24 @@ class GraphSchema:
 
     @classmethod
     def get_single_data_node_NEW_ALT(cls, find :int|str|tuple|list, hide_schema=True) -> dict | None:
-        # TODO: get_single_data_node_NEW() might be better
+        # TODO: use get_single_data_node() instead
         if type(find) == int or type(find) == str:
-            return cls.get_single_data_node(node_id=find, hide_schema=hide_schema)
+            return cls.get_single_data_node_OLD(node_id=find, hide_schema=hide_schema)
 
         assert type(find) == tuple or type(find) == list, \
-            "get_single_data_node(): the argument `find` must either be an internal node id (int or str), or a pair of strings"
+            "get_single_data_node_OLD(): the argument `find` must either be an internal node id (int or str), or a pair of strings"
 
         assert len(find) == 2, \
-            "get_single_data_node(): if the argument `find` is passed as a tuple or list, it must have length 2"
+            "get_single_data_node_OLD(): if the argument `find` is passed as a tuple or list, it must have length 2"
 
-        return cls.get_single_data_node(node_id=find[1], id_key="entity_id", class_name=find[0], hide_schema=hide_schema)
+        return cls.get_single_data_node_OLD(node_id=find[1], id_key="entity_id", class_name=find[0], hide_schema=hide_schema)
 
 
 
     @classmethod
     def get_single_data_node_BEST(cls, internal_id=None, entity=None, hide_schema=True) -> dict | None:
         """
-
+        TODO: TODO: use get_single_data_node() instead
         :param internal_id: Internal database ID to identify a Data Node
         :param entity:      A pair (tuple or list) of strings to uniquely identify a Data Node:
                                 (Entity name, value of the Entity ID)
@@ -2284,22 +2332,24 @@ class GraphSchema:
         """
         if internal_id is not None:
             assert entity is None, \
-                "get_single_data_node(): cannot pass both arguments `internal_id` and `entity`"
-            return cls.get_single_data_node(node_id=internal_id, hide_schema=hide_schema)
+                "get_single_data_node_OLD(): cannot pass both arguments `internal_id` and `entity`"
+            return cls.get_single_data_node_OLD(node_id=internal_id, hide_schema=hide_schema)
 
         assert type(entity) == tuple or type(entity) == list, \
-            "get_single_data_node(): the argument `entity` must either be an internal node id (int or str), or a pair of strings"
+            "get_single_data_node_OLD(): the argument `entity` must either be an internal node id (int or str), or a pair of strings"
 
         assert len(entity) == 2, \
-            "get_single_data_node(): if the argument `entity` is passed as a tuple or list, it must have length 2"
+            "get_single_data_node_OLD(): if the argument `entity` is passed as a tuple or list, it must have length 2"
 
-        return cls.get_single_data_node(node_id=entity[1], id_key="entity_id", class_name=entity[0], hide_schema=hide_schema)
+        return cls.get_single_data_node_OLD(node_id=entity[1], id_key="entity_id", class_name=entity[0], hide_schema=hide_schema)
 
 
 
     @classmethod
-    def get_single_data_node(cls, node_id, id_key=None, class_name=None, hide_schema=True) -> dict | None:
+    def get_single_data_node_OLD(cls, node_id, id_key=None, class_name=None, hide_schema=True) -> dict | None:
         """
+        TODO: use get_single_data_node() instead
+
         Return a dictionary with all the key/value pairs of the attributes of a single Data Node,
         specified either by its internal database ID, or by its Class name and primary key.
         If opting to search by primary key, and more than 1 match comes up, an Exception is raised.
@@ -2318,7 +2368,7 @@ class GraphSchema:
 
         # Prepare a Cypher query
         where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key,
-                                                                  class_name=class_name, method="get_single_data_node")
+                                                                  class_name=class_name, method="get_single_data_node_OLD")
 
         q = f'''
             MATCH (dn)
@@ -2335,7 +2385,7 @@ class GraphSchema:
             return None
 
         assert len(result) == 1, \
-            f"get_single_data_node(): the specified key (`{id_key}`) is not primary - multiple records were located for (`{id_key}`={node_id})"
+            f"get_single_data_node_OLD(): the specified key (`{id_key}`) is not primary - multiple records were located for (`{id_key}`={node_id})"
 
 
         result = result[0]  # Extract the single element from the list
@@ -2352,6 +2402,7 @@ class GraphSchema:
     @classmethod
     def locate_single_data_node(cls, class_name :str, key_name :str, key_value) -> int|str:
         """
+        TODO: use get_single_data_node() instead
         Return the internal database ID of the specified data node.
         If no match, or more than 1, comes up, an Exception is raised
 
@@ -2386,7 +2437,7 @@ class GraphSchema:
     @classmethod
     def locate_node(cls, node_id :int|str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
         """
-        EXPERIMENTAL - a generalization of get_single_data_node()
+        EXPERIMENTAL - a generalization of get_single_data_node_OLD()
 
         Return the "match" structure to later use to locate a node identified
         either by its internal database ID (default), or by a primary key (with optional label.)

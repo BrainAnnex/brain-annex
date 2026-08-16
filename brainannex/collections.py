@@ -610,7 +610,7 @@ class Collections:
             #       or a bad insert_after_uri value that matches no node
 
             # Try to locate that Content Item node that we were supposed to try to insert after
-            node = GraphSchema.get_single_data_node(node_id=insert_after_uri, id_key="entity_id", class_name=insert_after_class)
+            node = GraphSchema.get_single_data_node_OLD(node_id=insert_after_uri, id_key="entity_id", class_name=insert_after_class)
             if node is None:
                 raise Exception(f"There is no node of class `{insert_after_class}` with the `entity_id` value ({insert_after_uri}) that was passed by `insert_after_uri`")
 

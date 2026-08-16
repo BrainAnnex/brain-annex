@@ -1,5 +1,5 @@
 /*  Vue component to display and edit Content Items of type "d" (Document)
-    TODO: rename 'vue-plugin-documents'
+    TODO: rename 'vue-plugin-document'
  */
 
 Vue.component('vue-plugin-d',
@@ -145,6 +145,17 @@ Vue.component('vue-plugin-d',
                             </select>
                         </p>
 
+
+                        <form  class='dropzone'
+                               v-bind:id="'my_dropzone_123'"
+                               action='/BA/api/upload-document-cover'
+                               style='padding-top:5px; margin-bottom:8px'
+                        >
+                            <input v-bind:value="item_metadata.internal_id" type='hidden' name='internal_id'>
+                        </form>
+
+
+
                         <!-- CONTROLS to edit the document fields -->
                         <p v-show="editing_mode" style="text-align: right">
                             <span @click="cancel_edit" class="clickable-icon" style="color:blue">CANCEL</span>
@@ -233,6 +244,22 @@ Vue.component('vue-plugin-d',
 
 
 
+
+        // --------------------------  MOUNTED  --------------------------
+        mounted() {
+            /* Note: the "mounted" Vue hook is invoked later in the process of launching this component
+             */
+            console.log('The component is now mounted');
+
+            // Provide specific options for the Dropzone element
+            Dropzone.options.myDropzone123 = { // camelized version of the `id`
+                dictDefaultMessage: "Drop SINGLE cover-image file here to upload (optional)",
+                maxFiles: 1
+            };
+        },
+
+
+
         // ------------------------------   METHODS   ------------------------------
         methods: {
 
@@ -256,24 +283,14 @@ Vue.component('vue-plugin-d',
 
 
             /**
-             * Enable the document edit mode.
+             * Switch to the editing mode of this Vue component.
              * Handler for the "edit-content-item" SIGNAL received from the child component "vue-controls"
              * (which is generated there when clicking on the Edit button)
              */
             edit_content_item()
             {
                 console.log(`'Documents' component received SIGNAL to edit its contents`);
-                this.enter_editing_mode();
 
-            },
-
-
-            /**
-             * Switch to the editing mode of this Vue component
-             */
-            enter_editing_mode()
-            //
-            {
                 this.editing_mode = true;
 
                 console.log("Retrieving folder location");

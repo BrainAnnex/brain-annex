@@ -35,7 +35,7 @@ class MediaManager:
     | `folder_2`                                      | directory name     |
     | `/folder_1/folder_2` or `C:\folder_1\folder_2`  | directory path     |
     | `/folder_1/folder_2/my_file.txt`                | file path          |
-    | `C:\folder_1\folder_2\my_file.txt`              | absolute file path |
+    | `C:\folder_1\folder_2\my_file.txt`              | absolute file path |   OR:  `C:/folder_1/folder_2/my_file.txt`
      """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
@@ -51,6 +51,7 @@ class MediaManager:
                             # This class variable gets set by initialize.py
 
     RESIZED_FOLDER = "_resized/"    # TODO: this ought to be managed by the Images class
+    COVERS_FOLDER = "_covers"      # TODO: this ought to be managed by the Images class
 
 
 
@@ -203,7 +204,7 @@ class MediaManager:
                                     ("D:/media/my_media_folder/images/", "my_pict", "jpg")
                                     ("D:/media/my_media_folder/my_custom_directory/vacation/", "my_pict", "jpg")
         """
-        content_node = GraphSchema.get_single_data_node(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node_OLD(node_id=entity_id, id_key="entity_id", class_name=class_name)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception(f'get_media_item_file_by_entity(): '
@@ -245,7 +246,7 @@ class MediaManager:
                                 EXAMPLE:
                                     ("D:/media/my_media_folder/images/", "my_pict", "jpg")
         """
-        content_node = GraphSchema.get_single_data_node(node_id=internal_id, hide_schema=False)
+        content_node = GraphSchema.get_single_data_node_OLD(node_id=internal_id, hide_schema=False)
         #print("content_node:", content_node)
         assert content_node is not None, \
                     f'get_media_item_file_by_id(): Metadata not found for the Media file ' \
@@ -293,7 +294,7 @@ class MediaManager:
         """
         #TODO: phase out in favor of get_media_item_file_by_entity()
 
-        content_node = GraphSchema.get_single_data_node(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node_OLD(node_id=entity_id, id_key="entity_id", class_name=class_name)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception(f'lookup_media_file(): Metadata not found for the Media file of Class `{class_name}` and uri="{entity_id}"')
@@ -730,6 +731,51 @@ class MediaManager:
 
 
 
+    @classmethod
+    def tba(cls, upload_filename, absolute_file_path, mime_type :str, internal_id :int|str, upload_dir : str):
+        """
+
+        :param upload_filename:
+        :param absolute_file_path:
+        :param mime_type:
+        :param internal_id:
+        :param upload_dir:          EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
+        :return:                    None
+        """
+        assert mime_type == "image/jpeg", \
+            "tba(): cover images for documents must be JPG files"
+
+
+        (width, height) = ImageProcessing.get_image_size(absolute_file_path)    # Extract the dimensions of the uploaded image
+        print(f"    the uploaded document cover is a JPG file of dimensions {width} x {height}, "
+              f"for Document with entity ID {internal_id} (value of type {type(internal_id)})")
+
+        directory = cls.media_directory_stored_in(internal_id) + "/"
+
+        data_dict = GraphSchema.get_single_data_node(internal_id=internal_id, class_name="Document")
+        assert data_dict is not None, \
+            f"tba(): unable to locate the document (internal database ID {internal_id}) to which the cover image should belong"
+
+        document_basename = data_dict.get("basename")
+
+        src_folder = upload_dir
+        save_to_folder = f"{cls.MEDIA_FOLDER}{directory}{cls.COVERS_FOLDER}/"
+        print(f"    about to save thumbnail.  src_folder: `{src_folder}`  "
+              f"| src filename: `{upload_filename}`  | dest filename: `{document_basename}` | save_to_folder: `{save_to_folder}` ")
+
+        # Create and save a thumbnail version in the special folder for covers
+        '''
+        ImageProcessing.save_thumbnail(src_folder = src_folder,
+                                       filename = upload_filename,
+                                       save_to_folder = save_to_folder,
+                                       src_width=width, src_height=height)
+        '''
+        print(f"Still to do: delete the uploaded file `{src_folder}{upload_filename}`")
+
+
+
+
+
     #####################################################################################################
 
     '''                            ~   DATABASE_OPERATIONS   ~                                '''
@@ -774,7 +820,6 @@ class MediaManager:
 
         :return:            The media-directory path of the specified Content Item,
                                 if applicable (or None otherwise)
-
                                 EXAMPLE:    "documents/Ebooks & Articles/SYSTEMS BIO"
         """
         result = GraphSchema.db.follow_links(match=internal_id,
@@ -829,13 +874,14 @@ class MediaManager:
         """
         Move the specified media item to the given media directory.
         This operation will affect both the file system and the database.
-        TODO: also need to move "covers" or "thumbnails"
 
         :param internal_id:     To identify the Media Item of interest
         :param media_directory: The desired media directory (which must already exist)
                                     EXAMPLE: "images/family outings"
         :return:                None
         """
+        # TODO: also need to move "covers" or "thumbnails" (now done?)
+
         # Verify that the requested media directory is already present in the database
         dirs_list = cls.get_media_directories()
         #print("dirs_list: ", dirs_list)
@@ -1123,17 +1169,22 @@ class ImageProcessing:
         }
     """
 
+    RESIZED_FOLDER = "_resized/"    # TODO: this ought to be managed by the Images class
+
+
     @classmethod
     def save_thumbnail(cls, src_folder :str, filename :str, save_to_folder :str,
                        src_width :int, src_height :int) -> None:
         """
         Make a thumbnail of the specified image, and save it in a file.
-        The "th" thumbnail format (width=300) is being followed.
+        If the destination folder doesn't exist already, it gets created.
+        The format (width=300) being followed is was used to be called "th" (thumbnail)
 
         :param src_folder:      Full path of folder with the file to resize.  It MUST end with "/"
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
         :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
         :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
+                                    If it doesn't exist, it gets created.
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/_resized/"
         :param src_width:       Pixel width of the original image
         :param src_height:      Pixel height of the original image
@@ -1209,7 +1260,7 @@ class ImageProcessing:
         """
         If possible, obtain the size of the image, resize it to a thumbnail,
         save the thumbnail in the "_resized/" subfolder of the specified media folder;
-        not all images (such as SVG's) can be resized.
+        note that not all images (such as SVG's) can be resized.
 
         Return a dictionary of additional image-specific properties that will go in the database.
 

@@ -1,13 +1,32 @@
 import os
 import re               # For REGEX
 import unicodedata
-
+from flask import current_app
 
 
 class UploadHelper:
     """
     Helper class to manage file uploads with Flask 1.1
     """
+
+    @classmethod
+    def foo(cls, request) -> (str, str, str, str):
+        """
+
+        :param request: A Flask "request" object
+        :return:
+        """
+        # TODO: also return the `upload_dir`
+        upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the *temporary* directory used for the uploads.
+                                                            #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
+        result = cls.store_uploaded_file(files=request.files, upload_dir=upload_dir, key_name="file")
+
+        (upload_filename, full_filename, original_name, mime_type) = result
+        print(f"    Upload successful so far for file: `{upload_filename}` | Full name: `{full_filename}` | "
+              f"Original name: `{original_name}` | Temporary upload folder: `{upload_dir}` | MIME type: `{mime_type}`")
+
+        return result
+
 
 
     @classmethod
@@ -37,7 +56,7 @@ class UploadHelper:
                                             const post_data = new FormData();
                                             post_data.append('file', this.file_to_import);
                                 Basically, a label to tag the file being uploaded.
-                                The "Dropzone" front-end module uses "file".
+                                The "Dropzone" front-end module uses "file" by default.
                                 If not provided, the first key found in request.files is used.
                                 (Note: in the ImmutableMultiDict data structure, multiple values are allowed for the same key;
                                        if more than one value is present, the first is picked)
