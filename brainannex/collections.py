@@ -61,37 +61,37 @@ class Collections:
 
 
     @classmethod
-    def is_collection(cls, collection_entity_id :str) -> bool:
+    def is_collection(cls, collection_class :str) -> bool:
         """
         Return True if the Data Node with the given Entity ID is a Collection,
         that is, if its schema is a Class that is an INSTANCE_OF the "Collections" Class
 
-        :param collection_entity_id:A string with the Entity ID of a Data Node
+        :param collection_class:    The name of a Class that is an instance of the Class "Collections"
         :return:                    True if the given data node is a Collection, or False otherwise
         """
-
-        # Locate the Schema Class of the given Data Node
-        class_name = GraphSchema.class_of_data_node(node_id=collection_entity_id, id_key="entity_id")
-        return GraphSchema.is_instance_of(class1=class_name, class2="Collections")
+        #class_name = GraphSchema.class_of_data_node(node_id=collection_entity_id, id_key="entity_id")      # Locate the Schema Class of the given Data Node
+        return GraphSchema.is_instance_of(class1=collection_class, class2="Collections")
 
 
 
     @classmethod
-    def collection_size(cls, collection_id :str, membership_rel_name: str, skip_check=False) -> int:
+    def collection_size(cls, collection_class :str, collection_id :str, membership_rel_name: str, skip_check=False) -> int:
         """
         Return the number of elements in the given Collection (i.e. Data Items linked to it thru the specified relationship)
 
-        :param collection_id:       The Entity ID of a data node whose schema is an instance of the Class "Collections"
+        :param collection_class:    The name of a Class that is an instance of the Class "Collections"
+        :param collection_id:       The Entity ID of a data node whose schema Class is an instance of the Class "Collections"
         :param membership_rel_name: The name of the relationship from other Data Items to the given Collection node
-        :param skip_check:          If True, no check is done to verify that the data node whose uri matches collection_id
+        :param skip_check:          If True, no check is done to verify that the data node whose entity_id matches collection_id
                                     is indeed a Collection.
                                     Without a check, this function will return a zero if given a bad collection_id;
                                     with a check, it'll raise an Exception
+
         :return:                    The number of elements in the given Collection (possibly zero)
         """
         if not skip_check:
-            assert cls.is_collection(collection_id), \
-                    f"The data node with Entity ID `{collection_id}` doesn't exist or is not a Collection"
+            assert cls.is_collection(collection_class=collection_class), \
+                    f"Class `{collection_class}` doesn't exist or is not a Collection"
 
         q = f'''
             MATCH ({{entity_id: $collection_id}}) <- [:{membership_rel_name}] - (i) 

@@ -173,7 +173,7 @@ class Document:
         filename = pars["basename"] + "." + pars["suffix"]      # EXAMPLE: "my_file.txt"
 
         if not upload_folder:     # Document was uploaded to standard location
-            path = MediaManager.retrieve_full_path(uri=entity_id)         # Incl. the final "/"
+            path = MediaManager.retrieve_full_path(class_name="Document", entity_id=entity_id)         # Incl. the final "/"
         else:
             # Link the new document to its specific directory node
             # TODO: perhaps should be done by the MediaManager

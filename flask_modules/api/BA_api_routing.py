@@ -1721,60 +1721,15 @@ class ApiRouting:
 
 
 
-        @bp.route('/add_relationship', methods=['POST'])
-        @login_required
-        def add_relationship():
-            """
-            Add the specified relationship (edge) between existing Data Nodes.
-            This is a generic API to add *any* relationship; no other changes made.
-
-            POST FIELDS:
-                from                    The URI of the Data Nodes from which the relationship originates
-                to                      The URI of the Data Nodes into which the relationship takes
-                rel_name                The name of the relationship to add
-
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/add_relationship -d
-                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
-            """
-            # TODO: maybe merge with the schema endpoint /add_schema_relationship
-
-            # Extract the POST values
-            post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of')])
-            #cls.show_post_data(post_data, "add_relationship")
-
-            try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-
-                from_id = data_dict['from']
-                to_id = data_dict['to']
-                rel_name = data_dict['rel_name']
-
-                # The adding of the relationship is done here
-                GraphSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="entity_id",
-                                                  rel_name=rel_name)
-
-                response_data = {"status": "ok"}                                    # If no errors
-            except Exception as ex:
-                err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # In case of errors
-
-            #print(f"add_relationship() is returning: `{response_data}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
         @bp.route('/remove_relationship', methods=['POST'])
         @login_required
         def remove_relationship():
             """
-            Remove the specified relationship (edge) between Data Nodes
+            Remove the specified relationship (edge) between Data Nodes representing Categories
 
             POST FIELDS:
-                from                    The uri of the node from which the relationship originates
-                to                      The uri of the node into which the relationship takes
+                from                    The entity_id of the node from which the relationship originates
+                to                      The entity_id of the node into which the relationship takes
                 rel_name                The name of the relationship to remove
                 schema_code (optional)  If passed, the appropriate plugin gets invoked
 

@@ -154,25 +154,28 @@ class MediaManager:
 
 
     @classmethod
-    def retrieve_full_path(cls, uri :str, thumb=False) -> str:
+    def retrieve_full_path(cls, class_name: str, entity_id :str, thumb=False) -> str:
         """
         Return the full path for the specified media file or, if requested, for its thumbnail image.
         Includes the final "/"
 
-        :param uri:         Entity ID for the Media Item of Interest        TODO: also needs Class name
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param entity_id:   Entity ID for the Media Item
         :param thumb:       If True, return the folder for the thumbnail image instead
         :return:            EXAMPLES on Windows:
                                 "D:/media/documents/"
                                 "D:/media/images/resized/"
         """
-        class_name = GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id")
+        #class_name = GraphSchema.class_of_data_node(node_id=entity_id, id_key="entity_id")
+        assert GraphSchema.data_node_exists_by_entity(class_name=class_name, entity_id=entity_id), \
+            f"retrieve_full_path(): no data node found with Class `{class_name}` and entity ID `{entity_id}`"
 
-        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=uri, id_key="entity_id",
+        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=entity_id, id_key="entity_id",
                                              link_name="BA_stored_in", properties="name")
         #print("dir_names: ", dir_names)
 
         assert len(dir_names) < 2, \
-            f"retrieve_folder_name(): more than 1 directory is associated with file with uri `{uri}`"
+            f"retrieve_folder_name(): more than 1 directory is associated with file with uri `{entity_id}`"
 
         if len(dir_names) == 0:     # No custom directory was specified
             return cls.default_file_path(class_name=class_name, thumb=thumb)    # including the final "/"
@@ -311,7 +314,7 @@ class MediaManager:
 
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder = cls.retrieve_full_path(uri=entity_id, thumb=thumb)
+        folder = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id, thumb=thumb)
 
         return (folder, basename, suffix)
 
@@ -334,7 +337,7 @@ class MediaManager:
         (filepath, basename, suffix) = cls.lookup_media_file(entity_id=entity_id, class_name=class_name, thumb=True)
         filename = basename + "." + suffix
 
-        full_path = cls.retrieve_full_path(uri=entity_id, thumb=True)
+        full_path = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id, thumb=True)
         full_file_name = full_path + filename
 
         return full_file_name
@@ -355,7 +358,7 @@ class MediaManager:
         (filepath, basename, suffix) = cls.get_media_item_file_by_entity(class_name=class_name, entity_id=entity_id)
         filename = basename + "." + suffix
 
-        full_path = cls.retrieve_full_path(uri=entity_id)
+        full_path = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id)
         full_file_name = full_path + filename
 
         return full_file_name
@@ -433,14 +436,14 @@ class MediaManager:
                 # Attempt to resize the full-sized version, and save the new thumbnail file
                 try:
                     # Get the folder for the full-size images
-                    images_folder = cls.retrieve_full_path(uri=entity_id, thumb=False)
+                    images_folder = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id, thumb=False)
                     source_full_name = images_folder + filename
                     print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
 
                     # Full-size version was found; obtain its dimensions
                     width, height = ImageProcessing.get_image_size(source_full_name)
                     # Create a thumbnail version
-                    thumb_folder = cls.retrieve_full_path(uri=entity_id, thumb=th)
+                    thumb_folder = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id, thumb=th)
                     # Carry out the resizing, and save the thumbnail file
                     print("    Attempting to create a thumbnail version of it")
                     #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
@@ -931,14 +934,21 @@ class MediaManager:
 
         # Update the databases
         # Locate the node for the new "Directory"
-        new_dir_id = GraphSchema.locate_single_data_node(class_name="Directory", key_name="name", key_value=media_directory)
+        dir_record = GraphSchema.search_data_nodes(class_name="Directory",
+                                                   key_name="name", key_value=media_directory,
+                                                   include_id=True, enforce_unique=True)
+        new_dir_id = dir_record["_internal_id"]
+        #new_dir_id = GraphSchema.locate_single_data_node(class_name="Directory", key_name="name", key_value=media_directory)
         #print("new_dir_id : ", new_dir_id)
 
         if dir is None:
             GraphSchema.add_data_relationship(from_id=internal_id, to_id=new_dir_id, rel_name="BA_stored_in")
         else:
             # Change the link in the database
-            old_dir_id = GraphSchema.locate_single_data_node(class_name="Directory", key_name="name", key_value=dir)
+            old_dir_record = GraphSchema.search_data_nodes(class_name="Directory", key_name="name", key_value=dir,
+                                                          include_id=True, enforce_unique=True)
+            old_dir_id = old_dir_record["_internal_id"]
+            #old_dir_id = GraphSchema.locate_single_data_node(class_name="Directory", key_name="name", key_value=dir)
             #print("old_dir_id : ", old_dir_id)
             GraphSchema.db.reattach_node(node=internal_id,
                                          old_attachment=old_dir_id, new_attachment=new_dir_id,

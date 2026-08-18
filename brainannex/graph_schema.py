@@ -2116,6 +2116,7 @@ class GraphSchema:
         return d
 
 
+
     @classmethod
     def get_single_data_node_by_entity(cls, class_name :str, entity_id :str, hide_schema=True) -> dict | None:
         """
@@ -2163,142 +2164,11 @@ class GraphSchema:
 
 
     @classmethod
-    def data_node_search_EXPERIMENTAL(cls, search :int|str|tuple, class_name :str, require_unique=True) -> list:
+    def search_data_nodes(cls, class_name :str, key_name :str, key_value,
+                          hide_schema=True, include_id=False,
+                          enforce_unique=False) -> list[dict] | dict:
         """
-        TODO: turn into a data_note_search() function that returns a list of results;
-              i.e. a simpler version of get_nodes_by_filter()
-
-        :param search:      Either an internal database ID (int or str),
-                            OR a pair consisting of a key_name string and a key_value
-
-                            EXAMPLES:   123
-                                        "f425-a84d"
-                                        ("entity_id", "h-88")
-                                        ("root", True)
-        :param class_name:      [OPTIONAL] Only required if not passing an internal database ID
-        :param require_unique:  [OPTIONAL]
-        :return:                True if the specified Data Node exists, or False otherwise
-        """
-        #TODO: explore this style of argument passing as a possible model to adopt class-wide
-        #TODO: consider adding an `include_ancestors` option
-
-        #TODO: use the helper function, as follows:
-        #label_str, where_clause, data_binding = cls._data_node_match_helper_TBA(search)
-
-        dt = type(search)
-        assert dt == int or dt == str or dt == tuple, \
-            f"data_node_exists(): the argument `search` must be an int or a string or a pair (tuple)"
-
-        assert cls.is_valid_class_name(class_name), \
-                f"data_node_exists(): the value `{class_name}` passed " \
-                f"to the `class_name` argument is not a valid Schema Class name"
-
-        if dt == tuple:
-            assert len(search) == 2, \
-                f"data_node_exists(): if the argument `search` is a tuple, it must contain exactly 2 elements, not {len(search)}"
-
-            key_name, key_value = search
-
-            assert type(key_name) == str, \
-                f"data_node_exists(): the value ({key_name}) passed in the first element of the `search` argument " \
-                f"is meant to be a 'key_name', and therefore must be a string; the passed value was of type {type(key_name)}"
-
-            # Prepare a Cypher query to locate the number of the data nodes
-            where_clause = f"WHERE (dn.`{key_name}` = $key_value) AND (dn.`_CLASS` = $class_name)"
-            data_binding = {"key_value" : key_value, "class_name": class_name}
-
-        else:
-            # Match by internal database ID
-            assert CypherUtils.valid_internal_id(search), \
-                f"data_node_exists(): the argument `internal_id` ({search}) " \
-                f"is not a valid internal database ID value"
-
-            where_clause = f"WHERE (id(dn) = $node_id) AND (dn.`_CLASS` = $class_name)"
-            data_binding = {"node_id" : search, "class_name": class_name}
-
-
-        label_str = f":`{class_name}`"
-
-        q = f'''
-            MATCH (dn {label_str}) 
-            {where_clause}
-            RETURN dn
-            '''
-
-        #cls.db.debug_query_print(q, data_binding)
-        result = cls.db.query(q, data_binding=data_binding)
-
-        return result
-
-
-
-    @classmethod
-    def locate_single_data_node(cls, class_name :str, key_name :str, key_value) -> int|str:
-        """
-        TODO: use get_single_data_node() instead
-        Return the internal database ID of the specified data node.
-        If no match, or more than 1, comes up, an Exception is raised
-
-        :param class_name:
-        :param key_name:
-        :param key_value:
-        :return:
-        """
-        q = f'''
-            MATCH (dn :`{class_name}`) 
-            WHERE dn.{key_name} = $key_value
-                AND dn.`_CLASS` = $class_name
-            RETURN id(dn) as INTERNAL_ID
-            LIMIT 2
-            '''         # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
-
-        data_binding = {"key_value": key_value, "class_name": class_name}
-
-        #cls.db.debug_query_print(q, data_binding, "get_data_node")
-        result = cls.db.query(q, data_binding=data_binding, single_column="INTERNAL_ID")
-
-        assert result != [], \
-            "locate_single_node(): failed to locate requested data node"
-
-        assert len(result) < 2,\
-            "locate_single_node(): non-unique specifications (more than 1 data node matches)"
-
-        return result[0]
-
-
-
-    @classmethod
-    def locate_node(cls, node_id :int|str, id_type=None, labels=None, dummy_node_name="n") -> CypherBuilder:
-        """
-        EXPERIMENTAL - a generalization of get_single_data_node_OLD()
-
-        Return the "match" structure to later use to locate a node identified
-        either by its internal database ID (default), or by a primary key (with optional label.)
-
-        NOTE: No database operation is actually performed.
-
-        :param node_id: This is understood be the internal database ID, unless an id_type is specified
-        :param id_type: For example, "entity_id";
-                            if not specified, the node ID is assumed to be the internal database ID's
-        :param labels:  (OPTIONAL) Labels - a string or list/tuple of strings - for the node
-        :param dummy_node_name: (OPTIONAL) A string with a name by which to refer to the node (by default, "n")
-
-        :return:        A "CypherBuilder" object
-        """
-        # TODO: use the argument standards of data_node_exists()
-        if id_type:
-            match_structure = cls.db.match(key_name=id_type, key_value=node_id, labels=labels)
-        else:
-            match_structure = cls.db.match(internal_id=node_id)
-
-        return CypherUtils.process_match_structure(match_structure, dummy_node_name=dummy_node_name)
-
-
-
-    @classmethod
-    def search_data_nodes(cls, class_name :str, key_name :str, key_value, hide_schema=True) -> [dict]:
-        """
-        Return a list of matching nodes.
+        Return a matching node, or list of matching nodes.
         This is a simplified version of get_nodes_by_filter()
 
         :param class_name:  The name of a Class
@@ -2306,8 +2176,14 @@ class GraphSchema:
         :param key_value:   The value to match against
         :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS`
                                 is omitted from each of the returned records
-        :return:            A (possibly-empty) list of dictionaries;
-                                each dictionary contains the name/values of the node's properties
+        :param include_id:  [OPTIONAL] If True, also return an extra field named "_internal_id",
+                                with the internal database ID value; by default, False
+        :param enforce_unique: [OPTIONAL] If True, an Exception is raised in case the number of matches isn't exactly 1.
+                               By default, False
+
+        :return:            If enforce_unique is False, a (possibly-empty) list of dictionaries;
+                                each dictionary contains the name/values of the node's properties.
+                            If enforce_unique is True, return the single dictionary by itself
         """
         # TODO: possibly add a feature that only returns a specified single Property, or specified list of Properties
         # TODO: optionally also return node label
@@ -2329,18 +2205,38 @@ class GraphSchema:
             RETURN dn
             '''
 
+        if include_id:
+            q += ", id(dn) as _internal_id"
+
+        if enforce_unique:
+            q += '''
+            LIMIT 2'''         # Used to detect if non-unique, without unnecessarily fetching large datasets
+
         #cls.db.debug_query_print(q, data_binding, "search_data_nodes")
         result = cls.db.query(q, data_binding=data_binding)
+
+        if enforce_unique:
+            assert len(result) < 2, \
+                f"search_data_nodes(): More than 1 node exists with Class `{class_name}` " \
+                f"and the given value ({key_value}) for the field `{key_name}`"
+            assert len(result) == 1, \
+                f"search_data_nodes(): No node exists with Class `{class_name}` " \
+                f"and the given value ({key_value}) for the field `{key_name}`"
 
         recordset = []
         for row in result:
             record = row["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
+            if include_id:
+                record["_internal_id"] = row["_internal_id"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota', '_internal_id': 123}
 
             if hide_schema and ("_CLASS" in record):
-                del record["_CLASS"]
+                del record["_CLASS"]                    # EXAMPLE, after the in-place deletion:  {'color': 'white', 'make': 'Toyota'}
 
             recordset.append(record)
 
+
+        if enforce_unique:
+            return recordset[0]
 
         return recordset
 
@@ -2970,54 +2866,27 @@ class GraphSchema:
 
 
     @classmethod
-    def class_of_data_node(cls, node_id, id_key=None, labels=None) -> str:
+    def class_of_data_node(cls, internal_id : int|str) -> str:
         """
-        Return the name of the Class of the given data node: identified
-        either by its internal database ID (default), or by a primary key (such as "entity_id")
+        Return the name of the Schema Class of the given data node
 
-        :param node_id:     Either an internal database ID or a primary key value
-        :param id_key:      OPTIONAL - name of a primary key used to identify the data node; for example, "entity_id".
-                                Leave blank to use the internal database ID
-        :param labels:      Optional string, or list/tuple of strings, with internal database labels
-
+        :param internal_id: Internal database ID to identify a Data Node
         :return:            A string with the name of the Class of the given Data Node, if found;
                                 if not found, an Exception is raised
         """
-        match = cls.locate_node(node_id=node_id, id_type=id_key, labels=labels)
-        # This is an object of type "CypherBuilder"
+        d = cls.get_single_data_node(internal_id=internal_id, hide_schema=False)    # A dictionary, or None
+        assert d is not None, \
+            f"class_of_data_node(): There is no data node with internal database ID {internal_id}"
 
-        node = match.node
-        where_clause = CypherUtils.prepare_where([match.where])
-        data_binding = match.data_binding
-        dummy_node_name = match.dummy_node_name
+        assert "_CLASS" in d, \
+            f"class_of_data_node(): A database node with internal database ID {internal_id} was found, " \
+            f"but it's NOT associated to any Schema Class"
 
-        q = f'''
-            MATCH  {node}
-            {where_clause}
-            RETURN {dummy_node_name}.`_CLASS` AS class_name
-            '''
-        #cls.db.debug_query_print(q, data_binding, "class_of_data_node")
+        class_name = d.get("_CLASS")
 
-        result = cls.db.query(q, data_binding)
-        #print(result)
-
-        if len(result) == 0:    # TODO: separate the 2 scenarios leading to this
-            if id_key:
-                raise Exception(f"class_of_data_node(): The requested data node ({id_key}: `{node_id}`) "
-                                f"does not exist")
-            else:
-                raise Exception(f"The requested data node (internal database id: {node_id}) "
-                                f"does not exist")
-
-        # Note: if the `_CLASS` field was missing, result = [{'class_name': None}]
-        class_name = result[0].get("class_name")
-
-        assert class_name is not None, \
-            "class_of_data_node(): The given data node ({id_key}: `{node_id}`) lacks a `_CLASS` field"
-
-        assert type(class_name) == str, \
-            f"class_of_data_node(): The given data node ({id_key}: `{node_id}`) has a `_CLASS` value ({class_name}) that isn't valid, " \
-            f"of type {type(class_name)} rather than a string"
+        assert cls.is_valid_class_name(class_name), \
+            f"class_of_data_node(): A database node with internal database ID {internal_id} was found, " \
+            f"but the value stored for its Schema Class ({class_name}), of type {type(class_name)}, is NOT valid"
 
         return class_name
 
@@ -3825,7 +3694,7 @@ class GraphSchema:
         """
         cls.assert_valid_relationship_name(rel_name)
 
-        center_class = cls.class_of_data_node(node_id=center_id)
+        center_class = cls.class_of_data_node(internal_id=center_id)
 
 
         q = f'''
@@ -3858,7 +3727,8 @@ class GraphSchema:
 
 
     @classmethod
-    def add_data_relationship(cls, from_id, to_id, rel_name :str, rel_props = None, id_type=None) -> None:
+    def add_data_relationship(cls, from_id, to_id, rel_name :str, rel_props = None,
+                             id_type=None, from_class=None, to_class=None) -> None:
         """
         Add a new relationship with the given name, from one to the other of the 2 given data nodes,
         identified by their internal database ID's.
@@ -3876,16 +3746,24 @@ class GraphSchema:
                             IMPORTANT: it MUST be allowed by the Schema
         :param rel_props:TODO: not currently used.  Unclear what multiple calls would do in this case
 
-        :param id_type: OPTIONAL - name of a primary key used to identify the data nodes; for example, "entity_id".
-                            Leave blank to use the internal database ID's instead
+        :param id_type:     [OPTIONAL] Name of a primary key used to identify the data nodes; for example, "entity_id".
+                                Leave blank to use the internal database ID's instead
+        :param from_class:  [OPTIONAL] Must be provided if `id_type` is given (i.e. NOT using the internal database ID's)
+        :param to_class:    [OPTIONAL] Must be provided if `id_type` is given (i.e. NOT using the internal database ID's)
 
         :return:            None.  If the specified relationship didn't get created (for example,
                                 in case the the new relationship doesn't exist in the Schema), raise an Exception
         """
-        assert rel_name, f"GraphSchema.add_data_relationship(): no name was provided for the new relationship"
+        assert rel_name, \
+            f"GraphSchema.add_data_relationship(): no name was provided for the new relationship"
 
-        from_class = cls.class_of_data_node(node_id=from_id, id_key=id_type)
-        to_class = cls.class_of_data_node(node_id=to_id, id_key=id_type)
+        if not id_type:
+            # Using the internal database ID's
+            from_class = cls.class_of_data_node(internal_id=from_id)
+            to_class = cls.class_of_data_node(internal_id=to_id)
+        else:
+            assert from_class, f"GraphSchema.add_data_relationship(): if the `id_type` argument is passed, so must be `from_class`"
+            assert to_class, f"GraphSchema.add_data_relationship(): if the `id_type` argument is passed, so must be `to_class`"
 
         assert cls.is_link_allowed(link_name=rel_name, from_class=from_class, to_class=to_class), \
             f"add_data_relationship(): The relationship requested to be added `{rel_name}`, " \

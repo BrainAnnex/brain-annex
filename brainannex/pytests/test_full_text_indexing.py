@@ -391,7 +391,7 @@ def test_get_indexer_node_id(db):
     assert db.number_of_links(match_from=content_id, match_to=indexer_node_id, rel_name="has_index") == 1
 
     # Verify that the "Indexer" data node is indeed associated to the schema Class called "Indexer"
-    assert GraphSchema.class_of_data_node(node_id=indexer_node_id, labels="Indexer") == "Indexer"
+    assert GraphSchema.class_of_data_node(internal_id=indexer_node_id) == "Indexer"
 
 
 

@@ -481,7 +481,7 @@ class Categories:
         Delete the specified Category, provided that there are no Content Items linked to it.
         In case of error or failure, an Exception is raised.
 
-        :param uri: The uri identifying the desired Category
+        :param uri: The value identifying the desired Category
         :return:    None
         """
         category_uri = uri
@@ -490,7 +490,7 @@ class Categories:
             raise Exception("Cannot delete the Root node")       # TODO: this will eventually have to be managed differently
 
         # First, make sure that there are no Content Items linked to this Category
-        number_items_attached = Collections.collection_size(collection_id=category_uri, membership_rel_name="BA_in_category")
+        number_items_attached = Collections.collection_size(collection_class="Category", collection_id=category_uri, membership_rel_name="BA_in_category")
 
         if number_items_attached > 0:
             raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because "
@@ -544,7 +544,8 @@ class Categories:
         #   (the originator) of the relationship
         try:
             GraphSchema.add_data_relationship(from_id=subcategory_uri, to_id=category_uri,
-                                              rel_name="BA_subcategory_of", id_type="entity_id")
+                                              rel_name="BA_subcategory_of", id_type="entity_id",
+                                              from_class="Category", to_class="Category")
         except Exception as ex:
             raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship "
                             f"from Category uri `{subcategory_uri}` to Category uri `{category_uri}`. {ex}")
@@ -609,12 +610,12 @@ class Categories:
         """
         Create a "see_also" link between the given Categories, in the specified direction
 
-        :param from_category:   URI of the Category where the "see_also" relationship originates
-        :param to_category:     URI of the Category where the "see_also" relationship terminates
+        :param from_category:   Entity ID of the Category where the "see_also" relationship originates
+        :param to_category:     Entity ID of the Category where the "see_also" relationship terminates
         :return:                None
         """
         GraphSchema.add_data_relationship(from_id=from_category, to_id=to_category, id_type="entity_id",
-                                          rel_name="BA_see_also")
+                                          rel_name="BA_see_also", from_class="Category", to_class="Category")
 
 
 

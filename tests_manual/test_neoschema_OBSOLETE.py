@@ -2056,22 +2056,22 @@ def test_locate_node(db):
 def test_class_of_data_point(db):
     db.empty_dbase()
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=123)  # No such data node exists
+        GraphSchema.class_of_data_node(internal_id=123)  # No such data node exists
 
     internal_id = db.create_node("random")
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=internal_id)     # It's not a data node
+        GraphSchema.class_of_data_node(internal_id=internal_id)     # It's not a data node
 
     GraphSchema.create_class("Person")
     uri = GraphSchema.add_data_point_OLD("Person")
 
-    assert GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id") == "Person"
-    assert GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id", labels="Person") == "Person"
+    assert GraphSchema.class_of_data_node(internal_id=uri, id_key="entity_id") == "Person"
+    assert GraphSchema.class_of_data_node(internal_id=uri, id_key="entity_id", labels="Person") == "Person"
 
     # Now locate thru the internal database ID
     internal_id = GraphSchema.get_data_node_id(uri)
     #print("neo_uri: ", neo_uri)
-    assert GraphSchema.class_of_data_node(node_id=internal_id) == "Person"
+    assert GraphSchema.class_of_data_node(internal_id=internal_id) == "Person"
 
     GraphSchema.create_class("Extra")
     # Create a forbidden scenario with a data node having 2 Schema classes
@@ -2082,7 +2082,7 @@ def test_class_of_data_point(db):
     #db.debug_print(q, {}, "test")
     db.update_query(q)
     with pytest.raises(Exception):
-        assert GraphSchema.class_of_data_node(node_id=internal_id) == "Person"    # Data node is associated to multiple classes
+        assert GraphSchema.class_of_data_node(internal_id=internal_id) == "Person"    # Data node is associated to multiple classes
 
 
 

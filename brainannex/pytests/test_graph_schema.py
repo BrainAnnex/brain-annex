@@ -1367,14 +1367,18 @@ def test_search_data_nodes(db):
         GraphSchema.search_data_nodes(class_name=123, key_name="no_matter", key_value="some-value")     # Bad class name
 
     assert GraphSchema.search_data_nodes(class_name="I_dont_exist",
-                                         key_name="no_matter", key_value="some-value") == []      # Database is empty
+                                         key_name="no_matter", key_value="some-value") == []            # Database is empty
+
+    with pytest.raises(Exception):
+        GraphSchema.search_data_nodes(class_name="I_dont_exist",
+                                  key_name="no_matter", key_value="some-value", enforce_unique=True)    # Database is empty
 
 
     # Create a 1st Car node
     GraphSchema.create_class(name="Car", strict=False)
 
-    db_id = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"},
-                                         new_entity_id="white-toyota-1")
+    db_id_1 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"},
+                                           new_entity_id="white-toyota-1")
 
     result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="white-toyota-1")
     assert result == [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}]
@@ -1385,10 +1389,16 @@ def test_search_data_nodes(db):
     result = GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota")
     assert result == [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}]
 
-    result = GraphSchema.search_data_nodes(class_name="Planet", key_name="entity_id", key_value="white-toyota-1")  # Will fail on class_name
+    result = GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota", include_id=True)
+    assert result == [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1', '_internal_id': db_id_1}]
+
+    result = GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota", enforce_unique=True, include_id=True)
+    assert result == {'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1', '_internal_id': db_id_1}   # A dict, not list
+
+    result = GraphSchema.search_data_nodes(class_name="Planet", key_name="entity_id", key_value="white-toyota-1")   # Will fail on class_name
     assert result == []
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="white-toyota-666")  # Will fail on entity_id
+    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="white-toyota-666")    # Will fail on entity_id
     assert result == []
 
     result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="white-toyota-1", hide_schema=False)
@@ -1411,10 +1421,19 @@ def test_search_data_nodes(db):
     result = GraphSchema.search_data_nodes(class_name="Car", key_name="color", key_value="red")
     assert result == [{'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1'}]
 
+    result = GraphSchema.search_data_nodes(class_name="Car", key_name="color", key_value="red", include_id=True)
+    assert result == [{'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1', '_internal_id': db_id_2}]
+
+    result = GraphSchema.search_data_nodes(class_name="Car", key_name="color", key_value="red", enforce_unique=True)
+    assert result == {'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1'}
+
     result = GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota")       # This will find both cars
     expected = [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'},
                 {'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1'}]
     assert compare_recordsets(result, expected)
+
+    with pytest.raises(Exception):
+        GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota", enforce_unique=True)    # This will find both cars
 
 
     # Create a 3rd Car node
@@ -1425,9 +1444,12 @@ def test_search_data_nodes(db):
     result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="blue-honda-1")
     assert result == [{'color': 'blue', 'make': 'Honda', 'entity_id': 'blue-honda-1'}]
 
+    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="blue-honda-1", enforce_unique=True, include_id=True)
+    assert result == {'color': 'blue', 'make': 'Honda', 'entity_id': 'blue-honda-1', '_internal_id': db_id_3}
+
 
     # Now try it on a generic database node that is NOT a Data Node
-    db_id_truck = db.create_node(labels="Truck", properties={"make": "BMW", "color": "black", "entity_id": "NOT a data node"})
+    db.create_node(labels="Truck", properties={"make": "BMW", "color": "black", "entity_id": "NOT a data node"})
 
     result = GraphSchema.search_data_nodes(class_name="Truck", key_name="entity_id", key_value="NOT a data node")
     assert result == []
@@ -1810,11 +1832,6 @@ def test__process_order_by():
     s="Alice DESC,Bob,   Carol   DESC   ,Disc Number    "
     result = GraphSchema._process_order_by(s, ignore_case = ["Carol"])
     assert result == "n.`Alice` DESC, n.`Bob`, toLower(n.`Carol`) DESC, n.`Disc Number`"
-
-
-
-def test_locate_node(db):
-    pass    # TODO
 
 
 
@@ -2841,12 +2858,14 @@ def test_add_data_relationship(db):
 
     # Now add a relationship using URI's instead of internal database ID's
     red_car_internal_id = GraphSchema.create_data_node(class_name="Car", properties={"color": "red"}, new_entity_id="new_car")
-    GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="entity_id", rel_name="DRIVES")
+    GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="entity_id", rel_name="DRIVES",
+                                      from_class="Person", to_class="Car")
     assert db.links_exist(match_from=person_internal_id, match_to=red_car_internal_id, rel_name="DRIVES")
 
     with pytest.raises(Exception):
         # Relationship name not declared in the Schema
-        GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="entity_id", rel_name="PAINTS")
+        GraphSchema.add_data_relationship(from_id="julian", to_id="new_car", id_type="entity_id", rel_name="PAINTS",
+                                          from_class="Person", to_class="Car")
 
 
 
@@ -2892,28 +2911,24 @@ def test_class_and_entity_id(db):
 def test_class_of_data_node(db):
     db.empty_dbase()
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=123)     # No such data node exists
+        GraphSchema.class_of_data_node(internal_id=123)     # No such data node exists
 
 
-    internal_id = db.create_node("random")
+    internal_id = db.create_node(labels="random")
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=internal_id)     # It's not a data node
+        GraphSchema.class_of_data_node(internal_id=internal_id)     # It's not a data node
 
 
     GraphSchema.create_class("Person")
     person_entity_id = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
-    GraphSchema.create_data_node(class_name="Person", new_entity_id=person_entity_id)
+    node_internal_id = GraphSchema.create_data_node(class_name="Person", new_entity_id=person_entity_id)
 
-    assert GraphSchema.class_of_data_node(node_id=person_entity_id, id_key="entity_id") == "Person"
-    assert GraphSchema.class_of_data_node(node_id=person_entity_id, id_key="entity_id", labels="Person") == "Person"
+    assert GraphSchema.class_of_data_node(node_internal_id) == "Person"
+    assert GraphSchema.class_of_data_node(node_internal_id) == "Person"
 
-    # Now locate thru the internal database ID
-    internal_id = GraphSchema.get_data_node_internal_id(class_name="Person", entity_id=person_entity_id)
-    #print("internal_id: ", internal_id)
-    assert GraphSchema.class_of_data_node(node_id=internal_id) == "Person"
 
     GraphSchema.create_class("Extra")
-    # Create a forbidden scenario with a data node having 2 Schema classes
+    # Create a forbidden scenario with a data node having a non-string class name
     q = f'''
         MATCH (n {{entity_id: '{person_entity_id}' }})
         SET n.`_CLASS` = 666
@@ -2921,7 +2936,8 @@ def test_class_of_data_node(db):
     #db.debug_print(q, {}, "test")
     db.update_query(q)
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=person_entity_id, id_key="entity_id")    # Data node is associated to a non-string class name
+        GraphSchema.class_of_data_node(node_internal_id)    # Data node is associated to a non-string class name
+
 
 
 
