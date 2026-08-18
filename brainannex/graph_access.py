@@ -1706,10 +1706,6 @@ class GraphAccess(InterGraph):
         # Unpack needed values from the match dictionary
         (node, where, data_binding, _) = CypherUtils.assemble_cypher_blocks(match, caller_method="follow_links")
 
-        print(f"*********** match = {match} , of type {type(match)}")   # match = 426746 , of type <class 'str'>
-        print(f"*********** where : `{where}`")                         # where : `id(n) = 426746`
-        print(f"*********** data_binding : `{data_binding}`")           # data_binding : `{}`
-
         neighbor_labels_str = CypherUtils.prepare_labels(neighbor_labels)     # EXAMPLE:  ":`CAR`:`INVENTORY`"
 
         if rel_dir == "OUT":    # Follow outbound links
@@ -1731,7 +1727,7 @@ class GraphAccess(InterGraph):
         if limit is not None:
             q += f" LIMIT {limit}"
 
-        self.debug_query_print(q, data_binding, "follow_links")
+        #self.debug_query_print(q, data_binding, "follow_links")
         result = self.query(q, data_binding)        # , single_column='neighbor'
 
         return self.standardize_recordset(recordset=result)

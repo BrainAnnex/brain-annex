@@ -98,17 +98,17 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_category_info(cls, category_uri :str) -> dict:
+    def get_category_info(cls, entity_id :str) -> dict:
         """
         Return the Name and Remarks field values attached to the given Category
 
-        :param category_uri:    A string uniquely identifying the desired Category
-        :return:                The Category's properties (or a blank dictionary if not found)
-                                    EXAMPLES:   {"entity_id": "123", "name": "Astronomy", "remarks": "except cosmology"}
-                                                {"entity_id": "1", "name": "HOME", "root": true}
+        :param entity_id:   A string uniquely identifying the desired Category
+        :return:            The Category's properties (or a blank dictionary if not found)
+                                EXAMPLES:   {"entity_id": "123", "name": "Astronomy", "remarks": "except cosmology"}
+                                            {"entity_id": "1", "name": "HOME", "root": true}
         """
-        #return GraphSchema.get_single_data_node_OLD(class_name="Category", node_id=category_uri, id_key="entity_id")
-        return GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Category", search=("entity_id", category_uri))
+        #return GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Category", search=("entity_id", category_uri))
+        return GraphSchema.get_single_data_node_by_entity(class_name="Category", entity_id=entity_id, hide_schema=True)
 
 
 
