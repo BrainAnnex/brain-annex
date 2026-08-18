@@ -140,8 +140,12 @@ class Categories:
                     If more than one root exists, raise an Exception
         """
         #match = cls.db.match(label="Category", properties={"root": True})
-        root_category = GraphSchema.get_single_data_node_OLD(node_id=True, id_key="root", class_name="Category")
-        if root_category:
+        #root_category = GraphSchema.get_single_data_node_OLD(node_id=True, id_key="root", class_name="Category")
+        root_category_nodes = GraphSchema.search_data_nodes(class_name="Category", key_name="root", key_value=True)
+        assert len(root_category_nodes) < 2, \
+            "get_root_entity_id(): more than 1 root node found.  Root node is not unique"
+        if len(root_category_nodes) == 1:
+            root_category = root_category_nodes[0]
             return root_category.get("entity_id")
 
 
@@ -885,7 +889,8 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True if the given Category has a "pinned" status; otherwise, False
         """
-        all_props = GraphSchema.get_single_data_node_OLD(node_id=uri, id_key="entity_id", class_name="Category")    # A dict, or None
+        #all_props = GraphSchema.get_single_data_node_OLD(node_id=uri, id_key="entity_id", class_name="Category")    # A dict, or None
+        all_props = GraphSchema.get_single_data_node_by_entity(class_name="Category", entity_id=uri, hide_schema=True)    # A dict, or None
         assert all_props, f"is_pinned(): unable to locate the specified Category node (entity_id: '{uri}')"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't

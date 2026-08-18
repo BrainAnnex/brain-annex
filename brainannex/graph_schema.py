@@ -2102,7 +2102,7 @@ class GraphSchema:
             RETURN dn
             '''
 
-        cls.db.debug_query_print(q, data_binding, "get_single_data_node")
+        #cls.db.debug_query_print(q, data_binding, "get_single_data_node")
         result = cls.db.query(q, data_binding=data_binding, single_row=True)
 
         if result is None:
@@ -2130,7 +2130,7 @@ class GraphSchema:
             f"get_single_data_node_by_entity(): the value `{class_name}` passed " \
             f"to the `class_name` argument is not a valid Schema Class name"
 
-        # Prepare a Cypher query to locate the number of the data nodes
+        # Prepare a Cypher query to locate the requested data node
         where_clause = f"WHERE (dn.`_CLASS` = $class_name) AND (dn.`entity_id` = $entity_id)"
         data_binding = {"class_name": class_name, "entity_id" : entity_id}
         label_str = f":`{class_name}`"
@@ -2142,7 +2142,7 @@ class GraphSchema:
             LIMIT 2
             '''
 
-        cls.db.debug_query_print(q, data_binding)
+        #cls.db.debug_query_print(q, data_binding)
         result = cls.db.query(q, data_binding=data_binding)
 
         if len(result) == 0:
@@ -2233,60 +2233,6 @@ class GraphSchema:
 
 
     @classmethod
-    def get_single_data_node_OLD(cls, node_id, id_key=None, class_name=None, hide_schema=True) -> dict | None:
-        """
-        TODO: use get_single_data_node() instead
-
-        Return a dictionary with all the key/value pairs of the attributes of a single Data Node,
-        specified either by its internal database ID, or by its Class name and primary key.
-        If opting to search by primary key, and more than 1 match comes up, an Exception is raised.
-
-        :param node_id:     Either an internal database ID (int or str), or a primary key value
-        :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "entity_id".
-                                Alternatively, leave blank to use the internal database ID
-        :param class_name:  [OPTIONAL] Only required if using a primary key, rather than an internal database ID
-        :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS` is omitted
-
-        :return:            If not found, return None; if more than 1, an Exception is raised.
-                                If exactly 1 is found, return a dict with the name/values of the node's properties
-        """
-        # TODO: possibly add a function that only returns a specified single Property, or specified list of Properties
-        # TODO: optionally also return node label
-
-        # Prepare a Cypher query
-        where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key,
-                                                                  class_name=class_name, method="get_single_data_node_OLD")
-
-        q = f'''
-            MATCH (dn)
-            {where_clause}
-            RETURN dn
-            LIMIT 2
-            '''
-            # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
-
-        #cls.db.debug_query_print(q, data_binding, "get_data_node")
-        result = cls.db.query(q, data_binding=data_binding)
-
-        if result == []:
-            return None
-
-        assert len(result) == 1, \
-            f"get_single_data_node_OLD(): the specified key (`{id_key}`) is not primary - multiple records were located for (`{id_key}`={node_id})"
-
-
-        result = result[0]  # Extract the single element from the list
-
-        d = result["dn"]    # EXAMPLE:  {'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota'}
-
-        if hide_schema and ("_CLASS" in d):
-            del d["_CLASS"]         # TODO: turn into a function
-
-        return d
-
-
-
-    @classmethod
     def locate_single_data_node(cls, class_name :str, key_name :str, key_value) -> int|str:
         """
         TODO: use get_single_data_node() instead
@@ -2350,33 +2296,40 @@ class GraphSchema:
 
 
     @classmethod
-    def search_data_nodes(cls, entity_name :str, key_name :str, key_value, hide_schema=True) -> [dict]:
+    def search_data_nodes(cls, class_name :str, key_name :str, key_value, hide_schema=True) -> [dict]:
         """
         Return a list of matching nodes.
-        This is meant to be a simplified version of get_nodes_by_filter()
+        This is a simplified version of get_nodes_by_filter()
 
-        :param entity_name:The name of a Class
-        :param key_name:
-        :param key_value:
-        :param hide_schema:
-        :return:            A list of dictionaries
+        :param class_name:  The name of a Class
+        :param key_name:    The name of the node property to match against
+        :param key_value:   The value to match against
+        :param hide_schema: [OPTIONAL] By default (True), the special schema field (property) `_CLASS`
+                                is omitted from each of the returned records
+        :return:            A (possibly-empty) list of dictionaries;
+                                each dictionary contains the name/values of the node's properties
         """
-        # TODO: test
         # TODO: possibly add a feature that only returns a specified single Property, or specified list of Properties
         # TODO: optionally also return node label
-        # TODO: actually match by Class name, not (just) by label
-        # TODO: make key_name/key_value optional
+        # TODO: optionally, let user specify a max
+        # TODO: maybe make key_name/key_value optional, to locate all data nodes of a given class?
+
+        assert cls.is_valid_class_name(class_name), \
+            f"search_data_nodes(): the value `{class_name}` passed " \
+            f"to the `class_name` argument is not a valid Schema Class name"
+
+        # Prepare a Cypher query to locate the requested data nodes
+        where_clause = f"WHERE (dn.`_CLASS` = $class_name) AND (dn.`{key_name}` = $key_value)"
+        data_binding = {"class_name": class_name, "key_value" : key_value}
+        label_str = f":`{class_name}`"
 
         q = f'''
-            MATCH (dn :`{entity_name}`) 
-            WHERE dn.{key_name} = $key_value
+            MATCH (dn {label_str}) 
+            {where_clause}
             RETURN dn
-            '''     # AND dn._CLASS = '{entity_name}'
-            # LIMIT 2 is used to detect if non-unique, without unnecessarily fetching large datasets
+            '''
 
-
-        data_binding = {"key_value": key_value}
-        #cls.db.debug_query_print(q, data_binding, "get_data_node")
+        #cls.db.debug_query_print(q, data_binding, "search_data_nodes")
         result = cls.db.query(q, data_binding=data_binding)
 
         recordset = []
@@ -2386,7 +2339,8 @@ class GraphSchema:
             if hide_schema and ("_CLASS" in record):
                 del record["_CLASS"]
 
-            recordset.append(record)    # TODO: maybe not necessary if we're doing deletion in place
+            recordset.append(record)
+
 
         return recordset
 

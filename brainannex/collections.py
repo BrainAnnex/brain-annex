@@ -610,9 +610,11 @@ class Collections:
             #       or a bad insert_after_uri value that matches no node
 
             # Try to locate that Content Item node that we were supposed to try to insert after
-            node = GraphSchema.get_single_data_node_OLD(node_id=insert_after_uri, id_key="entity_id", class_name=insert_after_class)
+            #node = GraphSchema.get_single_data_node_OLD(node_id=insert_after_uri, id_key="entity_id", class_name=insert_after_class)
+            node = GraphSchema.get_single_data_node_by_entity(class_name=insert_after_class, entity_id=insert_after_uri)
             if node is None:
-                raise Exception(f"There is no node of class `{insert_after_class}` with the `entity_id` value ({insert_after_uri}) that was passed by `insert_after_uri`")
+                raise Exception(f"add_to_collection_after_element(): There is no node of class `{insert_after_class}` "
+                                f"with the `entity_id` value ({insert_after_uri}) that was passed by `insert_after_uri`")
 
             #print("    It's case of 'insert AT THE END'")
             return cls.add_to_collection_at_end(collection_entity_id=collection_entity_id, collection_class=collection_class,

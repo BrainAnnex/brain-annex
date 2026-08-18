@@ -1150,7 +1150,8 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_properties = GraphSchema.get_single_data_node_OLD(node_id=search_category, id_key="entity_id", class_name="Category")
+            #category_properties = GraphSchema.get_single_data_node_OLD(node_id=search_category, id_key="entity_id", class_name="Category")
+            category_properties = GraphSchema.get_single_data_node_by_entity(class_name="Category", entity_id=search_category)
             category_name = category_properties.get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 

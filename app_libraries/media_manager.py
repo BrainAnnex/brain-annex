@@ -204,7 +204,8 @@ class MediaManager:
                                     ("D:/media/my_media_folder/images/", "my_pict", "jpg")
                                     ("D:/media/my_media_folder/my_custom_directory/vacation/", "my_pict", "jpg")
         """
-        content_node = GraphSchema.get_single_data_node_OLD(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        #content_node = GraphSchema.get_single_data_node_OLD(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node_by_entity(class_name=class_name, entity_id=entity_id)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception(f'get_media_item_file_by_entity(): '
@@ -246,7 +247,8 @@ class MediaManager:
                                 EXAMPLE:
                                     ("D:/media/my_media_folder/images/", "my_pict", "jpg")
         """
-        content_node = GraphSchema.get_single_data_node_OLD(node_id=internal_id, hide_schema=False)
+        #content_node = GraphSchema.get_single_data_node_OLD(node_id=internal_id, hide_schema=False)
+        content_node = GraphSchema.get_single_data_node(internal_id=internal_id, hide_schema=False)
         #print("content_node:", content_node)
         assert content_node is not None, \
                     f'get_media_item_file_by_id(): Metadata not found for the Media file ' \
@@ -294,7 +296,8 @@ class MediaManager:
         """
         #TODO: phase out in favor of get_media_item_file_by_entity()
 
-        content_node = GraphSchema.get_single_data_node_OLD(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        #content_node = GraphSchema.get_single_data_node_OLD(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node_by_entity(class_name=class_name, entity_id=entity_id)
         #print("content_node:", content_node)
         if content_node is None:
             raise Exception(f'lookup_media_file(): Metadata not found for the Media file of Class `{class_name}` and uri="{entity_id}"')
