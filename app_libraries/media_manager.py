@@ -166,7 +166,6 @@ class MediaManager:
                                 "D:/media/documents/"
                                 "D:/media/images/resized/"
         """
-        #class_name = GraphSchema.class_of_data_node(node_id=entity_id, id_key="entity_id")
         assert GraphSchema.data_node_exists_by_entity(class_name=class_name, entity_id=entity_id), \
             f"retrieve_full_path(): no data node found with Class `{class_name}` and entity ID `{entity_id}`"
 
@@ -820,11 +819,11 @@ class MediaManager:
                                             "documents/Ebooks & Articles/math"
                                         ]
         """
-        result, _ = GraphSchema.get_nodes_by_filter(class_name="Directory",
-                                                    order_by="name", sort_ignore_case=["name"],
-                                                    limit=limit)
+        result, _ = GraphSchema.get_data_nodes_by_filter(class_name="Directory",
+                                                         order_by="name", sort_ignore_case=["name"],
+                                                         limit=limit)
         #print(result)
-        #TODO: let get_nodes_by_filter() extract the desired single field
+        #TODO: let get_data_nodes_by_filter() extract the desired single field
         directory_list = [d.get("name") for d in result]
         #print(directory_list)
         return directory_list
@@ -934,9 +933,9 @@ class MediaManager:
 
         # Update the databases
         # Locate the node for the new "Directory"
-        dir_record = GraphSchema.search_data_nodes(class_name="Directory",
-                                                   key_name="name", key_value=media_directory,
-                                                   include_id=True, enforce_unique=True)
+        dir_record = GraphSchema.get_data_nodes_by_key_pair(class_name="Directory",
+                                                            key_name="name", key_value=media_directory,
+                                                            include_id=True, enforce_unique=True)
         new_dir_id = dir_record["_internal_id"]
         #new_dir_id = GraphSchema.locate_single_data_node(class_name="Directory", key_name="name", key_value=media_directory)
         #print("new_dir_id : ", new_dir_id)
@@ -945,8 +944,8 @@ class MediaManager:
             GraphSchema.add_data_relationship(from_id=internal_id, to_id=new_dir_id, rel_name="BA_stored_in")
         else:
             # Change the link in the database
-            old_dir_record = GraphSchema.search_data_nodes(class_name="Directory", key_name="name", key_value=dir,
-                                                          include_id=True, enforce_unique=True)
+            old_dir_record = GraphSchema.get_data_nodes_by_key_pair(class_name="Directory", key_name="name", key_value=dir,
+                                                                    include_id=True, enforce_unique=True)
             old_dir_id = old_dir_record["_internal_id"]
             #old_dir_id = GraphSchema.locate_single_data_node(class_name="Directory", key_name="name", key_value=dir)
             #print("old_dir_id : ", old_dir_id)

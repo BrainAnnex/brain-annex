@@ -69,7 +69,6 @@ class Collections:
         :param collection_class:    The name of a Class that is an instance of the Class "Collections"
         :return:                    True if the given data node is a Collection, or False otherwise
         """
-        #class_name = GraphSchema.class_of_data_node(node_id=collection_entity_id, id_key="entity_id")      # Locate the Schema Class of the given Data Node
         return GraphSchema.is_instance_of(class1=collection_class, class2="Collections")
 
 

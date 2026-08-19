@@ -141,7 +141,7 @@ class Categories:
         """
         #match = cls.db.match(label="Category", properties={"root": True})
         #root_category = GraphSchema.get_single_data_node_OLD(node_id=True, id_key="root", class_name="Category")
-        root_category_nodes = GraphSchema.search_data_nodes(class_name="Category", key_name="root", key_value=True)
+        root_category_nodes = GraphSchema.get_data_nodes_by_key_pair(class_name="Category", key_name="root", key_value=True)
         assert len(root_category_nodes) < 2, \
             "get_root_entity_id(): more than 1 root node found.  Root node is not unique"
         if len(root_category_nodes) == 1:

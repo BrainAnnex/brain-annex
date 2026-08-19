@@ -268,4 +268,4 @@ def test_get_filtered(db):
         DataManager.get_filtered({"mystery_key": 123})   # Bad key
 
     # TODO: add more tests
-    #print(DataManager.get_nodes_by_filter({}))
+    #print(DataManager.get_data_nodes_by_filter({}))

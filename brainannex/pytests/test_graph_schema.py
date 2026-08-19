@@ -1364,14 +1364,14 @@ def test_search_data_nodes(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        GraphSchema.search_data_nodes(class_name=123, key_name="no_matter", key_value="some-value")     # Bad class name
+        GraphSchema.get_data_nodes_by_key_pair(class_name=123, key_name="no_matter", key_value="some-value")     # Bad class name
 
-    assert GraphSchema.search_data_nodes(class_name="I_dont_exist",
-                                         key_name="no_matter", key_value="some-value") == []            # Database is empty
+    assert GraphSchema.get_data_nodes_by_key_pair(class_name="I_dont_exist",
+                                                  key_name="no_matter", key_value="some-value") == []            # Database is empty
 
     with pytest.raises(Exception):
-        GraphSchema.search_data_nodes(class_name="I_dont_exist",
-                                  key_name="no_matter", key_value="some-value", enforce_unique=True)    # Database is empty
+        GraphSchema.get_data_nodes_by_key_pair(class_name="I_dont_exist",
+                                               key_name="no_matter", key_value="some-value", enforce_unique=True)    # Database is empty
 
 
     # Create a 1st Car node
@@ -1380,28 +1380,28 @@ def test_search_data_nodes(db):
     db_id_1 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"},
                                            new_entity_id="white-toyota-1")
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="white-toyota-1")
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="entity_id", key_value="white-toyota-1")
     assert result == [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}]
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="color", key_value="white")
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="color", key_value="white")
     assert result == [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}]
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota")
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="make", key_value="Toyota")
     assert result == [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}]
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota", include_id=True)
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="make", key_value="Toyota", include_id=True)
     assert result == [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1', '_internal_id': db_id_1}]
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota", enforce_unique=True, include_id=True)
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="make", key_value="Toyota", enforce_unique=True, include_id=True)
     assert result == {'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1', '_internal_id': db_id_1}   # A dict, not list
 
-    result = GraphSchema.search_data_nodes(class_name="Planet", key_name="entity_id", key_value="white-toyota-1")   # Will fail on class_name
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Planet", key_name="entity_id", key_value="white-toyota-1")   # Will fail on class_name
     assert result == []
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="white-toyota-666")    # Will fail on entity_id
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="entity_id", key_value="white-toyota-666")    # Will fail on entity_id
     assert result == []
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="white-toyota-1", hide_schema=False)
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="entity_id", key_value="white-toyota-1", hide_schema=False)
     assert result == [{'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}]
 
 
@@ -1409,31 +1409,31 @@ def test_search_data_nodes(db):
     db_id_2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "red"},
                                            new_entity_id="red-toyota-1")
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="red-toyota-1")
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="entity_id", key_value="red-toyota-1")
     assert result == [{'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1'}]
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="white-toyota-1")
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="entity_id", key_value="white-toyota-1")
     assert result == [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'}]
 
-    result = GraphSchema.search_data_nodes(class_name="Planet", key_name="entity_id", key_value="red-toyota-1")  # Will fail matching class_name
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Planet", key_name="entity_id", key_value="red-toyota-1")  # Will fail matching class_name
     assert result == []
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="color", key_value="red")
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="color", key_value="red")
     assert result == [{'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1'}]
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="color", key_value="red", include_id=True)
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="color", key_value="red", include_id=True)
     assert result == [{'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1', '_internal_id': db_id_2}]
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="color", key_value="red", enforce_unique=True)
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="color", key_value="red", enforce_unique=True)
     assert result == {'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1'}
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota")       # This will find both cars
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="make", key_value="Toyota")       # This will find both cars
     expected = [{'color': 'white', 'make': 'Toyota', 'entity_id': 'white-toyota-1'},
                 {'color': 'red', 'make': 'Toyota', 'entity_id': 'red-toyota-1'}]
     assert compare_recordsets(result, expected)
 
     with pytest.raises(Exception):
-        GraphSchema.search_data_nodes(class_name="Car", key_name="make", key_value="Toyota", enforce_unique=True)    # This will find both cars
+        GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="make", key_value="Toyota", enforce_unique=True)    # This will find both cars
 
 
     # Create a 3rd Car node
@@ -1441,17 +1441,17 @@ def test_search_data_nodes(db):
                                            properties={"make": "Honda", "color": "blue"},
                                            new_entity_id="blue-honda-1")
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="blue-honda-1")
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="entity_id", key_value="blue-honda-1")
     assert result == [{'color': 'blue', 'make': 'Honda', 'entity_id': 'blue-honda-1'}]
 
-    result = GraphSchema.search_data_nodes(class_name="Car", key_name="entity_id", key_value="blue-honda-1", enforce_unique=True, include_id=True)
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Car", key_name="entity_id", key_value="blue-honda-1", enforce_unique=True, include_id=True)
     assert result == {'color': 'blue', 'make': 'Honda', 'entity_id': 'blue-honda-1', '_internal_id': db_id_3}
 
 
     # Now try it on a generic database node that is NOT a Data Node
     db.create_node(labels="Truck", properties={"make": "BMW", "color": "black", "entity_id": "NOT a data node"})
 
-    result = GraphSchema.search_data_nodes(class_name="Truck", key_name="entity_id", key_value="NOT a data node")
+    result = GraphSchema.get_data_nodes_by_key_pair(class_name="Truck", key_name="entity_id", key_value="NOT a data node")
     assert result == []
 
 
@@ -1541,89 +1541,89 @@ def test_get_data_link_properties(db):
 def test_get_nodes_by_filter(db):
     db.empty_dbase()
 
-    assert GraphSchema.get_nodes_by_filter() == ( [], 0 )
+    assert GraphSchema.get_data_nodes_by_filter() == ([], 0)
 
     # Create a GENERIC node (not a Data Node)
     internal_id = db.create_node(labels="Car", properties={"color": "yellow", "year": 1999})
 
-    assert GraphSchema.get_nodes_by_filter() == ( [{"color": "yellow", "year": 1999}] , 1 )
+    assert GraphSchema.get_data_nodes_by_filter() == ([{"color": "yellow", "year": 1999}] , 1)
 
-    assert GraphSchema.get_nodes_by_filter(include_id=True) == ( [{"color": "yellow", "year": 1999, "_internal_id": internal_id}] , 1 )
+    assert GraphSchema.get_data_nodes_by_filter(include_id=True) == ([{"color": "yellow", "year": 1999, "_internal_id": internal_id}] , 1)
 
-    assert GraphSchema.get_nodes_by_filter(include_labels=True) == ( [{"color": "yellow", "year": 1999, "_node_labels": ["Car"]}] , 1 )
+    assert GraphSchema.get_data_nodes_by_filter(include_labels=True) == ([{"color": "yellow", "year": 1999, "_node_labels": ["Car"]}] , 1)
 
-    assert GraphSchema.get_nodes_by_filter(labels="Car") == ( [{"color": "yellow", "year": 1999}] , 1 )
+    assert GraphSchema.get_data_nodes_by_filter(labels="Car") == ([{"color": "yellow", "year": 1999}] , 1)
 
-    assert GraphSchema.get_nodes_by_filter(labels="Car", key_names="") == ( [{"color": "yellow", "year": 1999}] , 1 )
-
-    with pytest.raises(Exception):
-        GraphSchema.get_nodes_by_filter(labels="Car", key_names="some_key_name")   # Key name but no value
+    assert GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="") == ([{"color": "yellow", "year": 1999}] , 1)
 
     with pytest.raises(Exception):
-        GraphSchema.get_nodes_by_filter(labels="Car", key_value="yellow")         # Key value but no key name
+        GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="some_key_name")   # Key name but no value
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="yellow")
+    with pytest.raises(Exception):
+        GraphSchema.get_data_nodes_by_filter(labels="Car", key_value="yellow")         # Key value but no key name
+
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="color", key_value="yellow")
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="YELLOW")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="color", key_value="YELLOW")
     assert result == ( [] , 0 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="YELLOW", case_sensitive=False)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="color", key_value="YELLOW", case_sensitive=False)
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="ello")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="color", key_value="ello")
     assert result == ( [] , 0 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="ello", string_match="CONTAINS")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="color", key_value="ello", string_match="CONTAINS")
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names=["color", "year"], key_value="yellow")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names=["color", "year"], key_value="yellow")
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names=["year", "color"], key_value="yEllOW", case_sensitive=False)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names=["year", "color"], key_value="yEllOW", case_sensitive=False)
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names=[], key_value="")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names=[], key_value="")
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value=1999)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="year", key_value=1999)
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value=1999, case_sensitive=False)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="year", key_value=1999, case_sensitive=False)
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )    # case_sensitive is ignored, because value isn't text
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value="1999")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="year", key_value="1999")
     assert result == ( [] , 0 )         # No match because we searched for the string "1999" rather than the number 1999
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value="1999", case_sensitive=False)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="year", key_value="1999", case_sensitive=False)
     assert result == ( [] , 0 )         # No match because we searched for the string "1999" rather than the number 1999
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="lavender")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="color", key_value="lavender")
     assert result == ( [] , 0 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Plane", key_names="color", key_value="yellow")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Plane", key_names="color", key_value="yellow")
     assert result == ( [] , 0 )
 
-    result = GraphSchema.get_nodes_by_filter(class_name="Car", key_names="color", key_value="yellow")
+    result = GraphSchema.get_data_nodes_by_filter(class_name="Car", key_names="color", key_value="yellow")
     assert result == ( [] , 0 )
 
 
     # Add a 2nd GENERIC node (not a Data Node)
     db.create_node(labels="Car", properties={"color": "black", "trim": "yellow", "year": 1999})
 
-    assert GraphSchema.get_nodes_by_filter() == ( [{"color": "yellow", "year": 1999}, {"color": "black", "trim": "yellow", "year": 1999}] , 2 )
+    assert GraphSchema.get_data_nodes_by_filter() == ([{"color": "yellow", "year": 1999}, {"color": "black", "trim": "yellow", "year": 1999}] , 2)
 
-    assert GraphSchema.get_nodes_by_filter(labels="Car") == ( [{"color": "yellow", "year": 1999}, {"color": "black", "trim": "yellow", "year": 1999}] , 2 )
+    assert GraphSchema.get_data_nodes_by_filter(labels="Car") == ([{"color": "yellow", "year": 1999}, {"color": "black", "trim": "yellow", "year": 1999}] , 2)
 
-    assert GraphSchema.get_nodes_by_filter(labels="Car", key_names="") == ( [{"color": "yellow", "year": 1999}, {"color": "black", "trim": "yellow", "year": 1999}] , 2 )
+    assert GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="") == ([{"color": "yellow", "year": 1999}, {"color": "black", "trim": "yellow", "year": 1999}] , 2)
 
-    assert GraphSchema.get_nodes_by_filter(labels="Car", key_names="year", key_value=1999) == \
+    assert GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="year", key_value=1999) == \
            ( [{"color": "yellow", "year": 1999}, {"color": "black", "trim": "yellow", "year": 1999}] , 2 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names="color", key_value="yellow")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names="color", key_value="yellow")
     assert result == ( [{"color": "yellow", "year": 1999}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", key_names=["color", "trim"], key_value="yellow")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", key_names=["color", "trim"], key_value="yellow")
     assert result == ( [{"color": "yellow", "year": 1999}, {"color": "black", "trim": "yellow", "year": 1999}] , 2 )
 
 
@@ -1633,13 +1633,13 @@ def test_get_nodes_by_filter(db):
     # Add a new Car node
     GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "grey"})
 
-    result = GraphSchema.get_nodes_by_filter(class_name="Elephant")
+    result = GraphSchema.get_data_nodes_by_filter(class_name="Elephant")
     assert result == ( [] , 0 )
 
-    result = GraphSchema.get_nodes_by_filter(class_name="Car")    # This locates 1 node
+    result = GraphSchema.get_data_nodes_by_filter(class_name="Car")    # This locates 1 node
     assert result == ( [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car")        # This locates 3 nodes
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car")        # This locates 3 nodes
     expected = ([   {"_CLASS": "Car", "color": "grey", "make": "Toyota"},
                     {"color": "yellow", "year": 1999},
                     {"color": "black", "trim": "yellow", "year": 1999}
@@ -1647,36 +1647,36 @@ def test_get_nodes_by_filter(db):
     assert compare_recordsets(result[0], expected[0])
     assert result[1], expected[1]
 
-    result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="toyota")
+    result = GraphSchema.get_data_nodes_by_filter(key_names="make", key_value="toyota")
     assert result == ( [] , 0 )     # Case-sensitive
 
 
-    result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="Toy")
+    result = GraphSchema.get_data_nodes_by_filter(key_names="make", key_value="Toy")
     assert result == ( [] , 0 )
 
-    result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="Toy", string_match="ENDS WITH")
+    result = GraphSchema.get_data_nodes_by_filter(key_names="make", key_value="Toy", string_match="ENDS WITH")
     assert result == ( [] , 0 )
 
-    result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="yota", string_match="ENDS WITH")
+    result = GraphSchema.get_data_nodes_by_filter(key_names="make", key_value="yota", string_match="ENDS WITH")
     assert result == ( [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="Toy", string_match="STARTS WITH")
+    result = GraphSchema.get_data_nodes_by_filter(key_names="make", key_value="Toy", string_match="STARTS WITH")
     assert result == ( [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}] , 1 )
 
-    result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="Toy", string_match="CONTAINS")
+    result = GraphSchema.get_data_nodes_by_filter(key_names="make", key_value="Toy", string_match="CONTAINS")
     assert result == ( [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}] , 1 )
 
     # Add a new Car node
     GraphSchema.create_data_node(class_name="Car", properties={"make": "Chevrolet", "color": "pink", "year": 1955})
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="year, color")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="year, color")
     assert result == ( [{'_CLASS': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'},
                       {'color': 'black', 'trim': 'yellow', 'year': 1999},
                       {'color': 'yellow', 'year': 1999},
                       {'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'}
                      ] , 4 )          # The record with no date will be at the end, when sorting in ascending order
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="  year    DESC  , color  ")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="  year    DESC  , color  ")
     assert result == ( [{'_CLASS': 'Car', 'color': 'grey', 'make': 'Toyota'},
                       {'color': 'black', 'trim': 'yellow', 'year': 1999},
                       {'color': 'yellow', 'year': 1999},
@@ -1690,7 +1690,7 @@ def test_get_nodes_by_filter(db):
      # Add a new Car node
     GraphSchema.create_data_node(class_name="Car", properties={"make": "Chevrolet", "color": "green", "year": 1970})
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC, color DESC")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="make, year DESC, color DESC")
     assert result == ( [{'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
                         {'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
                         {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'},
@@ -1698,24 +1698,24 @@ def test_get_nodes_by_filter(db):
                         {'color': 'yellow', 'year': 1999},
                         {'color': 'black', 'trim': 'yellow', 'year': 1999}] , 6 )     # Records with no 'make' will appear last
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC", limit=4)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="make, year DESC", limit=4)
     assert result == ( [  {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
                         {'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
                         {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'},
                         {'make': 'Toyota','year': 1988, '_CLASS': 'Car', 'color': 'white'}] , 6 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year DESC, color DESC", skip=2, limit=3)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="make, year DESC, color DESC", skip=2, limit=3)
     assert result == ( [  {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'},
                         {'make': 'Toyota','year': 1988, '_CLASS': 'Car', 'color': 'white'},
                         {'color': 'yellow', 'year': 1999}] , 6 )
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="   make   , year   DESC   ", skip=2, limit=1)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="   make   , year   DESC   ", skip=2, limit=1)
     assert result == ( [  {'make': 'Toyota', '_CLASS': 'Car', 'color': 'grey'}] , 6 )
 
     # Add a new Car node; notice the lower case in the "make"
     GraphSchema.create_data_node(class_name="Car", properties={"make": "fiat", "color": "blue", "year": 1970})
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year,color")
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="make, year,color")
     assert result == ( [{'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
                         {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
                         {'make': 'Toyota', 'year': 1988, '_CLASS': 'Car', 'color': 'white'},
@@ -1724,7 +1724,7 @@ def test_get_nodes_by_filter(db):
                         {'color': 'black', 'trim': 'yellow', 'year': 1999},
                         {'color': 'yellow', 'year': 1999}] , 7 )   # "fiat" comes after "Toyota" due to capitalization
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="make, year,  color  ", sort_ignore_case=["make"])
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="make, year,  color  ", sort_ignore_case=["make"])
     assert result == ( [{'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
                         {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
                         {'make': 'fiat', 'year': 1970, '_CLASS': 'Car', 'color': 'blue'},
@@ -1734,7 +1734,7 @@ def test_get_nodes_by_filter(db):
                         {'color': 'yellow', 'year': 1999}] , 7 )  # The "fiat" is now alphabetized regardless of case
 
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="year, make DESC, color DESC", sort_ignore_case=["make"])
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="year, make DESC, color DESC", sort_ignore_case=["make"])
     assert result == ( [{'make': 'Chevrolet', 'year': 1955, '_CLASS': 'Car', 'color': 'pink'},
                         {'make': 'fiat', 'year': 1970, '_CLASS': 'Car', 'color': 'blue'},
                         {'make': 'Chevrolet', 'year': 1970,'_CLASS': 'Car', 'color': 'green' },
@@ -1746,16 +1746,16 @@ def test_get_nodes_by_filter(db):
     # Add a new Car node; notice the blank in the new field name
     db.create_node(labels="Car", properties={"year": 2003, "decommission year": 2025})      # A GENERIC node (not a Data Node)
 
-    result = GraphSchema.get_nodes_by_filter(labels="Car", order_by="decommission year, make, year",
-                                             sort_ignore_case=["make"], limit=2)
+    result = GraphSchema.get_data_nodes_by_filter(labels="Car", order_by="decommission year, make, year",
+                                                  sort_ignore_case=["make"], limit=2)
     assert result == ( [{'decommission year': 2025, 'year': 2003},
                         {'_CLASS': 'Car', 'color': 'pink', 'year': 1955, 'make': 'Chevrolet'}
                         ] , 8 )
 
     with pytest.raises(Exception):
         # Trying to sort by a property (field) name unregistered with the Schema
-        GraphSchema.get_nodes_by_filter(class_name="Car", key_names="color", key_value="yellow",
-                                        order_by="SOME_UNKNOWN_FIELD")
+        GraphSchema.get_data_nodes_by_filter(class_name="Car", key_names="color", key_value="yellow",
+                                             order_by="SOME_UNKNOWN_FIELD")
 
 
     # Add a new Car node, using a date as a field value
@@ -1763,7 +1763,7 @@ def test_get_nodes_by_filter(db):
                                              "bought_on": neo4j.time.Date(2019, 6, 1),
                                              "certified": neo4j.time.DateTime(2019, 1, 31, 18, 59, 35)
                                              })
-    result = GraphSchema.get_nodes_by_filter(key_names="make", key_value="Honda")  # Retrieve that latest node
+    result = GraphSchema.get_data_nodes_by_filter(key_names="make", key_value="Honda")  # Retrieve that latest node
     assert result == ( [{'color': 'red', 'make': 'Honda',
                        'bought_on': '2019/06/01', 'certified': '2019/01/31'}] , 1 )
 
@@ -2899,44 +2899,29 @@ def test_class_and_entity_id(db):
     with pytest.raises(Exception):
         GraphSchema.get_class_and_entity_id([1, 2])     # Bad data type
 
+    internal_id = db.create_node(labels="random")
+    with pytest.raises(Exception):
+        GraphSchema.get_class_and_entity_id(internal_id=internal_id)     # It's not a data node
+
+
     GraphSchema.create_class("Person")
-    p = GraphSchema.create_data_node(class_name="Person", properties={"name": "Julian"},
+    p_id = GraphSchema.create_data_node(class_name="Person", properties={"name": "Julian"},
                                      new_entity_id="person-1")
 
-    result = GraphSchema.get_class_and_entity_id(p)
+    result = GraphSchema.get_class_and_entity_id(p_id)
     assert result == ('Person', 'person-1')
 
 
-
-def test_class_of_data_node(db):
-    db.empty_dbase()
-    with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(internal_id=123)     # No such data node exists
-
-
-    internal_id = db.create_node(labels="random")
-    with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(internal_id=internal_id)     # It's not a data node
-
-
-    GraphSchema.create_class("Person")
-    person_entity_id = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
-    node_internal_id = GraphSchema.create_data_node(class_name="Person", new_entity_id=person_entity_id)
-
-    assert GraphSchema.class_of_data_node(node_internal_id) == "Person"
-    assert GraphSchema.class_of_data_node(node_internal_id) == "Person"
-
-
-    GraphSchema.create_class("Extra")
     # Create a forbidden scenario with a data node having a non-string class name
     q = f'''
-        MATCH (n {{entity_id: '{person_entity_id}' }})
+        MATCH (n {{entity_id: 'person-1' }})
         SET n.`_CLASS` = 666
         '''
     #db.debug_print(q, {}, "test")
     db.update_query(q)
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_internal_id)    # Data node is associated to a non-string class name
+        GraphSchema.get_class_and_entity_id(p_id)       # Database node is associated to a non-string class name
+
 
 
 

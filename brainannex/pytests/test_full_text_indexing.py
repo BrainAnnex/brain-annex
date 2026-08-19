@@ -381,7 +381,7 @@ def test_get_indexer_node_id(db):
 
     indexer_node_id = FullTextIndexing.get_indexer_node_id(content_id)
 
-    print(indexer_node_id)
+    #print(indexer_node_id)
 
     # Verify the 3 total relationships from the "Word" data nodes to the "Indexer" data node
     match_from = db.match(labels="Word")
@@ -391,7 +391,8 @@ def test_get_indexer_node_id(db):
     assert db.number_of_links(match_from=content_id, match_to=indexer_node_id, rel_name="has_index") == 1
 
     # Verify that the "Indexer" data node is indeed associated to the schema Class called "Indexer"
-    assert GraphSchema.class_of_data_node(internal_id=indexer_node_id) == "Indexer"
+    class_name, _ = GraphSchema.get_class_and_entity_id(internal_id=indexer_node_id)
+    assert class_name == "Indexer"
 
 
 

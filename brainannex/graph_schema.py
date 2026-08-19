@@ -1,5 +1,5 @@
 from typing import Union, List
-from brainannex.cypher_utils import CypherUtils, CypherBuilder  # Helper classes
+from brainannex.cypher_utils import CypherUtils  # Helper classes
 from brainannex import GraphAccess
 import json
 import math
@@ -2163,13 +2163,17 @@ class GraphSchema:
 
 
 
+    # TODO: insert other methods (if any!) here
+
+
+
     @classmethod
-    def search_data_nodes(cls, class_name :str, key_name :str, key_value,
-                          hide_schema=True, include_id=False,
-                          enforce_unique=False) -> list[dict] | dict:
+    def get_data_nodes_by_key_pair(cls, class_name :str, key_name :str, key_value,
+                                   hide_schema=True, include_id=False,
+                                   enforce_unique=False) -> list[dict] | dict:
         """
         Return a matching node, or list of matching nodes.
-        This is a simplified version of get_nodes_by_filter()
+        This is a simplified version of get_data_nodes_by_filter()
 
         :param class_name:  The name of a Class
         :param key_name:    The name of the node property to match against
@@ -2191,7 +2195,7 @@ class GraphSchema:
         # TODO: maybe make key_name/key_value optional, to locate all data nodes of a given class?
 
         assert cls.is_valid_class_name(class_name), \
-            f"search_data_nodes(): the value `{class_name}` passed " \
+            f"get_data_nodes_by_key_pair(): the value `{class_name}` passed " \
             f"to the `class_name` argument is not a valid Schema Class name"
 
         # Prepare a Cypher query to locate the requested data nodes
@@ -2212,15 +2216,15 @@ class GraphSchema:
             q += '''
             LIMIT 2'''         # Used to detect if non-unique, without unnecessarily fetching large datasets
 
-        #cls.db.debug_query_print(q, data_binding, "search_data_nodes")
+        #cls.db.debug_query_print(q, data_binding, "get_data_nodes_by_key_pair")
         result = cls.db.query(q, data_binding=data_binding)
 
         if enforce_unique:
             assert len(result) < 2, \
-                f"search_data_nodes(): More than 1 node exists with Class `{class_name}` " \
+                f"get_data_nodes_by_key_pair(): More than 1 node exists with Class `{class_name}` " \
                 f"and the given value ({key_value}) for the field `{key_name}`"
             assert len(result) == 1, \
-                f"search_data_nodes(): No node exists with Class `{class_name}` " \
+                f"get_data_nodes_by_key_pair(): No node exists with Class `{class_name}` " \
                 f"and the given value ({key_value}) for the field `{key_name}`"
 
         recordset = []
@@ -2243,12 +2247,12 @@ class GraphSchema:
 
 
     @classmethod
-    def get_nodes_by_filter(cls, class_name=None, labels=None,
-                            key_names=None, key_value=None,
-                            string_match=None, case_sensitive=True,
-                            include_id=False, include_labels=False,
-                            order_by=None, sort_ignore_case=None,
-                            skip=None, limit=100) -> ([dict], int):
+    def get_data_nodes_by_filter(cls, class_name=None, labels=None,
+                                 key_names=None, key_value=None,
+                                 string_match=None, case_sensitive=True,
+                                 include_id=False, include_labels=False,
+                                 order_by=None, sort_ignore_case=None,
+                                 skip=None, limit=100) -> ([dict], int):
         """
         Locate the nodes that match the given parameters, and return their properties as specified,
         in the form of a list of dicts
@@ -2378,7 +2382,7 @@ class GraphSchema:
         if order_by:
             if sort_ignore_case:
                 assert type(sort_ignore_case) == list, \
-                    "get_nodes_by_filter(): argument `sort_ignore_case` must be a LIST of names of string-valued fields " \
+                    "get_data_nodes_by_filter(): argument `sort_ignore_case` must be a LIST of names of string-valued fields " \
                     "for which sorting should ignore the case"
 
             revised_order_by = cls._process_order_by(s=order_by, dummy_node_name="n", ignore_case=sort_ignore_case)
@@ -2418,7 +2422,7 @@ class GraphSchema:
             #cls.db.debug_query_print(q_count, data_binding)
             number_records = cls.db.query(q_count, data_binding=data_binding, single_cell="TOTAL_RECORD_COUNT")
 
-        #print("get_nodes_by_filter(): number_records = ", number_records)
+        #print("get_data_nodes_by_filter(): number_records = ", number_records)
 
         standardized_recordset = cls.db.standardize_recordset(recordset=result)
         return (standardized_recordset, number_records)
@@ -2670,7 +2674,7 @@ class GraphSchema:
     @classmethod
     def _process_key_name_value(cls, key_name :str, key_value, string_match=None, case_sensitive=True) -> str:
         """
-        Helper method for get_nodes_by_filter()
+        Helper method for get_data_nodes_by_filter()
 
         :param key_name:    Property (field) name
         :param key_value:   Value to match the property name against
@@ -2696,9 +2700,9 @@ class GraphSchema:
                                 )"
         """
         assert type(key_name) == str, \
-                f"get_nodes_by_filter(): argument `key_names`, if passed, " \
+                f"get_data_nodes_by_filter(): argument `key_names`, if passed, " \
                 f"must be a a string, or list of strings (instead, encountered type {type(key_name)})"
-                # Note: the error message is meant to make sense in the context of the calling function get_nodes_by_filter()
+                # Note: the error message is meant to make sense in the context of the calling function get_data_nodes_by_filter()
 
         if string_match and type(key_value) == str:
             op = string_match
@@ -2734,7 +2738,7 @@ class GraphSchema:
     @classmethod
     def _process_order_by(cls, s :str, dummy_node_name="n", ignore_case=None) -> str:
         """
-        Helper method for get_nodes_by_filter().
+        Helper method for get_data_nodes_by_filter().
 
         Parse the string s for property names (aka field names),
         then wrap each property name in back ticks (`),
@@ -2796,6 +2800,10 @@ class GraphSchema:
 
 
 
+    # get_internal_id_of_data_node
+    # get_data_node_internal_id
+    # locate_data_node
+    # TODO: maybe generalize to also allow key pairs
     @classmethod
     def get_data_node_internal_id(cls, class_name :str, entity_id :str) -> int:
         """
@@ -2832,63 +2840,34 @@ class GraphSchema:
 
 
 
+    # TODO: is this really needed?
+    # get_class_and_entity_id_of_data_node
     @classmethod
     def get_class_and_entity_id(cls, internal_id :int|str):
         """
         Look up the Class name and Entity ID of the given node.
-        If no such node exists, an Exception is raised
+        If no such node exists, or if it lacks a Schema Class association, an Exception is raised
 
         :param internal_id: The internal database ID of the node of interest
         :return:            The pair (Class name , Entity ID)
-        """
-        #print(type(internal_id))
-        arg_type = type(internal_id)
-        assert arg_type == int or arg_type == str, \
-            f"get_class_and_entity_id(): the argument `internal_id` must be either a string or an int ;  " \
-            f"instead, it was {arg_type}"
-
-        q = f'''
-            MATCH (n)
-            WHERE id(n) = $internal_id
-            RETURN n.`_CLASS` AS class_name, n.`entity_id` AS entity_id
-            '''
-
-        data_binding = {"internal_id": internal_id}
-        #cls.db.debug_query_print(q, data_binding, "class_of_data_node")
-        result = cls.db.query(q, data_binding, single_row=True)
-        #print(result)
-
-        assert result is not None, \
-            f"get_class_and_entity_id(): unable to locate any database node with internal ID {internal_id}"
-
-        return ( result.get("class_name"), result.get("entity_id") )
-
-
-
-    @classmethod
-    def class_of_data_node(cls, internal_id : int|str) -> str:
-        """
-        Return the name of the Schema Class of the given data node
-
-        :param internal_id: Internal database ID to identify a Data Node
-        :return:            A string with the name of the Class of the given Data Node, if found;
-                                if not found, an Exception is raised
+                                Entity ID might be None
         """
         d = cls.get_single_data_node(internal_id=internal_id, hide_schema=False)    # A dictionary, or None
         assert d is not None, \
-            f"class_of_data_node(): There is no data node with internal database ID {internal_id}"
+            f"get_class_and_entity_id(): There is no data node with internal database ID {internal_id}"
 
         assert "_CLASS" in d, \
-            f"class_of_data_node(): A database node with internal database ID {internal_id} was found, " \
+            f"get_class_and_entity_id(): A database node with internal database ID {internal_id} was found, " \
             f"but it's NOT associated to any Schema Class"
 
         class_name = d.get("_CLASS")
+        entity_id = d.get("entity_id")
 
         assert cls.is_valid_class_name(class_name), \
-            f"class_of_data_node(): A database node with internal database ID {internal_id} was found, " \
+            f"get_class_and_entity_id(): A database node with internal database ID {internal_id} was found, " \
             f"but the value stored for its Schema Class ({class_name}), of type {type(class_name)}, is NOT valid"
 
-        return class_name
+        return ( class_name, entity_id )
 
 
 
@@ -3694,8 +3673,7 @@ class GraphSchema:
         """
         cls.assert_valid_relationship_name(rel_name)
 
-        center_class = cls.class_of_data_node(internal_id=center_id)
-
+        center_class, _ = cls.get_class_and_entity_id(internal_id=center_id)
 
         q = f'''
             MATCH (center_node), (periphery_node :{periphery_class}) 
@@ -3759,8 +3737,8 @@ class GraphSchema:
 
         if not id_type:
             # Using the internal database ID's
-            from_class = cls.class_of_data_node(internal_id=from_id)
-            to_class = cls.class_of_data_node(internal_id=to_id)
+            from_class, _ = cls.get_class_and_entity_id(internal_id=from_id)
+            to_class, _ = cls.get_class_and_entity_id(internal_id=to_id)
         else:
             assert from_class, f"GraphSchema.add_data_relationship(): if the `id_type` argument is passed, so must be `from_class`"
             assert to_class, f"GraphSchema.add_data_relationship(): if the `id_type` argument is passed, so must be `to_class`"

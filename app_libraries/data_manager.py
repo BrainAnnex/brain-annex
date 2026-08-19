@@ -527,7 +527,7 @@ class DataManager:
         :return:            A list of values
         """
         # TODO: generalize, and move to GraphSchema.
-        #       Is it really needed, given GraphSchema.get_nodes_by_filter() ?  Maybe just absorb into the latter
+        #       Is it really needed, given GraphSchema.get_data_nodes_by_filter() ?  Maybe just absorb into the latter
         match = cls.db.match(labels=class_name)
         return cls.db.get_single_field(match=match, field_name=field_name, order_by=order_by)
 
@@ -1611,10 +1611,10 @@ class DataManager:
 
         #print(f"labels: {label} | key_name: {key_name} | key_value: {key_value} | case_sensitive: {case_sensitive} | order_by: {order_by} | skip: {skip} | limit: {limit}")
 
-        return GraphSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
-                                               string_match="CONTAINS", case_sensitive=case_sensitive,
-                                               include_id=True, include_labels=True,
-                                               order_by=order_by, skip=skip, limit=limit)
+        return GraphSchema.get_data_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
+                                                    string_match="CONTAINS", case_sensitive=case_sensitive,
+                                                    include_id=True, include_labels=True,
+                                                    order_by=order_by, skip=skip, limit=limit)
 
 
 
