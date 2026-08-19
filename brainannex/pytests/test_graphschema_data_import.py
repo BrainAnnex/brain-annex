@@ -258,7 +258,7 @@ def test_import_pandas_nodes_4(db):
     import_car_list_1 = import_result_1['affected_nodes_ids']
     assert len(import_car_list_1) == 3
 
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  '_internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', '_internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle']},
@@ -283,7 +283,7 @@ def test_import_pandas_nodes_4(db):
     assert len(import_car_list_2) == 3                      # 3 nodes were either created or updated
     assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
 
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  '_internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    '_internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle'], 'color': 'white'},
@@ -321,7 +321,7 @@ def test_import_pandas_nodes_5(db):
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
 
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', 'color': 'red',    'make': 'Honda',     '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
@@ -348,7 +348,7 @@ def test_import_pandas_nodes_5(db):
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
 
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', 'color': 'red',    'make': 'Honda',     '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', 'color': 'yellow', 'make': 'BMW',       '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
@@ -384,7 +384,7 @@ def test_import_pandas_nodes_6(db):
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
 
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', 'year': 2003, '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', 'year': 2015, '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
@@ -409,7 +409,7 @@ def test_import_pandas_nodes_6(db):
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 5                   # 5 unique values (the internal ID for node "c2" repeats twice)
 
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
@@ -434,7 +434,7 @@ def test_import_pandas_nodes_6(db):
     assert len(import_car_list) == 6                        # 6 nodes were either created or updated
     assert len(set(import_car_list)) == 6                   # 6 unique values (the internal ID for node "c2" repeats twice)
 
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', '_internal_id': import_car_list[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', '_internal_id': import_car_list[1], '_node_labels': ['Motor Vehicle']},
@@ -603,7 +603,7 @@ def test_import_pandas_nodes_2_OLD(db):
                                                                  rename={"vehicle ID": "VID", "make": "manufacturer"})
     assert len(import_car_list_1) == 3
 
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  '_internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', 'year': 2013, 'manufacturer': 'Toyota', '_internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle']},
@@ -624,7 +624,7 @@ def test_import_pandas_nodes_2_OLD(db):
                                                                  rename={"vehicle ID": "VID", "make": "manufacturer"})
     assert len(import_car_list_2) == 2
     assert GraphSchema.count_data_nodes_of_class(class_name="Motor Vehicle") == 5      # Verify that a grand total of only 5 Data Node were imported
-    result = GraphSchema.get_all_data_nodes_of_class("Motor Vehicle")
+    result = GraphSchema.get_data_nodes_of_class("Motor Vehicle")
     expected = [
                 {'VID': 'c1', 'year': 2003, 'manufacturer': 'Honda',  '_internal_id': import_car_list_1[0], '_node_labels': ['Motor Vehicle']},
                 {'VID': 'c2', 'year': 2015, 'manufacturer': 'BMW',    '_internal_id': import_car_list_1[1], '_node_labels': ['Motor Vehicle'], 'color': 'white'},

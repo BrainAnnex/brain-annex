@@ -1835,57 +1835,52 @@ def test__process_order_by():
 
 
 
-def test_get_all_data_nodes_of_class(db):
+def test_get_data_nodes_of_class(db):
     db.empty_dbase()
 
-    result= GraphSchema.get_all_data_nodes_of_class("Car")
+    result= GraphSchema.get_data_nodes_of_class("Car")
     assert result == []
 
     GraphSchema.create_class(name="Car")
     
-    result= GraphSchema.get_all_data_nodes_of_class("Car")
+    result= GraphSchema.get_data_nodes_of_class("Car")
     assert result == []
 
     # Add a generic database node that is NOT a Data Node (with same label)
     db.create_node(labels="Car", properties={"make": "BMW", "color": "red"})
-    result = GraphSchema.get_all_data_nodes_of_class(class_name="Car")
+    result = GraphSchema.get_data_nodes_of_class(class_name="Car")
     assert result == []
 
     # Create a data node without uri field
     db_id_car1 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"})
 
-    result= GraphSchema.get_all_data_nodes_of_class(class_name="Car")
+    result= GraphSchema.get_data_nodes_of_class(class_name="Car")
     assert result == [{'color': 'white', 'make': 'Toyota', '_internal_id': db_id_car1, '_node_labels': ['Car']}]
 
-    result= GraphSchema.get_all_data_nodes_of_class(class_name="Car", hide_schema=False)
+    result= GraphSchema.get_data_nodes_of_class(class_name="Car", hide_schema=False)
     assert result == [{'_CLASS': 'Car', 'color': 'white', 'make': 'Toyota', '_internal_id': db_id_car1, '_node_labels': ['Car']}]
 
 
-    result= GraphSchema.get_all_data_nodes_of_class(class_name="Boat")
+    result= GraphSchema.get_data_nodes_of_class(class_name="Boat")
     assert result == []
 
     # Create a data node without uri field
     GraphSchema.create_class(name="Boat")
     db_id_boat1 = GraphSchema.create_data_node(class_name="Boat", properties={"make": "C&C", "type": "sloop"})
 
-    result= GraphSchema.get_all_data_nodes_of_class(class_name="Boat")
+    result= GraphSchema.get_data_nodes_of_class(class_name="Boat")
     assert result == [{'make': 'C&C', 'type': 'sloop', '_internal_id': db_id_boat1, '_node_labels': ['Boat']}]
 
     # Create a data node with uri field
     db_id_car2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Fiat", "color": "blue"}, new_entity_id="cincilla")
 
-    result= GraphSchema.get_all_data_nodes_of_class(class_name="Car")
+    result= GraphSchema.get_data_nodes_of_class(class_name="Car")
 
     expected = [{'make': 'Toyota', 'color': 'white', '_internal_id': db_id_car1, '_node_labels': ['Car']},
                 {'make': 'Fiat', 'color': 'blue', '_internal_id': db_id_car2, '_node_labels': ['Car'], 'entity_id': 'cincilla'}
                ]
 
     assert compare_recordsets(result, expected)
-
-
-
-def test_data_nodes_of_class(db):
-    pass    # TODO
 
 
 
