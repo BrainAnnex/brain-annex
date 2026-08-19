@@ -752,7 +752,7 @@ class MediaManager:
 
 
         (width, height) = ImageProcessing.get_image_size(absolute_file_path)    # Extract the dimensions of the uploaded image
-        internal_id = GraphSchema.get_data_node_internal_id(class_name="Document", entity_id=entity_id)
+        internal_id = GraphSchema.locate_data_node(class_name="Document", entity_id=entity_id)
 
         print(f"    the uploaded document cover is a JPG file of dimensions {width} x {height}, "
               f"for Document with entity ID {entity_id}, and internal database ID {internal_id}")

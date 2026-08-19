@@ -371,7 +371,7 @@ class DataManager:
 
 
         # Locate the internal ID of the Class node
-        #class_internal_id = GraphSchema.get_class_internal_id(class_name.strip())
+        #class_internal_id = GraphSchema.locate_class(class_name.strip())
         number_prop_added = GraphSchema.add_properties_to_class(class_name= class_name, properties= [prop_name])
         if number_prop_added != 1:
             raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}`")
@@ -814,7 +814,7 @@ class DataManager:
         # TODO: switch to using:
         #       new_uri = GraphSchema.generate_uri(class_name)
         # First, check if a specific namespace, or the general data node namespace, is to be used
-        class_id = GraphSchema.get_class_internal_id(class_name)
+        class_id = GraphSchema.locate_class(class_name)
         namespace_links = GraphSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
                                                    properties="namespace")
         print("add_new_content_item_to_category() - namespace_links: ", namespace_links)

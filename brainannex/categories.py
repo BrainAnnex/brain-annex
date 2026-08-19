@@ -461,7 +461,7 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        parent_category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id=category_uri)
+        parent_category_internal_id = GraphSchema.locate_data_node(class_name="Category", entity_id=category_uri)
 
         new_uri = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
 
@@ -735,7 +735,7 @@ class Categories:
         # TODO: expand to cover all the data needs of BA_pages_routing.py
         # TODO: maybe move to DataManager layer
 
-        category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id= category_uri)
+        category_internal_id = GraphSchema.locate_data_node(class_name="Category", entity_id= category_uri)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 
         return siblings_categories
@@ -1194,7 +1194,7 @@ class Categories:
             f"detach_from_category(): Cannot delete the only remaining 'BA_in_category' link " \
             f"from Content Item (internal ID: '{item_internal_id}') to Categories"
 
-        category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id=category_entity_id)
+        category_internal_id = GraphSchema.locate_data_node(class_name="Category", entity_id=category_entity_id)
 
         GraphSchema.remove_data_relationship(from_id=item_internal_id, to_id=category_internal_id,
                                              rel_name="BA_in_category")

@@ -249,8 +249,8 @@ def test_get_sibling_categories(db):
     french_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "French"})
     italian_uri = Categories.add_subcategory({"category_uri": language_uri, "subcategory_name": "Italian"})
 
-    french_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id= french_uri)
-    italian_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id= italian_uri)
+    french_internal_id = GraphSchema.locate_data_node(class_name="Category", entity_id= french_uri)
+    italian_internal_id = GraphSchema.locate_data_node(class_name="Category", entity_id= italian_uri)
 
     result = Categories.get_sibling_categories(french_internal_id)
     assert len(result) == 1
@@ -448,7 +448,7 @@ def test_get_content_items_by_category(db):
                                   item_class_name="Note",
                                   item_properties={'basename': 'overview', 'suffix': 'htm'},
                                   new_entity_id="n-1", namespace="data_node")
-    note_internal_id = GraphSchema.get_data_node_internal_id(class_name="Note", entity_id="n-1")
+    note_internal_id = GraphSchema.locate_data_node(class_name="Note", entity_id="n-1")
 
 
     result = Categories.get_content_items_by_category(entity_id=root_entity_id)

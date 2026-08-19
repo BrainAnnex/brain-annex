@@ -78,14 +78,14 @@ def test_create_class(db):
 def test_get_class_internal_id(db):
     db.empty_dbase()
     A_neo_uri = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_internal_id("A") == A_neo_uri
+    assert GraphSchema.locate_class("A") == A_neo_uri
 
     B_neo_uri = GraphSchema.create_class("B")
-    assert GraphSchema.get_class_internal_id("A") == A_neo_uri
-    assert GraphSchema.get_class_internal_id("B") == B_neo_uri
+    assert GraphSchema.locate_class("A") == A_neo_uri
+    assert GraphSchema.locate_class("B") == B_neo_uri
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_internal_id("NON-EXISTENT CLASS")
+        assert GraphSchema.locate_class("NON-EXISTENT CLASS")
 
 
 
@@ -705,7 +705,7 @@ def test_get_class_properties(db):
         GraphSchema.get_class_properties(123)       # Not a valid Class name
 
     GraphSchema.create_class_with_properties("My first class", properties=["A", "B", "C"])
-    GraphSchema.get_class_internal_id("My first class")
+    GraphSchema.locate_class("My first class")
     props = GraphSchema.get_class_properties("My first class")
     assert props == ["A", "B", "C"]
 
@@ -767,7 +767,7 @@ def test_get_class_properties_full_data(db):
     db.empty_dbase()
 
     GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
-    prop_ids = [GraphSchema.get_property_internal_id(class_name="Quote", property_name=p)
+    prop_ids = [GraphSchema.locate_property(class_name="Quote", property_name=p)
                     for p in ["text", "attribution", "verified"] ]
 
     GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
@@ -807,7 +807,7 @@ def test_get_class_properties_full_data(db):
     GraphSchema.add_properties_to_class(class_name="Car", properties= ["Anti-lock Brakes"])
     GraphSchema.set_property_attribute(class_name="Car", prop_name="Anti-lock Brakes",
                                        attribute_name="dtype", attribute_value="boolean")
-    brakes_internal_id = GraphSchema.get_property_internal_id(class_name="Car", property_name="Anti-lock Brakes")
+    brakes_internal_id = GraphSchema.locate_property(class_name="Car", property_name="Anti-lock Brakes")
     result = GraphSchema.get_class_properties_full_data("Car")
     assert result == [
                         {'name': 'Anti-lock Brakes', 'entity_id': 'schema-6', '_internal_id': brakes_internal_id, 'dtype': 'boolean'}
@@ -816,8 +816,8 @@ def test_get_class_properties_full_data(db):
     GraphSchema.create_class_with_properties(name="Vehicle", properties=["color", "year"])  # `Vehicle` Class node will have 'schema-7'
     GraphSchema.set_property_attribute(class_name="Vehicle", prop_name="year",
                                        attribute_name="dtype", attribute_value="integer")
-    color_internal_id = GraphSchema.get_property_internal_id(class_name="Vehicle", property_name="color")
-    year_internal_id = GraphSchema.get_property_internal_id(class_name="Vehicle", property_name="year")
+    color_internal_id = GraphSchema.locate_property(class_name="Vehicle", property_name="color")
+    year_internal_id = GraphSchema.locate_property(class_name="Vehicle", property_name="year")
 
     # Make "Car" Class an instance of "Vehicle"
     GraphSchema.create_class_relationship(from_class="Car", to_class="Vehicle", rel_name="INSTANCE_OF")
@@ -863,7 +863,7 @@ def test_get_or_estimate_class_properties(db):
     db.empty_dbase()
 
     GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
-    prop_ids = [GraphSchema.get_property_internal_id(class_name="Quote", property_name=p)
+    prop_ids = [GraphSchema.locate_property(class_name="Quote", property_name=p)
                     for p in ["text", "attribution", "verified"] ]
 
     GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
@@ -915,7 +915,7 @@ def test_get_or_estimate_class_properties(db):
 
     GraphSchema.add_properties_to_class(class_name="Car", properties="color")
     assert GraphSchema.get_or_estimate_class_properties(class_name="Person") == [{'name': 'first_name'}]
-    prop_id = GraphSchema.get_property_internal_id(class_name="Car", property_name="color")
+    prop_id = GraphSchema.locate_property(class_name="Car", property_name="color")
     assert GraphSchema.get_or_estimate_class_properties(class_name="Car") == [{'name': 'color', '_internal_id': prop_id, 'entity_id': 'schema-6'}]
 
     db.create_node(labels="Car", properties={"model": "Toyota"})    # Using a field name not registered with the Schema Properties for this Class
@@ -1182,7 +1182,7 @@ def test_setup_schema_from_data(db):
 
     # Verify we now have a `Car` Class, with no Properties
     assert GraphSchema.class_name_exists("Car")
-    assert GraphSchema.get_class_internal_id("Car") == result
+    assert GraphSchema.locate_class("Car") == result
     assert GraphSchema.get_class_properties(class_name="Car") == []
     assert not GraphSchema.is_strict_class("Car")
 
@@ -1195,7 +1195,7 @@ def test_setup_schema_from_data(db):
 
     # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
     assert GraphSchema.class_name_exists("Person")
-    assert GraphSchema.get_class_internal_id("Person") == result
+    assert GraphSchema.locate_class("Person") == result
     assert GraphSchema.get_class_properties(class_name="Person") == ["age", "Medical #", "name"]    # in alphabetic order
     assert not GraphSchema.is_strict_class("Person")
 
@@ -1465,10 +1465,10 @@ def test_get_data_node_internal_id(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        GraphSchema.get_data_node_internal_id(class_name=123, entity_id="some-value")
+        GraphSchema.locate_data_node(class_name=123, entity_id="some-value")
 
     with pytest.raises(Exception):
-        GraphSchema.get_data_node_internal_id(class_name="I_dont_exist", entity_id="some-value")     # Not found
+        GraphSchema.locate_data_node(class_name="I_dont_exist", entity_id="some-value")     # Not found
 
 
     # Create a 1st Car node
@@ -1477,23 +1477,23 @@ def test_get_data_node_internal_id(db):
     db_id_1 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "white"},
                                          new_entity_id="white-toyota-1")
 
-    assert GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="white-toyota-1") == db_id_1
+    assert GraphSchema.locate_data_node(class_name="Car", entity_id="white-toyota-1") == db_id_1
 
     with pytest.raises(Exception):
-        GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="unknown-car")    # Not found
+        GraphSchema.locate_data_node(class_name="Car", entity_id="unknown-car")    # Not found
 
     # Create a 2nd Car node: another Toyota, but this time red
     db_id_2 = GraphSchema.create_data_node(class_name="Car", properties={"make": "Toyota", "color": "red"},
                                            new_entity_id="red-toyota-1")
 
-    assert GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="white-toyota-1") == db_id_1
-    assert GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="red-toyota-1") == db_id_2
+    assert GraphSchema.locate_data_node(class_name="Car", entity_id="white-toyota-1") == db_id_1
+    assert GraphSchema.locate_data_node(class_name="Car", entity_id="red-toyota-1") == db_id_2
 
     with pytest.raises(Exception):
-        GraphSchema.get_data_node_internal_id(class_name="Planet", entity_id="red-toyota-1")
+        GraphSchema.locate_data_node(class_name="Planet", entity_id="red-toyota-1")
 
     with pytest.raises(Exception):
-        GraphSchema.get_data_node_internal_id(class_name="Car", entity_id="unknown-car")    # Not found
+        GraphSchema.locate_data_node(class_name="Car", entity_id="unknown-car")    # Not found
 
 
 
@@ -2894,21 +2894,21 @@ def test_class_and_entity_id(db):
     db.empty_dbase()
 
     with pytest.raises(Exception):
-        GraphSchema.get_class_and_entity_id(123)        # Non-existing node
+        GraphSchema.get_class_and_entity_id_of_data_node(123)        # Non-existing node
 
     with pytest.raises(Exception):
-        GraphSchema.get_class_and_entity_id([1, 2])     # Bad data type
+        GraphSchema.get_class_and_entity_id_of_data_node([1, 2])     # Bad data type
 
     internal_id = db.create_node(labels="random")
     with pytest.raises(Exception):
-        GraphSchema.get_class_and_entity_id(internal_id=internal_id)     # It's not a data node
+        GraphSchema.get_class_and_entity_id_of_data_node(internal_id=internal_id)     # It's not a data node
 
 
     GraphSchema.create_class("Person")
     p_id = GraphSchema.create_data_node(class_name="Person", properties={"name": "Julian"},
                                      new_entity_id="person-1")
 
-    result = GraphSchema.get_class_and_entity_id(p_id)
+    result = GraphSchema.get_class_and_entity_id_of_data_node(p_id)
     assert result == ('Person', 'person-1')
 
 
@@ -2920,7 +2920,7 @@ def test_class_and_entity_id(db):
     #db.debug_print(q, {}, "test")
     db.update_query(q)
     with pytest.raises(Exception):
-        GraphSchema.get_class_and_entity_id(p_id)       # Database node is associated to a non-string class name
+        GraphSchema.get_class_and_entity_id_of_data_node(p_id)       # Database node is associated to a non-string class name
 
 
 

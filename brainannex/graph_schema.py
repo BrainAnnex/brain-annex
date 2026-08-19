@@ -288,7 +288,7 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_internal_id(cls, class_name :str) -> int:
+    def locate_class(cls, class_name :str) -> int:
         """
         Returns the internal database ID of the Class node with the given name,
         or raise an Exception if not found or if more than one is found.
@@ -303,10 +303,10 @@ class GraphSchema:
         result = cls.db.get_nodes(match, return_internal_id=True)
 
         assert result, \
-            f"GraphSchema.get_class_internal_id(): no Class node named `{class_name}` was found in the Schema"
+            f"GraphSchema.locate_class(): no Class node named `{class_name}` was found in the Schema"
 
         assert len(result) <= 1, \
-            f"GraphSchema.get_class_internal_id(): more than 1 Class node named `{class_name}` was found in the Schema"
+            f"GraphSchema.locate_class(): more than 1 Class node named `{class_name}` was found in the Schema"
 
         return result[0]["_internal_id"]
 
@@ -630,7 +630,7 @@ class GraphSchema:
                                 if the Class doesn't exist, raise an Exception
         """
         if internal_id is None:    # Note: class_neo_id might legitimately be zero
-            internal_id = cls.get_class_internal_id(class_name)
+            internal_id = cls.locate_class(class_name)
 
 
         class_node_dict = cls.db.get_nodes(match=internal_id, single_row=True)
@@ -933,8 +933,8 @@ class GraphSchema:
             "class_relationship_exists(): the argument `rel_name` must be a non-empty string"
 
         # Note: from_class and to_class get validated in the next 2 function calls
-        from_id = cls.get_class_internal_id(from_class)
-        to_id = cls.get_class_internal_id(to_class)
+        from_id = cls.locate_class(from_class)
+        to_id = cls.locate_class(to_class)
 
         common_query_end = f'''WHERE id(from) = {from_id} AND id(to) = {to_id}
             RETURN COUNT(r) AS number_links
@@ -1402,7 +1402,7 @@ class GraphSchema:
 
 
     @classmethod
-    def get_property_internal_id(cls, class_name :str, property_name :str) -> int|str:
+    def locate_property(cls, class_name :str, property_name :str) -> int | str:
         """
         Look up, and return, the internal database ID of the given schema Property
 
@@ -1959,7 +1959,7 @@ class GraphSchema:
     @classmethod
     def _assemble_cypher_clauses(cls, node_id, id_key=None, class_name=None, dummy_name="dn", method=None) -> (str, dict):
         """
-        Helper function to prepare two clause to be used in forming a Cypher query.
+        Helper function to prepare the WHERE clause to be used in forming a Cypher query.
 
         :param node_id:     Either an internal database ID (int or str), or a primary key value
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "entity_id".
@@ -2058,7 +2058,7 @@ class GraphSchema:
         :return:                The number of database nodes that match the given criteria
         """
         # TODO: contrast with where_clause, data_binding = cls._assemble_cypher_clauses(node_id=node_id, id_key=id_key, class_name=class_name, method="data_node_exists")
-        # TODO: contrast with _data_node_match_helper() and _data_node_match_helper_OLD()
+        # TODO: contrast with _data_node_match_helper()
         q = f'''
             MATCH (dn {label_str}) 
             {where_clause}
@@ -2070,6 +2070,52 @@ class GraphSchema:
                                     single_cell="number_found")
 
         return number_found
+
+
+
+    @classmethod
+    def _data_node_match_helper(cls, search :int|str|(tuple), class_name :str) -> (str, str, dict):
+        """
+        TODO: test
+
+        :param search:
+        :return:
+        """
+        dt = type(search)
+        assert dt == int or dt == str or dt == tuple, \
+            f"data_node_exists(): the argument `search` must be an int or a string or a pair (tuple)"
+
+        assert cls.is_valid_class_name(class_name), \
+                f"data_node_exists(): the value `{class_name}` passed " \
+                f"to the `class_name` argument is not a valid Schema Class name"
+
+        if dt == tuple:
+            assert len(search) == 2, \
+                f"data_node_exists(): if the argument `search` is a tuple, it must contain exactly 2 elements, not {len(search)}"
+
+            key_name, key_value = search
+
+            assert type(key_name) == str, \
+                f"data_node_exists(): the value ({key_name}) passed in the first element of the `search` argument " \
+                f"is meant to be a 'key_name', and therefore must be a string; the passed value was of type {type(key_name)}"
+
+            # Prepare a Cypher query to locate the number of the data nodes
+            where_clause = f"WHERE (dn.`{key_name}` = $key_value) AND (dn.`_CLASS` = $class_name)"
+            data_binding = {"key_value" : key_value, "class_name": class_name}
+
+        else:
+            # Match by internal database ID
+            assert CypherUtils.valid_internal_id(search), \
+                f"data_node_exists(): the argument `internal_id` ({search}) " \
+                f"is not a valid internal database ID value"
+
+            where_clause = f"WHERE (id(dn) = $node_id) AND (dn.`_CLASS` = $class_name)"
+            data_binding = {"node_id" : search, "class_name": class_name}
+
+
+        label_str = f":`{class_name}`"
+
+        return (label_str, where_clause, data_binding)
 
 
 
@@ -2472,98 +2518,6 @@ class GraphSchema:
         return name_list
 
 
-    @classmethod
-    def _data_node_match_helper_OLD(cls, search : int | str | dict) -> (str, str, dict):
-        """
-        TODO: test
-
-        :param search:
-        :return:
-        """
-        dt = type(search)
-        assert dt == int or dt == str or dt == dict, \
-            f"data_node_exists(): the argument `search` must be an int or a string or a dict"
-
-        if dt == dict:
-            class_name = search.get("class_name")
-            assert class_name is not None, \
-                f"data_node_exists(): if the argument `search` is a dict, it must contain the key 'class_name'"
-            assert cls.is_valid_class_name(class_name), \
-                f"data_node_exists(): the value `{class_name}` passed " \
-                f"as 'class_name' is not a valid Schema Class name"
-
-            key_value = search.get("key_value")
-            assert class_name is not None, \
-                f"data_node_exists(): if the argument `search` is a dict, it must contain the key 'key_value'"
-
-            key_name = search["key_name"]  if "key_name" in search  else "entity_id"
-            assert type(key_name) == str, \
-                f"data_node_exists(): the value ({key_name}) passed " \
-                f"as 'key_name' must be a string; the passed value was {type(key_name)}"
-
-            # Prepare a Cypher query to locate the number of the data nodes
-            where_clause = f"WHERE (dn.`{key_name}` = $key_value) AND (dn.`_CLASS` = $class_name)"
-            data_binding = {"key_value" : key_value, "class_name": class_name}
-            label_str = f":`{class_name}`"
-        else:
-            # Match by internal database ID
-            assert CypherUtils.valid_internal_id(search), \
-                f"data_node_exists(): the argument `internal_id` ({search}) " \
-                f"is not a valid internal database ID value"
-
-            where_clause = f"WHERE (id(dn) = $node_id)"
-            data_binding = {"node_id" : search}
-            label_str = ""
-
-        return (label_str, where_clause, data_binding)
-
-
-
-    @classmethod
-    def _data_node_match_helper(cls, search :int|str|(tuple), class_name :str) -> (str, str, dict):
-        """
-        TODO: test
-
-        :param search:
-        :return:
-        """
-        dt = type(search)
-        assert dt == int or dt == str or dt == tuple, \
-            f"data_node_exists(): the argument `search` must be an int or a string or a pair (tuple)"
-
-        assert cls.is_valid_class_name(class_name), \
-                f"data_node_exists(): the value `{class_name}` passed " \
-                f"to the `class_name` argument is not a valid Schema Class name"
-
-        if dt == tuple:
-            assert len(search) == 2, \
-                f"data_node_exists(): if the argument `search` is a tuple, it must contain exactly 2 elements, not {len(search)}"
-
-            key_name, key_value = search
-
-            assert type(key_name) == str, \
-                f"data_node_exists(): the value ({key_name}) passed in the first element of the `search` argument " \
-                f"is meant to be a 'key_name', and therefore must be a string; the passed value was of type {type(key_name)}"
-
-            # Prepare a Cypher query to locate the number of the data nodes
-            where_clause = f"WHERE (dn.`{key_name}` = $key_value) AND (dn.`_CLASS` = $class_name)"
-            data_binding = {"key_value" : key_value, "class_name": class_name}
-
-        else:
-            # Match by internal database ID
-            assert CypherUtils.valid_internal_id(search), \
-                f"data_node_exists(): the argument `internal_id` ({search}) " \
-                f"is not a valid internal database ID value"
-
-            where_clause = f"WHERE (id(dn) = $node_id) AND (dn.`_CLASS` = $class_name)"
-            data_binding = {"node_id" : search, "class_name": class_name}
-
-
-        label_str = f":`{class_name}`"
-
-        return (label_str, where_clause, data_binding)
-
-
 
     @classmethod
     def data_link_exists(cls, node1_id, node2_id, link_name :str, id_key=None) -> bool:
@@ -2801,11 +2755,11 @@ class GraphSchema:
 
 
     # get_internal_id_of_data_node
-    # get_data_node_internal_id
+    # locate_data_node
     # locate_data_node
     # TODO: maybe generalize to also allow key pairs
     @classmethod
-    def get_data_node_internal_id(cls, class_name :str, entity_id :str) -> int:
+    def locate_data_node(cls, class_name :str, entity_id :str) -> int:
         """
         Returns the internal database ID of the given Data Node,
         specified by its Class name and Entity ID
@@ -2817,7 +2771,7 @@ class GraphSchema:
                                 if none (or more than one) found, an Exception is raised
         """
         assert cls.is_valid_class_name(class_name), \
-            f"get_data_node_internal_id(): the value `{class_name}` passed " \
+            f"locate_data_node(): the value `{class_name}` passed " \
             f"to the `class_name` argument is not a valid Schema Class name"
 
         # Match by class/entity_id, as well as by label
@@ -2828,22 +2782,20 @@ class GraphSchema:
 
 
         assert result, \
-            f"GraphSchema.get_data_node_internal_id(): " \
+            f"GraphSchema.locate_data_node(): " \
             f"no Data Node with the given class_name ('{class_name}') and entity_id ('{entity_id}') was found"
 
 
         if len(result) > 1:
-            raise Exception(f"GraphSchema.get_data_node_internal_id(): more than 1 Data Node "
+            raise Exception(f"GraphSchema.locate_data_node(): more than 1 Data Node "
                             f"with the given entity_id ('{entity_id}') was found ({len(result)} were found)")
 
         return result[0]["_internal_id"]
 
 
 
-    # TODO: is this really needed?
-    # get_class_and_entity_id_of_data_node
     @classmethod
-    def get_class_and_entity_id(cls, internal_id :int|str):
+    def get_class_and_entity_id_of_data_node(cls, internal_id : int | str):
         """
         Look up the Class name and Entity ID of the given node.
         If no such node exists, or if it lacks a Schema Class association, an Exception is raised
@@ -2854,17 +2806,17 @@ class GraphSchema:
         """
         d = cls.get_single_data_node(internal_id=internal_id, hide_schema=False)    # A dictionary, or None
         assert d is not None, \
-            f"get_class_and_entity_id(): There is no data node with internal database ID {internal_id}"
+            f"get_class_and_entity_id_of_data_node(): There is no data node with internal database ID {internal_id}"
 
         assert "_CLASS" in d, \
-            f"get_class_and_entity_id(): A database node with internal database ID {internal_id} was found, " \
+            f"get_class_and_entity_id_of_data_node(): A database node with internal database ID {internal_id} was found, " \
             f"but it's NOT associated to any Schema Class"
 
         class_name = d.get("_CLASS")
         entity_id = d.get("entity_id")
 
         assert cls.is_valid_class_name(class_name), \
-            f"get_class_and_entity_id(): A database node with internal database ID {internal_id} was found, " \
+            f"get_class_and_entity_id_of_data_node(): A database node with internal database ID {internal_id} was found, " \
             f"but the value stored for its Schema Class ({class_name}), of type {type(class_name)}, is NOT valid"
 
         return ( class_name, entity_id )
@@ -3173,7 +3125,7 @@ class GraphSchema:
 
 
         # Obtain both the Class name and its the internal database ID of the Class schema node
-        class_internal_id = cls.get_class_internal_id(class_name)
+        class_internal_id = cls.locate_class(class_name)
 
 
         # Make sure that the specified Class accepts Data Nodes
@@ -3343,7 +3295,7 @@ class GraphSchema:
         assert (type(properties) == dict) and (properties != {}), \
             "GraphSchema.add_data_node_merge(): the `properties` argument MUST be a dictionary, and cannot be empty"
 
-        class_internal_id = cls.get_class_internal_id(class_name)
+        class_internal_id = cls.locate_class(class_name)
 
         # Make sure that the Class accepts Data Nodes
         if not cls.allows_data_nodes(internal_id=class_internal_id):
@@ -3399,7 +3351,7 @@ class GraphSchema:
         assert (type(value_list) == list) and (value_list != []), \
             "GraphSchema.add_data_column_merge(): the `value_list` argument MUST be a list, and cannot be empty"
 
-        class_internal_id = cls.get_class_internal_id(class_name)
+        class_internal_id = cls.locate_class(class_name)
 
         # Make sure that the Class accepts Data Nodes
         if not cls.allows_data_nodes(internal_id=class_internal_id):
@@ -3673,7 +3625,7 @@ class GraphSchema:
         """
         cls.assert_valid_relationship_name(rel_name)
 
-        center_class, _ = cls.get_class_and_entity_id(internal_id=center_id)
+        center_class, _ = cls.get_class_and_entity_id_of_data_node(internal_id=center_id)
 
         q = f'''
             MATCH (center_node), (periphery_node :{periphery_class}) 
@@ -3737,8 +3689,8 @@ class GraphSchema:
 
         if not id_type:
             # Using the internal database ID's
-            from_class, _ = cls.get_class_and_entity_id(internal_id=from_id)
-            to_class, _ = cls.get_class_and_entity_id(internal_id=to_id)
+            from_class, _ = cls.get_class_and_entity_id_of_data_node(internal_id=from_id)
+            to_class, _ = cls.get_class_and_entity_id_of_data_node(internal_id=to_id)
         else:
             assert from_class, f"GraphSchema.add_data_relationship(): if the `id_type` argument is passed, so must be `from_class`"
             assert to_class, f"GraphSchema.add_data_relationship(): if the `id_type` argument is passed, so must be `to_class`"
@@ -3989,7 +3941,7 @@ class GraphSchema:
 
 
         # Obtain the internal database ID of the Class node
-        class_internal_id = cls.get_class_internal_id(class_name)
+        class_internal_id = cls.locate_class(class_name)
 
 
         # Make sure that the Class accepts Data Nodes
@@ -4206,7 +4158,7 @@ class GraphSchema:
 
 
         # Obtain the internal database ID of the Class node
-        class_internal_id = cls.get_class_internal_id(class_name)
+        class_internal_id = cls.locate_class(class_name)
 
 
         # Make sure that the Class accepts Data Nodes
@@ -5247,7 +5199,7 @@ class GraphSchema:
         indent_str = " " * indent_spaces        # For debugging: repeat a blank character the specified number of times
         cls.debug_print(f"{indent_str}{level}. ~~~~~:")
 
-        class_internal_id = cls.get_class_internal_id(class_name=class_name)
+        class_internal_id = cls.locate_class(class_name=class_name)
 
         cls.debug_print(f"{indent_str}Importing data dictionary, using class `{class_name}` (with internal id {class_internal_id})")
 
@@ -5874,7 +5826,7 @@ class GraphSchema:
         # TODO: Pytest
 
         # Check if a namespace has been assigned to the given Class
-        class_id = GraphSchema.get_class_internal_id(class_name)
+        class_id = GraphSchema.locate_class(class_name)
         namespace_links = GraphSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
                                                    properties="namespace")
         #print("lookup_class_namespace() - namespace_links: ", namespace_links)

@@ -167,7 +167,7 @@ class Collections:
                                             new_uri=new_uri
                                             )
         '''
-        collection_id = GraphSchema.get_data_node_internal_id(class_name=collection_class, entity_id=collection_entity_id)
+        collection_id = GraphSchema.locate_data_node(class_name=collection_class, entity_id=collection_entity_id)
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=data_binding,
                                      extra_labels="BA",
@@ -515,7 +515,7 @@ class Collections:
 
         data_binding = item_properties
 
-        collection_id = GraphSchema.get_data_node_internal_id(class_name=collection_class, entity_id=collection_entity_id)
+        collection_id = GraphSchema.locate_data_node(class_name=collection_class, entity_id=collection_entity_id)
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=data_binding,
                                      extra_labels="BA",
@@ -635,7 +635,7 @@ class Collections:
             new_pos = int((pos_before + pos_after) / 2)		    # Take the halfway point, rounded down
 
 
-        collection_id = GraphSchema.get_data_node_internal_id(class_name=collection_class, entity_id=collection_entity_id)
+        collection_id = GraphSchema.locate_data_node(class_name=collection_class, entity_id=collection_entity_id)
         GraphSchema.create_data_node(class_name=item_class_name,
                                      properties=item_properties,
                                      extra_labels="BA",

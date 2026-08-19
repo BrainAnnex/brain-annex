@@ -235,7 +235,7 @@ class PluginManager:
         such as thumbnails or document covers (if applicable)
         """
         # Retrieve the name of the semantic Class of the given Media Item
-        semantic_class, _ = GraphSchema.get_class_and_entity_id(internal_id)    # EXAMPLE: "Document"
+        semantic_class, _ = GraphSchema.get_class_and_entity_id_of_data_node(internal_id)    # EXAMPLE: "Document"
 
         print(f"Inside PluginManager.move_media_item_successful(): "
               f"attempting dispatching to plugin that handles the semantic Class `{semantic_class}`")

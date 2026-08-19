@@ -307,7 +307,7 @@ class FullTextIndexing:
             "initialize_schema(): a non-empty string is required for argument `content_item_class_name`"
 
         if GraphSchema.class_name_exists(content_item_class_name):
-            content_item_class_id = GraphSchema.get_class_internal_id(class_name=content_item_class_name)
+            content_item_class_id = GraphSchema.locate_class(class_name=content_item_class_name)
         else:
             content_item_class_id = GraphSchema.create_class(name=content_item_class_name, strict=False)
 

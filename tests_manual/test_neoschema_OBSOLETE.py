@@ -76,14 +76,14 @@ def test_create_class(db):
 def test_get_class_internal_id(db):
     db.empty_dbase()
     A_neo_uri, _ = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_internal_id("A") == A_neo_uri
+    assert GraphSchema.locate_class("A") == A_neo_uri
 
     B_neo_uri, _ = GraphSchema.create_class("B")
-    assert GraphSchema.get_class_internal_id("A") == A_neo_uri
-    assert GraphSchema.get_class_internal_id("B") == B_neo_uri
+    assert GraphSchema.locate_class("A") == A_neo_uri
+    assert GraphSchema.locate_class("B") == B_neo_uri
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_internal_id("NON-EXISTENT CLASS")
+        assert GraphSchema.locate_class("NON-EXISTENT CLASS")
 
 
 
@@ -631,7 +631,7 @@ def test_get_class_properties(db):
     db.empty_dbase()
 
     GraphSchema.create_class_with_properties("My first class", properties=["A", "B", "C"])
-    neo_uri = GraphSchema.get_class_internal_id("My first class")
+    neo_uri = GraphSchema.locate_class("My first class")
     props = GraphSchema.get_class_properties(neo_uri)
     assert props == ["A", "B", "C"]
     props = GraphSchema.get_class_properties("My first class")

@@ -2229,7 +2229,7 @@ class ApiRouting:
                 item_internal_id = request_parameters.get("item_internal_id")
                 category_uri = request_parameters.get("category_uri")
 
-                item_class_name, item_entity_id = GraphSchema.get_class_and_entity_id(item_internal_id)
+                item_class_name, item_entity_id = GraphSchema.get_class_and_entity_id_of_data_node(item_internal_id)
 
                 Categories.link_content_at_end(category_entity_id=category_uri,
                                                item_class_name=item_class_name, item_entity_id=item_entity_id)

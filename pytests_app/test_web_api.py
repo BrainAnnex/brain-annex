@@ -109,7 +109,7 @@ def test_class_properties_full_data_GET(client):
 
     # Populate the database
     GraphSchema.create_class_with_properties(name="Quote", properties=["text", "attribution", "verified"])
-    prop_ids = [GraphSchema.get_property_internal_id(class_name="Quote", property_name=p)
+    prop_ids = [GraphSchema.locate_property(class_name="Quote", property_name=p)
                     for p in ["text", "attribution", "verified"] ]
 
     GraphSchema.set_property_attribute(class_name="Quote", prop_name="text",
@@ -294,7 +294,7 @@ def test_create_schema_from_data_POST(client):
 
     # Verify we now have a `Car` Class, with no Properties
     assert GraphSchema.class_name_exists("Car")
-    assert GraphSchema.get_class_internal_id("Car") == result
+    assert GraphSchema.locate_class("Car") == result
     assert GraphSchema.get_class_properties(class_name="Car") == []
     assert not GraphSchema.is_strict_class("Car")
 
@@ -311,7 +311,7 @@ def test_create_schema_from_data_POST(client):
 
     # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
     assert GraphSchema.class_name_exists("Person")
-    assert GraphSchema.get_class_internal_id("Person") == result
+    assert GraphSchema.locate_class("Person") == result
     assert GraphSchema.get_class_properties(class_name="Person") == ["age", "Medical #", "name"]    # in alphabetic order
     assert not GraphSchema.is_strict_class("Person")
 
