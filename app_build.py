@@ -44,6 +44,7 @@ def create_app(db=None, test=False, config_override=None) -> Flask:
 
     :return:                The instantiated Flask object
     """
+    # TODO: maybe merge with initialize.py ?
 
     app = Flask(__name__)   # The Flask object
 
@@ -179,6 +180,9 @@ def initialize_services(app :Flask) -> None:
         )
 
     #print(PluginManager.REGISTERED_PLUGINS)
-    # It shows:  {'document': <class 'app_libraries.PLUGINS.document.Document'>, 'flash_card': <class 'app_libraries.PLUGINS.flash_card.FlashCard'>, etc}
-    #print("PLUGIN TEST: ", PluginManager.REGISTERED_PLUGINS["document"].default_folder())   # Invoke a method of one of the plugin classes
-                                                                                             # It shows: "documents"
+    # It shows:  {'document': <class 'app_libraries.PLUGINS.document.Document'>,
+    #             'flash_card': <class 'app_libraries.PLUGINS.flash_card.FlashCard'>, etc}
+
+    #print("PLUGIN TEST: ", PluginManager.REGISTERED_PLUGINS["document"].default_folder())
+    # Invoke a method of one of the plugin classes
+    # It shows: "documents"

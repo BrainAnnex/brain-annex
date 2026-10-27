@@ -14,7 +14,6 @@ from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories, PyGraphVisual
 from ariadne import QueryType, make_executable_schema, graphql_sync
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
-import shutil
 import os
 import json
 #from time import sleep     # For tests of delays in asynchronous fetching.  E.g. sleep(3) for 3 secs
@@ -103,14 +102,14 @@ class ApiRouting:
     def resolve_people(_, info):
         # Call the existing data layer
         data = [{"name": "Robert"}, {"name": "Julian"}]
-        return data  # expects list of dicts like {"name": ...}
+        return data  # expects list of dicts, where each dict is of the form {"name": ...}
 
     @query.field("labels")
     def resolve_labels(_, info):
         # Call the existing data layer
         label_list = GraphSchema.db.get_labels()
         data = [{"name": label} for label in label_list]
-        return data  # expects list of dicts like {"name": ...}
+        return data  # expects list of dicts, where each dict is of the form {"name": ...}
 
 
     # --- Build schema ---
@@ -501,6 +500,12 @@ class ApiRouting:
 
         @bp.route("/graphql", methods=["POST"])
         def graphql_server():
+            """
+            See the part earlier in the file, labeled GraphQL
+
+            EXAMPLE invocations:
+                http://localhost:5000/BA/api/graphql
+            """
             payload = request.get_json()
 
             success, result = graphql_sync(
