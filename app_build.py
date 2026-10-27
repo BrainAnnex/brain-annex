@@ -1,6 +1,7 @@
 from flask import Flask
 from configparser import ConfigParser
 from read_config import load_config_data
+from graphql_api import register_graphql
 
 
 ### Import sub-modules making up this web app:
@@ -118,6 +119,8 @@ def create_app(db=None, test=False, config_override=None) -> Flask:
 
     ### Set the secret key to some random bytes. Used to sign the cookies cryptographically
     app.secret_key = b"pqE3_t(4!x"
+
+    register_graphql(app)       # For GraphQL
 
     return app
 

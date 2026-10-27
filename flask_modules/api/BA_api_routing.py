@@ -12,7 +12,7 @@ from app_libraries.PLUGINS.document import Document
 from app_libraries.PLUGINS.plugin_manager import PluginManager
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories, PyGraphVisual
-from ariadne import QueryType, make_executable_schema, graphql_sync
+#from ariadne import QueryType, make_executable_schema, graphql_sync
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
 import os
 import json
@@ -95,7 +95,8 @@ class ApiRouting:
         }
     """
 
-    # --- Resolver binding ---
+    # --- Ariadne Resolver binding ---
+    """
     query = QueryType()
 
     @query.field("people")
@@ -114,7 +115,7 @@ class ApiRouting:
 
     # --- Build schema ---
     schema = make_executable_schema(type_defs, query)
-
+    """
 
 
 
@@ -498,14 +499,15 @@ class ApiRouting:
         #####################################################################################################
 
 
-        @bp.route("/graphql", methods=["POST"])
+        #@bp.route("/graphql", methods=["POST"])
+        """
         def graphql_server():
-            """
+            ""
             See the part earlier in the file, labeled GraphQL
 
             EXAMPLE invocations:
                 http://localhost:5000/BA/api/graphql
-            """
+            ""
             payload = request.get_json()
 
             success, result = graphql_sync(
@@ -517,7 +519,7 @@ class ApiRouting:
 
             status_code = 200 if success else 400
             return jsonify(result), status_code
-
+        """
 
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
