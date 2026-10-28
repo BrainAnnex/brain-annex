@@ -96,27 +96,6 @@ class Query:
         return data
 
 
-def foo():
-
-
-
-    """
-    type DatabaseLabel {
-        name: String!
-    }
-
-    type Query {
-        people: [Person!]!
-
-        labels: [DatabaseLabel!]!
-    }
-
-
-    return data  # expects list of dicts, where each dict is of the form {"name": ...}
-    """
-
-
-
 
 
 schema = strawberry.Schema(query=Query)
