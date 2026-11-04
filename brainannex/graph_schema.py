@@ -466,11 +466,13 @@ class GraphSchema:
 
 
     @classmethod
-    def get_all_classes(cls) -> [str]:
+    def get_all_classes(cls, only_visible:None) -> list[str]:
         """
         Fetch and return a list of all the existing Schema classes names (sorted alphabetically)
 
-        :return:    A list of all the existing Class names
+        :param only_visible:[OPTIONAL] If True, only return the Classes that have an attribute
+                                named `visible` and set to True; by default, False
+        :return:            A list of all the existing Class names
         """
         #(TODO: or a fuller listing - not yet implemented)
         #TODO: disregard capitalization in sorting

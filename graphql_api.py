@@ -107,7 +107,8 @@ def register_graphql(app) -> None:
     """
     For Flask integration of GraphQL: adding the Strawberry integration
     adds another endpoint to the existing Flask application
-    :param app:
+
+    :param app: Object of type "Flask"
 
     :return:    None
     """
@@ -117,4 +118,4 @@ def register_graphql(app) -> None:
             "graphql_view",
             schema=schema,
         ),
-    )
+    )   # The string "graphql_view" is the internal endpoint name Flask uses to identify the registered view function
