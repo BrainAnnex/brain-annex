@@ -521,7 +521,7 @@ class MediaManager:
         new_full_name = f"{folder}{new_basename}.{new_suffix}"
 
         if new_full_name != old_full_name:
-            print(f"MediaManager.rename_media_file(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
+            #print(f"MediaManager.rename_media_file(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
             if not ignore_missing or os.path.exists(old_full_name):
                 cls.move_file(src=old_full_name, dest=new_full_name)
 

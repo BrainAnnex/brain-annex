@@ -105,16 +105,18 @@ class GraphAccess(InterGraph):
                                 If specified, it OVER-RIDES all the remaining arguments
                                 [except for the labels (TODO: revisit this)]
 
-        :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
-        :param key_value:   The required value for the above key; if provided, key_name must be present, too
+        :param key_name:    A string with the name of a node attribute; 
+                                if provided, `key_value` must be present, too
+        :param key_value:   The required value for the above key; 
+                                if provided, `key_name` must be present, too
                                 Note: no requirement for the key to be primary
 
         :param properties:  A (possibly-empty) dictionary of property key/values pairs, indicating a condition to match.
                                 EXAMPLE: {"gender": "F", "age": 22}
 
         :param clause:      Either None, OR a (possibly empty) string containing a Cypher subquery,
-                            OR a pair/list (string, dict) containing a Cypher subquery and the data-binding dictionary for it.
-                            The Cypher subquery should refer to the node using the assigned dummy_node_name (by default, "n")
+                                OR a pair/list (string, dict) containing a Cypher subquery and the data-binding dictionary for it.
+                                The Cypher subquery should refer to the node using the assigned dummy_node_name (by default, "n")
                                 IMPORTANT:  in the dictionary, don't use keys of the form "n_par_i",
                                             where n is the dummy node name and i is an integer,
                                             or an Exception will be raised - those names are for internal use only
@@ -156,12 +158,11 @@ class GraphAccess(InterGraph):
         :param return_labels:   Flag indicating whether to also include the database label names in the returned data
                                     (using "_node_labels" as its key in the returned dictionary)
 
-        :param order_by:        (OPTIONAL) String with the key (field) name to order by, in ascending order
-                                    Caution: lower and uppercase names are treated differently in the sort order
-                                    TODO: standardize the case; provide support for DESC and for multiple fields
+        :param order_by:        [OPTIONAL] String with the key (field) name to order by, in ascending order
+                                    (sorted alphabetically, if it's a string field, disregarding capitalization;
+                                     any nodes lacking that field will appear last)
 
-        :param limit:           (OPTIONAL) Integer to specify the maximum number of nodes returned
-                                    TODO: provide support for SKIP
+        :param limit:           [OPTIONAL] Integer to specify the maximum number of nodes returned
 
         :param single_row:      Meant in situations where only 1 node (record) is expected, or perhaps one wants to sample the 1st one.
                                     If True and a record or records were found, a dict will be returned instead of a list (containing the 1st record);
@@ -170,34 +171,44 @@ class GraphAccess(InterGraph):
         :param single_cell:     Meant in situations where only 1 node (record) is expected, and one wants only 1 specific field of that record.
                                 If single_cell is specified, return the value of the field by that name in the first node
                                 Note: this will be None if there are no results, or if the first (0-th) result row lacks a key with this name
-                                TODO: test and give examples.  single_cell="name" will return result[0].get("name")
 
-        :return:                If single_cell is specified, return the value of the field by that name in the first node.
-                                If single_row is True, return a dictionary with the information of the first record (or None if no record exists)
-                                Otherwise, return a (possibly-empty) list whose entries are dictionaries with each record's information
+        :return:                - If `single_cell` is specified, return the value of the field by that name in the first node.
+                                - If `single_row` is True, return a dictionary with the information of the first record (or None if no record exists)
+                                - Otherwise, return a (possibly-empty) list whose entries are dictionaries with each record's information
                                     (the node's attribute names are the keys)
                                     EXAMPLE: [  {"gender": "M", "age": 42, "condition_id": 3},
                                                 {"gender": "M", "age": 76, "location": "Berkeley"}
                                              ]
                                     Note that ALL the attributes of each node are returned - and that they may vary across records.
-                                    If the flag return_nodeid is set to True, then an extra key/value pair is included in the dictionaries,
+                                    If the flag `return_nodeid` is set to True, then an extra key/value pair is included in the dictionaries,
                                             of the form     "_internal_id": some integer with the Neo4j internal node ID
-                                    If the flag return_labels is set to True, then an extra key/value pair is included in the dictionaries,
+                                    If the flag `return_labels` is set to True, then an extra key/value pair is included in the dictionaries,
                                             of the form     "_node_labels": [list of Neo4j label(s) attached to that node]
-                                    EXAMPLE using both of the above flags:
+                                    EXAMPLE using BOTH of the above flags:
                                         [  {"_internal_id": 145, "_node_labels": ["person", "client"], "gender": "M", "condition_id": 3},
                                            {"_internal_id": 222, "_node_labels": ["person"], "gender": "M", "location": "Berkeley"}
                                         ]
         """
         # TODO: provide an option to specify the desired fields
+        # TODO: provide `order_by` support for DESC and for multiple fields, like done in GraphSchema.get_nodes_by_filter
+        # TODO: provide support for SKIP
+        # TODO: test and give examples about arg `single_cell`.  single_cell="name" will return result[0].get("name")
 
         # Unpack needed values from the Cypher builder
         (node, where, data_binding, dummy_node_name) = CypherUtils.assemble_cypher_blocks(match, caller_method="get_nodes")
         #print(node, where, data_binding, dummy_node_name)
         cypher = f"MATCH {node} {CypherUtils.prepare_where(where)} RETURN {dummy_node_name}"
 
+        # Sort alphabetically (if it's a string field) and disregarding capitalization
         if order_by:
-            cypher += f" ORDER BY n.{order_by}"
+            cypher += f"""
+                ORDER BY
+                    CASE
+                        WHEN toStringOrNull(n.`{order_by}`) = n.`{order_by}`
+                        THEN toLower(n.`{order_by}`)
+                        ELSE n.`{order_by}`
+                    END
+            """ # If the field is a string, sort it using it toLower()
 
         if limit:
             cypher += f" LIMIT {limit}"
@@ -242,9 +253,9 @@ class GraphAccess(InterGraph):
 
         :param match:       EITHER an integer or string with an internal database node id (to identify a singles node),
                                 OR a "CypherBuilder" object, as returned by match(), with data to identify a node or set of nodes
-        :param order_by:    Optional string with the key (field) name to order by, in ascending order
+        :param order_by:    [OPTIONAL] String with the key (field) name to order by, in ascending order
                                 Note: lower and uppercase names are treated differently in the sort order
-        :param limit:       Optional integer to specify the maximum number of nodes returned
+        :param limit:       [OPTIONAL] Integer to specify the maximum number of nodes returned
 
         :return:            A Pandas dataframe
         """
@@ -401,7 +412,7 @@ class GraphAccess(InterGraph):
 
 
 
-    def get_single_field(self, match: Union[int, CypherBuilder], field_name: str, order_by=None, limit=None) -> list:
+    def get_single_field(self, match: int|CypherBuilder, field_name: str, order_by=None, limit=None) -> list:
         """
         For situations where one is fetching just 1 field,
         and one desires a list of the values of that field, rather than a dictionary of records.
@@ -664,16 +675,16 @@ class GraphAccess(InterGraph):
 
         :param labels:      A string, or list/tuple of strings, with label(s) to assign to the new node;
                                 blanks allowed inside strings
-        :param properties:  (OPTIONAL) A dictionary of optional properties to assign to the newly-created node
-        :param attached_to: (OPTIONAL) An integer/string, or list/tuple of integers/string,
+        :param properties:  [OPTIONAL] A dictionary of optional properties to assign to the newly-created node
+        :param attached_to: [OPTIONAL] An integer/string, or list/tuple of integers/string,
                                 with internal database ID's to identify the existing nodes;
                                 use None, or an empty list, to indicate if there aren't any
-        :param rel_name:    (OPTIONAL) Name of the newly created relationships.
+        :param rel_name:    [OPTIONAL] Name of the newly created relationships.
                                 This is required, if an attached_to list was provided
-        :param rel_dir:     (OPTIONAL) Either "OUT"(default), "IN" or "BOTH".
+        :param rel_dir:     [OPTIONAL] Either "OUT"(default), "IN" or "BOTH".
                                 Direction(s) of the relationships to create, relative to the new node.
                                 "OUT" means from the new node; "IN" means to the new node
-        :param merge:       (OPTIONAL) If True (default), a new node gets created only if there's no existing node
+        :param merge:       [OPTIONAL] If True (default), a new node gets created only if there's no existing node
                                 with the same properties and labels
 
         :return:            The internal database ID of the newly-created node
@@ -1877,9 +1888,9 @@ class GraphAccess(InterGraph):
 
         :param internal_id: The internal database ID of the node of interest
         :param rel_name:    The name of the relationship used to establish a "siblings" connection
-        :param rel_dir:     (OPTIONAL) Either "OUT" (default) or "IN".  The link direction that is expected from the
+        :param rel_dir:     [OPTIONAL] Either "OUT" (default) or "IN".  The link direction that is expected from the
                                 start node to its "parents" - and then IN REVERSE to the parent's children
-        :param order_by:    (OPTIONAL) If specified, it must be the name of a field in
+        :param order_by:    [OPTIONAL] If specified, it must be the name of a field in
                                 the sibling nodes, to order the results by; capitalization is ignored
         :return:            A list of dictionaries, with one element for each "sibling";
                                 each element contains the '_internal_id' and '_node_labels' keys,
@@ -2121,11 +2132,11 @@ class GraphAccess(InterGraph):
         :param labels:          A string, or list/tuple of strings - representing one or more Neo4j labels
                                     to use on all the newly-created nodes
 
-        :param merge_primary_key: (OPTIONAL) A string with the name of the field that serves as a primary key
+        :param merge_primary_key: [OPTIONAL] A string with the name of the field that serves as a primary key
                                     If provided, new records will be merged (rather than added) if they already exist,
                                     as determined by that primary key
                                     TODO: to allow for list of primary_keys
-        :param merge_overwrite: (OPTIONAL) Only applicable if "merge_primary_key" is set.
+        :param merge_overwrite: [OPTIONAL] Only applicable if "merge_primary_key" is set.
                                     If True then on merge the existing nodes will be completely overwritten with the new data,
                                     otherwise they will be updated with new information (keys that are not present
                                     in the df argument will be left unaltered)
@@ -2317,13 +2328,13 @@ class GraphAccess(InterGraph):
         :param headers:     TODO: implement
         :param rename:      TODO: implement
                                 Example: {"name": "Product Name", "n_parts": "Number of Parts"}
-        :param field_types: (OPTIONAL) if not specified, all values get imported as STRINGS
+        :param field_types: [OPTIONAL] if not specified, all values get imported as STRINGS
                                 TODO: implement
                                     Example: {"product_id": "int", "cost": "float"}
         :param import_line_number:
         :param start_line_number:
         :param line_number_name:
-        :param link_to_node:    (OPTIONAL) If provided, all the newly-created nodes
+        :param link_to_node:    [OPTIONAL] If provided, all the newly-created nodes
                                     get linked to the specified existing node.
                                     Example: {"_internal_id": 123, "name": "employed_by", "dir": "out"}
 

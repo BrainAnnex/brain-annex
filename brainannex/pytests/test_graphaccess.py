@@ -154,7 +154,7 @@ def test_get_nodes(db):
     assert retrieved_records == [{'patient_id': 123, 'gender': 'M'}]
 
 
-    # Create a 2nd new node, using a BLANK in an attribute key
+    # Create a 2nd new node
     db.create_node("my 2nd label", {'age': 21, 'gender': 'F', 'client id': 123})
 
     # Retrieve the record just created (using values embedded in the Cypher query)
@@ -184,7 +184,7 @@ def test_get_nodes(db):
     assert retrieved_records == [{'client id': 123, 'gender': 'F', 'age': 21}]
 
 
-    # Add a 2nd new node
+    # Add another new node
     db.create_node("my 2nd label", {'age': 30, 'gender': 'M', 'client id': 999})
 
     # Retrieve records using a clause
@@ -194,18 +194,28 @@ def test_get_nodes(db):
 
     # Retrieve nodes REGARDLESS of label (and also retrieve the labels)
     match = db.match(properties={"gender": "M"})       # Locate all males, across all node labels
-    retrieved_records = db.get_nodes(match, return_labels=True)
+    retrieved_records = db.get_nodes(match, return_labels=True, order_by="patient_id") # Nodes lacking the order_by field will appear last
     expected_records = [{'_node_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
                         {'_node_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30}]
-    assert compare_recordsets(retrieved_records, expected_records)
+    #assert compare_recordsets(retrieved_records, expected_records)
+    assert retrieved_records == expected_records
+
+    retrieved_records = db.get_nodes(match, return_labels=True, order_by="client id")    # Nodes lacking the order_by field will appear last
+    expected_records = [{'_node_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
+                        {'_node_labels': ['test_label'], 'gender': 'M', 'patient_id': 123}]
+    assert retrieved_records == expected_records
+
 
     # Retrieve ALL nodes in the database (and also retrieve the labels)
     match = db.match()
-    retrieved_records = db.get_nodes(match, return_labels=True)
-    expected_records = [{'_node_labels': ['test_label'], 'gender': 'M', 'patient_id': 123},
-                        {'_node_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
-                        {'_node_labels': ['my 2nd label'], 'client id': 123, 'gender': 'F', 'age': 21}]
-    assert compare_recordsets(retrieved_records, expected_records)
+    retrieved_records = db.get_nodes(match, return_labels=True, order_by="client id")    # Nodes lacking the order_by field will appear last
+    expected_records = [
+                            {'_node_labels': ['my 2nd label'], 'client id': 123, 'gender': 'F', 'age': 21},
+                            {'_node_labels': ['my 2nd label'], 'client id': 999, 'gender': 'M', 'age': 30},
+                            {'_node_labels': ['test_label'], 'gender': 'M', 'patient_id': 123}
+                        ]
+    assert retrieved_records == expected_records
+
 
     # Re-use of same key names in subquery data-binding and in properties dictionaries is ok, because the keys in
     #   properties dictionaries get internally changed
@@ -255,18 +265,18 @@ def test_get_nodes(db):
 
     # Retrieve combined records created: note how different records have different keys
     match = db.match(labels="patient")
-    retrieved_records = db.get_nodes(match)
+    retrieved_records = db.get_nodes(match, order_by="gender")
     expected = [{'gender': 'F', 'age': 16},
                 {'gender': 'M', 'weight': 155}]
-    assert compare_recordsets(retrieved_records, expected)
+    assert retrieved_records == expected
 
     # Add a node with no attributes
     empty_record_id = db.create_node("patient")
-    retrieved_records = db.get_nodes(match)
+    retrieved_records = db.get_nodes(match, order_by="gender")
     expected = [{'gender': 'F', 'age': 16},
                 {'gender': 'M', 'weight': 155},
                 {}]
-    assert compare_recordsets(retrieved_records, expected)
+    assert retrieved_records == expected
 
     match = db.match(labels="patient", properties={"age": 16})
     retrieved_single_record = db.get_nodes(match, single_row=True)

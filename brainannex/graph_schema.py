@@ -222,7 +222,8 @@ class GraphSchema:
 
 
     @classmethod
-    def create_class(cls, name :str, code=None, handler=None, strict=False, no_datanodes=False, create_index=True) -> int|str:
+    def create_class(cls, name :str, code=None, handler=None, strict=False,
+                     no_datanodes=False, create_index=True, visible=False) -> int|str:
         """
         Create a new Class node with the given name and type of schema,
         provided that the name isn't already in use for another Class.
@@ -236,7 +237,7 @@ class GraphSchema:
 
         :param name:        Name to give to the new Class (any leading/trailing blank will first be stripped off)
         :param code:        DEPRECATED!  [OPTIONAL] String indicative of the software handler for this Class and its subclasses
-        :param handler:         [OPTIONAL] Name of a software module that services this Class
+        :param handler:     [OPTIONAL] Name of a software module that services this Class
         :param strict:      [OPTIONAL] If True, the Class will be of the "Strict" type;
                                 otherwise (default), it'll be of the "Lenient" type
                                 Explained under the comments for the GraphSchema class
@@ -247,7 +248,7 @@ class GraphSchema:
                                 By default, False
         :param create_index:[OPTIONAL] If True, a database index is created
                                 for the attribute "entity_id" and the label equal to the requested Class name
-
+        :param visible:     [OPTIONAL] Default False.  If True, make visible to GraphQL queries
         :return:            The internal database ID of the node just created, if it was created;
                                 an Exception is raised if a Class by that name already exists
         """
@@ -273,7 +274,8 @@ class GraphSchema:
             attributes["handler"] = handler
         if no_datanodes:
             attributes["no_datanodes"] = True
-
+        if visible:
+            attributes["visible"] = True
 
         # Create the database node for this new class
         internal_id = cls.db.create_node(labels=["CLASS", "SCHEMA"], properties=attributes)
@@ -466,18 +468,23 @@ class GraphSchema:
 
 
     @classmethod
-    def get_all_classes(cls, only_visible:None) -> list[str]:
+    def get_all_classes(cls, only_visible:bool=False) -> list[str]:
         """
-        Fetch and return a list of all the existing Schema classes names (sorted alphabetically)
+        Fetch and return all the existing Schema classes names
+        (sorted alphabetically, disregarding capitalization)
 
-        :param only_visible:[OPTIONAL] If True, only return the Classes that have an attribute
-                                named `visible` and set to True; by default, False
+        :param only_visible:[OPTIONAL] Default, False.
+                                If True, only return the Classes that have an attribute
+                                named `visible` and set to True
         :return:            A list of all the existing Class names
         """
-        #(TODO: or a fuller listing - not yet implemented)
-        #TODO: disregard capitalization in sorting
+        #TODO: or a fuller listing - not yet implemented
 
-        match = cls.db.match(labels="CLASS")
+        if only_visible:
+            match = cls.db.match(labels="CLASS", key_name="visible", key_value=True)
+        else:
+            match = cls.db.match(labels="CLASS")
+
         return cls.db.get_single_field(match=match, field_name="name", order_by="name")
 
 

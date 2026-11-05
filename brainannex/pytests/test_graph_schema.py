@@ -224,6 +224,20 @@ def test_get_all_classes(db):
     class_list = GraphSchema.get_all_classes()
     assert class_list == ['A', 'c', 'p']
 
+    GraphSchema.create_class("flower2")
+    GraphSchema.create_class("Flower1")
+
+    class_list = GraphSchema.get_all_classes()
+    assert class_list == ['A', 'c', 'Flower1', "flower2", 'p']
+
+    GraphSchema.create_class(name="Public", visible=True)
+
+    class_list = GraphSchema.get_all_classes()
+    assert class_list == ['A', 'c', 'Flower1', "flower2", 'p', 'Public']
+
+    class_list = GraphSchema.get_all_classes(only_visible=True)
+    assert class_list == ['Public']
+
 
 
 def test_rename_class(db):

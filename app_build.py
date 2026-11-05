@@ -121,9 +121,18 @@ def create_app(db=None, test=False, config_override=None) -> Flask:
     ### Set the secret key to some random bytes. Used to sign the cookies cryptographically
     app.secret_key = b"pqE3_t(4!x"
 
-    register_graphql(app)       # For GraphQL
 
-    register_graphql_2(app)       # For GraphQL
+    # Mount GraphQL endpoints
+    try:
+        register_graphql(app)           # For GraphQL tests
+    except Exception as ex:
+        print("create_app(): Unable to start the universal GraphQL endpoint.  Reason: ", ex)
+
+    try:
+        register_graphql_2(app)         # For schema-based GraphQL endpoint
+    except Exception as ex:
+        print("create_app(): Unable to start the universal GraphQL endpoint.  Reason: ", ex)
+
 
     return app
 
