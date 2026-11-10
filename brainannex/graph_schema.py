@@ -1101,7 +1101,7 @@ class GraphSchema:
         ~~~
         EXAMPLE:
            [
-               {"name": "WORKS_FOR", "target_class": "Employer"},
+               {"name": "WORKS_FOR", "target_class": "Company"},
                {"name": "LIVES_IN",  "target_class": "City"},
            ]
 
@@ -1117,7 +1117,7 @@ class GraphSchema:
             MATCH (from :CLASS {name: $class_name})
                         -->
                   (l :LINK)
-                        -[:`TARGET`]->
+                        -[:`_TARGET`]->
                   (to :CLASS)
             RETURN l.name AS name, to.name AS target_class
             '''
@@ -2948,6 +2948,31 @@ class GraphSchema:
 
 
     @classmethod
+    def get_linked_data_nodes(cls, source_node_id :int|str, link_name :str, target_class :str) -> list[dict]:
+        """
+        Returns the target data-node records reached by following the named
+        outgoing data relationship from the source data node.
+        The return format is a list of dictionaries containing
+        ordinary data properties plus `_internal_id` and `_node_labels`
+
+        :param source_node_id:  Internal database ID of a data node
+        :param link_name:       The name of the link(s) to follow
+        :param target_class:    The node label labels required to be present on the neighbor nodes
+        :return:                A (possibly empty) list of dictionaries
+        """
+        q = f'''
+            MATCH (from) -[:`{link_name}`]-> (to :`{target_class}`)
+            WHERE id(from) = $source_node_id
+            RETURN to
+            '''
+
+        result = cls.db.query_extended(q, data_binding={"source_node_id": source_node_id},
+                                       flatten=True)
+        return result
+
+
+
+    @classmethod
     def follow_links(cls, class_name :str, node_id, link_name :str, id_key=None, properties=None, labels=None) -> List:
         """
         From the given starting node, follow all the relationships that have the specified name,
@@ -2956,7 +2981,7 @@ class GraphSchema:
 
         :param class_name:  String with the name of the Class of the given data node
         :param node_id:     Either an internal database ID or a primary key value
-        :param link_name:   A string with the name of the link(s) to follow
+        :param link_name:   The name of the link(s) to follow
         :param id_key:      [OPTIONAL] Name of a primary key used to identify the data node; for example, "entity_id";
                                 use None to refer to the internal database ID
         :param properties:  [OPTIONAL] String, or list/tuple of strings, with the name(s)

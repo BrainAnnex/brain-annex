@@ -691,7 +691,34 @@ def test_get_class_links_full_data(db):
 
     result = GraphSchema.get_class_links_full_data("Person")
     assert result == []
-    #TODO
+
+    GraphSchema.create_class_relationship(from_class="Person", to_class="Company",
+                            rel_name="WORKS_FOR", use_link_node=True)
+
+    result = GraphSchema.get_class_links_full_data("Person")
+    assert result == [{"name": "WORKS_FOR", "target_class": "Company"}]
+
+    GraphSchema.create_class_relationship(from_class="Person", to_class="City",
+                            rel_name="LIVES_IN", use_link_node=True)
+
+    result = GraphSchema.get_class_links_full_data("Person")
+    expected = [ {"name": "WORKS_FOR", "target_class": "Company"},
+                 {"name": "LIVES_IN",  "target_class": "City"}]
+    assert compare_recordsets(result, expected)
+
+    result = GraphSchema.get_class_links_full_data("Company")
+    assert result == []
+
+    GraphSchema.create_class_relationship(from_class="Company", to_class="City",
+                            rel_name="LOCATED_IN", use_link_node=True)
+
+    result = GraphSchema.get_class_links_full_data("Company")
+    assert result == [ {"name": "LOCATED_IN",  "target_class": "City"} ]
+
+    result = GraphSchema.get_class_links_full_data("Person")
+    expected = [ {"name": "WORKS_FOR", "target_class": "Company"},
+                 {"name": "LIVES_IN",  "target_class": "City"}]     # Nothing changed here
+    assert compare_recordsets(result, expected)
 
 
 
@@ -1944,6 +1971,44 @@ def test_data_points_lacking_schema(db):
 
 def test_get_data_point_uri(db):
     pass    # TODO
+
+
+
+def test_get_linked_data_nodes(db):
+    db.empty_dbase()
+
+    p = db.create_node(labels="Person")
+    c_1 = db.create_node(labels="City", properties={"name": "Berkeley"})
+    c_2 = db.create_node(labels=["City", "Metropolis"], properties={"name": "NYC", "state": "NY"})
+    c_bad = db.create_node(labels="Mislabeled", properties={"name": "Atlantis"})
+
+    result = GraphSchema.get_linked_data_nodes(source_node_id=p, link_name="HAS_VISITED", target_class="City")
+    assert result == []
+
+    db.add_links_fast(match_from=p, match_to=c_1, rel_name="HAS_VISITED")
+    result = GraphSchema.get_linked_data_nodes(source_node_id=p, link_name="HAS_VISITED", target_class="City")
+    assert result == [ {'name': 'Berkeley', '_internal_id': c_1, '_node_labels': ['City']} ]
+
+    db.add_links_fast(match_from=p, match_to=c_bad, rel_name="HAS_VISITED")
+    result = GraphSchema.get_linked_data_nodes(source_node_id=p, link_name="HAS_VISITED", target_class="City")
+                                                        # target_class prevents locating node with label "Mislabeled"
+    assert result == [ {'name': 'Berkeley', '_internal_id': c_1, '_node_labels': ['City']} ]    # No change
+
+    db.add_links_fast(match_from=p, match_to=c_2, rel_name="HAS_VISITED")
+    result = GraphSchema.get_linked_data_nodes(source_node_id=p, link_name="HAS_VISITED", target_class="City")
+    expected = [ {'name': 'Berkeley',               '_internal_id': c_1, '_node_labels': ['City']},
+                 {'name': 'NYC', 'state': 'NY',     '_internal_id': c_2, '_node_labels': ['City', 'Metropolis']}
+               ]
+    expected_alt =  [   {'name': 'Berkeley',               '_internal_id': c_1, '_node_labels': ['City']},
+                        {'name': 'NYC', 'state': 'NY',     '_internal_id': c_2, '_node_labels': ['Metropolis', 'City']}
+                    ]
+    assert compare_recordsets(result, expected) \
+                or compare_recordsets(result, expected_alt)
+
+    result = GraphSchema.get_linked_data_nodes(source_node_id=p, link_name="HAS_VISITED", target_class="Mislabeled")
+    assert result == [ {'name': 'Atlantis', '_internal_id': c_bad, '_node_labels': ['Mislabeled']} ]
+
+
 
 def test_follow_links(db):
     pass    # TODO

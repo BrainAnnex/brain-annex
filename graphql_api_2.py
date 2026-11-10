@@ -15,6 +15,9 @@ Current scope:
       requested, using the source data node's Neo4j internal ID.
 
 
+
+SERVICE CONTRACTS ---
+
 GraphSchema service contracts introduced for this iteration:
 
     1) GraphSchema.get_class_links_full_data(class_name=...)

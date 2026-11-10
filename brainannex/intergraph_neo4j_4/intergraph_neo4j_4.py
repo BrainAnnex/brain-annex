@@ -510,7 +510,7 @@ class InterGraph:
 
 
 
-    def query_extended(self, q: str, data_binding = None, flatten = False, fields_to_exclude = None) -> [dict]:
+    def query_extended(self, q: str, data_binding = None, flatten = False, fields_to_exclude = None) -> list[dict]:
         """
         Extended version of query(), meant to extract additional info
         for queries that return so-called Graph Data Types,
