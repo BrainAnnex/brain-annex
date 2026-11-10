@@ -361,7 +361,7 @@ def test_create_class_relationship(db):
     # Verify
     q = f'''MATCH 
         (from :CLASS {{name:"Foreign Vocabulary", entity_id: '{foreign_uri}'}})
-        -[:USED_IN]->(l :LINK)-[:USED_IN]
+        -[:USED_IN]->(l :LINK {{name:"USED_IN"}})-[:`_TARGET`]
         ->(to :CLASS {{name:"Course", entity_id: '{course_uri}'}})
         MATCH (l)-[:HAS_PROPERTY]->(p :PROPERTY)
         RETURN p.name AS prop_name ORDER BY prop_name
@@ -679,6 +679,19 @@ def test_get_class_instances(db):
 
 def test_get_related_class_names(db):
     pass    # TODO
+
+
+
+def test_get_class_links_full_data(db):
+    db.empty_dbase()
+
+    GraphSchema.create_class(name="Person")
+    GraphSchema.create_class(name="Company")
+    GraphSchema.create_class(name="City")
+
+    result = GraphSchema.get_class_links_full_data("Person")
+    assert result == []
+    #TODO
 
 
 

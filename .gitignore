@@ -133,6 +133,7 @@ dmypy.json
 
 # Brain Annex - specific
 /notebooks/PRIVATE/
+/UNUSED/
 config.ini
 quick2.bat
 quick_private.bat

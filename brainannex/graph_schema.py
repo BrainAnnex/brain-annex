@@ -751,8 +751,8 @@ class GraphSchema:
         if use_link_node:
             new_link_uri = cls.reserve_next_entity_id(namespace="schema_node")     # For the "LINK" node about to get created
             q += f'''MERGE (from)-[:`{rel_name}`]->
-                    (l:LINK {{uri: $link_uri}})
-                    -[:`{rel_name}`]->(to) \n'''
+                    (l:LINK {{uri: $link_uri, name:"{rel_name}"}})
+                    -[:`_TARGET`]->(to) \n'''
             data_binding["link_uri"] = new_link_uri
             number_rel_expected = 2
 
@@ -770,7 +770,7 @@ class GraphSchema:
 
                 # EXAMPLE of the additional Cypher created when link_properties = ["p1", "p2"], on link "CONNECTED_TO":
                 '''
-                    MERGE (from)-[:`CONNECTED_TO`]->(l:LINK {uri: $link_uri})-[:`CONNECTED_TO`]->(to)
+                    MERGE (from)-[:`CONNECTED_TO`]->(l:LINK {uri: $link_uri, name: "CONNECTED_TO"})-[:`_TARGET`]->(to)
                     MERGE (l)-[:HAS_PROPERTY {index: 1}]->(:PROPERTY {name: $link_property_1, uri: 'schema-123'})
                     MERGE (l)-[:HAS_PROPERTY {index: 2}]->(:PROPERTY {name: $link_property_2, uri: 'schema-124'})
                 '''
@@ -924,8 +924,8 @@ class GraphSchema:
         Return True if a relationship with the specified name exists between the two given Classes,
         in the specified direction.
         The Schema allows several scenarios:
-            - A direct relationship from one Class node to the other
-            - A relationship that goes thru an intermediary "LINK" node
+            - A direct relationship from one Class node to the other [TODO: this is being phased out]
+            - A relationship that goes thru an intermediary "LINK" node [TODO: this will become the required standard]
             - Either of the 2 above scenarios, but between "ancestors" of the two nodes;
               "ancestors" are defined by means of following
               any number of "INSTANCE_OF" hops to other Class nodes
@@ -977,7 +977,7 @@ class GraphSchema:
         # If still unsuccessful, see if it's possible to find a relationship by means of
         # an intermediary "LINK" node
         q = f'''
-            MATCH (from :CLASS)-[r:`{rel_name}`]->(:LINK)-[:`{rel_name}`]->(to :CLASS) 
+            MATCH (from :CLASS)-[r:`{rel_name}`]->(:LINK)-[:`_TARGET`]->(to :CLASS) 
             {common_query_end}
             '''
         #print("Attempt 3: ", q)
@@ -989,7 +989,7 @@ class GraphSchema:
         # a "LINK" intermediary node, as well as "INSTANCE_OF" ancestors
         q = f'''
             MATCH (from :CLASS)-[:INSTANCE_OF*0..]->
-            (left :CLASS)-[r:`{rel_name}`]->(:LINK)-[:`{rel_name}`]->(right :CLASS)
+            (left :CLASS)-[r:`{rel_name}`]->(:LINK)-[:`_TARGET`]->(right :CLASS)
             <-[:INSTANCE_OF*0..]-(to :CLASS) 
             {common_query_end}
             '''
@@ -1089,14 +1089,54 @@ class GraphSchema:
 
 
     @classmethod
-    def get_class_relationships(cls, class_name :str, link_dir="BOTH", omit_instance=False) -> Union[dict, list]:
+    def get_class_links_full_data(cls, class_name :str) -> list:
+        """
+        Returns outgoing semantic LINK definitions for the given source class.
+
+       The method should return only links outgoing
+       from the requested source class.
+       Extra metadata may be included, but is ignored here.
+       Relationship properties on LINK nodes are also ignored.
+
+        ~~~
+        EXAMPLE:
+           [
+               {"name": "WORKS_FOR", "target_class": "Employer"},
+               {"name": "LIVES_IN",  "target_class": "City"},
+           ]
+
+           * `name` is the LINK node's semantic name.
+           * `target_class` is the name of the destination CLASS node.
+
+        :param class_name:  The name of the Class of interest
+        :return:            A (possibly empty) list of dictionaries;
+                                each dictionary contains the keys "name" and "target_class"
+        """
+        #out_rels = cls.get_class_relationships(class_name=class_name, link_dir="OUT", omit_instance=True)
+        q = '''
+            MATCH (from :CLASS {name: $class_name})
+                        -->
+                  (l :LINK)
+                        -[:`TARGET`]->
+                  (to :CLASS)
+            RETURN l.name AS name, to.name AS target_class
+            '''
+
+        result = cls.db.query(q, data_binding={"class_name": class_name})
+
+        return result
+
+
+
+    @classmethod
+    def get_class_relationships(cls, class_name :str, link_dir="BOTH", omit_instance=False) -> dict|list:
         """
         Fetch and return the names of all the relationships (both inbound and outbound)
         attached to the given Class.
         Treat separately the inbound and the outbound ones.
         If the Class doesn't exist, empty lists are returned.
 
-        :param class_name:      The name of the desired Class
+        :param class_name:      The name of the Class of interest
         :param link_dir:        Desired direction(s) of the relationships; one of "BOTH" (default), "IN" or "OUT"
         :param omit_instance:   If True, the common outbound relationship "INSTANCE_OF" is omitted
 
