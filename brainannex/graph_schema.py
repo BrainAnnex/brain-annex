@@ -475,8 +475,8 @@ class GraphSchema:
 
         :param only_visible:[OPTIONAL] Default, False.
                                 If True, only return the Classes that have an attribute
-                                named `visible` and set to True
-        :return:            A list of all the existing Class names
+                                named `visible` that is set to True
+        :return:            A list of Class names
         """
         #TODO: or a fuller listing - not yet implemented
 

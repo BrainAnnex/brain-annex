@@ -2,6 +2,30 @@
 
 Dynamically generated Strawberry GraphQL API for Brain Annex.
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+USAGE EXAMPLE:
+
+{
+
+  Entrees {
+
+    name
+    eval
+
+    BA_served_at {
+      name
+      address
+      city
+      notes
+    }
+
+  }
+
+}
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 Current scope:
     * Discover semantic classes marked visible=True.
     * Expose only class properties marked visible=True.
@@ -222,7 +246,8 @@ def _get_visible_class_names() -> List[str]:
     """
     Return the semantic classes selected for GraphQL exposure
 
-    :return:
+    :return:    A list of Class names that have an attribute
+                    named `visible` that is set to True
     """
     class_results = GraphSchema.get_all_classes(only_visible=True)
     return _normalise_class_name_results(class_results)
@@ -242,6 +267,10 @@ def _get_visible_properties(class_name: str) -> List[dict]:
     property_definitions = GraphSchema.get_class_properties_full_data(
         class_name=class_name
     )
+    #         EXAMPLE:
+    #             [{'name': 'body', 'entity_id': 'schema-2', '_internal_id': 123,
+    #               'dtype': 'string', 'description': 'the body of the quote'}
+    #             ]
 
     if property_definitions is None:
         property_definitions = []
@@ -454,7 +483,7 @@ def _adapt_data_records(
     records: Any,
     definitions: dict,
     strawberry_types: dict,
-) -> List[Any]:
+    ) -> List[Any]:
     """Convert GraphSchema data-node dictionaries to generated Strawberry objects."""
     if records is None:
         return []
@@ -505,6 +534,8 @@ def _make_root_resolver(class_name: str, definitions: dict, strawberry_types: di
     """Create the root resolver for one visible semantic class."""
     def resolve_class_records() -> List[Any]:
         records = GraphSchema.get_data_nodes_of_class(class_name=class_name)
+        # A (possibly-empty) list of dicts; each list item contains data from a node
+
         return _adapt_data_records(
             class_name,
             records,
