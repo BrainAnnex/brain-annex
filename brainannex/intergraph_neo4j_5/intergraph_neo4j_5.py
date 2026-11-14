@@ -295,7 +295,7 @@ class InterGraph:
 
 
 
-    def query(self, q :str, data_binding=None, single_row=False, single_cell="", single_column=""):
+    def query(self, q :str, data_binding:dict =None, single_row=False, single_cell="", single_column=""):
         """
         Run a Cypher query.  Best suited for Cypher queries that return individual values
         (such as node properties or computed values),

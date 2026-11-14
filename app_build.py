@@ -126,12 +126,12 @@ def create_app(db=None, test=False, config_override=None) -> Flask:
     try:
         register_graphql(app)           # For GraphQL tests
     except Exception as ex:
-        print("create_app(): Unable to start the universal GraphQL endpoint.  Reason: ", ex)
+        print("create_app(): Unable to start the test GraphQL endpoint.  Reason: ", ex)
 
     try:
         register_graphql_2(app)         # For schema-based GraphQL endpoint
     except Exception as ex:
-        print("create_app(): Unable to start the universal GraphQL endpoint.  Reason: ", ex)
+        print("*** WARNING ***  create_app(): Unable to start the universal GraphQL endpoint.  Reason: ", ex)
 
 
     return app

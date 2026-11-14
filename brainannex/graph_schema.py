@@ -794,39 +794,39 @@ class GraphSchema:
 
 
     @classmethod
-    def rename_class_rel(cls, from_class: int, to_class: int, new_rel_name) -> bool:
+    def rename_class_rel(cls, from_class: int, to_class: int, old_rel_name :str, new_rel_name:str) -> bool:
         """
 
         Rename the old relationship between the specified classes
 
-        :param from_class:
-        :param to_class:
-        :param new_rel_name:
-        :return:            True if another relationship was found, and successfully renamed;
-                            otherwise, False
+        :param from_class:      Name of the Class where the relationship originates
+        :param to_class:        Name of the Class where the relationship terminates
+        :param old_rel_name:    Current relationship name to change
+        :param new_rel_name:    New name to give to the above relationship, if found
+        :return:                True if any relationship was found, and successfully renamed;
+                                otherwise, False
         """
-        #### TODO: NOT IN CURRENT USE
-        # TODO: if more than 1 relationship exists between the given Classes,
-        #               then they will all be replaced??  TO FIX!  (the old name ought be provided)
+        # TODO: pytest
 
         q = f'''
-            MATCH (from :`CLASS` {{ uri: '{from_class}' }})
-                  -[rel]
-                  ->(to :`CLASS` {{ uri: '{to_class}' }})
-            MERGE (from)-[:{new_rel_name}]->(to)
+            MATCH (from :`CLASS` {{ name: $from_class }})
+                  -[r: `{old_rel_name}`]
+                  ->(to :`CLASS` {{ name: $to_class }})
+            MERGE (from)-[:`{new_rel_name}`]->(to)
             DELETE rel 
             '''
         # EXAMPLE:
         '''
-            MATCH (from :`CLASS` { uri: 'schema-4' })
-                  -[rel]
-                  ->(to :`CLASS` { uri: 'schema-19' })
-            MERGE (from)-[:INSTANCE_OF]->(to)
+            MATCH (from :`CLASS` { name: $from_class })
+                  -[rel: `build_by`]
+                  ->(to :`CLASS` { name: $to_class })
+            MERGE (from)-[:`manufactured by`]->(to)
             DELETE rel
         '''
+        # T
         #print(q)
-        result = cls.db.update_query(q)
-        #print("result of rename_class_rel in remove_property_from_class(): ", result)
+        result = cls.db.update_query(q, data_binding={"from_class": from_class, "to_class": to_class})
+        #print("result of rename_class_rel(): ", result)
         if (result.get("relationships_deleted") == 1) and (result.get("relationships_created") == 1):
             return True
         else:
