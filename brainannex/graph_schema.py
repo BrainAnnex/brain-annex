@@ -2033,24 +2033,25 @@ class GraphSchema:
         # ------------------------------------------------------------------
 
         if cls.db is None:
-            raise RuntimeError("generate_schema(): no database has been set")
+            raise RuntimeError("generate_schema_from_data(): no database has been set")
 
         if sample_size is not None:
             if type(sample_size) is not int or sample_size < 1:
                 raise ValueError(
-                    "generate_schema(): sample_size must be a positive "
+                    "generate_schema_from_data(): argument `sample_size` must be a positive "
                     "integer or None"
                 )
 
         if type(set_class_property) is not bool:
             raise ValueError(
-                "generate_schema(): set_class_property must be a boolean"
+                "generate_schema_from_data(): argument `set_class_property` must be a boolean"
             )
 
         if type(make_visible) is not bool:
             raise ValueError(
-                "generate_schema(): make_visible must be a boolean"
+                "generate_schema_from_data(): argument `make_visible` must be a boolean"
             )
+
 
         # Current GraphSchema dtype vocabulary.
         APOC_TYPE_TO_DTYPE = {
@@ -2104,7 +2105,7 @@ class GraphSchema:
 
             if dtype is None:
                 raise ValueError(
-                    "generate_schema(): unsupported Neo4j property type "
+                    "generate_schema_from_data(): unsupported Neo4j property type "
                     f"{apoc_type!r} for Property {property_name!r} "
                     f"({origin}). Supported types are "
                     f"{list(APOC_TYPE_TO_DTYPE.values())}."
@@ -2120,7 +2121,7 @@ class GraphSchema:
 
                 if previous_dtype != dtype:
                     raise ValueError(
-                        "generate_schema(): inconsistent data types "
+                        "generate_schema_from_data(): inconsistent data types "
                         f"for Property {property_name!r}, owner {owner!r}: "
                         f"{previous_dtype!r} ({previous_origin}) versus "
                         f"{dtype!r} ({origin})."
@@ -2153,12 +2154,12 @@ class GraphSchema:
 
             if not isinstance(node_labels, (list, tuple)):
                 raise ValueError(
-                    f"generate_schema(): invalid labels on data node {node_id}"
+                    f"generate_schema_from_data(): invalid labels on data node {node_id}"
                 )
 
             if not isinstance(node_properties, dict):
                 raise ValueError(
-                    f"generate_schema(): invalid properties on node {node_id}"
+                    f"generate_schema_from_data(): invalid properties on node {node_id}"
                 )
 
             # ------------------------------------------------------------
@@ -2175,13 +2176,13 @@ class GraphSchema:
                         or class_name != class_name.strip()):
 
                     raise ValueError(
-                        f"generate_schema(): invalid _CLASS value {class_name!r} "
+                        f"generate_schema_from_data(): invalid _CLASS value {class_name!r} "
                         f"on data node {node_id}"
                     )
 
                 if class_name not in node_labels:
                     raise ValueError(
-                        f"generate_schema(): Class/label conflict on data node "
+                        f"generate_schema_from_data(): Class/label conflict on data node "
                         f"{node_id}: _CLASS={class_name!r}, but database labels "
                         f"are {node_labels!r}. The labels must include the "
                         "_CLASS value."
@@ -2195,7 +2196,7 @@ class GraphSchema:
 
                 if len(node_labels) != 1:
                     raise ValueError(
-                        f"generate_schema(): data node {node_id} has no `_CLASS` "
+                        f"generate_schema_from_data(): data node {node_id} has no `_CLASS` "
                         f"property and must therefore have exactly ONE database "
                         f"label; found {len(node_labels)} : {node_labels!r}."
                     )
@@ -2208,7 +2209,7 @@ class GraphSchema:
                         or class_name != class_name.strip()):
 
                     raise ValueError(
-                        f"generate_schema(): invalid Class name {class_name!r} "
+                        f"generate_schema_from_data(): invalid Class name {class_name!r} "
                         f"on data node {node_id}"
                     )
 
@@ -2231,7 +2232,7 @@ class GraphSchema:
 
             if actual != expected:
                 raise RuntimeError(
-                    f"generate_schema(): expected to {description} "
+                    f"generate_schema_from_data(): expected to {description} "
                     f"{expected} items, but processed {actual}"
                 )
 
@@ -2250,7 +2251,7 @@ class GraphSchema:
 
         if result[0]["schema_count"] > 0:
             raise RuntimeError(
-                "generate_schema(): the database already contains "
+                "generate_schema_from_data(): the database already contains "
                 f"{result[0]['schema_count']} SCHEMA nodes. "
                 "Declining to overwrite an existing schema."
             )
@@ -2272,7 +2273,7 @@ class GraphSchema:
 
         except Exception as ex:
             raise RuntimeError(
-                "generate_schema(): APOC function "
+                "generate_schema_from_data(): APOC function "
                 "apoc.meta.cypher.types() is unavailable. "
                 "Install a version of APOC compatible with the Neo4j "
                 "installation and ensure the function is unrestricted."
@@ -2282,7 +2283,7 @@ class GraphSchema:
                 or result[0].get("types", {}).get("probe") != "INTEGER"):
 
             raise RuntimeError(
-                "generate_schema(): APOC type-inspection test failed."
+                "generate_schema_from_data(): APOC type-inspection test failed."
             )
 
 
@@ -2330,7 +2331,7 @@ class GraphSchema:
 
         if not sampled_nodes:
             raise RuntimeError(
-                "generate_schema(): no non-SCHEMA data nodes found."
+                "generate_schema_from_data(): no non-SCHEMA data nodes found."
             )
 
 
@@ -2384,7 +2385,7 @@ class GraphSchema:
 
                 if apoc_type is None:
                     raise RuntimeError(
-                        "generate_schema(): APOC did not return a type "
+                        "generate_schema_from_data(): APOC did not return a type "
                         f"for node Property {property_name!r} "
                         f"on data node {node_id}."
                     )
@@ -2512,7 +2513,7 @@ class GraphSchema:
 
             if type(link_name) is not str or not link_name:
                 raise ValueError(
-                    f"generate_schema(): invalid relationship type {link_name!r}"
+                    f"generate_schema_from_data(): invalid relationship type {link_name!r}"
                 )
 
             link_key = (source_class, link_name, target_class)
@@ -2535,7 +2536,7 @@ class GraphSchema:
 
                 if apoc_type is None:
                     raise RuntimeError(
-                        "generate_schema(): APOC did not return a type "
+                        "generate_schema_from_data(): APOC did not return a type "
                         f"for relationship Property {property_name!r} "
                         f"on relationship {link_name!r}."
                     )
@@ -2874,7 +2875,7 @@ class GraphSchema:
                 except Exception as rollback_error:
 
                     raise RuntimeError(
-                        "generate_schema(): generation failed "
+                        "generate_schema_from_data(): generation failed "
                         f"({ex}); rollback also failed ({rollback_error})."
                     ) from ex
 

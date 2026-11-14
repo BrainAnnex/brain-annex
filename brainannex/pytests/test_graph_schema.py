@@ -1551,6 +1551,121 @@ def test_generate_schema_from_data_5(db):
     assert db.query(q, single_cell="NUMBER_FOUND") == 1
 
 
+def test_generate_schema_from_data_6(db):
+    # Relationships with properties
+
+    db.empty_dbase()
+
+    # Create data nodes
+    alice = db.create_node(
+        labels="Person",
+        properties={"name": "Val"}
+    )
+
+    bob = db.create_node(
+        labels="Person",
+        properties={"name": "Bob"}
+    )
+
+    laptop = db.create_node(
+        labels="Product",
+        properties={"name": "Laptop"}
+    )
+
+    phone = db.create_node(
+        labels="Product",
+        properties={"name": "Phone"}
+    )
+
+    # Create relationships with properties
+    db.add_links_fast(
+        alice, laptop, "PURCHASED",
+        rel_props={"quantity": 1, "unit_price": 1200.0}
+    )
+
+    db.add_links_fast(
+        bob, phone, "PURCHASED",
+        rel_props={"quantity": 2, "unit_price": 800.0}
+    )
+
+    result = GraphSchema.generate_schema_from_data(sample_size=None)
+
+    assert result == {
+        'sampled_nodes': 4,
+        'relationships_inspected': 2,
+        'classes_created': 2,
+        'class_properties_created': 2,
+        'links_created': 1,
+        'link_properties_created': 2,
+        'class_properties_set_on_data_nodes': 0,
+        'graphql_visible': False,
+        'class_names': ['Person', 'Product']
+    }
+
+    # Verify the LINK and its endpoint Classes.
+    q = '''
+        MATCH
+            (:CLASS:SCHEMA {name: "Person"})
+            -[:PURCHASED]->
+            (l:LINK:SCHEMA {name: "PURCHASED"})
+            -[:_TARGET]->
+            (:CLASS:SCHEMA {name: "Product"})
+
+        RETURN COUNT(l) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 1
+
+    # Verify that the LINK has both expected Properties and dtypes.
+    q = '''
+        MATCH
+            (:CLASS:SCHEMA {name: "Person"})
+            -[:PURCHASED]->
+            (l:LINK:SCHEMA {name: "PURCHASED"})
+            -[:_TARGET]->
+            (:CLASS:SCHEMA {name: "Product"})
+
+        MATCH (l)-[:HAS_PROPERTY]->(p:PROPERTY:SCHEMA)
+
+        WHERE
+            (p.name = "quantity" AND p.dtype = "int")
+            OR
+            (p.name = "unit_price" AND p.dtype = "float")
+
+        RETURN COUNT(p) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 2
+
+
+def test_generate_schema_from_data_7(db):
+    # Inconsistent data types (`age` first appears an an int, then as a string)
+
+    db.empty_dbase()
+
+    db.create_node(
+        labels="Person",
+        properties={"name": "Alice", "age": 25}
+    )
+
+    db.create_node(
+        labels="Person",
+        properties={"name": "Bob", "age": "unknown"}
+    )
+
+    # Same Property name (`age`), different observed data types
+    with pytest.raises(ValueError, match="inconsistent data types"):
+        GraphSchema.generate_schema_from_data(sample_size=None)
+
+    # Inference should fail before any schema nodes are created.
+    q = '''
+        MATCH (n:SCHEMA)
+        RETURN COUNT(n) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 0
+
+
 
 def test_get_schema_code(db):
     pass    # TODO
