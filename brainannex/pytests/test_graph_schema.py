@@ -1288,6 +1288,268 @@ def test_generate_schema_from_data_1(db):
     assert result == 1
 
 
+    # Check that neither `_CLASS` nor `visible` properties were assigned
+    q = '''
+        MATCH (p:Person)
+        WHERE p._CLASS IS NOT NULL
+        RETURN COUNT(p) AS NUMBER_FOUND
+    '''
+    assert db.query(q, single_cell="NUMBER_FOUND") == 0
+
+    q = '''
+        MATCH (n:SCHEMA)
+        WHERE (n:CLASS OR n:PROPERTY) AND n.visible IS NOT NULL
+        RETURN COUNT(n) AS NUMBER_FOUND
+    '''
+    assert db.query(q, single_cell="NUMBER_FOUND") == 0
+
+
+def test_generate_schema_from_data_2(db):
+    # Explore error scenarios in the interplay of data node labels and `_CLASS` properties
+
+    db.empty_dbase()
+    db.create_node(labels="Person", properties={"name": "Bob", "_CLASS": "Individual"}) # Conflict!
+    with pytest.raises(ValueError):
+        GraphSchema.generate_schema_from_data()
+
+    db.empty_dbase()
+    db.create_node(labels=None, properties={"name": "What I am?"})       # No semantic identity
+    with pytest.raises(ValueError):
+        GraphSchema.generate_schema_from_data()
+
+    db.empty_dbase()
+    db.create_node(labels=["Individual", "Employee"], properties={"name": "Undecided"})       # Which label to follow??
+    with pytest.raises(ValueError):
+        GraphSchema.generate_schema_from_data()
+
+
+def test_generate_schema_from_data_3(db):
+
+    # ------------------------------------------------------------
+    # Scenario :
+    # All nodes have the label Person, but one also has _CLASS="Employee" (and a label consistent with that)
+    # We verify that an existing _CLASS value isn't overwritten.
+    # set_class_property=True, make_visible=False, make_visible=False.
+    # ------------------------------------------------------------
+
+    db.empty_dbase()
+
+    p1 = db.create_node(
+        labels="Person",
+        properties={"name": "Alice", "age": 35}
+    )
+
+    p2 = db.create_node(
+        labels=["Person", "Employee"],
+        properties={"name": "Bob", "employee ID": 123, "_CLASS": "Employee"}   # "_CLASS" identifies the correct semantic label
+    )
+
+    p3 = db.create_node(
+        labels="Person",
+        properties={"name": "Charlie", "occupation": "Doctor"}
+    )
+
+    result = GraphSchema.generate_schema_from_data(
+        sample_size=None,
+        set_class_property=True,
+        make_visible=False
+    )
+
+    assert result == {
+        'sampled_nodes': 3,
+        'relationships_inspected': 0,
+        'classes_created': 2,
+        'class_properties_created': 5,
+        'links_created': 0,
+        'link_properties_created': 0,
+        'class_properties_set_on_data_nodes': 2,
+        'graphql_visible': False,
+        'class_names': ['Employee', 'Person']
+    }
+
+    # The two missing `_CLASS` properties were populated with "Person"
+    assert db.query(
+        'MATCH (p:Person) WHERE p._CLASS = "Person" '
+        'RETURN COUNT(p) AS NUMBER_FOUND',
+        single_cell="NUMBER_FOUND"
+    ) == 2
+
+    # The pre-existing `_CLASS` value was preserved.
+    assert db.query(
+        '''
+        MATCH (p:Person:Employee {name: "Bob"})
+        RETURN p._CLASS AS CLASS_NAME
+        ''',
+        single_cell="CLASS_NAME"
+    ) == "Employee"
+
+    # The inferred `Person` Class has the UNION of the observed Properties.
+    q = '''
+        MATCH
+            (c:CLASS:SCHEMA {name: "Person"})
+            -[:HAS_PROPERTY]->(p:PROPERTY:SCHEMA)
+
+        WHERE
+            (p.name = "name" AND p.dtype = "str")
+            OR (p.name = "age" AND p.dtype = "int")
+            OR (p.name = "occupation" AND p.dtype = "str")
+
+        RETURN COUNT(p) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 3
+
+    # The inferred `Employee` Class has the UNION of the observed Properties.
+    q = '''
+        MATCH
+            (c:CLASS:SCHEMA {name: "Employee"})
+            -[:HAS_PROPERTY]->(p:PROPERTY:SCHEMA)
+
+        WHERE
+            (p.name = "name" AND p.dtype = "str")
+            OR (p.name = "employee ID" AND p.dtype = "int")
+
+        RETURN COUNT(p) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 2
+
+    # No CLASS or PROPERTY nodes should have `visible=True`
+    q = '''
+        MATCH (n:SCHEMA)
+        WHERE (n:CLASS OR n:PROPERTY) AND n.visible IS NOT NULL
+        RETURN COUNT(n) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 0
+
+
+
+def test_generate_schema_from_data_4(db):
+    # ------------------------------------------------------------
+    # Scenario B: set_class_property=False, make_visible=True
+    # ------------------------------------------------------------
+
+    db.empty_dbase()
+
+    db.create_node(
+        labels="Company",
+        properties={"name": "Acme"}
+    )
+
+    result = GraphSchema.generate_schema_from_data(
+        sample_size=None,
+        set_class_property=False,
+        make_visible=True
+    )
+
+    assert result == {
+        'sampled_nodes': 1,
+        'relationships_inspected': 0,
+        'classes_created': 1,
+        'class_properties_created': 1,
+        'links_created': 0,
+        'link_properties_created': 0,
+        'class_properties_set_on_data_nodes': 0,
+        'graphql_visible': True,
+        'class_names': ['Company']
+    }
+
+    # Both schema nodes (CLASS and PROPERTY) must be visible.
+    q = '''
+        MATCH (n:SCHEMA)
+        WHERE (n:CLASS OR n:PROPERTY) AND n.visible = true
+        RETURN COUNT(n) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 2
+
+    # No CLASS or PROPERTY node should have missing/false visibility.
+    q = '''
+        MATCH (n:SCHEMA)
+        WHERE (n:CLASS OR n:PROPERTY)
+          AND (n.visible IS NULL OR n.visible <> true)
+        RETURN COUNT(n) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 0
+
+    # The original data node should still lack _CLASS.
+    q = '''
+        MATCH (c:Company)
+        WHERE c._CLASS IS NOT NULL
+        RETURN COUNT(c) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 0
+
+
+def test_generate_schema_from_data_5(db):
+    # Relationships with no properties
+    db.empty_dbase()
+
+    # Create data nodes
+    alice = db.create_node(
+        labels="Person",
+        properties={"name": "Alice"}
+    )
+
+    bob = db.create_node(
+        labels="Person",
+        properties={"name": "Bob"}
+    )
+
+    acme = db.create_node(
+        labels="Company",
+        properties={"name": "Acme"}
+    )
+
+    # Create relationships without properties
+    db.add_links_fast(alice, bob, "KNOWS")
+    db.add_links_fast(alice, acme, "WORKS_FOR")
+
+    result = GraphSchema.generate_schema_from_data(sample_size=None)
+
+    assert result == {
+        'sampled_nodes': 3,
+        'relationships_inspected': 2,
+        'classes_created': 2,
+        'class_properties_created': 2,
+        'links_created': 2,
+        'link_properties_created': 0,
+        'class_properties_set_on_data_nodes': 0,
+        'graphql_visible': False,
+        'class_names': ['Company', 'Person']
+    }
+
+    # Verify Person -[:KNOWS]-> LINK -[:_TARGET]-> Person
+    q = '''
+        MATCH
+            (:CLASS:SCHEMA {name: "Person"})
+            -[:KNOWS]->
+            (l:LINK:SCHEMA {name: "KNOWS"})
+            -[:_TARGET]->
+            (:CLASS:SCHEMA {name: "Person"})
+
+        RETURN COUNT(l) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 1
+
+    # Verify Person -[:WORKS_FOR]-> LINK -[:_TARGET]-> Company
+    q = '''
+        MATCH
+            (:CLASS:SCHEMA {name: "Person"})
+            -[:WORKS_FOR]->
+            (l:LINK:SCHEMA {name: "WORKS_FOR"})
+            -[:_TARGET]->
+            (:CLASS:SCHEMA {name: "Company"})
+
+        RETURN COUNT(l) AS NUMBER_FOUND
+    '''
+
+    assert db.query(q, single_cell="NUMBER_FOUND") == 1
+
 
 
 def test_get_schema_code(db):

@@ -1986,8 +1986,15 @@ class GraphSchema:
             CLASS -[:<DATA_REL_TYPE>]-> LINK
             LINK  -[:`_TARGET`]-> CLASS
 
-        Class names are inferred from the data-node property "_CLASS", if present;
-        otherwise, from the node's database label (if absent, or more than 1, raise an Exception).
+
+        Class names are inferred as follows:
+
+            - If the data node has a "_CLASS" property, its value is the
+              Class name. However, the node MUST also have a database label with
+              that same name. Additional labels are permitted.
+
+            - If "_CLASS" is absent, the node must have exactly ONE
+              database label, which is taken as its Class name.
 
         Node Properties and Link Properties are inferred from the union
         of property names observed on the sampled nodes and relationships,
@@ -2127,20 +2134,26 @@ class GraphSchema:
                              node_labels: list,
                              node_properties: dict):
             """
-            Infer the semantic Class of a data node.
+            Infer the semantic Class of a data node
 
-            Returns:
-                (class_name, needs_class_property)
+            If _CLASS is present:
+                - Its value determines the Class name.
+                - The node must have a database label matching that value.
+                - Additional database labels are permitted.
 
-            Exactly one database label is required, even when _CLASS
-            is already present.
+            If _CLASS is absent:
+                - Exactly one database label is required.
+                - That label determines the Class name.
+
+            :param node_id:
+            :param node_labels:
+            :param node_properties:
+            :return:                (class_name, needs_class_property)
             """
 
-            if not isinstance(node_labels, (list, tuple)) or len(node_labels) != 1:
+            if not isinstance(node_labels, (list, tuple)):
                 raise ValueError(
-                    "generate_schema(): a data node must have exactly "
-                    f"one database label. Node ID {node_id} has "
-                    f"{node_labels!r}."
+                    f"generate_schema(): invalid labels on data node {node_id}"
                 )
 
             if not isinstance(node_properties, dict):
@@ -2148,22 +2161,59 @@ class GraphSchema:
                     f"generate_schema(): invalid properties on node {node_id}"
                 )
 
-            class_name = node_properties.get("_CLASS")
-            needs_class_property = class_name is None
+            # ------------------------------------------------------------
+            # Case 1: `_CLASS` property is explicitly present
+            # ------------------------------------------------------------
 
-            if needs_class_property:
+            if "_CLASS" in node_properties:
+
+                class_name = node_properties["_CLASS"]
+                needs_class_property = False
+
+                if (type(class_name) is not str
+                        or not class_name
+                        or class_name != class_name.strip()):
+
+                    raise ValueError(
+                        f"generate_schema(): invalid _CLASS value {class_name!r} "
+                        f"on data node {node_id}"
+                    )
+
+                if class_name not in node_labels:
+                    raise ValueError(
+                        f"generate_schema(): Class/label conflict on data node "
+                        f"{node_id}: _CLASS={class_name!r}, but database labels "
+                        f"are {node_labels!r}. The labels must include the "
+                        "_CLASS value."
+                    )
+
+            # ------------------------------------------------------------
+            # Case 2: `_CLASS` property is absent
+            # ------------------------------------------------------------
+
+            else:
+
+                if len(node_labels) != 1:
+                    raise ValueError(
+                        f"generate_schema(): data node {node_id} has no `_CLASS` "
+                        f"property and must therefore have exactly ONE database "
+                        f"label; found {len(node_labels)} : {node_labels!r}."
+                    )
+
                 class_name = node_labels[0]
+                needs_class_property = True
 
-            if (type(class_name) is not str
-                    or not class_name
-                    or class_name != class_name.strip()):
+                if (type(class_name) is not str
+                        or not class_name
+                        or class_name != class_name.strip()):
 
-                raise ValueError(
-                    f"generate_schema(): invalid Class name {class_name!r} "
-                    f"on data node {node_id}"
-                )
+                    raise ValueError(
+                        f"generate_schema(): invalid Class name {class_name!r} "
+                        f"on data node {node_id}"
+                    )
 
             return class_name, needs_class_property
+
 
 
         def execute_counted_query(query: str,
