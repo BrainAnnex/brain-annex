@@ -1968,6 +1968,892 @@ class GraphSchema:
 
 
     @classmethod
+    def generate_schema_from_data(cls,
+                        sample_size: int | None = 1000,
+                        set_class_property: bool = False,
+                        make_visible: bool = False) -> dict:
+        """
+        Infer and generate a complete semantic schema from existing graph data.
+
+        Creates:
+            `CLASS:SCHEMA` nodes
+            `PROPERTY:SCHEMA` nodes
+            `LINK:SCHEMA` nodes
+
+        Creates schema relationships:
+            CLASS -[:`HAS_PROPERTY`]-> PROPERTY
+
+            CLASS -[:<DATA_REL_TYPE>]-> LINK
+            LINK  -[:`_TARGET`]-> CLASS
+
+        Class names are inferred from the data-node property "_CLASS", if present;
+        otherwise, from the node's database label (if absent, or more than 1, raise an Exception).
+
+        Node Properties and Link Properties are inferred from the union
+        of property names observed on the sampled nodes and relationships,
+        respectively.
+
+        Each Property also receives a "dtype" attribute inferred from
+        its observed Neo4j data type.
+
+        Inconsistent data types for the same Property within the same
+        Class or Link cause an exception.
+
+        Existing schema nodes are not overwritten. Generation is allowed
+        only if the database contains no nodes with the SCHEMA label.
+
+        :param sample_size:
+            Number of data nodes to sample globally.
+            None means all data nodes.
+            Must be a positive integer or None.
+
+        :param set_class_property:
+            If True, populate the "_CLASS" property on sampled data nodes
+            and additional relationship endpoints where that property
+            is missing.
+            Existing "_CLASS" values are never overwritten.
+
+        :param make_visible:
+            If True, assign visible=True to all generated CLASS and
+            PROPERTY nodes, for the universal GraphQL generator.
+
+        :return:
+            A dictionary summarizing the generated schema.
+        """
+
+        # ------------------------------------------------------------------
+        # 0. Validate arguments and database
+        # ------------------------------------------------------------------
+
+        if cls.db is None:
+            raise RuntimeError("generate_schema(): no database has been set")
+
+        if sample_size is not None:
+            if type(sample_size) is not int or sample_size < 1:
+                raise ValueError(
+                    "generate_schema(): sample_size must be a positive "
+                    "integer or None"
+                )
+
+        if type(set_class_property) is not bool:
+            raise ValueError(
+                "generate_schema(): set_class_property must be a boolean"
+            )
+
+        if type(make_visible) is not bool:
+            raise ValueError(
+                "generate_schema(): make_visible must be a boolean"
+            )
+
+        # Current GraphSchema dtype vocabulary.
+        APOC_TYPE_TO_DTYPE = {
+            "STRING": "str",
+            "INTEGER": "int",
+            "FLOAT": "float",
+            "BOOLEAN": "bool"
+        }
+
+        # These are system properties, not user-facing Properties.
+        SYSTEM_PROPERTIES = {"_CLASS", "_entity_id"}
+
+
+        # ------------------------------------------------------------------
+        # Helper functions
+        # ------------------------------------------------------------------
+
+        def quote_identifier(identifier: str) -> str:
+            """
+            Safely quote a Cypher identifier, such as a relationship type.
+            """
+            return "`" + identifier.replace("`", "``") + "`"
+
+
+        def new_entity_id() -> str:
+            """
+            Reserve a new schema-wide entity ID.
+            """
+            return cls._next_available_schema_entity_id()
+
+
+        def observe_dtype(dtype_registry: dict,
+                          owner,
+                          property_name: str,
+                          apoc_type: str,
+                          origin: str) -> None:
+            """
+            Register an observed property type.
+
+            Raises an exception if:
+                - The type is not supported by GraphSchema.
+                - A previous observation of this same Property has
+                  a different data type.
+
+            dtype_registry keys are (owner, property_name).
+
+            Values are (GraphSchema dtype, first observation origin).
+            """
+
+            dtype = APOC_TYPE_TO_DTYPE.get(apoc_type)
+
+            if dtype is None:
+                raise ValueError(
+                    "generate_schema(): unsupported Neo4j property type "
+                    f"{apoc_type!r} for Property {property_name!r} "
+                    f"({origin}). Supported types are "
+                    f"{list(APOC_TYPE_TO_DTYPE.values())}."
+                )
+
+            key = (owner, property_name)
+
+            previous = dtype_registry.get(key)
+
+            if previous is not None:
+
+                previous_dtype, previous_origin = previous
+
+                if previous_dtype != dtype:
+                    raise ValueError(
+                        "generate_schema(): inconsistent data types "
+                        f"for Property {property_name!r}, owner {owner!r}: "
+                        f"{previous_dtype!r} ({previous_origin}) versus "
+                        f"{dtype!r} ({origin})."
+                    )
+
+            else:
+                dtype_registry[key] = (dtype, origin)
+
+
+        def infer_class_name(node_id: int,
+                             node_labels: list,
+                             node_properties: dict):
+            """
+            Infer the semantic Class of a data node.
+
+            Returns:
+                (class_name, needs_class_property)
+
+            Exactly one database label is required, even when _CLASS
+            is already present.
+            """
+
+            if not isinstance(node_labels, (list, tuple)) or len(node_labels) != 1:
+                raise ValueError(
+                    "generate_schema(): a data node must have exactly "
+                    f"one database label. Node ID {node_id} has "
+                    f"{node_labels!r}."
+                )
+
+            if not isinstance(node_properties, dict):
+                raise ValueError(
+                    f"generate_schema(): invalid properties on node {node_id}"
+                )
+
+            class_name = node_properties.get("_CLASS")
+            needs_class_property = class_name is None
+
+            if needs_class_property:
+                class_name = node_labels[0]
+
+            if (type(class_name) is not str
+                    or not class_name
+                    or class_name != class_name.strip()):
+
+                raise ValueError(
+                    f"generate_schema(): invalid Class name {class_name!r} "
+                    f"on data node {node_id}"
+                )
+
+            return class_name, needs_class_property
+
+
+        def execute_counted_query(query: str,
+                                  binding: dict,
+                                  expected: int,
+                                  description: str) -> None:
+            """
+            Execute a write query and verify the number of items created.
+            The query must return count(*) AS created.
+            """
+
+            result = cls.db.query(query, binding)
+
+            actual = result[0].get("created", 0) if result else 0
+
+            if actual != expected:
+                raise RuntimeError(
+                    f"generate_schema(): expected to {description} "
+                    f"{expected} items, but processed {actual}"
+                )
+
+
+
+        # ------------------------------------------------------------------
+        # 1. Ensure the schema database is empty
+        # ------------------------------------------------------------------
+
+        query = """
+            MATCH (n:SCHEMA)
+            RETURN count(n) AS schema_count
+            """
+
+        result = cls.db.query(query, {})
+
+        if result[0]["schema_count"] > 0:
+            raise RuntimeError(
+                "generate_schema(): the database already contains "
+                f"{result[0]['schema_count']} SCHEMA nodes. "
+                "Declining to overwrite an existing schema."
+            )
+
+
+        # ------------------------------------------------------------------
+        # 2. Check availability of the required APOC function
+        # ------------------------------------------------------------------
+
+        # This is also a quick compatibility / installation check.
+
+        try:
+            result = cls.db.query(
+                """
+                RETURN apoc.meta.cypher.types({probe: 1}) AS types
+                """,
+                {}
+            )
+
+        except Exception as ex:
+            raise RuntimeError(
+                "generate_schema(): APOC function "
+                "apoc.meta.cypher.types() is unavailable. "
+                "Install a version of APOC compatible with the Neo4j "
+                "installation and ensure the function is unrestricted."
+            ) from ex
+
+        if (not result
+                or result[0].get("types", {}).get("probe") != "INTEGER"):
+
+            raise RuntimeError(
+                "generate_schema(): APOC type-inspection test failed."
+            )
+
+
+        # ------------------------------------------------------------------
+        # 3. Sample the data nodes
+        # ------------------------------------------------------------------
+
+        if sample_size is None:
+
+            query = """
+                MATCH (n)
+                WHERE NOT n:SCHEMA
+    
+                RETURN
+                    id(n) AS node_id,
+                    labels(n) AS node_labels,
+                    properties(n) AS node_properties,
+                    apoc.meta.cypher.types(properties(n))
+                        AS node_property_types
+                """
+
+            binding = {}
+
+        else:
+
+            query = """
+                MATCH (n)
+                WHERE NOT n:SCHEMA
+    
+                WITH n
+                ORDER BY rand()
+                LIMIT $sample_size
+    
+                RETURN
+                    id(n) AS node_id,
+                    labels(n) AS node_labels,
+                    properties(n) AS node_properties,
+                    apoc.meta.cypher.types(properties(n))
+                        AS node_property_types
+                """
+
+            binding = {"sample_size": sample_size}
+
+        sampled_nodes = cls.db.query(query, binding)
+
+        if not sampled_nodes:
+            raise RuntimeError(
+                "generate_schema(): no non-SCHEMA data nodes found."
+            )
+
+
+        # ------------------------------------------------------------------
+        # 4. Infer Classes and their Properties
+        # ------------------------------------------------------------------
+
+        # Internal node ID -> inferred Class name.
+        node_classes = {}
+
+        # Class name -> set of observed Property names.
+        class_properties = {}
+
+        # (Class name, Property name) -> (dtype, first observation).
+        class_property_dtypes = {}
+
+        # Nodes on which _CLASS needs to be populated.
+        missing_class_values = {}
+
+        sampled_node_ids = []
+
+
+        for record in sampled_nodes:
+
+            node_id = record["node_id"]
+            node_labels = record["node_labels"]
+            node_properties = record["node_properties"] or {}
+            property_types = record["node_property_types"] or {}
+
+            class_name, needs_class_property = infer_class_name(
+                node_id, node_labels, node_properties
+            )
+
+            node_classes[node_id] = class_name
+            sampled_node_ids.append(node_id)
+
+            if needs_class_property:
+                missing_class_values[node_id] = class_name
+
+            class_properties.setdefault(class_name, set())
+
+            # Assemble the union of observed Property names.
+            for property_name in node_properties:
+
+                if property_name in SYSTEM_PROPERTIES:
+                    continue
+
+                class_properties[class_name].add(property_name)
+
+                apoc_type = property_types.get(property_name)
+
+                if apoc_type is None:
+                    raise RuntimeError(
+                        "generate_schema(): APOC did not return a type "
+                        f"for node Property {property_name!r} "
+                        f"on data node {node_id}."
+                    )
+
+                observe_dtype(
+                    class_property_dtypes,
+                    class_name,
+                    property_name,
+                    apoc_type,
+                    f"node ID {node_id}"
+                )
+
+
+        # ------------------------------------------------------------------
+        # 5. Infer Links and their Properties
+        # ------------------------------------------------------------------
+
+        # Each Link is identified by:
+        #
+        #     (source Class, data relationship type, target Class)
+        #
+        # This avoids conflating relationships with the same name but
+        # different semantic endpoints.
+
+        link_properties = {}
+        link_property_dtypes = {}
+
+
+        def resolve_endpoint(node_id: int,
+                             labels: list,
+                             properties: dict) -> str:
+            """
+            Resolve the semantic Class of a relationship endpoint.
+
+            Endpoints need not belong to the original random sample.
+            Their Class must nevertheless be inferred.
+
+            We do not infer their ordinary Properties unless they were
+            part of the original node sample.
+            """
+
+            if node_id in node_classes:
+                return node_classes[node_id]
+
+            properties = properties or {}
+
+            class_name, needs_class_property = infer_class_name(
+                node_id, labels, properties
+            )
+
+            node_classes[node_id] = class_name
+
+            # The Class may be discovered exclusively through a Link.
+            class_properties.setdefault(class_name, set())
+
+            if needs_class_property:
+                missing_class_values[node_id] = class_name
+
+            return class_name
+
+
+        if sample_size is None:
+
+            edge_filter = """
+                NOT source:SCHEMA
+                AND NOT target:SCHEMA
+                """
+
+            binding = {}
+
+        else:
+
+            edge_filter = """
+                (
+                    id(source) IN $sampled_node_ids
+                    OR
+                    id(target) IN $sampled_node_ids
+                )
+                AND NOT source:SCHEMA
+                AND NOT target:SCHEMA
+                """
+
+            binding = {"sampled_node_ids": sampled_node_ids}
+
+
+        query = f"""
+            MATCH (source)-[r]->(target)
+    
+            WHERE {edge_filter}
+    
+            RETURN
+                id(source) AS source_id,
+                labels(source) AS source_labels,
+                properties(source) AS source_properties,
+    
+                id(target) AS target_id,
+                labels(target) AS target_labels,
+                properties(target) AS target_properties,
+    
+                type(r) AS link_name,
+                properties(r) AS relationship_properties,
+    
+                apoc.meta.cypher.types(properties(r))
+                    AS relationship_property_types
+            """
+
+        edge_records = cls.db.query(query, binding)
+
+
+        for record in edge_records:
+
+            source_class = resolve_endpoint(
+                record["source_id"],
+                record["source_labels"],
+                record["source_properties"]
+            )
+
+            target_class = resolve_endpoint(
+                record["target_id"],
+                record["target_labels"],
+                record["target_properties"]
+            )
+
+            link_name = record["link_name"]
+
+            if type(link_name) is not str or not link_name:
+                raise ValueError(
+                    f"generate_schema(): invalid relationship type {link_name!r}"
+                )
+
+            link_key = (source_class, link_name, target_class)
+
+            link_properties.setdefault(link_key, set())
+
+            relationship_properties = (
+                record["relationship_properties"] or {}
+            )
+
+            relationship_property_types = (
+                record["relationship_property_types"] or {}
+            )
+
+            for property_name in relationship_properties:
+
+                link_properties[link_key].add(property_name)
+
+                apoc_type = relationship_property_types.get(property_name)
+
+                if apoc_type is None:
+                    raise RuntimeError(
+                        "generate_schema(): APOC did not return a type "
+                        f"for relationship Property {property_name!r} "
+                        f"on relationship {link_name!r}."
+                    )
+
+                observe_dtype(
+                    link_property_dtypes,
+                    link_key,
+                    property_name,
+                    apoc_type,
+                    f"relationship {link_name!r}"
+                )
+
+
+        # ------------------------------------------------------------------
+        # 6. Prepare all schema nodes before writing anything
+        # ------------------------------------------------------------------
+
+        class_names = sorted(
+            class_properties,
+            key=lambda name: (name.casefold(), name)
+        )
+
+        class_records = []
+
+        for class_name in class_names:
+
+            properties = {
+                "_entity_id": new_entity_id(),
+                "name": class_name,
+                "strict": False
+            }
+
+            if make_visible:
+                properties["visible"] = True
+
+            class_records.append({
+                "props": properties
+            })
+
+
+        # CLASS Properties.
+        class_property_records = []
+
+        for class_name in class_names:
+
+            property_names = sorted(
+                class_properties[class_name],
+                key=lambda name: (name.casefold(), name)
+            )
+
+            for index, property_name in enumerate(property_names, start=1):
+
+                dtype = class_property_dtypes[(class_name, property_name)][0]
+
+                properties = {
+                    "_entity_id": new_entity_id(),
+                    "name": property_name,
+                    "dtype": dtype
+                }
+
+                if make_visible:
+                    properties["visible"] = True
+
+                class_property_records.append({
+                    "owner_name": class_name,
+                    "index": index,
+                    "props": properties
+                })
+
+
+        # LINK nodes.
+        link_keys = sorted(
+            link_properties,
+            key=lambda key: (
+                key[0].casefold(),
+                key[1].casefold(),
+                key[2].casefold(),
+                key[0], key[1], key[2]
+            )
+        )
+
+        link_records = []
+        link_entity_ids = {}
+
+        for source_class, link_name, target_class in link_keys:
+
+            link_key = (source_class, link_name, target_class)
+
+            entity_id = new_entity_id()
+            link_entity_ids[link_key] = entity_id
+
+            link_records.append({
+                "link_name": link_name,
+                "props": {
+                    "_entity_id": entity_id,
+                    "name": link_name
+                },
+                "from_class": source_class,
+                "to_class": target_class
+            })
+
+
+        # LINK Properties.
+        link_property_records = []
+
+        for link_key in link_keys:
+
+            property_names = sorted(
+                link_properties[link_key],
+                key=lambda name: (name.casefold(), name)
+            )
+
+            for index, property_name in enumerate(property_names, start=1):
+
+                dtype = link_property_dtypes[(link_key, property_name)][0]
+
+                properties = {
+                    "_entity_id": new_entity_id(),
+                    "name": property_name,
+                    "dtype": dtype
+                }
+
+                if make_visible:
+                    properties["visible"] = True
+
+                link_property_records.append({
+                    "owner_entity_id": link_entity_ids[link_key],
+                    "index": index,
+                    "props": properties
+                })
+
+
+        # All IDs generated during this invocation, for possible rollback.
+        created_entity_ids = (
+            [item["props"]["_entity_id"] for item in class_records]
+            + [item["props"]["_entity_id"]
+               for item in class_property_records]
+            + [item["props"]["_entity_id"] for item in link_records]
+            + [item["props"]["_entity_id"]
+               for item in link_property_records]
+        )
+
+
+        # ------------------------------------------------------------------
+        # 7. Create the schema
+        # ------------------------------------------------------------------
+
+        try:
+
+            # --------------------------------------------------------------
+            # 7a. CLASS nodes
+            # --------------------------------------------------------------
+
+            query = """
+                UNWIND $items AS item
+    
+                CREATE (c:CLASS:SCHEMA)
+                SET c += item.props
+    
+                RETURN count(c) AS created
+                """
+
+            execute_counted_query(
+                query,
+                {"items": class_records},
+                len(class_records),
+                "create CLASS nodes"
+            )
+
+
+            # --------------------------------------------------------------
+            # 7b. CLASS PROPERTY nodes
+            # --------------------------------------------------------------
+
+            if class_property_records:
+
+                query = """
+                    UNWIND $items AS item
+    
+                    MATCH (owner:CLASS:SCHEMA {
+                        name: item.owner_name
+                    })
+    
+                    CREATE (p:PROPERTY:SCHEMA)
+                    SET p += item.props
+    
+                    CREATE (owner)-[:HAS_PROPERTY {
+                        index: item.index
+                    }]->(p)
+    
+                    RETURN count(p) AS created
+                    """
+
+                execute_counted_query(
+                    query,
+                    {"items": class_property_records},
+                    len(class_property_records),
+                    "create CLASS Properties"
+                )
+
+
+            # --------------------------------------------------------------
+            # 7c. LINK nodes and their endpoint relationships
+            # --------------------------------------------------------------
+
+            # Group by actual relationship type, since Cypher does not
+            # support parameter binding for relationship type identifiers.
+
+            links_by_type = {}
+
+            for item in link_records:
+                links_by_type.setdefault(item["link_name"], []).append(item)
+
+
+            for link_name, items in links_by_type.items():
+
+                rel_type = quote_identifier(link_name)
+
+                query = f"""
+                    UNWIND $items AS item
+    
+                    MATCH (source:CLASS:SCHEMA {{
+                        name: item.from_class
+                    }})
+    
+                    MATCH (target:CLASS:SCHEMA {{
+                        name: item.to_class
+                    }})
+    
+                    CREATE (link:LINK:SCHEMA)
+                    SET link += item.props
+    
+                    CREATE (source)-[:{rel_type}]->(link)
+    
+                    CREATE (link)-[:_TARGET]->(target)
+    
+                    RETURN count(link) AS created
+                    """
+
+                execute_counted_query(
+                    query,
+                    {"items": items},
+                    len(items),
+                    f"create LINK nodes for {link_name!r}"
+                )
+
+
+            # --------------------------------------------------------------
+            # 7d. LINK PROPERTY nodes
+            # --------------------------------------------------------------
+
+            if link_property_records:
+
+                query = """
+                    UNWIND $items AS item
+    
+                    MATCH (owner:LINK:SCHEMA {
+                        _entity_id: item.owner_entity_id
+                    })
+    
+                    CREATE (p:PROPERTY:SCHEMA)
+                    SET p += item.props
+    
+                    CREATE (owner)-[:HAS_PROPERTY {
+                        index: item.index
+                    }]->(p)
+    
+                    RETURN count(p) AS created
+                    """
+
+                execute_counted_query(
+                    query,
+                    {"items": link_property_records},
+                    len(link_property_records),
+                    "create LINK Properties"
+                )
+
+
+            # --------------------------------------------------------------
+            # 7e. Optionally populate _CLASS on data nodes
+            # --------------------------------------------------------------
+
+            updated_class_properties = 0
+
+            if set_class_property and missing_class_values:
+
+                items = [
+                    {
+                        "node_id": node_id,
+                        "class_name": class_name
+                    }
+                    for node_id, class_name
+                    in missing_class_values.items()
+                ]
+
+                query = """
+                    UNWIND $items AS item
+    
+                    MATCH (n)
+                    WHERE id(n) = item.node_id
+                      AND n._CLASS IS NULL
+    
+                    SET n._CLASS = item.class_name
+    
+                    RETURN count(n) AS updated
+                    """
+
+                result = cls.db.query(query, {"items": items})
+
+                if result:
+                    updated_class_properties = result[0]["updated"]
+
+
+        except Exception as ex:
+
+            # --------------------------------------------------------------
+            # Best-effort rollback of this invocation's schema nodes.
+            # Existing data nodes are not deleted.
+            # --------------------------------------------------------------
+
+            if created_entity_ids:
+
+                try:
+                    query = """
+                        MATCH (n:SCHEMA)
+                        WHERE n._entity_id IN $entity_ids
+    
+                        DETACH DELETE n
+                        """
+
+                    cls.db.query(
+                        query,
+                        {"entity_ids": created_entity_ids}
+                    )
+
+                except Exception as rollback_error:
+
+                    raise RuntimeError(
+                        "generate_schema(): generation failed "
+                        f"({ex}); rollback also failed ({rollback_error})."
+                    ) from ex
+
+            raise
+
+
+        # ------------------------------------------------------------------
+        # 8. Report
+        # ------------------------------------------------------------------
+
+        return {
+            "sampled_nodes": len(sampled_nodes),
+            "relationships_inspected": len(edge_records),
+            "classes_created": len(class_records),
+            "class_properties_created": len(class_property_records),
+            "links_created": len(link_records),
+            "link_properties_created": len(link_property_records),
+            "class_properties_set_on_data_nodes":
+                updated_class_properties,
+            "graphql_visible": make_visible,
+            "class_names": class_names
+        }
+
+
+
+
+
+
+    @classmethod
     def get_schema_code(cls, class_name: str) -> str:
         """
         Obtain the "schema code" of a Class, specified by its name.
@@ -4513,7 +5399,7 @@ class GraphSchema:
 
         :param rename:      [OPTIONAL] Dict with mapping from Pandas column names
                                 to the names of Properties in the data nodes and/or in their links
-                                
+
         :param skip_errors: [OPTIONAL] If True, the import continues even in the presence of errors;
                                 default is False
         :param report:      [OPTIONAL] If True (default), print the status of the import-in-progress
@@ -5458,9 +6344,9 @@ class GraphSchema:
                 properties(rel) AS link_props, 
                 labels(to) AS to_node
         '''    # TODO: need to add a clause to this.  Maybe allow a label, or range of ID's (also for the match argument of this method)
-    
+
         res = cls.db.query(q)
-    
+
         all_nodes = cls.db.get_nodes(match, return_labels=True)
         for node in all_nodes:
             labels = node['_node_labels']
@@ -5471,8 +6357,8 @@ class GraphSchema:
             print("PROPERTIES:", properties)
             print()
             cls.create_class_with_properties(name=class_name, properties=properties, strict=False)
-    
-    
+
+
         for link in res:
             # Unpack
             (from_node, link_name, link_props, to_node) = [link.get(key) for key in ("from_node", "link_name", "link_props", "to_node")]

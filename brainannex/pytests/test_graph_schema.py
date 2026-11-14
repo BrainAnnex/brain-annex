@@ -1258,6 +1258,38 @@ def test_setup_schema_from_data(db):
 
 
 
+def test_generate_schema_from_data_1(db):
+    db.empty_dbase()
+
+    with pytest.raises(RuntimeError):
+        GraphSchema.generate_schema_from_data()    # no non-SCHEMA data nodes found
+
+    db.create_node(labels="Person", properties={"name": "Hillary", "age": 24})
+
+    result = GraphSchema.generate_schema_from_data(sample_size=None, set_class_property=False, make_visible=False)
+    assert result == {'sampled_nodes': 1,
+                     'relationships_inspected': 0,
+                     'classes_created': 1,
+                     'class_properties_created': 2,
+                     'links_created': 0,
+                     'link_properties_created': 0,
+                     'class_properties_set_on_data_nodes': 0,
+                     'graphql_visible': False, 'class_names': ['Person']}
+
+
+    q = '''
+        MATCH 
+        (p1:PROPERTY:SCHEMA {name: "name", dtype: "str"})
+        <-[:HAS_PROPERTY]-(n :CLASS:SCHEMA {name: "Person", strict: False})-
+        [:HAS_PROPERTY]->(p2:PROPERTY:SCHEMA {name: "age", dtype: "int"})
+        RETURN COUNT(n) AS NUMBER_FOUND    
+    '''
+    result = db.query(q, single_cell="NUMBER_FOUND")
+    assert result == 1
+
+
+
+
 def test_get_schema_code(db):
     pass    # TODO
 
