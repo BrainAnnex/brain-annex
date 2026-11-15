@@ -14,7 +14,7 @@ def test_CypherBuilder():
         CypherBuilder(labels=666)       # Bad labels
 
     with pytest.raises(Exception):
-        CypherBuilder(key_name=666)  # Bad key_name
+        CypherBuilder(key_name=666)     # Bad key_name
 
     with pytest.raises(Exception):
         CypherBuilder(key_name="patient code")     # Missing key_value
@@ -35,16 +35,16 @@ def test_CypherBuilder():
         CypherBuilder(clause=123)    # Bad clause
 
     with pytest.raises(Exception):
-        CypherBuilder(clause=('n.weight < $max_weight', 222, 333))       # Bad clause
+        CypherBuilder(clause=('n.weight < $max_weight', 222, 333))  # Bad clause
 
     with pytest.raises(Exception):
-        CypherBuilder(clause=('n.weight < $max_weight', 222))    # Bad clause
+        CypherBuilder(clause=('n.weight < $max_weight', 222))       # Bad clause
 
     with pytest.raises(Exception):
-        CypherBuilder(clause=(111, {}))    # Bad clause
+        CypherBuilder(clause=(111, {}))         # Bad clause
 
     with pytest.raises(Exception):
-        CypherBuilder(clause=("    ", {}))    # Bad clause
+        CypherBuilder(clause=("    ", {}))      # Bad clause
 
     with pytest.raises(Exception):
         # Conflict between requested key 'n_par_1' in the clause
@@ -72,11 +72,11 @@ def test_CypherBuilder():
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
 
-    # The presence of the internal_id trumps all other criteria
-    assert ns.node == "(n)"
-    assert ns.where == "id(n) = 123"
-    assert ns.data_binding == {}
-    assert ns.cypher == "MATCH (n) WHERE id(n) = 123"
+    # The presence of the internal_id trumps all other criteria, EXCEPT THE LABEL(s)
+    assert ns.node == "(n :`my label`)"
+    assert ns.where == "id(n) = $internal_id_n"
+    assert ns.data_binding == {"internal_id_n": 123}
+    assert ns.cypher == "MATCH (n :`my label`) WHERE id(n) = $internal_id_n"
 
 
     # Same, but without internal_id
@@ -160,16 +160,16 @@ def test_CypherBuilder():
 
 
 
-def test_finalize_dummy_name():
+def test_build_cypher_elements():
 
     ns = CypherBuilder(internal_id=123,
                        labels="my label", key_name="patient code", key_value=100,
                        properties={"onset age": 23},
                        clause="n.income > 10000", dummy_name="n")
 
-    ns.build_cypher_elements("n")     # No change
+    ns.build_cypher_elements("n")       # No change
 
-    assert ns.internal_id == 123
+    assert ns.internal_id == 123        # Integer integer ID
     assert ns.labels == "my label"
     assert ns.key_name == "patient code"
     assert ns.key_value == 100
@@ -177,10 +177,34 @@ def test_finalize_dummy_name():
     assert ns.clause == "n.income > 10000"
     assert ns.clause_binding == {}
     assert ns.dummy_node_name == "n"
-    assert ns.node == "(n)"
-    assert ns.where == "id(n) = 123"
-    assert ns.data_binding == {}
-    assert ns.cypher == "MATCH (n) WHERE id(n) = 123"
+    assert ns.node == "(n :`my label`)"
+    assert ns.where == "id(n) = $internal_id_n"
+    assert ns.data_binding == {"internal_id_n": 123}
+    assert ns.cypher == "MATCH (n :`my label`) WHERE id(n) = $internal_id_n"
+
+    with pytest.raises(Exception):
+        ns.build_cypher_elements("dummy")     # Can't change dummy name when a clause is present
+
+
+    ns = CypherBuilder(internal_id="a-string-id",
+                       labels="my label", key_name="patient code", key_value=100,
+                       properties={"onset age": 23},
+                       clause="x.income > 10000", dummy_name="x")
+
+    ns.build_cypher_elements("x")
+
+    assert ns.internal_id == "a-string-id"
+    assert ns.labels == "my label"
+    assert ns.key_name == "patient code"
+    assert ns.key_value == 100
+    assert ns.properties == {"onset age": 23}
+    assert ns.clause == "x.income > 10000"
+    assert ns.clause_binding == {}
+    assert ns.dummy_node_name == "x"
+    assert ns.node == "(x :`my label`)"
+    assert ns.where == "id(x) = $internal_id_x"
+    assert ns.data_binding == {"internal_id_x": "a-string-id"}
+    assert ns.cypher == "MATCH (x :`my label`) WHERE id(x) = $internal_id_x"
 
     with pytest.raises(Exception):
         ns.build_cypher_elements("dummy")     # Can't change dummy name when a clause is present
@@ -215,7 +239,7 @@ def test_finalize_dummy_name():
                    key_name="patient code", key_value=100,
                    properties={"onset age": 23})
 
-    ns.build_cypher_elements("n")     # No change
+    ns.build_cypher_elements("n")
 
     assert ns.internal_id is None
     assert ns.labels == ("my label 1", "my label 2")
@@ -230,7 +254,7 @@ def test_finalize_dummy_name():
     assert ns.data_binding == {"n_par_1": 23, 'n_par_2': 100}
     assert ns.cypher == "MATCH (n :`my label 1`:`my label 2` {`onset age`: $n_par_1, `patient code`: $n_par_2})"
 
-    ns.build_cypher_elements("dummy")
+    ns.build_cypher_elements("dummy")   # Change the dummy name
 
     assert ns.internal_id is None
     assert ns.labels == ("my label 1", "my label 2")
@@ -248,7 +272,7 @@ def test_finalize_dummy_name():
 
     ns = CypherBuilder(labels="person", key_name="SSN", key_value=123)
 
-    ns.build_cypher_elements("n")     # No change
+    ns.build_cypher_elements("n")
 
     assert ns.internal_id is None
     assert ns.labels == "person"
@@ -264,7 +288,7 @@ def test_finalize_dummy_name():
     assert ns.data_binding == {"n_par_1": 123}
     assert ns.cypher == "MATCH (n :`person` {`SSN`: $n_par_1})"
 
-    ns.build_cypher_elements("dummy")
+    ns.build_cypher_elements("dummy")   # Change the dummy name
 
     assert ns.internal_id is None
     assert ns.labels == "person"
@@ -281,9 +305,47 @@ def test_finalize_dummy_name():
     assert ns.cypher == "MATCH (dummy :`person` {`SSN`: $dummy_par_1})"
 
 
+    ns = CypherBuilder(labels="customer", internal_id=123, key_name="it_doesnt_matter", key_value="ignored")
+
+    ns.build_cypher_elements("n")
+
+    assert ns.internal_id == 123
+    assert ns.labels == "customer"
+    assert ns.key_name == "it_doesnt_matter"
+    assert ns.key_value == "ignored"
+    assert ns.properties == {}
+    assert ns.clause == ""
+    assert ns.clause_binding == {}
+    assert ns.dummy_node_name == "n"
+
+    assert ns.node == "(n :`customer`)"
+    assert ns.where == "id(n) = $internal_id_n"
+    assert ns.data_binding == {"internal_id_n": 123}
+    assert ns.cypher == "MATCH (n :`customer`) WHERE id(n) = $internal_id_n"
+
+    ns.build_cypher_elements("dummy")   # Change the dummy name
+
+    assert ns.internal_id == 123
+    assert ns.labels == "customer"
+    assert ns.key_name == "it_doesnt_matter"
+    assert ns.key_value == "ignored"
+    assert ns.properties == {}
+    assert ns.clause == ""
+    assert ns.clause_binding == {}
+    assert ns.dummy_node_name == "dummy"
+
+    assert ns.node == "(dummy :`customer`)"
+    assert ns.where == "id(dummy) = $internal_id_dummy"
+    assert ns.data_binding == {"internal_id_dummy": 123}
+    assert ns.cypher == "MATCH (dummy :`customer`) WHERE id(dummy) = $internal_id_dummy"
 
 
-############   For class CypherUtils   ############
+
+
+
+
+##################   For class CypherUtils   ##################
+
 
 def test_process_match_structure():
     ns = CypherUtils.process_match_structure(handle=123)
@@ -298,9 +360,9 @@ def test_process_match_structure():
     assert ns.dummy_node_name == "n"
 
     assert ns.node == "(n)"
-    assert ns.where == "id(n) = 123"
-    assert ns.data_binding == {}
-    assert ns.cypher == "MATCH (n) WHERE id(n) = 123"
+    assert ns.where == "id(n) = $internal_id_n"
+    assert ns.data_binding == {"internal_id_n": 123}
+    assert ns.cypher == "MATCH (n) WHERE id(n) = $internal_id_n"
 
 
     ns = CypherBuilder(
@@ -447,13 +509,13 @@ def test_prepare_where():
     assert CypherUtils.prepare_where(("  ", "")) == ""
 
     wh = "n.name = 'Julian'"
-    assert CypherUtils.prepare_where(wh) == "WHERE (n.name = 'Julian')"
+    assert CypherUtils.prepare_where(wh) == " WHERE (n.name = 'Julian')"
 
     wh = ["n.name = 'Julian'"]
-    assert CypherUtils.prepare_where(wh) == "WHERE (n.name = 'Julian')"
+    assert CypherUtils.prepare_where(wh) == " WHERE (n.name = 'Julian')"
 
     wh = ("p.key1 = 123", "   ",  "p.key2 = 456")
-    assert CypherUtils.prepare_where(wh) == "WHERE (p.key1 = 123 AND p.key2 = 456)"
+    assert CypherUtils.prepare_where(wh) == " WHERE (p.key1 = 123 AND p.key2 = 456)"
 
     with pytest.raises(Exception):
         assert CypherUtils.prepare_where(123)    # Not a string, nor tuple, nor list

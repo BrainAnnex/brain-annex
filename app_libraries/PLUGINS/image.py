@@ -8,6 +8,7 @@ class Image:
     """
 
     SCHEMA_CLASS_NAME = "Image"
+    DEFAULT_FOLDER_NAME = "images"  # The desired name for the default folder to contain media files for this plugin
     RESIZED_FOLDER = "_resized/"    # The subfolder where the thumbnails are kept
                                     # For now, it must be kept synchronized with value in media_manager.py
 
@@ -18,7 +19,8 @@ class Image:
         """
         Specify the desired name for the default subfolder (of the media folder) to contain image media
         """
-        return "images"
+        #TODO: probably phase out
+        return cls.DEFAULT_FOLDER_NAME
 
 
 
@@ -57,10 +59,10 @@ class Image:
         new_suffix =   item_data.get("suffix")
 
         folder, old_basename, old_suffix = \
-                MediaManager.get_media_item_file(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
+                MediaManager.get_media_item_file_by_entity(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
 
         print(f"folder: {folder}, old_basename: {old_basename}, old_suffix: {old_suffix}")
-
+        # TODO: this should be done by the MediaManager
         MediaManager.rename_media_file(folder=folder,
                                        old_basename=old_basename, old_suffix=old_suffix,
                                        new_basename=new_basename, new_suffix=new_suffix)

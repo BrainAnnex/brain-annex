@@ -4,10 +4,11 @@
 
 
 import os
+import shutil
 import brainannex.exceptions as exceptions
 from brainannex import GraphSchema
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 from PIL import Image
-import shutil
 from pathlib import Path
 
 
@@ -19,17 +20,22 @@ class MediaManager:
     Static class that does NOT get instantiated;
     however, it must be initialized with calls to set_media_folder() and set_default_folders()
 
+    Two broad categories of operations:
+        1) database operations
+        2) file-system operations
+
     Gradually, this library will conform to the following nomenclature;
     given, for example, a file "C:\folder_1\folder_2\my_file.txt" :
 
-    | String                             | Term               |
-    | ---------------------------------- | ------------------ |
-    | `txt`                              | extension          |
-    | `my_file`                          | stem               |
-    | `my_file.txt`                      | filename           |
-    | `\folder_1\folder_2\`              | directory path     |
-    | `\folder_1\folder_2\my_file.txt`   | file path          |
-    | `C:\folder_1\folder_2\my_file.txt` | absolute file path |
+    | String                                          | Term               |
+    | ----------------------------------------------- | ------------------ |
+    | `txt`                                           | extension          |
+    | `my_file`                                       | stem               |
+    | `my_file.txt`                                   | filename           |
+    | `folder_2`                                      | directory name     |
+    | `/folder_1/folder_2` or `C:\folder_1\folder_2`  | directory path     |
+    | `/folder_1/folder_2/my_file.txt`                | file path          |
+    | `C:\folder_1\folder_2\my_file.txt`              | absolute file path |   OR:  `C:/folder_1/folder_2/my_file.txt`
      """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
@@ -37,19 +43,22 @@ class MediaManager:
                         #                     (notice the forward slashes, even on Windows)
                         # This class variable gets set by initialize.py
 
-    DEFAULT_FOLDERS = None  # A dict mapping a Class name to its designated default folder
+    DEFAULT_FOLDERS = {}    # A dict mapping a Class name to its designated default folder
                             # (a subfolder of cls.MEDIA_FOLDER)
-                            # EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
+                            # EXAMPLE: {"Document": "documents",
+                            #           "Image": "images",
+                            #           "Note": "notes"}
                             # This class variable gets set by initialize.py
 
     RESIZED_FOLDER = "_resized/"    # TODO: this ought to be managed by the Images class
+    COVERS_FOLDER = "_covers"      # TODO: this ought to be managed by the Images class
 
 
 
     @classmethod
     def add_to_schema(cls) -> None:
         """
-        Create, as needed, the database Schema needed by this module;
+        Create, as needed, the database Schema needed by this module:
         that includes the Classes "Media" and "Directory"
 
         :return:    None
@@ -89,6 +98,17 @@ class MediaManager:
 
 
     @classmethod
+    def get_media_folder(cls) -> str:
+        """
+        Location where the media for Content Items is stored, including the final "/"
+
+        :return:    EXAMPLE on Windows: "D:/media/"
+                        (notice the forward slashes, even on Windows)
+        """
+        return cls.MEDIA_FOLDER
+
+
+    @classmethod
     def set_default_folders(cls, folder_dict :dict) -> None:
         """
         Initialize the class variable DEFAULT_FOLDERS with the given data
@@ -105,8 +125,11 @@ class MediaManager:
     def default_file_path(cls, class_name :str, thumb=False) -> str:
         """
         Return the default file path, including the final "/", of the media files associated to the given schema Class
+        Note: some schema Classes are associated to subfolders, as specified by set_default_folders()
 
         :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
+                                If no special subfolder was registered for this Class, then the starting point is just
+                                the global MEDIA_FOLDER
         :param thumb:       If True, then the "thumbnail" version is returned
                                 (only applicable to some media types, such as images)
         :return:            The full file path, including the final "/"
@@ -120,7 +143,8 @@ class MediaManager:
 
         default_folder = cls.DEFAULT_FOLDERS.get(class_name)
 
-        folder += default_folder + "/"
+        if default_folder:
+            folder += default_folder + "/"
 
         if thumb:
             folder += cls.RESIZED_FOLDER
@@ -130,26 +154,27 @@ class MediaManager:
 
 
     @classmethod
-    def retrieve_full_path(cls, uri :str, thumb=False) -> str:
+    def retrieve_full_path(cls, class_name: str, entity_id :str, thumb=False) -> str:
         """
         Return the full path for the specified media file or, if requested, for its thumbnail image.
         Includes the final "/"
-        EXAMPLE (on Windows):  "D:/BACKUP_media/images/resized/"
 
-        :param uri:         Unique identifier string for the Media Item of Interest
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param entity_id:   Entity ID for the Media Item
         :param thumb:       If True, return the folder for the thumbnail image instead
         :return:            EXAMPLES on Windows:
                                 "D:/media/documents/"
                                 "D:/media/images/resized/"
         """
-        class_name = GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id")
+        assert GraphSchema.data_node_exists_by_entity(class_name=class_name, entity_id=entity_id), \
+            f"retrieve_full_path(): no data node found with Class `{class_name}` and entity ID `{entity_id}`"
 
-        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=uri, id_key="entity_id",
+        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=entity_id, id_key="entity_id",
                                              link_name="BA_stored_in", properties="name")
         #print("dir_names: ", dir_names)
 
         assert len(dir_names) < 2, \
-            f"retrieve_folder_name(): more than 1 directory is associated with file with uri `{uri}`"
+            f"retrieve_folder_name(): more than 1 directory is associated with file with uri `{entity_id}`"
 
         if len(dir_names) == 0:     # No custom directory was specified
             return cls.default_file_path(class_name=class_name, thumb=thumb)    # including the final "/"
@@ -164,24 +189,29 @@ class MediaManager:
 
 
     @classmethod
-    def get_media_item_file(cls, class_name :str, entity_id :str) -> (str, str, str):
+    def get_media_item_file_by_entity(cls, entity_id :str, class_name :str) -> (str, str, str):
         """
         Retrieve the full file path, basename and suffix of the a media item identified by its Class and Entity ID.
 
-        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
-        :param entity_id:   Unique identifier string (within the given Class) for the Media Item of Interest
+        :param entity_id:   Unique identifier string (within the given Class)
+                                for the Media Item of Interest
+        :param class_name:  Name of the Schema Class for the desired media Item.
+                                EXAMPLE: "Image", "Note", "Document"
 
-        :return:            The triplet (filepath, basename, suffix)
-                                Notes:  filepath ends with a "/"
-                                        the basename is exclusive of path and of suffix
-                                        the suffix does NOT include the dot
-                                EXAMPLE:
+        :return:            The triplet (directory path, stem, extension)
+                                Notes:  - the directory path ends with a "/" (even on Windows)
+                                        - stem is the file basename exclusive of path and of suffix
+                                        - extension (the suffix) does NOT include the dot
+                                EXAMPLES:
                                     ("D:/media/my_media_folder/images/", "my_pict", "jpg")
+                                    ("D:/media/my_media_folder/my_custom_directory/vacation/", "my_pict", "jpg")
         """
-        content_node = GraphSchema.get_single_data_node(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        #content_node = GraphSchema.get_single_data_node_OLD(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node_by_entity(class_name=class_name, entity_id=entity_id)
         #print("content_node:", content_node)
         if content_node is None:
-            raise Exception(f'get_media_item_file(): Metadata not found for the Media file of Class `{class_name}` and Entity ID "{entity_id}"')
+            raise Exception(f'get_media_item_file_by_entity(): '
+                            f'Metadata not found for the Media file of Class `{class_name}` and Entity ID "{entity_id}"')
 
         basename = content_node['basename']
         suffix = content_node['suffix']
@@ -192,7 +222,7 @@ class MediaManager:
 
         assert len(dir_names) < 2, \
             f"get_media_item_file(): more than 1 directory is associated " \
-            f"with a media file of Class {class_name} and Entity ID `{entity_id}`"
+            f"with the media file of Class {class_name} and Entity ID `{entity_id}`"
 
         if len(dir_names) == 0:     # No custom directory was specified
             path = cls.default_file_path(class_name=class_name)    # including the final "/"
@@ -206,10 +236,54 @@ class MediaManager:
 
 
     @classmethod
-    def lookup_media_file(cls, uri :str, class_name :str, thumb=False) -> (str, str, str):
+    def get_media_item_file(cls, internal_id : int|str) -> (str, str, str):
+        """
+        Retrieve the directory path, stem and suffix of the a media item identified by its internal database ID
+
+        :param internal_id: Internal database ID to identify the Data Node for the Media Item of interest
+
+        :return:            The triplet (directory path, stem, extension)
+                                Notes:  - the directory path ends with a "/" (even on Windows)
+                                        - stem is the file basename exclusive of path and of suffix
+                                        - extension (the suffix) does NOT include the dot
+                                EXAMPLE:
+                                    ("D:/media/my_media_folder/images/", "my_pict", "jpg")
+        """
+        #content_node = GraphSchema.get_single_data_node_OLD(node_id=internal_id, hide_schema=False)
+        content_node = GraphSchema.get_single_data_node(internal_id=internal_id, hide_schema=False)
+        #print("content_node:", content_node)
+        assert content_node is not None, \
+                    f'get_media_item_file_by_id(): Metadata not found for the Media file ' \
+                    f'with internal database ID {internal_id}'
+
+        basename = content_node['basename']
+        suffix = content_node['suffix']
+        class_name = content_node['_CLASS']
+
+        dir_names = GraphSchema.follow_links(class_name=class_name, node_id=internal_id,
+                                             link_name="BA_stored_in", properties="name")
+        #print("dir_names: ", dir_names)
+
+        assert len(dir_names) < 2, \
+            f"get_media_item_file(): more than 1 directory is associated " \
+            f"with the media file with internal database ID {internal_id}`"
+
+        if len(dir_names) == 0:     # No custom directory was specified
+            path = cls.default_file_path(class_name=class_name)    # including the final "/"
+        else:
+            folder_name = dir_names[0]
+            path = cls.MEDIA_FOLDER + folder_name + "/"
+
+
+        return (path, basename, suffix)
+
+
+
+    @classmethod
+    def lookup_media_file(cls, entity_id :str, class_name :str, thumb=False) -> (str, str, str):
         """
 
-        :param uri:         Together with the Class name, this string provides
+        :param entity_id:   Together with the Class name, this string provides
                                 a unique identifier for the Media Item of interest
         :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param thumb:       If True, return the folder for the thumbnail image instead;
@@ -222,12 +296,13 @@ class MediaManager:
                                 EXAMPLE:
                                     ("D:/media/my_media_folder/images/", "snap1", "jpg")
         """
-        #TODO: phase out in favor of get_media_item_file()
+        #TODO: phase out in favor of get_media_item_file_by_entity()
 
-        content_node = GraphSchema.get_single_data_node(node_id=uri, id_key="entity_id", class_name=class_name)
+        #content_node = GraphSchema.get_single_data_node_OLD(node_id=entity_id, id_key="entity_id", class_name=class_name)
+        content_node = GraphSchema.get_single_data_node_by_entity(class_name=class_name, entity_id=entity_id)
         #print("content_node:", content_node)
         if content_node is None:
-            raise Exception(f'lookup_media_file(): Metadata not found for the Media file of Class `{class_name}` and uri="{uri}"')
+            raise Exception(f'lookup_media_file(): Metadata not found for the Media file of Class `{class_name}` and uri="{entity_id}"')
 
         basename = content_node['basename']
         suffix = content_node['suffix']
@@ -238,17 +313,18 @@ class MediaManager:
 
         # Obtain the name of the folder for the content file or, if applicable, for its thumbnail image
         # Includes the final "/"
-        folder = cls.retrieve_full_path(uri=uri, thumb=thumb)
+        folder = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id, thumb=thumb)
 
         return (folder, basename, suffix)
 
 
 
     @classmethod
-    def get_full_filename(cls, uri : str, class_name, thumb=False) -> str:
+    def get_full_filename_thumb(cls, entity_id :str, class_name :str) -> str:
         """
+        Get the full filename for the THUMBNAIL-image version
 
-        :param uri:         Together with the Class name, this string provides
+        :param entity_id:   Together with the Class name, this string provides
                                 a unique identifier for the Media Item of interest
         :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
         :param thumb:       If True, return the folder for the thumbnail image instead;
@@ -256,13 +332,54 @@ class MediaManager:
                                 because SVG files cannot be resized
         :return:            EXAMPLE: "D:/media/my_media_folder/images/Tahiti vacation/"
         """
-        (filepath, basename, suffix) = cls.lookup_media_file(uri=uri, class_name=class_name, thumb=thumb)
+        # TODO: dispatch to appropriate plugin
+        (filepath, basename, suffix) = cls.lookup_media_file(entity_id=entity_id, class_name=class_name, thumb=True)
         filename = basename + "." + suffix
 
-        full_path = cls.retrieve_full_path(uri=uri, thumb=thumb)
+        full_path = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id, thumb=True)
         full_file_name = full_path + filename
 
         return full_file_name
+
+
+    @classmethod
+    def get_absolute_file_path(cls, entity_id :str, class_name :str) -> str:
+        """
+        Get the absolute file path of the media file linked to the given Media Content Item
+
+        :param entity_id:   Unique identifier string (within the given Class)
+                                for the Media Item of Interest
+        :param class_name:  Name of the Schema Class for the desired media Item.
+                                EXAMPLE: "Image", "Note", "Document"
+
+        :return:            EXAMPLE: "D:/media/my_media_folder/images/snap1.jpg"
+        """
+        (filepath, basename, suffix) = cls.get_media_item_file_by_entity(class_name=class_name, entity_id=entity_id)
+        filename = basename + "." + suffix
+
+        full_path = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id)
+        full_file_name = full_path + filename
+
+        return full_file_name
+
+
+    @classmethod
+    def get_full_filename(cls, entity_id :str, class_name :str, thumb=False) -> str:
+        """
+
+        :param entity_id:   Together with the Class name, this string provides
+                                a unique identifier for the Media Item of interest
+        :param class_name:  Name of the Schema Class for the desired media Item.  EXAMPLE: "Image", "Note", "Document"
+        :param thumb:       If True, return the folder for the thumbnail image instead;
+                                ignored if the file suffix is "svg" (regardless of case),
+                                because SVG files cannot be resized
+        :return:            EXAMPLE: "D:/media/my_media_folder/images/snap1.jpg"
+        """
+        # Dispatch based on the `thumb` argument
+        if thumb:
+            return cls.get_full_filename_thumb(entity_id=entity_id, class_name=class_name)
+        else:
+            return cls.get_absolute_file_path(entity_id=entity_id, class_name=class_name)
 
 
 
@@ -302,7 +419,7 @@ class MediaManager:
         filename = f"{basename}.{suffix}"   # Including the suffix.  EXAMPLE: "my_pic.jpg"
 
         try:
-            file_contents = cls.get_from_binary_file(path=folder, filename=filename)
+            file_contents = cls.get_from_binary_file(directory_path=folder, filename=filename)
             return (suffix, file_contents)
 
         except Exception as ex:
@@ -318,14 +435,14 @@ class MediaManager:
                 # Attempt to resize the full-sized version, and save the new thumbnail file
                 try:
                     # Get the folder for the full-size images
-                    images_folder = cls.retrieve_full_path(uri=entity_id, thumb=False)
+                    images_folder = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id, thumb=False)
                     source_full_name = images_folder + filename
                     print(f"    Looking up info on the full-sized image in file `{source_full_name}`")
 
                     # Full-size version was found; obtain its dimensions
                     width, height = ImageProcessing.get_image_size(source_full_name)
                     # Create a thumbnail version
-                    thumb_folder = cls.retrieve_full_path(uri=entity_id, thumb=th)
+                    thumb_folder = cls.retrieve_full_path(class_name=class_name, entity_id=entity_id, thumb=th)
                     # Carry out the resizing, and save the thumbnail file
                     print("    Attempting to create a thumbnail version of it")
                     #print(f"    src_folder=`{images_folder}` | filename=`{filename}` | save_to_folder=`{thumb_folder}` | "
@@ -333,7 +450,7 @@ class MediaManager:
                     ImageProcessing.save_thumbnail(src_folder=images_folder, filename=filename, save_to_folder=thumb_folder,
                                                    src_width=width, src_height=height)
                     # Get the contents of the newly-created thumbnail file
-                    file_contents = cls.get_from_binary_file(path=folder, filename=filename)
+                    file_contents = cls.get_from_binary_file(directory_path=folder, filename=filename)
                     return (suffix, file_contents)
 
                 except Exception as ex:
@@ -344,7 +461,7 @@ class MediaManager:
 
                     # One last attempt: try to read in and return the full-sized version
                     try:
-                        file_contents = cls.get_from_binary_file(path=images_folder, filename=filename)
+                        file_contents = cls.get_from_binary_file(directory_path=images_folder, filename=filename)
                         return (suffix, file_contents)
                     except Exception as ex:
                         # File I/O failed
@@ -404,7 +521,7 @@ class MediaManager:
         new_full_name = f"{folder}{new_basename}.{new_suffix}"
 
         if new_full_name != old_full_name:
-            print(f"MediaManager.rename_media_file(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
+            #print(f"MediaManager.rename_media_file(): attempting to move media file from `{old_full_name}` to `{new_full_name}`")
             if not ignore_missing or os.path.exists(old_full_name):
                 cls.move_file(src=old_full_name, dest=new_full_name)
 
@@ -428,43 +545,9 @@ class MediaManager:
 
 
     @classmethod
-    def move_file(cls, src :str, dest :str) -> None:
-        """
-        Rename (move) the specified file, possibly across disks.
-        An Exception is raised if:
-            * the file was not found
-            * if source and destination are the same
-            * another file with destination file path already exists
-            * bad file path for the destination (e.g. forbidden characters)
-            * if the directory path to the destination isn't already present
-
-        :param src:    Old file path of the file to rename
-        :param dest:   Desired new file path
-        :return:       None
-        """
-        #print(f"move_file(): src='{src}' | dest: '{dest}'")
-
-        assert src != dest, \
-            f"move_file(): The requested source and destination file names are the same! (`{src}`)"
-
-        assert os.path.exists(src), \
-            f"move_file(): The requested file `{src}` does not exist"
-
-        assert not os.path.exists(dest), \
-            f"move_file(): A file with the requested destination name (`{dest}`) already exists"
-
-        cls.assert_valid_file_path(dest)
-
-        # Move (if on the same disk, it does a rename; if across disks, it copies first, and then deletes the original)
-        #os.rename(src, dest)    # TODO: doesn't work if the source and destination are on different disks!
-        shutil.move(src, dest)
-
-
-
-    @classmethod
     def assert_valid_file_path(cls, file_path :str) -> None:
         """
-        Raise an Exception if the given file path isn't valid.
+        Raise an Exception if the given file path isn't a valid string.
 
         EXAMPLES:   "a/bad?name" , or "COM" if on Windows, will raise Exceptions
                     "a/good name! (Indeed, just so 123).txt"  will be fine
@@ -543,6 +626,34 @@ class MediaManager:
 
 
     @classmethod
+    def split_absolute_file_path(cls, absolute_file_path :str) -> (str, str, str):
+        """
+        Break up an absolute file path into the triplet (directory, stem, extension).
+        It returns forward slashes, even on Windows
+
+        :param absolute_file_path:  With either forward or back slashes.
+                                    EXAMPLES:    "C:/folder_1/folder_2/my_file.txt"
+                                                r"C:\folder_1\folder_2\my_file.txt"
+        :return:                    The triplet (directory, stem, extension)
+                                        EXAMPLE: ("C:/folder_1/folder_2", "my_file", "txt")
+        """
+        p = Path(absolute_file_path)
+
+        directory = p.parent.as_posix()         # Always forward slashes, even on Windows
+                                                # EXAMPLE: "C:/folder_1/folder_2"
+        stem = p.stem                           # EXAMPLE: "my_file"
+        extension = p.suffix.lstrip(".")        # EXAMPLE: "txt"
+
+        '''
+        print(directory)
+        print(stem)
+        print(extension)
+        '''
+        return (directory, stem, extension)
+
+
+
+    @classmethod
     def get_mime_type(cls, suffix :str) -> str:
         """
         Return the appropriate MIME type for file content type assumed from the
@@ -596,19 +707,6 @@ class MediaManager:
 
 
     @classmethod
-    def create_folder(cls, name :str) -> None:
-        """
-        If the folder already exists, no action is taken
-
-        :param name:    EXAMPLE, on Windows: D:/media/documents"
-        :return:        None
-        """
-        print(f"create_folder(): attempting to create a folder named '{name}'")
-        os.makedirs(name, exist_ok=True)       # Do not raise an error if the folder already exists
-
-
-
-    @classmethod
     def locate_orphan_media_NOT_YET_USED(cls, directory: str, db) -> [str]:
         """
         # TODO: finish implementing
@@ -638,6 +736,322 @@ class MediaManager:
 
 
 
+    @classmethod
+    def tba(cls, upload_filename, absolute_file_path, mime_type :str, entity_id : int | str, upload_dir : str):
+        """
+
+        :param upload_filename:
+        :param absolute_file_path:
+        :param mime_type:
+        :param entity_id:
+        :param upload_dir:          EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
+        :return:                    None
+        """
+        assert mime_type == "image/jpeg", \
+            "tba(): cover images for documents must be JPG files"
+
+
+        (width, height) = ImageProcessing.get_image_size(absolute_file_path)    # Extract the dimensions of the uploaded image
+        internal_id = GraphSchema.locate_data_node(class_name="Document", entity_id=entity_id)
+
+        print(f"    the uploaded document cover is a JPG file of dimensions {width} x {height}, "
+              f"for Document with entity ID {entity_id}, and internal database ID {internal_id}")
+
+        stored_in = cls.media_directory_stored_in(internal_id)
+        assert stored_in, \
+            f"tba(): no information available about a media directory for Document with internal database ID {entity_id}"
+            # TODO: fall back to default media folder
+        directory = stored_in + "/"
+
+        data_dict = GraphSchema.get_single_data_node(internal_id=internal_id, class_name="Document")
+        assert data_dict is not None, \
+            f"tba(): unable to locate the document (entity ID '{entity_id}', internal database ID {internal_id}) to which the cover image should belong"
+
+        document_basename = data_dict.get("basename")
+
+        src_folder = upload_dir
+        save_to_folder = f"{cls.MEDIA_FOLDER}{directory}{cls.COVERS_FOLDER}/"   # EXAMPLE: D:/BA_LOCAL_media/documents/Boating/_covers/
+        dest_filename = document_basename + ".jpg"
+
+        print(f"    about to save thumbnail.  src_folder: `{src_folder}`  "
+              f"| src filename: `{upload_filename}`  | dest filename: `{dest_filename}` | save_to_folder: `{save_to_folder}` ")
+
+        # Create and save a thumbnail version in the special folder for covers
+        ImageProcessing.save_thumbnail(src_folder = src_folder,
+                                       filename = upload_filename,
+                                       save_to_folder = src_folder,
+                                       src_width=width, src_height=height)
+
+        dest_file_path = save_to_folder + dest_filename     # EXAMPLE: "D:/BA_LOCAL_media/documents/Boating/_covers/yachts.jpg"
+        print(f"Moving the resized uploaded file `{src_folder}{upload_filename}` to `{dest_file_path}`")
+        if not cls.folder_exists(save_to_folder):
+            print(f"    folder '{save_to_folder}' doesn't exist; creating it first...")
+            cls.create_folder(save_to_folder)
+
+        cls.move_file(src=f"{src_folder}{upload_filename}", dest=dest_file_path)
+
+
+
+
+
+
+    #####################################################################################################
+
+    '''                            ~   DATABASE_OPERATIONS   ~                                '''
+
+    def ________DATABASE_OPERATIONS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+
+    @classmethod
+    def get_media_directories(cls, limit=100) -> [str]:
+        """
+        Extract the list of all registered directories (sorted by name, ignoring case).
+
+        :param limit:       [OPTIONAL] Max number of directory names to return
+
+        :return:            The (possibly empty) sorted list of all directory names
+                                EXAMPLE:
+
+                                        [
+                                            "documents/Ebooks & Articles/SYSTEMS BIO",
+                                            "documents/Ebooks & Articles/math"
+                                        ]
+        """
+        result, _ = GraphSchema.get_data_nodes_by_filter(class_name="Directory",
+                                                         order_by="name", sort_ignore_case=["name"],
+                                                         limit=limit)
+        #print(result)
+        #TODO: let get_data_nodes_by_filter() extract the desired single field
+        directory_list = [d.get("name") for d in result]
+        #print(directory_list)
+        return directory_list
+
+
+
+    @classmethod
+    def media_directory_stored_in(cls, internal_id :str|int) -> str|None:
+        """
+        Extract the directory location of the given Content Item
+
+        :param internal_id: To identify the Media Content Item of interest
+
+        :return:            The media-directory path of the specified Content Item,
+                                if applicable (or None otherwise)
+                                EXAMPLE:    "documents/Ebooks & Articles/SYSTEMS BIO"
+        """
+        result = GraphSchema.db.follow_links(match=internal_id,
+                                     rel_name="BA_stored_in", rel_dir="OUT",
+                                     neighbor_labels="Directory")
+        assert len(result) <= 1, \
+            f"media_directory_stored_in(): found MULTIPLE locations ({len(result)})   " \
+            f"for the Content Item with internal_id {internal_id}"
+
+        if len(result) == 1:
+            location = result[0].get("name")
+        else:
+            location = None
+
+        return location
+
+
+
+    @classmethod
+    def create_media_directory(cls, name :str, entity_id=None) -> int | str:
+        """
+        Create a new media subdirectory, both in the database and in the file system
+
+        :param name:        No final "/".  Don't include the general media-folder prefix.
+                                EXAMPLE:  "images/vacation/Tahiti"
+                                If it already exists in the database, an Exception will be raised;
+                                no harm if it already exists in the file system
+        :param entity_id:   [OPTIONAL] If a string is passed, then a field (node property) called "entity_id"
+                                is set to that value
+        :return:            The internal database ID of the new data node just created
+        """
+        # TODO: be lenient of "/" at either end
+        # TODO: more pytests about bad names
+        dirs_list = MediaManager.get_media_directories()
+        #print(dirs_list)
+
+        assert name not in dirs_list, \
+            f"create_media_directory(): a directory named `{name}` is already registered in the database"
+
+        directory_path = cls.get_media_folder() + name
+        #print("directory_path: ", directory_path)   # EXAMPLE: "D:/media/my_media_folder/my documents/chapter 1"
+        cls.create_folder(directory_path)           # No problem if already exists
+
+        # Create a new directory (just its metadata)
+        return GraphSchema.create_data_node(class_name="Directory", properties={"name": name},
+                                            new_entity_id=entity_id)
+
+
+
+    @classmethod
+    def move_media_item(cls, internal_id :int|str, media_directory :str) -> None:
+        """
+        Move the specified media item to the given media directory.
+        This operation will affect both the file system and the database.
+
+        :param internal_id:     To identify the Media Item of interest
+        :param media_directory: The desired media directory (which must already exist)
+                                    EXAMPLE: "images/family outings"
+        :return:                None
+        """
+        # TODO: also need to move "covers" or "thumbnails" (now done?)
+
+        # Verify that the requested media directory is already present in the database
+        dirs_list = cls.get_media_directories()
+        #print("dirs_list: ", dirs_list)
+        assert media_directory in dirs_list, \
+            f"move_media_item(): a media directory named `{media_directory}` " \
+            f"first needs to be created with create_media_directory()"
+
+        # Find the current directory for the requested Media Content Item
+        dir = cls.media_directory_stored_in(internal_id)
+        #print("\ndir: ", dir)
+        # Make sure that it isn't already equal to the specified new directory path
+        assert media_directory != dir, \
+            f"move_media_item(): the requested Media Item (internal database ID {internal_id}) " \
+            f"is ALREADY located in the specified new destination directory (`{media_directory}`)"
+
+        # Look up in the database the metadata of the requested Media Content Item
+        directory_path, stem, extension = MediaManager.get_media_item_file(internal_id=internal_id)
+        # EXAMPLE:  ("D:/media/my_media_folder/images/", "my_pict", "jpg")
+
+        src_file_path = f"{directory_path}{stem}.{extension}"   # The current storage location (TODO: turn into function)
+        dest_file_path = f"{MediaManager.get_media_folder()}{media_directory}/{stem}.{extension}"   # The desired storage location
+
+        #print("\nsrc_file_path: ", src_file_path)       # EXAMPLE: "test_files/sample_file_1.txt"
+        #print("dest_file_path: ", dest_file_path)       # EXAMPLE: "test_files/my documents/chapter 1/sample_file_1.txt"
+
+        # Move the media file
+        MediaManager.move_file(src=src_file_path, dest=dest_file_path)
+        PluginManager.move_media_item_successful(internal_id=internal_id,
+                                                 src=src_file_path, dest=dest_file_path)   # Needed to move "covers" or "thumbnails"
+
+        # Update the databases
+        # Locate the node for the new "Directory"
+        dir_record = GraphSchema.get_data_nodes_by_key_pair(class_name="Directory",
+                                                            key_name="name", key_value=media_directory,
+                                                            include_id=True, enforce_unique=True)
+        new_dir_id = dir_record["_internal_id"]
+        #new_dir_id = GraphSchema.locate_single_data_node(class_name="Directory", key_name="name", key_value=media_directory)
+        #print("new_dir_id : ", new_dir_id)
+
+        if dir is None:
+            GraphSchema.add_data_relationship(from_id=internal_id, to_id=new_dir_id, rel_name="BA_stored_in")
+        else:
+            # Change the link in the database
+            old_dir_record = GraphSchema.get_data_nodes_by_key_pair(class_name="Directory", key_name="name", key_value=dir,
+                                                                    include_id=True, enforce_unique=True)
+            old_dir_id = old_dir_record["_internal_id"]
+            #old_dir_id = GraphSchema.locate_single_data_node(class_name="Directory", key_name="name", key_value=dir)
+            #print("old_dir_id : ", old_dir_id)
+            GraphSchema.db.reattach_node(node=internal_id,
+                                         old_attachment=old_dir_id, new_attachment=new_dir_id,
+                                         rel_name="BA_stored_in")
+
+
+
+
+
+
+    #####################################################################################################
+
+    '''                            ~   DIRECT FOLDER ACCESS (read/modify)   ~                                '''
+
+    def ________DIRECT_FOLDER_ACCESS________(DIVIDER):
+        pass        # Used to get a better structure view in IDEs
+    #####################################################################################################
+
+    @classmethod
+    def create_folder(cls, directory_path :str) -> None:
+        """
+        If the folder already exists, no action is taken
+
+        :param directory_path:  May or may not end in a slash character.
+                                EXAMPLE (forward slashes even on Windows): "D:/media/documents"
+                                EXAMPLE of local path:  "test_files/my documents/chapter 1"
+        :return:                None
+        """
+        #print(f"create_folder(): attempting to create a folder named '{directory_path}'")
+        os.makedirs(directory_path, exist_ok=True)       # Do not raise an error if the folder already exists
+
+
+
+    @classmethod
+    def delete_folder(cls, directory_path :str) -> None:
+        """
+        If the folder doesn't exists or isn't empty, an Exception is raised
+
+        :param directory_path:  EXAMPLE, on Windows: "D:/media/documents"
+                                EXAMPLE of local path:  "test_files/my documents/chapter 1"
+        :return:                None
+        """
+        #TODO: pytest
+        #TODO: offer an option to delete folder and all its contents
+        #print(f"delete_folder(): attempting to delete a folder named '{directory_path}'")
+        os.rmdir(directory_path)    # An Exception will be raised if folder isn't empty
+
+
+    @classmethod
+    def folder_exists(cls, name :str) -> bool:
+        """
+
+        :param name:    EXAMPLE: "test_files/my documents/chapter 1"
+        :return:        True if such folder (directory) exists, or False otherwise
+        """
+        #TODO: pytest
+
+        # Create a path object (works seamlessly on Windows and Linux)
+        folder_path = Path(name)
+
+        # Check if it exists AND is a directory
+        return folder_path.is_dir()
+
+
+
+    @classmethod
+    def move_file(cls, src :str, dest :str) -> None:
+        """
+        Rename (move) the specified file, possibly across disks.
+        An Exception is raised if:
+            * the file was not found
+            * if source and destination are the same
+            * another file with destination file path already exists
+            * bad file path for the destination (e.g. forbidden characters)
+            * if the directory path to the destination isn't already present
+
+        EXAMPLE (with local paths):
+            move_file(src = "test_files/I_dont_exist.txt",
+                      dest = "test_files/sample_file_2.txt")
+
+        :param src:    Current file path of the file to rename
+                            EXAMPLE: "D:/test_files/I_dont_exist.txt"
+        :param dest:   Desired new file path
+        :return:       None
+        """
+        #print(f"move_file(): src='{src}' | dest: '{dest}'")
+
+        assert src != dest, \
+            f"move_file(): The requested source and destination file names are the same! (`{src}`)"
+
+        assert os.path.exists(src), \
+            f"move_file(): The requested file `{src}` does not exist"
+
+        assert not os.path.exists(dest), \
+            f"move_file(): A file with the requested destination name (`{dest}`) already exists"
+
+        cls.assert_valid_file_path(dest)
+
+        # Move (if on the same disk, it does a rename; if across disks, it copies first, and then deletes the original)
+        #os.rename(src, dest)    # TODO: doesn't work if the source and destination are on different disks!
+        shutil.move(src, dest)
+
+
+
 
 
     #####################################################################################################
@@ -647,6 +1061,19 @@ class MediaManager:
     def ________DIRECT_FILE_ACCESS________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
+    @classmethod
+    def file_exists(cls, name :str) -> bool:
+        """
+
+        :param name:    Use forward slashes.  EXAMPLE of relative paths "test_files/sample_file_1.txt"
+        :return:        True if file exists, or False otherwise
+        """
+        # Use forward slashes; pathlib automatically converts them for Windows
+        file_path = Path(name)
+
+        return file_path.is_file()
+
 
 
     @classmethod
@@ -673,16 +1100,16 @@ class MediaManager:
 
 
     @classmethod
-    def get_from_binary_file(cls, path :str, filename :str) -> bytes:
+    def get_from_binary_file(cls, directory_path :str, filename :str) -> bytes:
         """
         Read in and return the contents of the specified BINARY file
 
-        :param path:        String that must include a final "/", containing the full path of the file
-                                EXAMPLE on Windows: "D:/media/" (notice the forward slashes, even on Windows)
+        :param directory_path:  String that may or may not include a final "/", containing the full path of the file
+                                EXAMPLE on Windows: "D:/media" or "D:/media/" (notice the forward slashes, even on Windows)
         :param filename:    EXCLUSIVE of path.  EXAMPLE: "my pic.jpg"
         :return:            The contents of the binary file
         """
-        full_file_name = path + filename
+        full_file_name = Path(directory_path) / filename
         with open(full_file_name, 'rb') as fh:
             file_contents = fh.read()
             return file_contents
@@ -770,17 +1197,23 @@ class ImageProcessing:
         }
     """
 
+    RESIZED_FOLDER = "_resized/"    # TODO: this ought to be managed by the Images class
+
+
     @classmethod
     def save_thumbnail(cls, src_folder :str, filename :str, save_to_folder :str,
                        src_width :int, src_height :int) -> None:
         """
         Make a thumbnail of the specified image, and save it in a file.
-        The "th" thumbnail format (width=300) is being followed.
+        If the destination folder doesn't exist already, it gets created.
+        The format (width=300) being followed is was used to be called "th" (thumbnail)
 
         :param src_folder:      Full path of folder with the file to resize.  It MUST end with "/"
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/"
         :param filename:        Name of file to resize.  EXAMPLE: "my image.jpg"
         :param save_to_folder:  Full path of folder where to save the resized file.  It MUST end with "/"
+                                    It's allowable to be the same as `src_folder` (in which case the original file gets over-written).
+                                    If it doesn't exist, it gets created.
                                     EXAMPLE (on Windows): "D:/Docs/Brain Annex/media/_resized/"
         :param src_width:       Pixel width of the original image
         :param src_height:      Pixel height of the original image
@@ -800,7 +1233,7 @@ class ImageProcessing:
                   f"Attempting to automatically correct, if that was due to a missing destination folder")
 
             # Attempt to remedy the problem by creating the appropriate folder - in case it was missing
-            MediaManager.create_folder(name=save_to_folder)
+            MediaManager.create_folder(directory_path=save_to_folder)
 
             # Try again after creating the media folder (if that was indeed missing)
             image.save(resized_full_name)
@@ -856,7 +1289,7 @@ class ImageProcessing:
         """
         If possible, obtain the size of the image, resize it to a thumbnail,
         save the thumbnail in the "_resized/" subfolder of the specified media folder;
-        not all images (such as SVG's) can be resized.
+        note that not all images (such as SVG's) can be resized.
 
         Return a dictionary of additional image-specific properties that will go in the database.
 

@@ -3,7 +3,7 @@ from brainannex import Categories, Collections, GraphSchema, UserManager, FullTe
 from app_libraries.data_manager import DataManager
 from app_libraries.media_manager import MediaManager
 from app_libraries.node_explorer import NodeExplorer
-import app_libraries.PLUGINS.plugin_support as plugin_support
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 
 from flask_modules.home.login_manager import FlaskUserManagement
 
@@ -49,4 +49,4 @@ class InitializeBrainAnnex:
 
         MediaManager.set_media_folder(media_folder)
 
-        MediaManager.set_default_folders(plugin_support.all_default_folders())
+        MediaManager.set_default_folders(PluginManager.all_default_folders())

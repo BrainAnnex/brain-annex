@@ -135,7 +135,13 @@ Vue.component('vue-content-items',
 
                 <!-- Provide a drag-and-drop area, which makes use of the "Dropzone" module.
                     The "id" and the "class" attributes of the FORM element below
-                    are meant for use by the JS package "Dropzone" -->
+                    are meant for use by the JS package "dropzone.js".
+                    Dropzone will find all form elements with the class 'dropzone',
+                    automatically attach itself to it,
+                    and upload files dropped into it to the web endpoint specified 'action' attribute.
+                    The uploaded files can be handled just as if there would have been a html input like this:
+                        <input type="file" name="file">    Notice the hardwired name "file"
+                  -->
                 <form  class='dropzone'
                        v-bind:id="'myDropzone_' + item_metadata.entity_id"
                        action='/BA/api/upload_media'

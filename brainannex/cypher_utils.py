@@ -16,10 +16,10 @@ class CypherBuilder:
     are used to facilitate a user to specify a node in a wide variety of ways - and
     save those specifications, to use as needed in later building Cypher queries.
 
-    NO extra database operations are involved.
+    NO database operations are involved.
 
     IMPORTANT:  By our convention -
-                    if internal_id is provided, all other conditions are DISREGARDED;
+                    if internal_id is provided, all other conditions - EXCEPT any label(s) present - are DISREGARDED;
                     if it's missing, an implicit AND operation applies to all the specified conditions
                     (Regardless, all the passed data is stored in this object)
 
@@ -29,17 +29,17 @@ class CypherBuilder:
     First, validation and storage of all the passed specifications (the "RAW match structure"),
     that are used to identify a node or group of nodes.
 
-    Then the generation and storage of values for the following 6 properties:
+    Then the generation and storage of values for the following 6 object properties:
 
         1) "node":  A string, defining a node in a Cypher query, incl. parentheses but *excluding* the "MATCH" keyword
         2) "where": A string, defining the "WHERE" part of the subquery (*excluding* the "WHERE"), if applicable;
                     otherwise, a blank
-        3) "clause_binding"     A dict meant to provide the data for a clause
+        3) "clause_binding"     A dict meant to provide the data for the WHERE clause
         4) "data_binding":      A (possibly empty) data-binding dictionary
         5) "dummy_node_name":   A string used for the node name inside the Cypher query (by default, "n");
                                 potentially relevant to the "node" and "where" values
         6) "cypher":            The complete Cypher query, exclusive of RETURN statement and later parts;
-                                the WHERE pass will be missing if there are no clauses
+                                the WHERE part will be missing if there are no clauses
 
         EXAMPLES:
             *   node: "(n)"
@@ -54,9 +54,9 @@ class CypherBuilder:
                     data_binding: {}
                     dummy_node_name: "p"
             *   node: "(n  )"
-                    where: "id(n) = 123"
+                    where: "id(n) = $internal_id_n"
                     clause_binding: {}
-                    data_binding: {}
+                    data_binding: {"internal_id_n": 123}
                     dummy_node_name: "n"
             *   node: "(n :`car`:`surplus inventory` )"
                     where: ""
@@ -96,7 +96,7 @@ class CypherBuilder:
                                 EXAMPLES:  "cars"
                                             ("cars", "powered vehicles")
                             Note that if multiple labels are given, then only nodes possessing ALL of them will be matched;
-                            at present, there's no way to request an "OR" operation on labels
+                            at present, there's no way to request an "OR" operation on labels.  TODO: verify
 
         :param key_name:    A string with the name of a node attribute; if provided, key_value must be present, too
         :param key_value:   The required value for the above key; if provided, key_name must be present, too
@@ -251,27 +251,29 @@ class CypherBuilder:
 
         """
         IMPORTANT:  By our convention -
-                1) if internal_id is provided, all other conditions are DISREGARDED;
+                1) if internal_id is provided, all other conditions - EXCEPT the label(s) - are DISREGARDED;
                 2) if it's missing, an implicit "AND" operation applies to all the specified conditions
                 
                 TODO: maybe ditch (1) and give an option to what boolean to use in (2)
         """
+        # Turn labels (string or list/tuple of strings) into a string suitable for inclusion into Cypher
+        cypher_labels = CypherUtils.prepare_labels(self.labels)     # EXAMPLES:     ":`patient`"
+                                                                    #               ":`CAR`:`INVENTORY`"
+
         if self.internal_id is not None:    # If an internal node ID is specified, it over-rides all the other conditions
                                             # (note: internal_id might be 0)
-            self.node = f"({self.dummy_node_name})"
-            self.where = f"id({self.dummy_node_name}) = {self.internal_id}"
-            self.data_binding = {}
+            if cypher_labels:
+                self.node = f"({self.dummy_node_name} {cypher_labels})"
+            else:
+                self.node = f"({self.dummy_node_name})"
+
+            self.where = f"id({self.dummy_node_name}) = $internal_id_{self.dummy_node_name}"    # EXAMPLE: "id(n) = $internal_id_n"
+            self.data_binding = {f"internal_id_{self.dummy_node_name}": self.internal_id}       # EXAMPLE: {"internal_id_n": 123}
             self.cypher = f"MATCH {self.node} WHERE {self.where}"
             return
 
 
         # If we get here, we're dealing with the case where the internal_id isn't given
-
-
-        # Turn labels (string or list/tuple of strings) into a string suitable for inclusion into Cypher
-        cypher_labels = CypherUtils.prepare_labels(self.labels)     # EXAMPLES:     ":`patient`"
-                                                                    #               ":`CAR`:`INVENTORY`"
-
 
         properties = self.properties.copy()     # Make a clone, so as to leave self.properties undisturbed
 
@@ -428,7 +430,7 @@ class CypherUtils:
                                 dummy_node_name=None, caller_method=None) -> CypherBuilder:
         """
         Accept either a valid internal database node ID, or a "CypherBuilder" object,
-        and turn it into a "CypherBuilder" object that makes use of the requested dummy name
+        and turn it into a new "CypherBuilder" object that makes use of the requested dummy name
 
         Note: no database operation is performed
 
@@ -438,9 +440,10 @@ class CypherUtils:
         :param dummy_node_name: [OPTIONAL] A string that will be used inside a Cypher query, to refer to nodes
         :param caller_method:   [OPTIONAL] String with name of caller method, only used for error messages
 
-        :return:                A "CypherBuilder" object, used to identify a node,
+        :return:                A new "CypherBuilder" object, used to identify a node,
                                     or group of nodes
         """
+        #TODO: switch to staticmethod
         if type(handle) == CypherBuilder:
             # Clone the object, but using the requested dummy name
             if dummy_node_name is None:
@@ -476,7 +479,7 @@ class CypherUtils:
 
 
     @classmethod
-    def assemble_cypher_blocks(cls, handle :Union[int, str, CypherBuilder],
+    def assemble_cypher_blocks(cls, handle :int|str|CypherBuilder,
                               dummy_node_name=None, caller_method=None) -> tuple:
         """
         Put together the various blocks of what can be later assembled into a Cypher query
@@ -498,7 +501,7 @@ class CypherUtils:
                                                             potentially relevant to the "node" and "where" values
         """
         cypher_object = cls.process_match_structure(handle=handle,
-                                        dummy_node_name=dummy_node_name, caller_method=caller_method)
+                                                    dummy_node_name=dummy_node_name, caller_method=caller_method)
         #print(cypher_object)
         return cypher_object.unpack_match()
 
@@ -627,7 +630,7 @@ class CypherUtils:
         if len(purged_where_list) == 0:
             return ""
 
-        return "WHERE (" + " AND ".join(purged_where_list) + ")"    # The outer parentheses are to protect against code injection
+        return " WHERE (" + " AND ".join(purged_where_list) + ")"    # The outer parentheses are to protect against code injection
 
 
 

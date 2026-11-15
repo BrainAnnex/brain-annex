@@ -9,15 +9,16 @@ class Note:
     """
     
     SCHEMA_CLASS_NAME = "Note"
+    DEFAULT_FOLDER_NAME = "notes"   # The desired name for the default folder to contain media files for this plugin
 
 
 
     @classmethod
     def default_folder(cls):
         """
-        Specify the desired name for the default folder to contain "notes" media
+        Specify
         """
-        return "notes"
+        return cls.DEFAULT_FOLDER_NAME
 
 
 
@@ -53,7 +54,7 @@ class Note:
         #print(f"***** DELETING INDEXING for item {uri}")
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
-        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
+        content_id = GraphSchema.locate_data_node(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
         FullTextIndexing.remove_indexing(content_id)
 
 
@@ -157,7 +158,7 @@ class Note:
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
+        content_id = GraphSchema.locate_data_node(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
         n_words = len(unique_words)
         print(f"new_content_item_successful(): CREATING INDEXING for item `{uri}`. "
               f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")
@@ -180,7 +181,7 @@ class Note:
         # TODO: maybe the Core can take care of this,
         #       for all Content Items that make use of word indexing
         unique_words = FullTextIndexing.extract_unique_good_words(body)
-        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
+        content_id = GraphSchema.locate_data_node(class_name=cls.SCHEMA_CLASS_NAME, entity_id=uri)
         n_words = len(unique_words)
         #print(f"update_content_item_successful(): UPDATING INDEXING for item `{uri}`. "
         #      f"Found {n_words} unique words; first few: {list(unique_words)[:10]}")

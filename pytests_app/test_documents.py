@@ -15,4 +15,4 @@ def db():
 
 def test_api_endpoint():
     result = Document.api_endpoint(parameters=[1, 2, 3])
-    assert result == "ok"
+    assert result == True

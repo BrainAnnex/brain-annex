@@ -1,7 +1,7 @@
 from brainannex import GraphAccess, GraphSchema, \
                        Categories, FullTextIndexing, PyGraphVisual
 
-import app_libraries.PLUGINS.plugin_support as plugin_support
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 from app_libraries.PLUGINS.note import Note
 from app_libraries.PLUGINS.document import Document
 from app_libraries.PLUGINS.image import Image
@@ -80,6 +80,7 @@ class DataManager:
     def ________UTILITIES________(DIVIDER):
         pass        # Used to get a better structure view in IDEs
     #####################################################################################################
+
 
     @classmethod
     def to_int_if_possible(cls, s: str):
@@ -289,8 +290,8 @@ class DataManager:
 
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
-        new_id = GraphSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
-                                                             class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
+        GraphSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
+                                                 class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
 
 
         # If requested, link to another existing class
@@ -307,9 +308,9 @@ class DataManager:
 
             try:
                 if rel_dir == "OUT":
-                    GraphSchema.create_class_relationship(from_class=new_id, to_class=linked_to, rel_name=rel_name)
+                    GraphSchema.create_class_relationship(from_class=new_class_name, to_class=linked_to, rel_name=rel_name)
                 elif rel_dir == "IN":
-                    GraphSchema.create_class_relationship(from_class=linked_to, to_class=new_id, rel_name=rel_name)
+                    GraphSchema.create_class_relationship(from_class=linked_to, to_class=new_class_name, rel_name=rel_name)
             except Exception as ex:
                 raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
@@ -370,7 +371,7 @@ class DataManager:
 
 
         # Locate the internal ID of the Class node
-        #class_internal_id = GraphSchema.get_class_internal_id(class_name.strip())
+        #class_internal_id = GraphSchema.locate_class(class_name.strip())
         number_prop_added = GraphSchema.add_properties_to_class(class_name= class_name, properties= [prop_name])
         if number_prop_added != 1:
             raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}`")
@@ -526,7 +527,7 @@ class DataManager:
         :return:            A list of values
         """
         # TODO: generalize, and move to GraphSchema.
-        #       Is it really needed, given GraphSchema.get_nodes_by_filter() ?  Maybe just absorb into the latter
+        #       Is it really needed, given GraphSchema.get_data_nodes_by_filter() ?  Maybe just absorb into the latter
         match = cls.db.match(labels=class_name)
         return cls.db.get_single_field(match=match, field_name=field_name, order_by=order_by)
 
@@ -676,7 +677,7 @@ class DataManager:
             update_data = Document.before_update_content(entity_id=entity_id, item_data=update_data)
         elif class_name == "Image":
             update_data = Image.before_update_content(entity_id=entity_id, item_data=update_data)
-        #elif plugin_support.is_media_class(class_name):
+        #elif PluginManager.is_media_class(class_name):
             # If the Content Item is a Media Item (other than Document)
             #MediaManager.before_update_content(entity_id=entity_id, set_dict=update_data, class_name=class_name)
 
@@ -725,7 +726,7 @@ class DataManager:
 
 
         # PLUGIN-SPECIFIC OPERATIONS (often involving changes to files)
-        if plugin_support.is_media_class(class_name):
+        if PluginManager.is_media_class(class_name):
             # If there's media involved, delete the media, too
             MediaManager.delete_media_file(uri=uri, class_name=class_name)
 
@@ -813,7 +814,7 @@ class DataManager:
         # TODO: switch to using:
         #       new_uri = GraphSchema.generate_uri(class_name)
         # First, check if a specific namespace, or the general data node namespace, is to be used
-        class_id = GraphSchema.get_class_internal_id(class_name)
+        class_id = GraphSchema.locate_class(class_name)
         namespace_links = GraphSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
                                                    properties="namespace")
         print("add_new_content_item_to_category() - namespace_links: ", namespace_links)
@@ -1023,58 +1024,6 @@ class DataManager:
 
 
 
-    @classmethod
-    def directories_stored_in(cls, internal_id=None, limit=100) -> dict:
-        """
-        Extract the directory location of the given Content Item, if specified,
-        as well as the list of all registered directories
-
-        See also get_records_by_class()
-
-        :param internal_id: [OPTIONAL] To identify the Content Item of interest
-        :param limit:       [OPTIONAL] Max number of folder names to return
-
-        :return:            The dictionary containing:
-                                1. "location":  the name of the directory of the specified Content Item,
-                                                if applicable (or None if not specified)
-                                2. "all_directories": the sorted list of all directory names
-
-                                EXAMPLE:
-                                 {"location": "documents/Ebooks & Articles/SYSTEMS BIO",
-                                  "all_directories":
-                                        [
-                                            "documents/Ebooks & Articles/SYSTEMS BIO",
-                                            "documents/Ebooks & Articles/math"
-                                        ]
-                                  }
-        """
-        result, _ = GraphSchema.get_nodes_by_filter(class_name="Directory",
-                                                    order_by="name", sort_ignore_case=["name"],
-                                                    limit=limit)
-        #print(result)
-        #TODO: let get_nodes_by_filter() extract the desired single field
-        directory_list = [d.get("name") for d in result]
-        #print(directory_list)
-
-        if internal_id is None:
-            location = None
-        else:
-            result = cls.db.follow_links(match=internal_id,
-                                         rel_name="BA_stored_in", rel_dir="OUT",
-                                         neighbor_labels="Directory")
-            assert len(result) <= 1, \
-                f"directories_stored_in(): found MULTIPLE locations ({len(result)})   " \
-                f"for the Content Item with internal_id {internal_id}"
-
-            if len(result) == 1:
-                location = result[0].get("name")
-            else:
-                location = None
-
-        return {"location": location, "all_directories": directory_list}
-
-
-
 
 
 
@@ -1201,7 +1150,8 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_properties = GraphSchema.get_single_data_node(node_id=search_category, id_key="entity_id", class_name="Category")
+            #category_properties = GraphSchema.get_single_data_node_OLD(node_id=search_category, id_key="entity_id", class_name="Category")
+            category_properties = GraphSchema.get_single_data_node_by_entity(class_name="Category", entity_id=search_category)
             category_name = category_properties.get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
@@ -1661,10 +1611,10 @@ class DataManager:
 
         #print(f"labels: {label} | key_name: {key_name} | key_value: {key_value} | case_sensitive: {case_sensitive} | order_by: {order_by} | skip: {skip} | limit: {limit}")
 
-        return GraphSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
-                                               string_match="CONTAINS", case_sensitive=case_sensitive,
-                                               include_id=True, include_labels=True,
-                                               order_by=order_by, skip=skip, limit=limit)
+        return GraphSchema.get_data_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
+                                                    string_match="CONTAINS", case_sensitive=case_sensitive,
+                                                    include_id=True, include_labels=True,
+                                                    order_by=order_by, skip=skip, limit=limit)
 
 
 

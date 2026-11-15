@@ -98,17 +98,17 @@ class Categories:
     #####################################################################################################
 
     @classmethod
-    def get_category_info(cls, category_uri :str) -> dict:
+    def get_category_info(cls, entity_id :str) -> dict:
         """
         Return the Name and Remarks field values attached to the given Category
 
-        :param category_uri:    A string uniquely identifying the desired Category
-        :return:                The Category's properties (or a blank dictionary if not found)
-                                    EXAMPLES:   {"entity_id": "123", "name": "Astronomy", "remarks": "except cosmology"}
-                                                {"entity_id": "1", "name": "HOME", "root": true}
+        :param entity_id:   A string uniquely identifying the desired Category
+        :return:            The Category's properties (or a blank dictionary if not found)
+                                EXAMPLES:   {"entity_id": "123", "name": "Astronomy", "remarks": "except cosmology"}
+                                            {"entity_id": "1", "name": "HOME", "root": true}
         """
-        #return GraphSchema.get_single_data_node(class_name="Category", node_id=category_uri, id_key="entity_id")
-        return GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Category", search=("entity_id", category_uri))
+        #return GraphSchema.get_single_data_node_EXPERIMENTAL_2(class_name="Category", search=("entity_id", category_uri))
+        return GraphSchema.get_single_data_node_by_entity(class_name="Category", entity_id=entity_id, hide_schema=True)
 
 
 
@@ -140,8 +140,12 @@ class Categories:
                     If more than one root exists, raise an Exception
         """
         #match = cls.db.match(label="Category", properties={"root": True})
-        root_category = GraphSchema.get_single_data_node(node_id=True, id_key="root", class_name="Category")
-        if root_category:
+        #root_category = GraphSchema.get_single_data_node_OLD(node_id=True, id_key="root", class_name="Category")
+        root_category_nodes = GraphSchema.get_data_nodes_by_key_pair(class_name="Category", key_name="root", key_value=True)
+        assert len(root_category_nodes) < 2, \
+            "get_root_entity_id(): more than 1 root node found.  Root node is not unique"
+        if len(root_category_nodes) == 1:
+            root_category = root_category_nodes[0]
             return root_category.get("entity_id")
 
 
@@ -457,7 +461,7 @@ class Categories:
         if subcategory_remarks:
             data_dict["remarks"] = subcategory_remarks
 
-        parent_category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id=category_uri)
+        parent_category_internal_id = GraphSchema.locate_data_node(class_name="Category", entity_id=category_uri)
 
         new_uri = GraphSchema.reserve_next_entity_id()      # Obtain (and reserve) the next auto-increment value
 
@@ -477,7 +481,7 @@ class Categories:
         Delete the specified Category, provided that there are no Content Items linked to it.
         In case of error or failure, an Exception is raised.
 
-        :param uri: The uri identifying the desired Category
+        :param uri: The value identifying the desired Category
         :return:    None
         """
         category_uri = uri
@@ -486,7 +490,7 @@ class Categories:
             raise Exception("Cannot delete the Root node")       # TODO: this will eventually have to be managed differently
 
         # First, make sure that there are no Content Items linked to this Category
-        number_items_attached = Collections.collection_size(collection_id=category_uri, membership_rel_name="BA_in_category")
+        number_items_attached = Collections.collection_size(collection_class="Category", collection_id=category_uri, membership_rel_name="BA_in_category")
 
         if number_items_attached > 0:
             raise Exception(f"Cannot delete the requested Category (URI '{category_uri}') because "
@@ -540,7 +544,8 @@ class Categories:
         #   (the originator) of the relationship
         try:
             GraphSchema.add_data_relationship(from_id=subcategory_uri, to_id=category_uri,
-                                              rel_name="BA_subcategory_of", id_type="entity_id")
+                                              rel_name="BA_subcategory_of", id_type="entity_id",
+                                              from_class="Category", to_class="Category")
         except Exception as ex:
             raise Exception(f"add_subcategory_relationship(): Unable to create a subcategory relationship "
                             f"from Category uri `{subcategory_uri}` to Category uri `{category_uri}`. {ex}")
@@ -605,12 +610,12 @@ class Categories:
         """
         Create a "see_also" link between the given Categories, in the specified direction
 
-        :param from_category:   URI of the Category where the "see_also" relationship originates
-        :param to_category:     URI of the Category where the "see_also" relationship terminates
+        :param from_category:   Entity ID of the Category where the "see_also" relationship originates
+        :param to_category:     Entity ID of the Category where the "see_also" relationship terminates
         :return:                None
         """
         GraphSchema.add_data_relationship(from_id=from_category, to_id=to_category, id_type="entity_id",
-                                          rel_name="BA_see_also")
+                                          rel_name="BA_see_also", from_class="Category", to_class="Category")
 
 
 
@@ -730,7 +735,7 @@ class Categories:
         # TODO: expand to cover all the data needs of BA_pages_routing.py
         # TODO: maybe move to DataManager layer
 
-        category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id= category_uri)
+        category_internal_id = GraphSchema.locate_data_node(class_name="Category", entity_id= category_uri)
         siblings_categories = Categories.get_sibling_categories(category_internal_id)
 
         return siblings_categories
@@ -885,7 +890,8 @@ class Categories:
         :param uri: The URI of a data node representing a Category
         :return:    True if the given Category has a "pinned" status; otherwise, False
         """
-        all_props = GraphSchema.get_single_data_node(node_id=uri, id_key="entity_id", class_name="Category")    # A dict, or None
+        #all_props = GraphSchema.get_single_data_node_OLD(node_id=uri, id_key="entity_id", class_name="Category")    # A dict, or None
+        all_props = GraphSchema.get_single_data_node_by_entity(class_name="Category", entity_id=uri, hide_schema=True)    # A dict, or None
         assert all_props, f"is_pinned(): unable to locate the specified Category node (entity_id: '{uri}')"
 
         value = all_props.get("pinned", False)  # Unless specifically "pinned", all Categories aren't
@@ -1188,7 +1194,7 @@ class Categories:
             f"detach_from_category(): Cannot delete the only remaining 'BA_in_category' link " \
             f"from Content Item (internal ID: '{item_internal_id}') to Categories"
 
-        category_internal_id = GraphSchema.get_data_node_internal_id(class_name="Category", entity_id=category_entity_id)
+        category_internal_id = GraphSchema.locate_data_node(class_name="Category", entity_id=category_entity_id)
 
         GraphSchema.remove_data_relationship(from_id=item_internal_id, to_id=category_internal_id,
                                              rel_name="BA_in_category")

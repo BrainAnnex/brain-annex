@@ -118,10 +118,7 @@ def test_is_collection(db):
     GraphSchema.create_data_node(class_name="Photo Album",
                                  properties ={"name": "Jamaica vacation"}, new_entity_id=new_uri)
 
-    assert Collections.is_collection(collection_entity_id=new_uri)
-
-    with pytest.raises(Exception):
-        Collections.is_collection(collection_entity_id="some random string that is not a URI")
+    assert Collections.is_collection(collection_class="Photo Album")
 
 
     # Create something that is NOT a collection
@@ -130,7 +127,7 @@ def test_is_collection(db):
     GraphSchema.create_namespace(name="cars", prefix="c-")
     car_uri = GraphSchema.reserve_next_entity_id(namespace="cars")
     GraphSchema.create_data_node(class_name="Car", properties ={"color": "white"}, new_entity_id=car_uri)
-    assert not Collections.is_collection(collection_entity_id=car_uri)
+    assert not Collections.is_collection(collection_class="Car")
 
 
 

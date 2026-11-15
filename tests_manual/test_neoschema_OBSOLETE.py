@@ -76,14 +76,14 @@ def test_create_class(db):
 def test_get_class_internal_id(db):
     db.empty_dbase()
     A_neo_uri, _ = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_internal_id("A") == A_neo_uri
+    assert GraphSchema.locate_class("A") == A_neo_uri
 
     B_neo_uri, _ = GraphSchema.create_class("B")
-    assert GraphSchema.get_class_internal_id("A") == A_neo_uri
-    assert GraphSchema.get_class_internal_id("B") == B_neo_uri
+    assert GraphSchema.locate_class("A") == A_neo_uri
+    assert GraphSchema.locate_class("B") == B_neo_uri
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_internal_id("NON-EXISTENT CLASS")
+        assert GraphSchema.locate_class("NON-EXISTENT CLASS")
 
 
 
@@ -146,17 +146,17 @@ def test_class_name_exists(db):
 def test_get_class_name_by_schema_uri(db):
     db.empty_dbase()
     _ , class_A_uri = GraphSchema.create_class("A")
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity(class_A_uri) == "A"
 
     _ , class_B_uri = GraphSchema.create_class("B")
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
-    assert GraphSchema.get_class_name_by_schema_entity_id(class_B_uri) == "B"
+    assert GraphSchema.get_class_name_by_schema_entity(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity(class_B_uri) == "B"
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_entity_id("schema-XYZ")
+        assert GraphSchema.get_class_name_by_schema_entity("schema-XYZ")
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_entity_id(123)
+        assert GraphSchema.get_class_name_by_schema_entity(123)
 
 
 def test_get_class_name(db):
@@ -631,7 +631,7 @@ def test_get_class_properties(db):
     db.empty_dbase()
 
     GraphSchema.create_class_with_properties("My first class", properties=["A", "B", "C"])
-    neo_uri = GraphSchema.get_class_internal_id("My first class")
+    neo_uri = GraphSchema.locate_class("My first class")
     props = GraphSchema.get_class_properties(neo_uri)
     assert props == ["A", "B", "C"]
     props = GraphSchema.get_class_properties("My first class")
@@ -2056,22 +2056,22 @@ def test_locate_node(db):
 def test_class_of_data_point(db):
     db.empty_dbase()
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=123)  # No such data node exists
+        GraphSchema.class_of_data_node(internal_id=123)  # No such data node exists
 
     internal_id = db.create_node("random")
     with pytest.raises(Exception):
-        GraphSchema.class_of_data_node(node_id=internal_id)     # It's not a data node
+        GraphSchema.class_of_data_node(internal_id=internal_id)     # It's not a data node
 
     GraphSchema.create_class("Person")
     uri = GraphSchema.add_data_point_OLD("Person")
 
-    assert GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id") == "Person"
-    assert GraphSchema.class_of_data_node(node_id=uri, id_key="entity_id", labels="Person") == "Person"
+    assert GraphSchema.class_of_data_node(internal_id=uri, id_key="entity_id") == "Person"
+    assert GraphSchema.class_of_data_node(internal_id=uri, id_key="entity_id", labels="Person") == "Person"
 
     # Now locate thru the internal database ID
     internal_id = GraphSchema.get_data_node_id(uri)
     #print("neo_uri: ", neo_uri)
-    assert GraphSchema.class_of_data_node(node_id=internal_id) == "Person"
+    assert GraphSchema.class_of_data_node(internal_id=internal_id) == "Person"
 
     GraphSchema.create_class("Extra")
     # Create a forbidden scenario with a data node having 2 Schema classes
@@ -2082,7 +2082,7 @@ def test_class_of_data_point(db):
     #db.debug_print(q, {}, "test")
     db.update_query(q)
     with pytest.raises(Exception):
-        assert GraphSchema.class_of_data_node(node_id=internal_id) == "Person"    # Data node is associated to multiple classes
+        assert GraphSchema.class_of_data_node(internal_id=internal_id) == "Person"    # Data node is associated to multiple classes
 
 
 

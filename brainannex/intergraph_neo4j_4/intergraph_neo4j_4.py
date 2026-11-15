@@ -36,10 +36,6 @@ class InterGraph:
     and helps manage the complex data structures that they return.
     It may be used independently,
     or as the foundation of the higher-level child class, "GraphAccess"
-
-    SECTIONS IN THIS CLASS:
-        * INIT (constructor) and DATABASE CONNECTION
-        * RUNNING GENERIC CYPHER QUERIES
     """
 
     def __init__(self,
@@ -277,7 +273,7 @@ class InterGraph:
 
 
 
-    def query(self, q :str, data_binding=None, single_row=False, single_cell="", single_column=""):
+    def query(self, q :str, data_binding:dict =None, single_row=False, single_cell="", single_column=""):
         """
         Run a Cypher query.  Best suited for Cypher queries that return individual values
         (such as node properties or computed values),
@@ -514,7 +510,7 @@ class InterGraph:
 
 
 
-    def query_extended(self, q: str, data_binding = None, flatten = False, fields_to_exclude = None) -> [dict]:
+    def query_extended(self, q: str, data_binding = None, flatten = False, fields_to_exclude = None) -> list[dict]:
         """
         Extended version of query(), meant to extract additional info
         for queries that return so-called Graph Data Types,

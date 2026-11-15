@@ -16,10 +16,19 @@ from app_build import create_app
 #       (exposed at the top level of this module,
 #        so that this main program may also be started from the CLI
 #        with the "flask run" command)
+#       It also registers GraphQL
 app = create_app()  # Object of type "flask.app.Flask"
 
 
 ###  Fire up the web app
+
+""""
+3 ways to start Flask.  In broad outlines:
+
+1) Run main.py (for example in PyCharm)
+2) flask run with main:app	(Imports the already-configured Flask app)
+3) gunicorn main:app	    (Imports the same configured Flask app)
+"""
 
 #if os.environ.get("FLASK_APP"):
 if app.config['DEPLOYMENT'] == "EXTERNAL":      # starting the app with gunicorn (or other WSGI HTTP Server)

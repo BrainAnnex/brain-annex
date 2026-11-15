@@ -2,6 +2,9 @@ import pytest
 from brainannex import GraphAccess, GraphSchema, Collections, Categories
 from utilities.comparisons import compare_recordsets
 from app_libraries.data_manager import DataManager
+from app_libraries.media_manager import MediaManager
+from app_libraries.PLUGINS.image import Image
+from app_libraries.PLUGINS.plugin_manager import PluginManager
 
 
 
@@ -83,28 +86,28 @@ def test_update_content_item(db):
     # Alter the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
                                     update_data={"caption": "beach at sunrise"})    # No actual change
-    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="entity_id", class_name="Photo")
+    result = GraphSchema.get_single_data_node_by_entity(entity_id="photo_1", class_name="Photo")
     assert result.get("caption") == "beach at sunrise"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
                                     update_data={"caption": "    beach under full moon  "})
-    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="entity_id", class_name="Photo")
+    result = GraphSchema.get_single_data_node_by_entity(entity_id="photo_1", class_name="Photo")
     assert result.get("caption") == "beach under full moon"     # Notice the leading/trailing blanks are gone
     assert result.get("remarks") is None
 
     # Alter again the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
                                     update_data={"caption": "      "})
-    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="entity_id", class_name="Photo")
+    result = GraphSchema.get_single_data_node_by_entity(entity_id="photo_1", class_name="Photo")
     assert result.get("caption") is None        # That field is now gone altogether
     assert result.get("remarks") is None
 
     # Alter yet again the Content Item
     DataManager.update_content_item(entity_id="photo_1", class_name="Photo",
                                     update_data={"remarks": "3 is a charm!  ", "caption": "  beach in the late afternoon"})
-    result = GraphSchema.get_single_data_node(node_id="photo_1", id_key="entity_id", class_name="Photo")
+    result = GraphSchema.get_single_data_node_by_entity(entity_id="photo_1", class_name="Photo")
     assert result.get("caption") == "beach in the late afternoon"
     assert result.get("remarks") == "3 is a charm!"
 
@@ -265,4 +268,4 @@ def test_get_filtered(db):
         DataManager.get_filtered({"mystery_key": 123})   # Bad key
 
     # TODO: add more tests
-    #print(DataManager.get_nodes_by_filter({}))
+    #print(DataManager.get_data_nodes_by_filter({}))

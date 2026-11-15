@@ -2,11 +2,16 @@ def load_config_data(config) -> dict:
     """
     Create and return a dictionary of all config data,
     upon reading in the config files.
-    Attempt to import parameters from the default config file first, then from 'config.ini'
-    (possibly overwriting some or all values from the default config file)
+    Attempt to import parameters from the default config file first ('config.defaults.ini'),
+    then from 'config.ini' (possibly overwriting some or all values from the default config file)
 
     :return:    A dictionary of all the config data.
-                    EXAMPLE {"DB_COUNT": 2, "DB_DEFAULT_INDEX": 1, "DB_HOST_1": "bolt://localhost:7687", etc}
+                    EXAMPLE {   "DB_COUNT": 2,
+                                "DB_DEFAULT_INDEX": 1,
+                                "DB_HOST_1": "bolt://localhost:7687",
+                                "PLUGINS": ["document","flash_card","header","image"],
+                                etc
+                            }
     """
     config_data = {}    # A dictionary of all the config data
 
@@ -41,6 +46,7 @@ def load_config_data(config) -> dict:
     SETTINGS = config['SETTINGS']
     #print(SETTINGS)                 # EXAMPLE:  <Section: SETTINGS>
 
+    print("~~~~~~~~~~~  Start of config data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     ###  PART 1 : the database credentials  ###
 
@@ -108,7 +114,7 @@ def load_config_data(config) -> dict:
 
     try:
         # Split by commas and strip whitespace from each item
-        config_data['PLUGINS'] = [item.strip() for item in PLUGINS.split(",")]
+        config_data['PLUGINS'] = [item.strip() for item in PLUGINS.split(",")]  # List of plugin names
     except Exception:
         raise Exception(f"The passed configuration value for PLUGINS is not a series of comma-separated names as expected")
 
@@ -125,6 +131,7 @@ def load_config_data(config) -> dict:
 
     config_data['BRANDING'] = _extract_par("BRANDING", SETTINGS)
 
+    print("~~~~~~~~~~~  End of config data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     return config_data
 

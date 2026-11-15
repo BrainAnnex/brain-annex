@@ -294,7 +294,7 @@ class FullTextIndexing:
         NOTE: if an existing Class with the named specified by the argument `content_item_class_name`
               is not found, it will be created with some default values
 
-        :param content_item_class_name: (OPTIONAL) The name of the Schema Class for Content Items,
+        :param content_item_class_name: [OPTIONAL] The name of the Schema Class for Content Items,
                                             i.e. the Class of the Data Items to be indexed
                                             if not found, it gets created
                                             EXAMPLES: "Document", "Note", "Content Items" (default)
@@ -306,19 +306,17 @@ class FullTextIndexing:
         assert GraphSchema.is_valid_class_name(content_item_class_name), \
             "initialize_schema(): a non-empty string is required for argument `content_item_class_name`"
 
-        if GraphSchema.class_name_exists(content_item_class_name):
-            content_item_class_id = GraphSchema.get_class_internal_id(class_name=content_item_class_name)
-        else:
-            content_item_class_id = GraphSchema.create_class(name=content_item_class_name, strict=False)
+        if not GraphSchema.class_name_exists(content_item_class_name):
+            GraphSchema.create_class(name=content_item_class_name, strict=False)
 
 
-        indexer_class_id = GraphSchema.create_class(name="Indexer", strict=True)
+        GraphSchema.create_class(name="Indexer", strict=True)
 
         GraphSchema.create_class_with_properties(name="Word", strict=True,
                                                  properties=["name"],
                                                  class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
 
-        GraphSchema.create_class_relationship(from_class=content_item_class_id, to_class=indexer_class_id, rel_name="has_index")
+        GraphSchema.create_class_relationship(from_class=content_item_class_name, to_class="Indexer", rel_name="has_index")
 
 
 
