@@ -290,8 +290,8 @@ class DataManager:
 
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
-        new_id = GraphSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
-                                                             class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
+        GraphSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
+                                                 class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
 
 
         # If requested, link to another existing class
@@ -308,9 +308,9 @@ class DataManager:
 
             try:
                 if rel_dir == "OUT":
-                    GraphSchema.create_class_relationship(from_class=new_id, to_class=linked_to, rel_name=rel_name)
+                    GraphSchema.create_class_relationship(from_class=new_class_name, to_class=linked_to, rel_name=rel_name)
                 elif rel_dir == "IN":
-                    GraphSchema.create_class_relationship(from_class=linked_to, to_class=new_id, rel_name=rel_name)
+                    GraphSchema.create_class_relationship(from_class=linked_to, to_class=new_class_name, rel_name=rel_name)
             except Exception as ex:
                 raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 

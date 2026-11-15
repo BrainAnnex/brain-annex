@@ -624,7 +624,7 @@ class ServerCommunication
         // then there was an HTTP error status - for example a 404 (page not found)
 
         let error_info = "HTTP error status received from the server. Error status: " + resp_obj.status
-                                + ". Error type: " + resp_obj.statusText + ". \nURL: " + resp_obj.url + " (see console log for details)";
+                                + ". Error type: " + resp_obj.statusText + ". \nURL: " + resp_obj.url + "\n => (SEE CONSOLE LOG for details)";
         console.error(error_info);
 
         console.error('In handle_fetch_errors(). Full response object:', resp_obj);

@@ -205,23 +205,6 @@ class GraphSchema:
 
 
     @classmethod
-    def assert_valid_class_identifier(cls, class_node : int|str) -> None:
-        """
-        Raise an Exception is the argument is not a valid "identifier" for a Class node,
-        meaning either a valid name or a valid internal database ID
-
-        :param class_node:  Either an integer with the internal database ID of an existing Class node,
-                                or a string with its name
-        :return:            None (an Exception is raised if the validation fails)
-        """
-        if type(class_node) == int:
-            assert CypherUtils.valid_internal_id(class_node)
-        else:
-            cls.assert_valid_class_name(class_node)
-
-
-
-    @classmethod
     def create_class(cls, name :str, code=None, handler=None, strict=False,
                      no_datanodes=False, create_index=True, visible=False) -> int|str:
         """
@@ -683,7 +666,7 @@ class GraphSchema:
 
 
     @classmethod
-    def create_class_relationship(cls, from_class: int|str, to_class: int|str,
+    def create_class_relationship(cls, from_class :str, to_class :str,
                                   rel_name="INSTANCE_OF", use_link_node=False, link_properties=None) -> None:
         """
         Create a relationship (provided that it doesn't already exist) with the specified name
@@ -694,24 +677,22 @@ class GraphSchema:
               as long as the relationships differ in their attributes
               (but this method doesn't allow setting properties on the new relationship)
 
-        :param from_class:  Either an integer with the internal database ID of an existing Class node,
-                                or a string with its name.
-                                Used to identify the node from which the new relationship originates.
-        :param to_class:    Either an integer with the internal database ID of an existing Class node,
-                                or a string with its name.
-                                Used to identify the node to which the new relationship terminates.
+        :param from_class:  Name of an existing Class node;
+                                used to identify the node from which the new relationship originates.
+        :param to_class:    Name of an existing Class node;
+                                used to identify the node to which the new relationship terminates.
         :param rel_name:    Name of the relationship to create, in the from -> to direction
                                 (blanks allowed)
         :param use_link_node: If True, insert an intermediate "LINK" node in the newly-created
                                 relationship; otherwise, simply create a direct link.
                                 Note: if rel_name has the special value "INSTANCE_OF",
                                       this argument must be False
+                                IMPORTANT: this will become always True in future versions
         :param link_properties: [OPTIONAL] List of Property names to attach to the newly-created link.
                                     Note: if link_properties is specified, then use_link_node is automatically True
         :return:            None
         """
         #TODO: maybe rename rel_name to link_name, for consistency
-        #TODO: use accept Class names, not internal ID's
         #TODO: add a method that reports on all existing relationships among Classes?
         #TODO: provide more feedback in case of failure
 
@@ -727,19 +708,12 @@ class GraphSchema:
             "create_class_relationship(): if the argument `rel_name` has the special (default) value of 'INSTANCE_OF', " \
             "then the flag `use_link_node` must be False"
 
-        cls.assert_valid_class_identifier(from_class)
-        cls.assert_valid_class_identifier(to_class)
+        cls.assert_valid_class_name(from_class)
+        cls.assert_valid_class_name(to_class)
 
         # Prepare the WHERE clause for a Cypher query
-        if type(from_class) == int:
-            from_clause = "id(from) = $from_class"
-        else:
-            from_clause = "from.name = $from_class"
-
-        if type(to_class) == int:
-            to_clause = "id(to) = $to_class"
-        else:
-            to_clause = "to.name = $to_class"
+        from_clause = "from.name = $from_class"
+        to_clause = "to.name = $to_class"
 
         data_binding = {"from_class": from_class, "to_class": to_class}
 
@@ -1640,9 +1614,9 @@ class GraphSchema:
             # Create a relationship between the newly-created Class and an existing Class whose name is given by class_to_link_to
             try:
                 if link_dir == "OUT":
-                    cls.create_class_relationship(from_class=new_class_db_id, to_class=class_to_link_to, rel_name=link_name)
+                    cls.create_class_relationship(from_class=name, to_class=class_to_link_to, rel_name=link_name)
                 else:
-                    cls.create_class_relationship(from_class=class_to_link_to, to_class=new_class_db_id, rel_name=link_name)
+                    cls.create_class_relationship(from_class=class_to_link_to, to_class=name, rel_name=link_name)
             except Exception as ex:
                 raise Exception(f"New Class ({name}) created successfully, but unable to link it to the `{class_to_link_to}` class. {ex}")
 
@@ -2016,13 +1990,12 @@ class GraphSchema:
 
         :param set_class_property:
             If True, populate the "_CLASS" property on sampled data nodes
-            and additional relationship endpoints where that property
-            is missing.
+            where that property is missing.
             Existing "_CLASS" values are never overwritten.
 
         :param make_visible:
             If True, assign visible=True to all generated CLASS and
-            PROPERTY nodes, for the universal GraphQL generator.
+            PROPERTY nodes (used, by examnple, by the universal GraphQL generator)
 
         :return:
             A dictionary summarizing the generated schema.

@@ -316,11 +316,11 @@ def test_create_class_relationship(db):
 
     # Blank or None name will also raise an Exception
     with pytest.raises(Exception):
-        assert GraphSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name="")
+        assert GraphSchema.create_class_relationship(from_class=french_id, to_class="Foreign Vocabulary", rel_name="")
     with pytest.raises(Exception):
-        assert GraphSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name=None)
+        assert GraphSchema.create_class_relationship(from_class=french_id, to_class="Foreign Vocabulary", rel_name=None)
 
-    GraphSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name="INSTANCE_OF")
+    GraphSchema.create_class_relationship(from_class="French Vocabulary", to_class="Foreign Vocabulary", rel_name="INSTANCE_OF")
 
     q = f'''MATCH 
         (from :CLASS {{name:"French Vocabulary", entity_id: '{french_uri}'}})
@@ -334,12 +334,12 @@ def test_create_class_relationship(db):
 
     # Attempting to create an identical link between the same nodes will result in an Exception
     with pytest.raises(Exception):
-        assert GraphSchema.create_class_relationship(from_class=french_id, to_class=foreign_id, rel_name="INSTANCE_OF")
+        assert GraphSchema.create_class_relationship(from_class=french_id, to_class="Foreign Vocabulary", rel_name="INSTANCE_OF")
 
 
     GraphSchema.create_class("German Vocabulary")
     # Mixing names and internal database ID's
-    GraphSchema.create_class_relationship(from_class="German Vocabulary", to_class=foreign_id, rel_name="INSTANCE_OF")
+    GraphSchema.create_class_relationship(from_class="German Vocabulary", to_class="Foreign Vocabulary", rel_name="INSTANCE_OF")
 
     # Verify
     q = f'''MATCH 
@@ -1422,7 +1422,6 @@ def test_generate_schema_from_data_3(db):
     '''
 
     assert db.query(q, single_cell="NUMBER_FOUND") == 0
-
 
 
 def test_generate_schema_from_data_4(db):

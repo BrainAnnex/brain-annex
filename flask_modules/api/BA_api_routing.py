@@ -1399,7 +1399,10 @@ class ApiRouting:
         @login_required
         def directories_stored_in_api():
             """
-
+            Given a data node representing media,
+            return the name of the file-system directory where the media file is stores.
+            Also return a complete listing of all registered directories
+            
             ~~~ EXAMPLE ~~~
                 http://localhost:5000/BA/api/directories-stored-in
                 using a POST with Content-Type: application/json
