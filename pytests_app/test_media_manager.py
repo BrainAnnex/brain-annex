@@ -77,7 +77,8 @@ def test_lookup_media_file(db):
                                  new_entity_id="dir-1")
 
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id",
+                                      from_class="Image", to_class="Directory")
 
     assert MediaManager.lookup_media_file(entity_id="image-1", class_name="Image") == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
     assert MediaManager.lookup_media_file(entity_id="image-1", class_name="Image", thumb=True) \
@@ -105,7 +106,8 @@ def test_get_media_item_file_by_entity(db):
     GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
                                  new_entity_id="dir-1")
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id",
+                                      from_class="Image", to_class="Directory")
 
     assert MediaManager.get_media_item_file_by_entity(class_name="Image", entity_id="image-1") \
             == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
@@ -129,7 +131,8 @@ def test_get_media_item_file(db):
     GraphSchema.create_data_node(class_name="Directory", properties={"name": "images/Tahiti vacation"},
                                  new_entity_id="dir-1")
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id",
+                                      from_class="Image", to_class="Directory")
 
     assert MediaManager.get_media_item_file(internal_id=image_internal_id) \
             == ("D:/media/my_media_folder/images/Tahiti vacation/", "snap1", "jpg")
@@ -159,7 +162,8 @@ def test_get_absolute_file_path(db):
                                  new_entity_id="dir-1")
 
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id",
+                                      from_class="Image", to_class="Directory")
 
     assert MediaManager.get_absolute_file_path(entity_id="image-1", class_name="Image") == "D:/media/my_media_folder/images/Tahiti vacation/snap1.jpg"
 
@@ -188,7 +192,8 @@ def test_get_full_filename(db):
                                  new_entity_id="dir-1")
 
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id",
+                                      from_class="Image", to_class="Directory")
 
     assert MediaManager.get_full_filename("image-1", class_name="Image") == "D:/media/my_media_folder/images/Tahiti vacation/snap1.jpg"
     assert MediaManager.get_full_filename("image-1", class_name="Image", thumb=True) == \
@@ -362,19 +367,20 @@ def test_retrieve_full_path(db):
     GraphSchema.create_data_node(class_name="Image", properties={"basename": "snap1", "suffix": "jpg"},
                                  new_entity_id="image-1")
 
-    assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/"
-    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}"
+    assert MediaManager.retrieve_full_path(class_name="Image", entity_id="image-1") == "D:/media/my_media_folder/images/"
+    assert MediaManager.retrieve_full_path(class_name="Image", entity_id="image-1", thumb=True) == f"D:/media/my_media_folder/images/{MediaManager.RESIZED_FOLDER}"
 
     with pytest.raises(Exception):
-        assert MediaManager.retrieve_full_path("unknown_uri")
+        assert MediaManager.retrieve_full_path(class_name="Image", entity_id="unknown-value")
 
     # Create a new directory (just its metadata), and link our earlier image to it
     MediaManager.create_media_directory(name="images/Tahiti vacation", entity_id="dir-1")
 
-    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id")
+    GraphSchema.add_data_relationship(from_id="image-1", to_id="dir-1", rel_name="BA_stored_in", id_type="entity_id",
+                                      from_class="Image", to_class="Directory")
 
-    assert MediaManager.retrieve_full_path(uri="image-1") == "D:/media/my_media_folder/images/Tahiti vacation/"
-    assert MediaManager.retrieve_full_path(uri="image-1", thumb=True) == f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}"
+    assert MediaManager.retrieve_full_path(class_name="Image", entity_id="image-1") == "D:/media/my_media_folder/images/Tahiti vacation/"
+    assert MediaManager.retrieve_full_path(class_name="Image", entity_id="image-1", thumb=True) == f"D:/media/my_media_folder/images/Tahiti vacation/{MediaManager.RESIZED_FOLDER}"
 
 
 

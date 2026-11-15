@@ -290,8 +290,8 @@ class DataManager:
 
 
         # Create the new Class, and all of its Properties (as separate nodes, linked together)
-        new_id = GraphSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
-                                                             class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
+        GraphSchema.create_class_with_properties(new_class_name, properties=property_list_clean,
+                                                 class_to_link_to=instance_of_class, link_name="INSTANCE_OF")
 
 
         # If requested, link to another existing class
@@ -308,9 +308,9 @@ class DataManager:
 
             try:
                 if rel_dir == "OUT":
-                    GraphSchema.create_class_relationship(from_class=new_id, to_class=linked_to, rel_name=rel_name)
+                    GraphSchema.create_class_relationship(from_class=new_class_name, to_class=linked_to, rel_name=rel_name)
                 elif rel_dir == "IN":
-                    GraphSchema.create_class_relationship(from_class=linked_to, to_class=new_id, rel_name=rel_name)
+                    GraphSchema.create_class_relationship(from_class=linked_to, to_class=new_class_name, rel_name=rel_name)
             except Exception as ex:
                 raise Exception(f"The new class `{new_class_name}` was created successfully, but could not be linked to `{linked_to}`.  {ex}")
 
@@ -371,7 +371,7 @@ class DataManager:
 
 
         # Locate the internal ID of the Class node
-        #class_internal_id = GraphSchema.get_class_internal_id(class_name.strip())
+        #class_internal_id = GraphSchema.locate_class(class_name.strip())
         number_prop_added = GraphSchema.add_properties_to_class(class_name= class_name, properties= [prop_name])
         if number_prop_added != 1:
             raise Exception(f"Failed to add the new Property `{prop_name}` to the Class `{class_name}`")
@@ -527,7 +527,7 @@ class DataManager:
         :return:            A list of values
         """
         # TODO: generalize, and move to GraphSchema.
-        #       Is it really needed, given GraphSchema.get_nodes_by_filter() ?  Maybe just absorb into the latter
+        #       Is it really needed, given GraphSchema.get_data_nodes_by_filter() ?  Maybe just absorb into the latter
         match = cls.db.match(labels=class_name)
         return cls.db.get_single_field(match=match, field_name=field_name, order_by=order_by)
 
@@ -814,7 +814,7 @@ class DataManager:
         # TODO: switch to using:
         #       new_uri = GraphSchema.generate_uri(class_name)
         # First, check if a specific namespace, or the general data node namespace, is to be used
-        class_id = GraphSchema.get_class_internal_id(class_name)
+        class_id = GraphSchema.locate_class(class_name)
         namespace_links = GraphSchema.follow_links(class_name="CLASS", node_id=class_id, link_name="HAS_URI_GENERATOR",
                                                    properties="namespace")
         print("add_new_content_item_to_category() - namespace_links: ", namespace_links)
@@ -1150,7 +1150,8 @@ class DataManager:
         caption = f"{len(content_items)} SEARCH RESULT(S) for `{words}`"
 
         if search_category:
-            category_properties = GraphSchema.get_single_data_node(node_id=search_category, id_key="entity_id", class_name="Category")
+            #category_properties = GraphSchema.get_single_data_node_OLD(node_id=search_category, id_key="entity_id", class_name="Category")
+            category_properties = GraphSchema.get_single_data_node_by_entity(class_name="Category", entity_id=search_category)
             category_name = category_properties.get("name")
             caption += f" , restricted to Sub-Categories of `{category_name}`"
 
@@ -1610,10 +1611,10 @@ class DataManager:
 
         #print(f"labels: {label} | key_name: {key_name} | key_value: {key_value} | case_sensitive: {case_sensitive} | order_by: {order_by} | skip: {skip} | limit: {limit}")
 
-        return GraphSchema.get_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
-                                               string_match="CONTAINS", case_sensitive=case_sensitive,
-                                               include_id=True, include_labels=True,
-                                               order_by=order_by, skip=skip, limit=limit)
+        return GraphSchema.get_data_nodes_by_filter(labels=label, key_names=key_name, key_value=key_value,
+                                                    string_match="CONTAINS", case_sensitive=case_sensitive,
+                                                    include_id=True, include_labels=True,
+                                                    order_by=order_by, skip=skip, limit=limit)
 
 
 

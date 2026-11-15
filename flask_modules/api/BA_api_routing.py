@@ -12,9 +12,8 @@ from app_libraries.PLUGINS.document import Document
 from app_libraries.PLUGINS.plugin_manager import PluginManager
 from app_libraries.upload_helper import UploadHelper
 from brainannex import GraphSchema, Categories, PyGraphVisual
-from ariadne import QueryType, make_executable_schema, graphql_sync
+#from ariadne import QueryType, make_executable_schema, graphql_sync
 import brainannex.exceptions as exceptions                # To give better info on Exceptions
-import shutil
 import os
 import json
 #from time import sleep     # For tests of delays in asynchronous fetching.  E.g. sleep(3) for 3 secs
@@ -96,26 +95,27 @@ class ApiRouting:
         }
     """
 
-    # --- Resolver binding ---
+    # --- Ariadne Resolver binding ---
+    """
     query = QueryType()
 
     @query.field("people")
     def resolve_people(_, info):
         # Call the existing data layer
         data = [{"name": "Robert"}, {"name": "Julian"}]
-        return data  # expects list of dicts like {"name": ...}
+        return data  # expects list of dicts, where each dict is of the form {"name": ...}
 
     @query.field("labels")
     def resolve_labels(_, info):
         # Call the existing data layer
         label_list = GraphSchema.db.get_labels()
         data = [{"name": label} for label in label_list]
-        return data  # expects list of dicts like {"name": ...}
+        return data  # expects list of dicts, where each dict is of the form {"name": ...}
 
 
     # --- Build schema ---
     schema = make_executable_schema(type_defs, query)
-
+    """
 
 
 
@@ -499,8 +499,15 @@ class ApiRouting:
         #####################################################################################################
 
 
-        @bp.route("/graphql", methods=["POST"])
+        #@bp.route("/graphql", methods=["POST"])
+        """
         def graphql_server():
+            ""
+            See the part earlier in the file, labeled GraphQL
+
+            EXAMPLE invocations:
+                http://localhost:5000/BA/api/graphql
+            ""
             payload = request.get_json()
 
             success, result = graphql_sync(
@@ -512,7 +519,7 @@ class ApiRouting:
 
             status_code = 200 if success else 400
             return jsonify(result), status_code
-
+        """
 
 
         #"@" signifies a decorator - a way to wrap a function and modify its behavior
@@ -1392,7 +1399,10 @@ class ApiRouting:
         @login_required
         def directories_stored_in_api():
             """
-
+            Given a data node representing media,
+            return the name of the file-system directory where the media file is stores.
+            Also return a complete listing of all registered directories
+            
             ~~~ EXAMPLE ~~~
                 http://localhost:5000/BA/api/directories-stored-in
                 using a POST with Content-Type: application/json
@@ -1721,60 +1731,15 @@ class ApiRouting:
 
 
 
-        @bp.route('/add_relationship', methods=['POST'])
-        @login_required
-        def add_relationship():
-            """
-            Add the specified relationship (edge) between existing Data Nodes.
-            This is a generic API to add *any* relationship; no other changes made.
-
-            POST FIELDS:
-                from                    The URI of the Data Nodes from which the relationship originates
-                to                      The URI of the Data Nodes into which the relationship takes
-                rel_name                The name of the relationship to add
-
-            EXAMPLE of invocation:
-                curl http://localhost:5000/BA/api/add_relationship -d
-                        "from=some_uri_1&to=some_uri_2&rel_name=SOME_NAME"
-            """
-            # TODO: maybe merge with the schema endpoint /add_schema_relationship
-
-            # Extract the POST values
-            post_data = request.form
-            # EXAMPLE: ImmutableMultiDict([('from', '123'), ('to', '88'), ('rel_name', 'BA_subcategory_of')])
-            #cls.show_post_data(post_data, "add_relationship")
-
-            try:
-                data_dict = cls.extract_post_pars(post_data, required_par_list=['from', 'to', 'rel_name'])
-
-                from_id = data_dict['from']
-                to_id = data_dict['to']
-                rel_name = data_dict['rel_name']
-
-                # The adding of the relationship is done here
-                GraphSchema.add_data_relationship(from_id=from_id, to_id=to_id, id_type="entity_id",
-                                                  rel_name=rel_name)
-
-                response_data = {"status": "ok"}                                    # If no errors
-            except Exception as ex:
-                err_details = f"Unable to add the requested data relationship.  {exceptions.exception_helper(ex)}"
-                response_data = {"status": "error", "error_message": err_details}   # In case of errors
-
-            #print(f"add_relationship() is returning: `{response_data}`")
-
-            return jsonify(response_data)   # This function also takes care of the Content-Type header
-
-
-
         @bp.route('/remove_relationship', methods=['POST'])
         @login_required
         def remove_relationship():
             """
-            Remove the specified relationship (edge) between Data Nodes
+            Remove the specified relationship (edge) between Data Nodes representing Categories
 
             POST FIELDS:
-                from                    The uri of the node from which the relationship originates
-                to                      The uri of the node into which the relationship takes
+                from                    The entity_id of the node from which the relationship originates
+                to                      The entity_id of the node into which the relationship takes
                 rel_name                The name of the relationship to remove
                 schema_code (optional)  If passed, the appropriate plugin gets invoked
 
@@ -2274,7 +2239,7 @@ class ApiRouting:
                 item_internal_id = request_parameters.get("item_internal_id")
                 category_uri = request_parameters.get("category_uri")
 
-                item_class_name, item_entity_id = GraphSchema.get_class_and_entity_id(item_internal_id)
+                item_class_name, item_entity_id = GraphSchema.get_class_and_entity_id_of_data_node(item_internal_id)
 
                 Categories.link_content_at_end(category_entity_id=category_uri,
                                                item_class_name=item_class_name, item_entity_id=item_entity_id)
@@ -3030,7 +2995,65 @@ class ApiRouting:
                                                     return_url=return_url, verbose=False)
             return status
         
-        
+
+
+
+        @bp.route('/upload-document-cover', methods=['POST'])
+        #@login_required
+        def upload_document_cover_api():
+            """
+
+            USAGE EXAMPLE:
+                <form enctype="multipart/form-data" method="POST" action="/BA/api/upload-document-cover">
+                    <input type="file" name="file"><br>   <!-- IMPORTANT: the API handler expects the name value to be "file" -->
+                    <input type="submit" value="Upload your file">
+                    <input type='hidden' name='entity_id' value='doc-123'>
+                </form>
+
+            (Note: the "Dropzone" front-end module invokes this handler in a similar way,
+                   and in particular it uses name="file" for type="file")
+
+            If the upload is successful, a normal status (200) is returned (no response data);
+                in case of error, a server error status is returned (status 400 or 500), with a text error message
+            """
+            print("Uploading image thru upload_document_cover_api()")
+            # Extract the POST values
+            post_data = request.form    # Example: ImmutableMultiDict([('entity_id', 'doc-123')])
+
+            #print("    Raw POST data: ", post_data)
+            print("    POST variables: ", dict(post_data))  # EXAMPLE: {'entity_id': 'doc-123'}
+
+
+            entity_id = post_data.get('entity_id')
+            if entity_id is None:
+                err_details = "/upload-document-cover : unable to set the cover image for the document.  " \
+                              "Missing parameter `entity_id` in the client call"
+                return make_response(err_details, 400)    # 400 is "Bad Request client error"
+
+
+            try:
+                (upload_filename, absolute_file_path, original_name, mime_type) = UploadHelper.foo(request)
+            except Exception as ex:
+                err_details = f"/upload-document-cover : upload failure.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                print("Exception during file upload : ", err_details)
+                return make_response(err_details, 500)      # 500 is "Internal Server Error"
+
+
+            try:
+                MediaManager.tba(upload_filename, absolute_file_path, mime_type=mime_type,
+                                 entity_id=entity_id, upload_dir=current_app.config['UPLOAD_FOLDER'])
+            except Exception as ex:
+                err_details = f"/upload-document-cover : unable to set the cover image for the document.  " \
+                              f"{exceptions.exception_helper(ex)}"
+                print("Exception during call to MediaManager.tba() : ", err_details)
+                return make_response(err_details, 400)    # 400 is "Bad Request client error"
+
+
+            response_data = ""
+            return response_data
+
+
         
         @bp.route('/upload_media', methods=['POST'])
         @login_required
@@ -3052,7 +3075,7 @@ class ApiRouting:
             The 'insert_after_uri' attribute also can take the special values 'INSERT_AT_BOTTOM' or 'INSERT_AT_TOP'
         
             (Note: the "Dropzone" front-end module invokes this handler in a similar way,
-                   and in particular it uses name="file")
+                   and in particular it uses name="file" for type="file")
         
             If the upload is successful, a normal status (200) is returned (no response data);
                 in case of error, a server error status is return (500), with a text error message
@@ -3070,7 +3093,7 @@ class ApiRouting:
             print("POST variables: ", dict(post_data))  # EXAMPLE: {'category_id': '3677', 'insert_after_uri': 'rs-2',
                                                         #           'upload_folder': 'documents/Ebooks & Articles'}
                                                         # Note that 'upload_folder' is optional
-        
+
             try:
                 upload_dir = current_app.config['UPLOAD_FOLDER']    # The name of the *temporary* directory used for the uploads.
                                                                     #   EXAMPLES: "/tmp/" (Linux)  or  "D:/tmp/" (Windows)
@@ -3107,7 +3130,7 @@ class ApiRouting:
 
             #print(f"upload_media(): Attempting to move file `{src_fullname}` to `{dest_fullname}`")
             try:
-                MediaManager.move_file(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present
+                MediaManager.move_file(src_fullname, dest_fullname)    # Note: this will fail if the directory path to the destination isn't already present.  TODO: remedy
             except Exception:
                 # This failure might be due to the folder dest_folder not being present
                 print(f"upload_media(): Failed to move the uploaded file '{src_fullname}' to its intended destination '{dest_fullname}'.  "

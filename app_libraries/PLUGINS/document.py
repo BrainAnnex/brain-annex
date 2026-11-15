@@ -173,7 +173,7 @@ class Document:
         filename = pars["basename"] + "." + pars["suffix"]      # EXAMPLE: "my_file.txt"
 
         if not upload_folder:     # Document was uploaded to standard location
-            path = MediaManager.retrieve_full_path(uri=entity_id)         # Incl. the final "/"
+            path = MediaManager.retrieve_full_path(class_name="Document", entity_id=entity_id)         # Incl. the final "/"
         else:
             # Link the new document to its specific directory node
             # TODO: perhaps should be done by the MediaManager
@@ -219,7 +219,7 @@ class Document:
 
 
         # Carry out the actual indexing in the database
-        content_id = GraphSchema.get_data_node_internal_id(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
+        content_id = GraphSchema.locate_data_node(class_name=cls.SCHEMA_CLASS_NAME, entity_id=entity_id)
 
         # TODO: this ought to be done in a separate execution thread or process
         FullTextIndexing.new_indexing(internal_id=content_id, unique_words=unique_words)

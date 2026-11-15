@@ -447,7 +447,10 @@ class PagesRouting:
             for item in content_items:
                 #print(item)
                 if "schema_code" not in item["metadata"]:
-                    class_name = GraphSchema.class_of_data_node(node_id=item["metadata"]["entity_id"], id_key="entity_id")
+                    class_name = item["metadata"]["class_name"]
+                    if not class_name:
+                        print(f"search_api(): failed to extract `class_name` from returned search item: {item}")
+                    #class_name = GraphSchema.class_of_data_node(node_id=item["metadata"]["entity_id"], id_key="entity_id")
                     schema_code = GraphSchema.get_schema_code(class_name=class_name)
                     item["metadata"]["schema_code"] = schema_code
 

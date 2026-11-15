@@ -587,7 +587,6 @@ new Vue({
         {
             console.log(`Attempting to make the just-selected Category (Entity ID '${this.uri_parent_to_add}') a parent of the current Category (Entity ID '${this.category_uri}')`);
 
-            //let url_server = "/BA/api/add_relationship";
             let url_server = "/BA/api/add_subcategory_relationship";
 
             let get_obj = {cat: this.uri_parent_to_add,
@@ -651,7 +650,6 @@ new Vue({
         {
             console.log(`Attempting to make the just-selected Category (Entity ID '${this.uri_child_to_add}') a sub-category of the current Category (Entity ID '${this.category_uri}')`);
 
-            //let url_server = "/BA/api/add_relationship";
             let url_server = "/BA/api/add_subcategory_relationship";
 
             let get_obj = {cat: this.category_uri,

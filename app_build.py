@@ -1,6 +1,8 @@
 from flask import Flask
 from configparser import ConfigParser
 from read_config import load_config_data
+from graphql_api import register_graphql
+from graphql_api_2 import register_graphql_2
 
 
 ### Import sub-modules making up this web app:
@@ -44,6 +46,7 @@ def create_app(db=None, test=False, config_override=None) -> Flask:
 
     :return:                The instantiated Flask object
     """
+    # TODO: maybe merge with initialize.py ?
 
     app = Flask(__name__)   # The Flask object
 
@@ -118,6 +121,19 @@ def create_app(db=None, test=False, config_override=None) -> Flask:
     ### Set the secret key to some random bytes. Used to sign the cookies cryptographically
     app.secret_key = b"pqE3_t(4!x"
 
+
+    # Mount GraphQL endpoints
+    try:
+        register_graphql(app)           # For GraphQL tests
+    except Exception as ex:
+        print("create_app(): Unable to start the test GraphQL endpoint.  Reason: ", ex)
+
+    try:
+        register_graphql_2(app)         # For schema-based GraphQL endpoint
+    except Exception as ex:
+        print("*** WARNING ***  create_app(): Unable to start the universal GraphQL endpoint.  Reason: ", ex)
+
+
     return app
 
 
@@ -179,6 +195,9 @@ def initialize_services(app :Flask) -> None:
         )
 
     #print(PluginManager.REGISTERED_PLUGINS)
-    # It shows:  {'document': <class 'app_libraries.PLUGINS.document.Document'>, 'flash_card': <class 'app_libraries.PLUGINS.flash_card.FlashCard'>, etc}
-    #print("PLUGIN TEST: ", PluginManager.REGISTERED_PLUGINS["document"].default_folder())   # Invoke a method of one of the plugin classes
-                                                                                             # It shows: "documents"
+    # It shows:  {'document': <class 'app_libraries.PLUGINS.document.Document'>,
+    #             'flash_card': <class 'app_libraries.PLUGINS.flash_card.FlashCard'>, etc}
+
+    #print("PLUGIN TEST: ", PluginManager.REGISTERED_PLUGINS["document"].default_folder())
+    # Invoke a method of one of the plugin classes
+    # It shows: "documents"
