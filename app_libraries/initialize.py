@@ -41,10 +41,11 @@ class InitializeBrainAnnex:
         configuration file
         (another approach, currently partially used, would be to pass them thru Flask's app.config)
 
-        :param media_folder:
-        :param log_folder:
-        :return:            None
+        :param media_folder:    EXAMPLE: "D:/BA_LOCAL_media/"
+        :param log_folder:      EXAMPLE: "D:/bulk_import_done/"
+        :return:                None
         """
+        #print(f"Calling InitializeBrainAnnex.set_folders(). media_folder: `{media_folder}`, log_folder: `{log_folder}`")
         DataManager.LOG_FOLDER = log_folder
 
         MediaManager.set_media_folder(media_folder)

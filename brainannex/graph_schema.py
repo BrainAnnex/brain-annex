@@ -1945,7 +1945,9 @@ class GraphSchema:
     def generate_schema_from_data(cls,
                         sample_size: int | None = 1000,
                         set_class_property: bool = False,
-                        make_visible: bool = False) -> dict:
+                        make_visible: bool = False,
+                        allow_overwrite: bool = False,
+                        labels_to_disregard :list|tuple|None = None) -> dict:
         """
         Infer and generate a complete semantic schema from existing graph data.
 
@@ -1995,10 +1997,17 @@ class GraphSchema:
 
         :param make_visible:
             If True, assign visible=True to all generated CLASS and
-            PROPERTY nodes (used, by examnple, by the universal GraphQL generator)
+            PROPERTY nodes (used, by example, by the universal GraphQL generator)
+
+        :param allow_overwrite:
+            If False (default), an Exception will be raised if ANY Schema node
+            is already present in the database
+
+        :param labels_to_disregard:
+            List or tuple of the database labels to not consider when inferring a semantic class
 
         :return:
-            A dictionary summarizing the generated schema.
+            A dictionary summarizing the generated schema
         """
 
         # ------------------------------------------------------------------
@@ -2025,6 +2034,12 @@ class GraphSchema:
                 "generate_schema_from_data(): argument `make_visible` must be a boolean"
             )
 
+        if labels_to_disregard is None:
+            ignore_label_set = set()
+        else:
+            if not isinstance(labels_to_disregard, (list,tuple,set)):
+                raise ValueError("generate_schema_from_data(): argument `labels_to_disregard`, if passed, must be a list, tuple or set")
+            ignore_label_set = set(labels_to_disregard)
 
         # Current GraphSchema dtype vocabulary.
         APOC_TYPE_TO_DTYPE = {
@@ -2104,36 +2119,46 @@ class GraphSchema:
                 dtype_registry[key] = (dtype, origin)
 
 
-        def infer_class_name(node_id: int,
-                             node_labels: list,
-                             node_properties: dict):
+        def infer_class_name(node_id: int|str,
+                             node_labels: list[str],
+                             node_properties: dict,
+                             ignore_label_set: set[str]
+                             ):
             """
+            # TODO: turn into a GraphSchema class
+
             Infer the semantic Class of a data node
 
-            If _CLASS is present:
+            If `_CLASS` property is present:
                 - Its value determines the Class name.
-                - The node must have a database label matching that value.
+                - The node MUST have a database label matching that value.
                 - Additional database labels are permitted.
 
-            If _CLASS is absent:
+            If `_CLASS` property is absent:
                 - Exactly one database label is required.
                 - That label determines the Class name.
 
-            :param node_id:
-            :param node_labels:
+            :param node_id:         Internal database ID of the data node of interest.  Used only for error message.
+            :param node_labels:     List or tuple of the database labels of this node
             :param node_properties:
-            :return:                (class_name, needs_class_property)
+            :param ignore_label_set:
+                                    Set of the database labels to not consider when inferring a semantic class
+
+            :return:                The pair (class_name, needs_class_property)
+                                        class_name: the inferred semantic Class
+                                        needs_class_property: True if no `_CLASS` property is already set on this node
             """
 
             if not isinstance(node_labels, (list, tuple)):
                 raise ValueError(
-                    f"generate_schema_from_data(): invalid labels on data node {node_id}"
+                    f"generate_schema_from_data(): invalid labels on data node {node_id}; it should be a list or tuple"
                 )
 
             if not isinstance(node_properties, dict):
                 raise ValueError(
-                    f"generate_schema_from_data(): invalid properties on node {node_id}"
+                    f"generate_schema_from_data(): invalid properties on node {node_id}; it should be a dictionary"
                 )
+
 
             # ------------------------------------------------------------
             # Case 1: `_CLASS` property is explicitly present
@@ -2166,15 +2191,15 @@ class GraphSchema:
             # ------------------------------------------------------------
 
             else:
-
-                if len(node_labels) != 1:
+                effective_node_labels = set(node_labels) - ignore_label_set     # Set difference
+                if len(effective_node_labels) != 1:
                     raise ValueError(
                         f"generate_schema_from_data(): data node {node_id} has no `_CLASS` "
-                        f"property and must therefore have exactly ONE database "
-                        f"label; found {len(node_labels)} : {node_labels!r}."
+                        f"property and must therefore have exactly ONE effective database "
+                        f"label; found {len(effective_node_labels)} : {effective_node_labels!r}."
                     )
 
-                class_name = node_labels[0]
+                class_name = list(effective_node_labels)[0]     # Take the only element from the set `effective_node_labels`
                 needs_class_property = True
 
                 if (type(class_name) is not str
@@ -2215,19 +2240,20 @@ class GraphSchema:
         # 1. Ensure the schema database is empty
         # ------------------------------------------------------------------
 
-        query = """
-            MATCH (n:SCHEMA)
-            RETURN count(n) AS schema_count
-            """
+        if not allow_overwrite:
+            query = """
+                MATCH (n:SCHEMA)
+                RETURN count(n) AS schema_count
+                """
 
-        result = cls.db.query(query, {})
+            result = cls.db.query(query)
 
-        if result[0]["schema_count"] > 0:
-            raise RuntimeError(
-                "generate_schema_from_data(): the database already contains "
-                f"{result[0]['schema_count']} SCHEMA nodes. "
-                "Declining to overwrite an existing schema."
-            )
+            if result[0]["schema_count"] > 0:
+                raise RuntimeError(
+                    "generate_schema_from_data(): the database already contains "
+                    f"{result[0]['schema_count']} SCHEMA nodes. "
+                    "Declining to overwrite an existing schema."
+                )
 
 
         # ------------------------------------------------------------------
@@ -2335,7 +2361,7 @@ class GraphSchema:
             property_types = record["node_property_types"] or {}
 
             class_name, needs_class_property = infer_class_name(
-                node_id, node_labels, node_properties
+                node_id, node_labels, node_properties, ignore_label_set
             )
 
             node_classes[node_id] = class_name
@@ -2406,7 +2432,7 @@ class GraphSchema:
             properties = properties or {}
 
             class_name, needs_class_property = infer_class_name(
-                node_id, labels, properties
+                node_id, labels, properties, ignore_label_set
             )
 
             node_classes[node_id] = class_name

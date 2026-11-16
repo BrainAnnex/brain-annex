@@ -46,7 +46,7 @@ def load_config_data(config) -> dict:
     SETTINGS = config['SETTINGS']
     #print(SETTINGS)                 # EXAMPLE:  <Section: SETTINGS>
 
-    print("~~~~~~~~~~~  Start of config data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print("~~~~~~~~~~~  Start of merged config data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     ###  PART 1 : the database credentials  ###
 

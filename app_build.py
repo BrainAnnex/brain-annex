@@ -104,12 +104,10 @@ def create_app(db=None, test=False, config_override=None) -> Flask:
 
     app.config['DATABASE'] = APP_GRAPH_DBASE
 
-    InitializeBrainAnnex.set_dbase(APP_GRAPH_DBASE)
-    InitializeBrainAnnex.set_folders(app.config['MEDIA_FOLDER'], app.config['LOG_FOLDER'])
 
-    #site_pages = get_site_pages()     # Data for the site navigation
-
-
+    # Define the high-level routing,
+    # register all the requested plugins,
+    # and specify the URL prefixes to use for the various modules
     initialize_services(app)
 
 
@@ -140,18 +138,17 @@ def create_app(db=None, test=False, config_override=None) -> Flask:
 
 def initialize_services(app :Flask) -> None:
     """
-    Define the high-level routing.
-    Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's),
-    and specify the URL prefixes to use for the various modules
+    1) Define the high-level routing.
+            Register the various "blueprints" (i.e. the various top-level modules that specify how to dispatch the URL's)
+    2) Register all the requested plugins
+    3) Specify the URL prefixes to use for the various modules
 
     :param app: An object of type "Flask"
     :return:    None
     """
-    ###
     #   Note that all the classes used here are STATIC classes, that don't get initialized.
     #   ==> TODO: maybe merge with the initializations being done by the methods in InitializeBrainAnnex
 
-    #register_routes(app)
 
     # The site's home (i.e. top-level) pages, incl. login
     HomeRouting.setup(app)
@@ -194,10 +191,16 @@ def initialize_services(app :Flask) -> None:
             plugin_class=plugin_class
         )
 
+    print("The following plugins got registered: ", list(PluginManager.REGISTERED_PLUGINS.keys()))
     #print(PluginManager.REGISTERED_PLUGINS)
     # It shows:  {'document': <class 'app_libraries.PLUGINS.document.Document'>,
-    #             'flash_card': <class 'app_libraries.PLUGINS.flash_card.FlashCard'>, etc}
+    #             'flash_card': <class 'app_libraries.PLUGINS.flash_card.FlashCard'>,
+    #              etc}
 
     #print("PLUGIN TEST: ", PluginManager.REGISTERED_PLUGINS["document"].default_folder())
     # Invoke a method of one of the plugin classes
     # It shows: "documents"
+
+
+    InitializeBrainAnnex.set_dbase(app.config['DATABASE'])
+    InitializeBrainAnnex.set_folders(app.config['MEDIA_FOLDER'], app.config['LOG_FOLDER'])  # This assumes the plugins were registered
