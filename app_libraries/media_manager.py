@@ -35,7 +35,8 @@ class MediaManager:
     | `folder_2`                                      | directory name     |
     | `/folder_1/folder_2` or `C:\folder_1\folder_2`  | directory path     |
     | `/folder_1/folder_2/my_file.txt`                | file path          |
-    | `C:\folder_1\folder_2\my_file.txt`              | absolute file path |   OR:  `C:/folder_1/folder_2/my_file.txt`
+    | `C:\folder_1\folder_2\my_file.txt`              | absolute file path |
+    | OR:  `C:/folder_1/folder_2/my_file.txt`                              |
      """
 
     MEDIA_FOLDER = None # Location where the media for Content Items is stored, including the final "/"
@@ -43,7 +44,7 @@ class MediaManager:
                         #                     (notice the forward slashes, even on Windows)
                         # This class variable gets set by initialize.py
 
-    DEFAULT_FOLDERS = {}    # A dict mapping a Class name to its designated default folder
+    DEFAULT_FOLDERS = {}    # A dict mapping a Schema Class name to its designated default folder
                             # (a subfolder of cls.MEDIA_FOLDER)
                             # EXAMPLE: {"Document": "documents",
                             #           "Image": "images",
@@ -51,7 +52,7 @@ class MediaManager:
                             # This class variable gets set by initialize.py
 
     RESIZED_FOLDER = "_resized/"    # TODO: this ought to be managed by the Images class
-    COVERS_FOLDER = "_covers"      # TODO: this ought to be managed by the Images class
+    COVERS_FOLDER = "_covers"       # TODO: this ought to be managed by the Images class
 
 
 
@@ -111,9 +112,10 @@ class MediaManager:
     @classmethod
     def set_default_folders(cls, folder_dict :dict) -> None:
         """
-        Initialize the class variable DEFAULT_FOLDERS with the given data
+        Initialize the class variable `DEFAULT_FOLDERS` with the given data
 
-        :param folder_dict: A dict mapping a Class name to its designated default folder (a subfolder of cls.MEDIA_FOLDER)
+        :param folder_dict: A dict mapping a Class name to its designated default folder
+                                (a subfolder of cls.MEDIA_FOLDER)
                                 EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
         :return:            None
         """

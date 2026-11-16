@@ -28,6 +28,7 @@ class PluginManager:
                                     <class 'app_libraries.PLUGINS.document.Document'>
         :return:                None
         """
+        #print("Registering plugin with id : ", plugin_id)
         cls.REGISTERED_PLUGINS[plugin_id] = plugin_class
 
 
@@ -168,7 +169,7 @@ class PluginManager:
     @classmethod
     def all_default_folders(cls) -> dict:
         """
-        Return a dict mapping a semantic Class name to its designated default folder
+        Return a dict that maps semantic Class names to their designated default folder
         (as provided by its handler plugin)
 
         :return:    EXAMPLE: {"Document": "documents", "Image": "images", "Note": "notes"}
