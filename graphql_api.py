@@ -103,7 +103,7 @@ schema = strawberry.Schema(query=Query)
 
 
 
-def register_graphql(app) -> None:
+def register_graphql(app) -> str:
     """
     For Flask integration of GraphQL: adding the Strawberry integration
     adds another endpoint to the existing Flask application
@@ -117,5 +117,7 @@ def register_graphql(app) -> None:
         view_func=GraphQLView.as_view(
             "graphql_view",
             schema=schema,
-        ),
+        )
     )   # The string "graphql_view" is the internal endpoint name Flask uses to identify the registered view function
+
+    return "/graphql"
