@@ -1276,7 +1276,6 @@ def test_generate_schema_from_data_1(db):
                      'class_properties_set_on_data_nodes': 0,
                      'graphql_visible': False, 'class_names': ['Person']}
 
-
     q = '''
         MATCH 
         (p1:PROPERTY:SCHEMA {name: "name", dtype: "str"})
@@ -1663,6 +1662,44 @@ def test_generate_schema_from_data_7(db):
     '''
 
     assert db.query(q, single_cell="NUMBER_FOUND") == 0
+
+
+
+def test_generate_schema_from_data_8(db):
+    # Test lists of strings
+
+    db.empty_dbase()
+
+    db.create_node(labels="Person", properties={"name": "Hillary", "age": 24, "aliases": ["Hil", "Hill"]})
+
+    result = GraphSchema.generate_schema_from_data(sample_size=None, set_class_property=False, make_visible=False)
+    assert result == {'sampled_nodes': 1,
+                     'relationships_inspected': 0,
+                     'classes_created': 1,
+                     'class_properties_created': 3,
+                     'links_created': 0,
+                     'link_properties_created': 0,
+                     'class_properties_set_on_data_nodes': 0,
+                     'graphql_visible': False,
+                     'class_names': ['Person']}
+
+    q = '''
+        MATCH 
+            (n:CLASS:SCHEMA {name: "Person", strict: False})
+            -[:HAS_PROPERTY]->
+            (p :PROPERTY:SCHEMA)       
+        
+        WHERE
+            (p.name = "name"    AND p.dtype = "str" AND p.is_list IS NULL)
+            OR
+            (p.name = "age"     AND p.dtype = "int" AND p.is_list IS NULL)
+            OR
+            (p.name = "aliases" AND p.dtype = "str" AND p.is_list=true)
+                       
+        RETURN COUNT(p) AS NUMBER_PROPERTIES_FOUND    
+    '''
+    result = db.query(q, single_cell="NUMBER_PROPERTIES_FOUND")
+    assert result == 3
 
 
 

@@ -1978,8 +1978,10 @@ class GraphSchema:
         of property names observed on the sampled nodes and relationships,
         respectively.
 
-        Each Property also receives a "dtype" attribute inferred from
-        its observed Neo4j data type.
+        Each Property also receives:
+            - "dtype": inferred from its observed Neo4j data type.
+            - "is_list": True if the observed data type is a supported list type.
+                         Otherwise, this property is omitted (default False).
 
         Inconsistent data types for the same Property within the same
         Class or Link cause an exception.
@@ -2045,12 +2047,29 @@ class GraphSchema:
 
 
         # Current GraphSchema dtype vocabulary
+
+        APOC_TYPE_TO_SCHEMA_TYPE = {
+            # Scalar types
+            "STRING":          ("str", False),
+            "INTEGER":         ("int", False),
+            "FLOAT":           ("float", False),
+            "BOOLEAN":         ("bool", False),
+
+            # List types
+            "LIST OF STRING":  ("str", True),
+            "LIST OF INTEGER": ("int", True),
+            "LIST OF FLOAT":   ("float", True),
+            "LIST OF BOOLEAN": ("bool", True)
+        }
+        # Note: "LIST OF ANY", for heterogeneous lists, is currently rejected
+        """
         APOC_TYPE_TO_DTYPE = {
             "STRING": "str",
             "INTEGER": "int",
             "FLOAT": "float",
             "BOOLEAN": "bool"
         }
+        """
 
         # These are system properties, not user-facing Properties.
         SYSTEM_PROPERTIES = {"_CLASS", "_entity_id"}
@@ -2085,13 +2104,64 @@ class GraphSchema:
             Raises an exception if:
                 - The type is not supported by GraphSchema.
                 - A previous observation of this same Property has
+                  a different dtype or list/scalar status.
+
+            dtype_registry keys are (owner, property_name).
+
+            Values are (dtype, is_list, first_observation_origin).
+            """
+
+            schema_type = APOC_TYPE_TO_SCHEMA_TYPE.get(apoc_type)
+
+            if schema_type is None:
+                raise ValueError(
+                    "generate_schema_from_data(): unsupported Neo4j property type "
+                    f"{apoc_type!r} for Property {property_name!r} "
+                    f"({origin})."
+                )
+
+            dtype, is_list = schema_type
+
+            key = (owner, property_name)
+
+            previous = dtype_registry.get(key)
+
+            if previous is not None:
+
+                previous_dtype, previous_is_list, previous_origin = previous
+
+                if previous_dtype != dtype or previous_is_list != is_list:
+                    raise ValueError(
+                        "generate_schema_from_data(): inconsistent data types "
+                        f"for Property {property_name!r}, owner {owner!r}: "
+                        f"{previous_dtype!r} (is_list={previous_is_list}) "
+                        f"({previous_origin}) versus "
+                        f"{dtype!r} (is_list={is_list}) ({origin})."
+                    )
+
+            else:
+                dtype_registry[key] = (dtype, is_list, origin)
+
+
+
+        def observe_dtype_OLD(dtype_registry: dict,
+                          owner,
+                          property_name: str,
+                          apoc_type: str,
+                          origin: str) -> None:
+            """
+            Register an observed property type.
+
+            Raises an exception if:
+                - The type is not supported by GraphSchema.
+                - A previous observation of this same Property has
                   a different data type.
 
             dtype_registry keys are (owner, property_name).
 
             Values are (GraphSchema dtype, first observation origin).
             """
-
+            """
             dtype = APOC_TYPE_TO_DTYPE.get(apoc_type)
 
             if dtype is None:
@@ -2101,7 +2171,7 @@ class GraphSchema:
                     f"({origin}). Supported types are "
                     f"{list(APOC_TYPE_TO_DTYPE.values())}."
                 )
-
+            """
             key = (owner, property_name)
 
             previous = dtype_registry.get(key)
@@ -2120,6 +2190,7 @@ class GraphSchema:
 
             else:
                 dtype_registry[key] = (dtype, origin)
+
 
 
         def infer_class_name(node_id: int|str,
@@ -2591,6 +2662,17 @@ class GraphSchema:
 
             for index, property_name in enumerate(property_names, start=1):
 
+                dtype, is_list, _ = class_property_dtypes[(class_name, property_name)]
+
+                properties = {
+                    "_entity_id": new_entity_id(),
+                    "name": property_name,
+                    "dtype": dtype
+                }
+
+                if is_list:
+                    properties["is_list"] = True
+                """
                 dtype = class_property_dtypes[(class_name, property_name)][0]
 
                 properties = {
@@ -2598,6 +2680,7 @@ class GraphSchema:
                     "name": property_name,
                     "dtype": dtype
                 }
+                """
 
                 if make_visible:
                     properties["visible"] = True
@@ -2652,7 +2735,17 @@ class GraphSchema:
             )
 
             for index, property_name in enumerate(property_names, start=1):
+                dtype, is_list, _ = link_property_dtypes[(link_key, property_name)]
 
+                properties = {
+                    "_entity_id": new_entity_id(),
+                    "name": property_name,
+                    "dtype": dtype
+                }
+
+                if is_list:
+                    properties["is_list"] = True
+                """
                 dtype = link_property_dtypes[(link_key, property_name)][0]
 
                 properties = {
@@ -2660,6 +2753,7 @@ class GraphSchema:
                     "name": property_name,
                     "dtype": dtype
                 }
+                """
 
                 if make_visible:
                     properties["visible"] = True
