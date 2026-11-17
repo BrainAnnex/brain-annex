@@ -211,7 +211,7 @@ def _python_type_for_dtype(dtype: Any, property_name: str) -> Type:
 
     Strawberry uses Python annotations to infer GraphQL scalar types. This
     helper therefore converts the semantic vocabulary into Python's built-in
-types before the dynamic Strawberry class is decorated.
+    types before the dynamic Strawberry class is decorated.
 
     No case folding, aliases, or coercion is attempted. A value such as
     ``"string"`` is an error: GraphSchema is responsible for storing only the
@@ -402,11 +402,13 @@ def _get_visible_properties(class_name: str) -> List[dict]:
     property_definitions = GraphSchema.get_class_properties_full_data(
         class_name=class_name
     )
-    # Example property metadata (only name, dtype, visible, and required are
+    # List of property metadata.
+    # Example of an entry (only name, dtype, visible, and required are
     # needed here; other semantic metadata remains available to other consumers):
     #     {
     #         "name": "address",
     #         "dtype": "str",       # canonical GraphSchema dtype
+    #         "is_list": False,
     #         "visible": True,
     #         "required": False,
     #         "description": "Street address of the restaurant"
@@ -443,6 +445,9 @@ def _get_visible_properties(class_name: str) -> List[dict]:
 
         dtype = property_definition.get("dtype")
         python_type = _python_type_for_dtype(dtype, property_name)
+        if property_definition.get("is_list") is True:
+            python_type = List[python_type]         # Example: list of strings
+
         is_required = property_definition.get("required") is True
 
         visible_properties.append(
@@ -1095,7 +1100,7 @@ def build_graphql_schema():
 
 
 
-def register_graphql_2(app) -> None:
+def register_graphql_2(app) -> str:
     """Generate the dynamic schema and register its HTTP endpoint with Flask.
 
     Call this function from Brain Annex's application factory after the
@@ -1113,9 +1118,10 @@ def register_graphql_2(app) -> None:
     :param app: The existing Flask application object created by Brain Annex's
         application factory. This function registers a route on that object;
         it does not create a second Flask application.
-    :return:    None. The Flask application is modified in place by registering
+    :return:    The URL to access the GraphQL. The Flask application is modified in place by registering
         ``GRAPHQL_URL`` with the unique Flask endpoint name
-        ``FLASK_ENDPOINT_NAME``.
+        ``FLASK_ENDPOINT_NAME``
+
     :raises ValueError: If GraphSchema metadata cannot be represented as a
         valid GraphQL schema.
     :raises NotImplementedError: If required GraphSchema relationship metadata
@@ -1128,5 +1134,7 @@ def register_graphql_2(app) -> None:
         view_func=GraphQLView.as_view(
             FLASK_ENDPOINT_NAME,
             schema=generated_schema,
-        ),
+        )
     )
+
+    return GRAPHQL_URL
