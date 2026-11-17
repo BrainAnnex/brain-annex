@@ -1309,7 +1309,9 @@ class GraphSchema:
 
         EXAMPLE:
             [{'name': 'body', 'entity_id': 'schema-2', '_internal_id': 123,
-              'dtype': 'string', 'description': 'the body of the quote', 'required': True, 'system': False, 'format': '6,50'}
+              'dtype': 'string', 'is_list': False,
+              'description': 'the body of the quote',
+              'required': True, 'system': False, 'format': '6,50'}
             ]
 
         :param class_name:          The name of a Schema Class
@@ -2041,7 +2043,8 @@ class GraphSchema:
                 raise ValueError("generate_schema_from_data(): argument `labels_to_disregard`, if passed, must be a list, tuple or set")
             ignore_label_set = set(labels_to_disregard)
 
-        # Current GraphSchema dtype vocabulary.
+
+        # Current GraphSchema dtype vocabulary
         APOC_TYPE_TO_DTYPE = {
             "STRING": "str",
             "INTEGER": "int",
