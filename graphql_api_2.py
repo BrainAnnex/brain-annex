@@ -4,7 +4,7 @@ This module builds an executable GraphQL schema from Brain Annex's semantic
 metadata ("GraphSchema").
 
 It does NOT contain handwritten Strawberry object
-classes for each domain class. Instead, it reads the metadata at application
+classes for each domain class.  Instead, it reads the metadata at application
 startup and creates the corresponding Python/Strawberry types programmatically.
 
 
@@ -90,7 +90,7 @@ Two GraphSchema methods are used for relationship traversal:
 
 1. ``GraphSchema.get_class_links_full_data(class_name=...)``
 
-   Returns outgoing semantic LINK definitions for the source class, e.g.::
+   Returns outgoing semantic LINK definitions for the source CLASS node, e.g.::
 
        [
            {"name": "WORKS_FOR", "target_class": "Employer"},
