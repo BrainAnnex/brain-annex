@@ -2099,16 +2099,25 @@ class GraphSchema:
                           apoc_type: str,
                           origin: str) -> None:
             """
-            Register an observed property type.
+            Register an observed property type,
+            for the purpose of detecting inconsistencies.
 
-            Raises an exception if:
+            Raises an exception if any applies:
                 - The type is not supported by GraphSchema.
                 - A previous observation of this same Property has
                   a different dtype or list/scalar status.
 
-            dtype_registry keys are (owner, property_name).
+            dtype_registry: keys are   (owner, property_name);
+                            values are (dtype, is_list, first_observation_origin)
 
-            Values are (dtype, is_list, first_observation_origin).
+            :param dtype_registry:  A dictionary of all encountered Property types in the data
+            :param owner:           Either a Class name, or a Link key (source_class, link_name, target_class)
+                                        EXAMPLES:   "Person"
+                                                    ("Car", "BELONGS_TO", "Person")
+            :param property_name:
+            :param apoc_type:
+            :param origin:
+            :return:                None
             """
 
             schema_type = APOC_TYPE_TO_SCHEMA_TYPE.get(apoc_type)
@@ -2130,66 +2139,17 @@ class GraphSchema:
 
                 previous_dtype, previous_is_list, previous_origin = previous
 
-                if previous_dtype != dtype or previous_is_list != is_list:
+                if (previous_dtype != dtype) or (previous_is_list != is_list):
                     raise ValueError(
                         "generate_schema_from_data(): inconsistent data types "
-                        f"for Property {property_name!r}, owner {owner!r}: "
-                        f"{previous_dtype!r} (is_list={previous_is_list}) "
-                        f"({previous_origin}) versus "
-                        f"{dtype!r} (is_list={is_list}) ({origin})."
+                        f"for Property named {property_name!r}, owner {owner!r}: "
+                        f"TYPE {previous_dtype!r} (is_list={previous_is_list}) "
+                        f"appearing in ({previous_origin}) \n"
+                        f"VERSUS TYPE {dtype!r} (is_list={is_list}) appearing in ({origin})."
                     )
 
             else:
                 dtype_registry[key] = (dtype, is_list, origin)
-
-
-
-        def observe_dtype_OLD(dtype_registry: dict,
-                          owner,
-                          property_name: str,
-                          apoc_type: str,
-                          origin: str) -> None:
-            """
-            Register an observed property type.
-
-            Raises an exception if:
-                - The type is not supported by GraphSchema.
-                - A previous observation of this same Property has
-                  a different data type.
-
-            dtype_registry keys are (owner, property_name).
-
-            Values are (GraphSchema dtype, first observation origin).
-            """
-            """
-            dtype = APOC_TYPE_TO_DTYPE.get(apoc_type)
-
-            if dtype is None:
-                raise ValueError(
-                    "generate_schema_from_data(): unsupported Neo4j property type "
-                    f"{apoc_type!r} for Property {property_name!r} "
-                    f"({origin}). Supported types are "
-                    f"{list(APOC_TYPE_TO_DTYPE.values())}."
-                )
-            """
-            key = (owner, property_name)
-
-            previous = dtype_registry.get(key)
-
-            if previous is not None:
-
-                previous_dtype, previous_origin = previous
-
-                if previous_dtype != dtype:
-                    raise ValueError(
-                        "generate_schema_from_data(): inconsistent data types "
-                        f"for Property {property_name!r}, owner {owner!r}: "
-                        f"{previous_dtype!r} ({previous_origin}) versus "
-                        f"{dtype!r} ({origin})."
-                    )
-
-            else:
-                dtype_registry[key] = (dtype, origin)
 
 
 
@@ -2464,11 +2424,11 @@ class GraphSchema:
                     )
 
                 observe_dtype(
-                    class_property_dtypes,
-                    class_name,
-                    property_name,
-                    apoc_type,
-                    f"node ID {node_id}"
+                    dtype_registry=class_property_dtypes,
+                    owner=class_name,
+                    property_name=property_name,
+                    apoc_type=apoc_type,
+                    origin=f"node ID {node_id}"
                 )
 
 
@@ -2615,11 +2575,12 @@ class GraphSchema:
                     )
 
                 observe_dtype(
-                    link_property_dtypes,
-                    link_key,
-                    property_name,
-                    apoc_type,
-                    f"relationship {link_name!r}"
+                    dtype_registry=link_property_dtypes,
+                    owner=link_key,
+                    property_name=property_name,
+                    apoc_type=apoc_type,
+                    origin= f"relationship {link_name!r} "
+                            f"from node id {record['source_id']} to node id {record['target_id']}"
                 )
 
 
