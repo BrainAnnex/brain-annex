@@ -34,11 +34,11 @@ class Image:
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
-        if not GraphSchema.class_name_exists("Media") or not GraphSchema.class_name_exists("Directory"):
+        if not GraphSchema.class_exists("Media") or not GraphSchema.class_exists("Directory"):
             MediaManager.add_to_schema()
 
 
-        if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
+        if not GraphSchema.class_exists(cls.SCHEMA_CLASS_NAME):
             GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="i", handler="images",
                                                  properties=["width", "height", "caption", "date_created"],
                                                  class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")

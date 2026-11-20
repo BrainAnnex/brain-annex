@@ -35,10 +35,10 @@ class Document:
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
-        if not GraphSchema.class_name_exists("Media") or not GraphSchema.class_name_exists("Directory"):
+        if not GraphSchema.class_exists("Media") or not GraphSchema.class_exists("Directory"):
             MediaManager.add_to_schema()
 
-        if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
+        if not GraphSchema.class_exists(cls.SCHEMA_CLASS_NAME):
             GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="d",  handler="documents",
                                                  properties=["caption", "date_created", "url", "comments", "year", "month", "read", "rating", "authors"],
                                                  class_to_link_to="Media", link_name="INSTANCE_OF", link_dir="OUT")
@@ -46,7 +46,7 @@ class Document:
 
         # Take care of Indexing
 
-        if not GraphSchema.class_name_exists("Indexer"):
+        if not GraphSchema.class_exists("Indexer"):
             FullTextIndexing.add_to_schema()
 
         if not GraphSchema.class_relationship_exists(from_class=cls.SCHEMA_CLASS_NAME, to_class="Indexer", rel_name="has_index"):

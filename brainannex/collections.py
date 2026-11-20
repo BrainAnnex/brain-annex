@@ -55,7 +55,7 @@ class Collections:
         :return:    The internal database ID of the new Class node just created;
                         if nothing was created, return None
         """
-        if not GraphSchema.class_name_exists("Collections"):
+        if not GraphSchema.class_exists("Collections"):
             return GraphSchema.create_class(name="Collections", strict = False)
 
 

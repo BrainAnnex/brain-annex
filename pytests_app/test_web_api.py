@@ -293,7 +293,7 @@ def test_create_schema_from_data_POST(client):
     result = response.json["payload"]   # The internal database ID of the newly-created Class node
 
     # Verify we now have a `Car` Class, with no Properties
-    assert GraphSchema.class_name_exists("Car")
+    assert GraphSchema.class_exists("Car")
     assert GraphSchema.locate_class("Car") == result
     assert GraphSchema.get_class_properties(class_name="Car") == []
     assert not GraphSchema.is_strict_class("Car")
@@ -310,7 +310,7 @@ def test_create_schema_from_data_POST(client):
     result = response.json["payload"]   # The internal database ID of the newly-created Class node
 
     # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
-    assert GraphSchema.class_name_exists("Person")
+    assert GraphSchema.class_exists("Person")
     assert GraphSchema.locate_class("Person") == result
     assert GraphSchema.get_class_properties(class_name="Person") == ["age", "Medical #", "name"]    # in alphabetic order
     assert not GraphSchema.is_strict_class("Person")

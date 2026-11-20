@@ -41,7 +41,7 @@ class UserManager:
 
         :return:    None
         """
-        if not GraphSchema.class_name_exists("User"):
+        if not GraphSchema.class_exists("User"):
             db_id = GraphSchema.create_class_with_properties(name="User",
                                                              properties=["user_id", "username", "password", "email", "admin"], strict=True)
 

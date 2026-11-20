@@ -650,7 +650,7 @@ class DataManager:
         """
         #print("In DataManager.update_content_item(): update_data = ", update_data)
 
-        assert GraphSchema.class_name_exists(class_name), \
+        assert GraphSchema.class_exists(class_name), \
                 f"update_content_item(): the specified class `{class_name}` doesn't exist"
 
         # Make sure that the requested Content Item exists
@@ -695,7 +695,7 @@ class DataManager:
         # verify that some fields indeed got updated
         # Note: an update with the same value as before is considered legit, and counts as an update
         if class_name != "Note" and number_updated == 0:
-            if not GraphSchema.class_name_exists(class_name):
+            if not GraphSchema.class_exists(class_name):
                 raise Exception(f"update_content_item(): Requested Class ({class_name}) doesn't exist; no update performed")
             else:
                 raise Exception("update_content_item(): No update performed")

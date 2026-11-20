@@ -122,31 +122,12 @@ def test_get_class_entity_id_2(db):
 
 
 
-def test_class_uri_exists(db):
-    db.empty_dbase()
-    assert not GraphSchema.class_entity_id_exists("schema-123")
-
-    with pytest.raises(Exception):
-        assert GraphSchema.class_entity_id_exists(123)  # Not a string
-
-    GraphSchema.create_class("A")
-    class_A_uri = GraphSchema.get_class_entity_id(class_name="A")
-    assert GraphSchema.class_entity_id_exists(class_A_uri)
-
-
-
-def test_class_name_exists(db):
+def test_exists(db):
     db.empty_dbase()
 
-    assert not GraphSchema.class_name_exists("A")
+    assert not GraphSchema.class_exists("A")
     GraphSchema.create_class("A")
-    assert GraphSchema.class_name_exists("A")
-
-    with pytest.raises(Exception):
-        assert GraphSchema.class_entity_id_exists("B")
-
-    with pytest.raises(Exception):
-        assert GraphSchema.class_entity_id_exists(123)
+    assert GraphSchema.class_exists("A")
 
 
 
@@ -154,18 +135,18 @@ def test_get_class_name_by_schema_uri(db):
     db.empty_dbase()
     GraphSchema.create_class("A")
     class_A_uri = GraphSchema.get_class_entity_id(class_name="A")
-    assert GraphSchema.get_class_name_by_schema_entity(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
 
     GraphSchema.create_class("B")
     class_B_uri = GraphSchema.get_class_entity_id(class_name="B")
-    assert GraphSchema.get_class_name_by_schema_entity(class_A_uri) == "A"
-    assert GraphSchema.get_class_name_by_schema_entity(class_B_uri) == "B"
+    assert GraphSchema.get_class_name_by_schema_entity_id(class_A_uri) == "A"
+    assert GraphSchema.get_class_name_by_schema_entity_id(class_B_uri) == "B"
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_entity("schema-XYZ")
+        assert GraphSchema.get_class_name_by_schema_entity_id("schema-XYZ")
 
     with pytest.raises(Exception):
-        assert GraphSchema.get_class_name_by_schema_entity(123)
+        assert GraphSchema.get_class_name_by_schema_entity_id(123)
 
 
 
@@ -530,13 +511,13 @@ def test_delete_class(db):
 
     GraphSchema.delete_class("French Vocabulary", safe_delete=False)
     # French should be gone; but German still there
-    assert not GraphSchema.class_name_exists("French Vocabulary")
-    assert GraphSchema.class_name_exists("German Vocabulary")
+    assert not GraphSchema.class_exists("French Vocabulary")
+    assert GraphSchema.class_exists("German Vocabulary")
 
     GraphSchema.delete_class("German Vocabulary")
     # Both classes gone
-    assert not GraphSchema.class_name_exists("French Vocabulary")
-    assert not GraphSchema.class_name_exists("German Vocabulary")
+    assert not GraphSchema.class_exists("French Vocabulary")
+    assert not GraphSchema.class_exists("German Vocabulary")
 
     with pytest.raises(Exception):
         GraphSchema.delete_class("German Vocabulary")     # Was already deleted
@@ -546,21 +527,21 @@ def test_delete_class(db):
     db.empty_dbase()
     create_sample_schema_1()    # Schema with patient/result/doctor
     GraphSchema.delete_class("doctor")
-    assert GraphSchema.class_name_exists("patient")
-    assert GraphSchema.class_name_exists("result")
-    assert not GraphSchema.class_name_exists("doctor")
+    assert GraphSchema.class_exists("patient")
+    assert GraphSchema.class_exists("result")
+    assert not GraphSchema.class_exists("doctor")
     # The Class "patient" is still linked to the Class "result"
     assert GraphSchema.get_linked_class_names(class_name="patient", rel_name="HAS_RESULT") == ["result"]
 
     GraphSchema.delete_class("patient")
-    assert not GraphSchema.class_name_exists("patient")
-    assert GraphSchema.class_name_exists("result")
-    assert not GraphSchema.class_name_exists("doctor")
+    assert not GraphSchema.class_exists("patient")
+    assert GraphSchema.class_exists("result")
+    assert not GraphSchema.class_exists("doctor")
 
     GraphSchema.delete_class("result")
-    assert not GraphSchema.class_name_exists("patient")
-    assert not GraphSchema.class_name_exists("result")
-    assert not GraphSchema.class_name_exists("doctor")
+    assert not GraphSchema.class_exists("patient")
+    assert not GraphSchema.class_exists("result")
+    assert not GraphSchema.class_exists("doctor")
 
 
     # Interlinked Classes with properties; one of the Classes has an attached data node
@@ -570,8 +551,8 @@ def test_delete_class(db):
                                  properties={"quote": "Comparison is the thief of joy"})
 
     GraphSchema.delete_class("Category")    # No problem in deleting this Class with no attached data nodes
-    assert GraphSchema.class_name_exists("quotes")
-    assert not GraphSchema.class_name_exists("Category")
+    assert GraphSchema.class_exists("quotes")
+    assert not GraphSchema.class_exists("Category")
 
     with pytest.raises(Exception):
         GraphSchema.delete_class("quotes")    # But cannot by default delete Classes with data nodes
@@ -1235,7 +1216,7 @@ def test_setup_schema_from_data(db):
     result = GraphSchema.create_schema_from_data(label="Car", strict=False)
 
     # Verify we now have a `Car` Class, with no Properties
-    assert GraphSchema.class_name_exists("Car")
+    assert GraphSchema.class_exists("Car")
     assert GraphSchema.locate_class("Car") == result
     assert GraphSchema.get_class_properties(class_name="Car") == []
     assert not GraphSchema.is_strict_class("Car")
@@ -1248,7 +1229,7 @@ def test_setup_schema_from_data(db):
     result = GraphSchema.create_schema_from_data(label="Person", strict=False)
 
     # Verify we now have a `Person` Class, with the 3 Properties inferred from the data
-    assert GraphSchema.class_name_exists("Person")
+    assert GraphSchema.class_exists("Person")
     assert GraphSchema.locate_class("Person") == result
     assert GraphSchema.get_class_properties(class_name="Person") == ["age", "Medical #", "name"]    # in alphabetic order
     assert not GraphSchema.is_strict_class("Person")

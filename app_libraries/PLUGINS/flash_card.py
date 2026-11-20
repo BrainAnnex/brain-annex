@@ -24,12 +24,12 @@ class FlashCard:
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
         # TODO: this ought to be done by the PluginManager
-        if not GraphSchema.class_name_exists("Content Item"):
+        if not GraphSchema.class_exists("Content Item"):
             Categories.add_to_schema()
 
 
         # Create the Class needed by this plugin, unless already in the database
-        if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
+        if not GraphSchema.class_exists(cls.SCHEMA_CLASS_NAME):
             GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False,
                                                      code=cls.SCHEMA_CODE, handler="flash_card",
                                                      properties=["source_label", "sideA_field", "sideB_field", "reverse_odds"],

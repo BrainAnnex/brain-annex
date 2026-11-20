@@ -57,7 +57,7 @@ class Categories:
 
         :return:    None
         """
-        if not GraphSchema.class_name_exists("Category"):
+        if not GraphSchema.class_exists("Category"):
             GraphSchema.create_class_with_properties(name="Category",
                                                      properties=["name", "remarks", "entity_id", "root"],
                                                      strict=False)
@@ -77,7 +77,7 @@ class Categories:
 
 
         # The rest of this function is, strictly speaking, about the CategoryPages
-        if not GraphSchema.class_name_exists("Content Item"):
+        if not GraphSchema.class_exists("Content Item"):
             GraphSchema.create_class_with_properties(name="Content Item", strict=False,
                                                      properties=["entity_id"])
             GraphSchema.create_class_relationship(from_class="Content Item", to_class="Category",

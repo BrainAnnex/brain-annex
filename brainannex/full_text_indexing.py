@@ -150,10 +150,10 @@ class FullTextIndexing:
 
         :return:    None
         """
-        if not GraphSchema.class_name_exists("Indexer"):
+        if not GraphSchema.class_exists("Indexer"):
             GraphSchema.create_class(name="Indexer", strict=False)
 
-        if not GraphSchema.class_name_exists("Word"):
+        if not GraphSchema.class_exists("Word"):
             GraphSchema.create_class_with_properties(name="Word", strict=False,
                                                  properties=["name"],
                                                  class_to_link_to="Indexer", link_name="occurs", link_dir="OUT")
@@ -306,7 +306,7 @@ class FullTextIndexing:
         assert GraphSchema.is_valid_class_name(content_item_class_name), \
             "initialize_schema(): a non-empty string is required for argument `content_item_class_name`"
 
-        if not GraphSchema.class_name_exists(content_item_class_name):
+        if not GraphSchema.class_exists(content_item_class_name):
             GraphSchema.create_class(name=content_item_class_name, strict=False)
 
 

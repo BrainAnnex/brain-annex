@@ -16,7 +16,8 @@ class GraphSchema:
     Note: Formerly named NeoSchema;
           major implementation changes were introduced in version 5, Release Candidates 2, 6 and 8
 
-    A layer above the class GraphAccess (or, in principle, another library providing a compatible interface),
+    A layer above the class GraphAccess (or, in principle,
+    another library providing a compatible interface),
     to provide an optional schema to the underlying database.
 
     Schemas may be used to either:
@@ -245,7 +246,7 @@ class GraphSchema:
         assert name != "", \
             "GraphSchema.create_class(): Unacceptable Class name that is empty or blank"
 
-        if cls.class_name_exists(name):
+        if cls.class_exists(name):
             raise Exception(f"GraphSchema.create_class(): A class named `{name}` ALREADY exists")
 
         schema_uri = cls._next_available_schema_entity_id()    # A schema-wide uri, also used for other types of Schema nodes
@@ -334,43 +335,13 @@ class GraphSchema:
 
 
     @classmethod
-    def class_entity_id_exists(cls, entity_id :str) -> bool:
-        """
-        Return True if a Class by the given uri already exists, or False otherwise
-
-        :param entity_id:   The alleged entity id of the Class node of interest
-        :return:            True if the Class already exists, or False otherwise
-        """
-        assert cls.is_valid_schema_entity_id(entity_id), \
-            f"GraphSchema.class_uri_exists(): argument `schema_uri` " \
-            f"must be a string of the form 'schema-n' for some integer n)"
-
-        return cls.db.exists_by_key(labels="CLASS", key_name="entity_id", key_value=entity_id)
-
-
-    @classmethod
-    def class_internal_id_exists(cls, internal_id: int) -> bool:
-        """
-        Return True if a Class by the given internal database ID already exists, or False otherwise
-
-        :param internal_id:  Integer with internal database ID
-        :return:        A boolean indicating whether the specified Class exists
-        """
-        #TODO: maybe rename to class_exists_by_id()
-        cls.db.assert_valid_internal_id(internal_id)
-
-        return cls.db.exists_by_internal_id(internal_id)
-
-
-    @classmethod
-    def class_name_exists(cls, class_name :str) -> bool:
+    def class_exists(cls, class_name :str) -> bool:
         """
         Return True if a Class by the given name exists, or False otherwise
 
         :param class_name:  The name of Che class of interest
         :return:            True if the Class  exists, or False otherwise
         """
-        #TODO: maybe rename to class_exists_by_name()
         cls.assert_valid_class_name(class_name)
 
         return cls.db.exists_by_key(labels="CLASS", key_name="name", key_value=class_name)
@@ -393,13 +364,13 @@ class GraphSchema:
         result = cls.db.get_nodes(internal_id, single_cell="name")
 
         if not result :
-            raise Exception(f"GraphSchema.get_class_name(): no Class with an internal database ID of {internal_id} found")
+            raise Exception(f"GraphSchema.get_class_name(): no Class with an internal database ID of {internal_id!r} found")
 
         return result
 
 
     @classmethod
-    def get_class_name_by_schema_entity(cls, entity_id :str) -> str:
+    def get_class_name_by_schema_entity_id(cls, entity_id :str) -> str:
         """
         Returns the name of the class with the given Schema Entity ID;
         raise an Exception if not found
@@ -1402,7 +1373,7 @@ class GraphSchema:
                                       {'name': 'verified'}
                                     ]
         """
-        if cls.class_name_exists(class_name):
+        if cls.class_exists(class_name):
             return cls.get_class_properties_full_data(class_name=class_name,
                                                       include_ancestors=include_ancestors, exclude_system=exclude_system)
 
@@ -1527,7 +1498,7 @@ class GraphSchema:
             number_new_nodes = result.get("nodes_created")
             if number_new_nodes is None:
                 # Investigate, for better error messages, a likely cause of no new nodes created
-                assert cls.class_name_exists(class_name), \
+                assert cls.class_exists(class_name), \
                     f"add_properties_to_class(): No Class named `{class_name}` exists"
 
                 raise Exception(f"add_properties_to_class(): Failed to add the requested Properties")
@@ -1712,7 +1683,7 @@ class GraphSchema:
         if result.get("nodes_deleted") != 1:    # Failed operation; investigate possible causes
             all_properties = cls.get_class_properties(class_name=class_name)
             # Maybe the Class doesn't exist...
-            assert cls.class_name_exists(class_name), \
+            assert cls.class_exists(class_name), \
                 f'remove_property_from_class(): the Schema has no Class named "{class_name}"'
 
             # Maybe the Class doesn't have the Property we're trying to remove
@@ -3905,7 +3876,7 @@ class GraphSchema:
         :param class_name:  The name of the Schema Class of interest
         :return:            The count of all the Data Nodes attached to the above Class
         """
-        assert cls.class_name_exists(class_name), \
+        assert cls.class_exists(class_name), \
             f"count_data_nodes_of_class(): there is no Class named `{class_name}`"
 
         q = '''
@@ -4537,10 +4508,10 @@ class GraphSchema:
 
 
     @classmethod
-    def register_existing_data_node(cls, class_name="", schema_entity_id=None,
+    def register_existing_data_node(cls, class_name="",
                                     existing_internal_id=None, new_entity_id=None) -> int:
         """
-        Register (declare to the Schema) an existing data node with the Schema Class specified by its name or ID.
+        Register (declare to the Schema) an existing data node with the given Schema Class.
         An entity_id is generated for the data node and stored on it.
         Return the newly-assigned entity_id
 
@@ -4552,7 +4523,6 @@ class GraphSchema:
         TODO: invoke special plugin-code, if applicable
 
         :param class_name:      The name of the Class that this new data node is an instance of
-        :param schema_entity_id:      Alternate way to specify the Class; if both present, class_name prevails
 
         :param existing_internal_id: Internal ID to identify the node to register with the above Class.
                                 TODO: expand to use the match() structure
@@ -4568,14 +4538,8 @@ class GraphSchema:
         assert type(existing_internal_id) == int, \
             "register_existing_data_node(): The argument `existing_neo_id` MUST be an integer"  # TODO: use validity checker
 
-        # Make sure that at least either class_name or schema_entity_id is present
-        if (not class_name) and (not schema_entity_id):
-            raise Exception("Must specify at least either the 'class_name' or the 'schema_entity_id'")
 
-        if not class_name:
-            class_name = cls.get_class_name_by_schema_entity(schema_entity_id)      # Derive the Class name from its ID
-            if not class_name:
-                raise Exception(f"Unable to locate a Class with schema ID {schema_entity_id}")
+        cls.assert_valid_class_name(class_name)
 
         if not cls.allows_data_nodes(class_name=class_name):
             raise Exception(f"Addition of data nodes to Class `{class_name}` is not allowed by the Schema")

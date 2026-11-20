@@ -22,11 +22,11 @@ class Header:
         assert GraphSchema.is_valid_class_name(cls.SCHEMA_CLASS_NAME), \
             f"initialize_schema(): attempting to create a Schema Class with an invalid name: '{cls.SCHEMA_CLASS_NAME}'"
 
-        if not GraphSchema.class_name_exists("Content Item"):
+        if not GraphSchema.class_exists("Content Item"):
             Categories.add_to_schema()
 
 
-        if not GraphSchema.class_name_exists(cls.SCHEMA_CLASS_NAME):
+        if not GraphSchema.class_exists(cls.SCHEMA_CLASS_NAME):
             db_id = GraphSchema.create_class_with_properties(name=cls.SCHEMA_CLASS_NAME, strict=False, code="h", handler="headers",
                                                                 properties=["text"],
                                                                 class_to_link_to="Content Item", link_name="INSTANCE_OF", link_dir="OUT")
